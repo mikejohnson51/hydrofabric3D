@@ -258,7 +258,7 @@ OK, so we have gone from a single edge, to a full flowline. Now - how about a fu
 
 ```{r}
 
-cut_cross_sections = function(net, id = NULL, widths = NULL, num = NULL){
+cut_cross_sections = function(net, id = NULL, bwidths = NULL, num = NULL){
   
   ll = list()
   
@@ -446,10 +446,12 @@ system.time({
     ungroup()
 })
 
+mapview::mapview(network)
 ```
 
 ```{r, echo = FALSE}
-data = filter(cs_pts, hy_id == 101) %>% 
+data = filter(cs_pts, hy_id == 1078271 
+) %>% 
   mutate(X = st_coordinates(.)[,1], Y = st_coordinates(.)[,2])
 
 ggplot(data = data) +
