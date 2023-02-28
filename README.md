@@ -24,8 +24,8 @@ devtools::install_github("mikejohnson51/terrain_sliceR")
 
 # Example
 
-This is a basic example which shows you how to cut cut cross sections
-for a network.
+This is a basic example which shows you how to cut cross sections for a
+network.
 
 ## Define Network
 
@@ -180,5 +180,5 @@ system.time({
   classify_points()
 })
 #>    user  system elapsed 
-#>   8.759   0.120   9.366
+#>  10.455   0.235  10.985
 ```

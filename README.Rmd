@@ -32,10 +32,9 @@ devtools::install_github("mikejohnson51/terrain_sliceR")
 
 # Example
 
-This is a basic example which shows you how to cut cut cross sections for a network.
+This is a basic example which shows you how to cut cross sections for a network.
 
 ## Define Network
-
 
 ```{r example}
 library(terrainSliceR)
