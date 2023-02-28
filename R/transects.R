@@ -1,22 +1,36 @@
+#' Generate a Perpendicular Linestring of a Given Width
+#' @param edge LINESRTING
+#' @param width Length of Perpendicular LINESTRING
+#' @return GEOS object
+#' @export
+
 cut_transect = function(edge, width){
   
   midpoint <- geos_interpolate_normalized(edge, 0.5)
   ep       <- geos_point_end(edge)
   
-  normale_edge <- wk_transform(edge, 
+  normal_edge <- wk_transform(edge, 
                                wk_affine_compose(
                                  wk_affine_translate(dx = -geos_x(midpoint), dy = -geos_y(midpoint)),
                                  wk_affine_scale(1 / geos_length(edge), 1 / geos_length(edge)),
                                  wk_affine_rotate(90)))
   
   wk_set_crs(wk_transform(
-    normale_edge,
+    normal_edge,
     wk_affine_compose(
       wk_affine_scale(width, width),
       wk_affine_translate(geos_x(ep), geos_y(ep))
     )
   ), wk_crs(edge))
 }
+
+
+#' Generate Multiple cross section along a linestring
+#' @param edges data.frame of LINESTRINGs (pieces of line)
+#' @param line original line element
+#' @param bf_width Bankfull Width (length of cross section)
+#' @return GEOS object
+#' @export
 
 get_transects = function(edges, line, bf_width){
   
@@ -42,6 +56,14 @@ get_transects = function(edges, line, bf_width){
   transects[!geos_is_empty(transects)]
   
 }
+
+#' Generate Cross Sections Across Hydrographic Network
+#' @param net Hydrographic LINESTRING Network
+#' @param id  Uniuqe Identifier in net
+#' @param bf_widths Bankfull Widths (length of cross sections for each net element)
+#' @param num Number of transects per Net element
+#' @return sf object
+#' @export
 
 cut_cross_sections = function(net, id = NULL, bf_widths = NULL, num = NULL){
   
@@ -91,8 +113,15 @@ cut_cross_sections = function(net, id = NULL, bf_widths = NULL, num = NULL){
     mutate(cs_id = 1:n()) %>% 
     ungroup() %>% 
     mutate(lengthm = as.numeric(st_length(.)))
-  
 }
+
+#' Get Points across transects with elevation values
+#' @param cs Hydrographic LINESTRING Network
+#' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
+#' @param min_pts_per_cs Minimun number of points per cross section required.
+#' @param dem the DEM to extract data from
+#' @return sf object
+#' @export
 
 cross_section_pts = function(cs,
                              points_per_cs = NULL,
@@ -125,6 +154,11 @@ cross_section_pts = function(cs,
   })
   
 }
+
+#' Classify Cross Section Points 
+#' @param cs_pts CS points
+#' @return sf object
+#' @export
 
 classify_points = function(cs_pts){
   
@@ -160,7 +194,8 @@ classify_points = function(cs_pts){
            R = ifelse(count_right == 0, R + count_left, R),
            class = ifelse(between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
            class = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
-           class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>% 
+           class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
+    ungroup() %>% 
     select(hy_id, cs_id, pt_id, Z, relative_distance, bf_width, class)
   
 }

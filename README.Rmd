@@ -1,0 +1,86 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# terrainSliceR
+
+<!-- badges: start -->
+[![R CMD Check](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
+The goal of terrainSliceR is to generate DEM-based cross sections for hydrograhic networks.
+
+## Installation
+
+You can install the development version of terrainSliceR from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("mikejohnson51/terrain_sliceR")
+```
+
+# Example
+
+This is a basic example which shows you how to cut cut cross sections for a network.
+
+## Define Network
+
+
+```{r example}
+library(terrainSliceR)
+library(dplyr)
+
+(net = linestring %>% 
+  mutate(bf_width = exp(0.700	 + 0.365* log(totdasqkm))))
+
+
+plot(net$geometry)
+```
+
+## Cut cross sections
+
+```{r}
+(transects = cut_cross_sections(net = net,
+                         id = "comid", 
+                         bf_widths = pmax(50, net$bf_width * 7),
+                         num = 10) )
+
+plot(transects$geometry)
+```
+
+## Define Cross section points
+
+```{r}
+(pts = cross_section_pts(transects, 
+                        dem = '/Volumes/Transcend/ngen/DEM-products/dem.vrt'))
+```
+
+## Classify Cross section points
+
+```{r}
+(classified_pts = classify_points(pts))
+```
+
+## Explore!
+
+```{r}
+library(ggplot2)
+
+ggplot(data = filter(classified_pts, hy_id == 101) ) + 
+  geom_point(aes(x = relative_distance, y = Z, color = class)) + 
+  facet_wrap(~cs_id, scales = "free") + 
+  theme_minimal() + 
+  theme(legend.position = "bottom")
+```
+
