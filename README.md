@@ -167,3 +167,18 @@ ggplot(data = filter(classified_pts, hy_id == 101) ) +
 ```
 
 <img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
+
+## Time to get 2250 transects and 23234 classified points …
+
+``` r
+system.time({
+  cs = net %>% 
+  cut_cross_sections(id = "comid", 
+                     bf_widths = pmax(50, net$bf_width * 7),
+                     num = 10) %>% 
+  cross_section_pts(dem = '/Volumes/Transcend/ngen/DEM-products/dem.vrt') %>% 
+  classify_points()
+})
+#>    user  system elapsed 
+#>   8.759   0.120   9.366
+```

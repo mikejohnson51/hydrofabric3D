@@ -84,3 +84,16 @@ ggplot(data = filter(classified_pts, hy_id == 101) ) +
   theme(legend.position = "bottom")
 ```
 
+## Time to get `r nrow(transects)` transects and `r nrow(classified_pts)` classified points ...
+
+```{r}
+system.time({
+  cs = net %>% 
+  cut_cross_sections(id = "comid", 
+                     bf_widths = pmax(50, net$bf_width * 7),
+                     num = 10) %>% 
+  cross_section_pts(dem = '/Volumes/Transcend/ngen/DEM-products/dem.vrt') %>% 
+  classify_points()
+})
+```
+
