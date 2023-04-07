@@ -65,7 +65,16 @@ get_transects = function(edges, line, bf_width){
 #' @return sf object
 #' @export
 
-cut_cross_sections = function(net, id = NULL, bf_widths = NULL, num = NULL){
+cut_cross_sections = function(net, id = NULL, bf_widths = 100, num = 10,
+                              smooth = TRUE, densify = FALSE){
+  
+
+  if(smooth){ 
+    message("Smoothing")
+    net = smoothr::smooth(net, "spline") 
+  }
+  
+  if(densify){ net = smoothr::densify(net) }
   
   ll = list()
   
@@ -73,6 +82,11 @@ cut_cross_sections = function(net, id = NULL, bf_widths = NULL, num = NULL){
     bf_widths = rep(bf_widths[1], nrow(net))
   }
   
+  if(length(num) != nrow(net)){
+    num = pmax(3, rep(num[1], nrow(net)))
+  }
+  
+  message("Cutting")
   for(j in 1:nrow(net)){
     
     line <- as_geos_geometry(net[j,])
@@ -86,19 +100,24 @@ cut_cross_sections = function(net, id = NULL, bf_widths = NULL, num = NULL){
       )
     )
     
+    edges = edges[-c(1, length(edges))]
+    
     if(!is.null(num)){
-      edges = edges[as.integer(seq.int(1, length(edges), length.out = num))]
+      edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
     }
     
     ll[[j]] = get_transects(edges, line, bf_widths[j])
   }
   
+
   ids_length = lengths(ll)
   ll = st_as_sf(Reduce(c,ll))
   
   if(nrow(ll) == 0){
     return(NULL)
   }
+  
+  message("Formating")
   
   if(!is.null(id)){
     ll$hy_id = rep(net[[id]], times = ids_length)

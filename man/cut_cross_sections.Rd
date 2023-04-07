@@ -4,7 +4,14 @@
 \alias{cut_cross_sections}
 \title{Generate Cross Sections Across Hydrographic Network}
 \usage{
-cut_cross_sections(net, id = NULL, bf_widths = NULL, num = NULL)
+cut_cross_sections(
+  net,
+  id = NULL,
+  bf_widths = 100,
+  num = 10,
+  smooth = TRUE,
+  densify = FALSE
+)
 }
 \arguments{
 \item{net}{Hydrographic LINESTRING Network}

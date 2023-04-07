@@ -5,6 +5,7 @@
 #' @importFrom dplyr group_by mutate ungroup n `%>%` filter everything between select ungroup
 #' @importFrom terra rast extract project vect crs linearUnits res
 #' @importFrom zoo rollmean
+#' @importFrom smoothr densify smooth 
 
 NULL
 
