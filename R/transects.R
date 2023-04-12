@@ -60,13 +60,14 @@ get_transects = function(edges, line, bf_width){
 #' Generate Cross Sections Across Hydrographic Network
 #' @param net Hydrographic LINESTRING Network
 #' @param id  Uniuqe Identifier in net
-#' @param bf_widths Bankfull Widths (length of cross sections for each net element)
+#' @param cs_widths Bankfull Widths (length of cross sections for each net element)
 #' @param num Number of transects per Net element
 #' @return sf object
 #' @export
 
-cut_cross_sections = function(net, id = NULL, bf_widths = 100, num = 10,
-                              smooth = TRUE, densify = FALSE){
+cut_cross_sections = function(net, id = NULL, cs_widths = 100, num = 10,
+                              smooth = TRUE, densify = 2,
+                              rm_self_intersect = TRUE){
   
 
   if(smooth){ 
@@ -74,12 +75,12 @@ cut_cross_sections = function(net, id = NULL, bf_widths = 100, num = 10,
     net = smoothr::smooth(net, "spline") 
   }
   
-  if(densify){ net = smoothr::densify(net) }
+  if(!is.null(densify)){ net = smoothr::densify(net, densify) }
   
   ll = list()
   
-  if(length(bf_widths) != nrow(net)){
-    bf_widths = rep(bf_widths[1], nrow(net))
+  if(length(cs_widths) != nrow(net)){
+    cs_widths = rep(cs_widths[1], nrow(net))
   }
   
   if(length(num) != nrow(net)){
@@ -103,13 +104,16 @@ cut_cross_sections = function(net, id = NULL, bf_widths = 100, num = 10,
     edges = edges[-c(1, length(edges))]
     
     if(!is.null(num)){
-      edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
-    }
+      if(num[j] == 1){
+        edges = edges[as.integer(ceiling(length(edges)/ 2))]
+      } else {
+        edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
+      }
+    } 
     
-    ll[[j]] = get_transects(edges, line, bf_widths[j])
+    ll[[j]] = get_transects(edges, line, cs_widths[j])
   }
   
-
   ids_length = lengths(ll)
   ll = st_as_sf(Reduce(c,ll))
   
@@ -125,13 +129,22 @@ cut_cross_sections = function(net, id = NULL, bf_widths = 100, num = 10,
     ll$hy_id = rep(1:nrow(net), times = ids_length)
   }
   
-  ll$bf_width = rep(bf_widths, times = ids_length)
+  ll$cs_widths = rep(cs_widths, times = ids_length)
   
-  ll[lengths(st_intersects(ll)) == 1, ] %>% 
-    group_by(hy_id) %>% 
-    mutate(cs_id = 1:n()) %>% 
-    ungroup() %>% 
-    mutate(lengthm = as.numeric(st_length(.)))
+  if(rm_self_intersect){
+    ll[lengths(st_intersects(ll)) == 1, ] %>% 
+      group_by(hy_id) %>% 
+      mutate(cs_id = 1:n()) %>% 
+      ungroup() %>% 
+      mutate(lengthm = as.numeric(st_length(.)))
+  } else {
+    ll %>% 
+      group_by(hy_id) %>% 
+      mutate(cs_id = 1:n()) %>% 
+      ungroup() %>% 
+      mutate(lengthm = as.numeric(st_length(.)))
+  }
+ 
 }
 
 #' Get Points across transects with elevation values
