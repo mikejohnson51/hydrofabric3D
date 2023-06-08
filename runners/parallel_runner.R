@@ -26,16 +26,9 @@ system.time({
   
 })
 
-601 / 60
-  
-ll = bind_rows(lines)
-nrow(ll) / nrow(fl)
-pp = bind_rows(pts)
-nrow(pp)
 
 l = bind_rows(lines)
-p = bind_rows(pts)
-p2 = classify_points(p)
+p2 = classify_points(bind_rows(pts))
 
 sf::write_sf(l, '/Volumes/Transcend/ngen/CONUS-hydrofabric/05_nextgen/3d_channel_01.gpkg', "transects")
 sf::write_sf(p2, '/Volumes/Transcend/ngen/CONUS-hydrofabric/05_nextgen/3d_channel_01.gpkg', "transect_points")
