@@ -75,7 +75,10 @@ cut_cross_sections = function(net, id = NULL, cs_widths = 100, num = 10,
     net = smoothr::smooth(net, "spline") 
   }
   
-  if(!is.null(densify)){ net = smoothr::densify(net, densify) }
+  if(!is.null(densify)){ 
+    message("Densifying")
+    net = smoothr::densify(net, densify) 
+  }
   
   ll = list()
   
@@ -147,6 +150,92 @@ cut_cross_sections = function(net, id = NULL, cs_widths = 100, num = 10,
  
 }
 
+
+cut_cross_sections2 = function(net, id = NULL, cs_widths = 100, num = 10,
+                              smooth = TRUE, densify = 2,
+                              rm_self_intersect = TRUE){
+  
+  
+  if(smooth){ 
+    message("Smoothing")
+    net = smoothr::smooth(net, "ksmooth") 
+  }
+  
+  if(!is.null(densify)){ 
+    message("Densifying")
+    net = smoothr::densify(net, densify) 
+  }
+  
+  ll = list()
+  
+  if(length(cs_widths) != nrow(net)){
+    cs_widths = rep(cs_widths[1], nrow(net))
+  }
+  
+  if(length(num) != nrow(net)){
+    num = pmax(3, rep(num[1], nrow(net)))
+  }
+  
+  message("Cutting")
+  for(j in 1:nrow(net)){
+    
+    line <- as_geos_geometry(net[j,])
+    
+    vertices <- wk_vertices(line)
+    
+    edges <- as_geos_geometry(
+      wk_linestring(
+        vertices[c(1, rep(seq_along(vertices)[-c(1, length(vertices))], each = 2), length(vertices))],
+        feature_id = rep(seq_len(length(vertices) - 1), each = 2)
+      )
+    )
+    
+    edges = edges[-c(1, length(edges))]
+
+    if(!is.null(num)){
+      if(num[j] == 1){
+        edges = edges[as.integer(ceiling(length(edges)/ 2))]
+      } else {
+        edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
+      }
+    }
+    
+    ll[[j]] = get_transects(edges, line, cs_widths[j])
+  }
+  
+  ids_length = lengths(ll)
+  ll = st_as_sf(Reduce(c,ll))
+  
+  if(nrow(ll) == 0){
+    return(NULL)
+  }
+  
+  message("Formating")
+  
+  if(!is.null(id)){
+    ll$hy_id = rep(net[[id]], times = ids_length)
+  } else {
+    ll$hy_id = rep(1:nrow(net), times = ids_length)
+  }
+  
+  ll$cs_widths = rep(cs_widths, times = ids_length)
+  
+  if(rm_self_intersect){
+    ll[lengths(st_intersects(ll)) == 1, ] %>% 
+      group_by(hy_id) %>% 
+      mutate(cs_id = 1:n()) %>% 
+      ungroup() %>% 
+      mutate(lengthm = as.numeric(st_length(.)))
+  } else {
+    ll %>% 
+      group_by(hy_id) %>% 
+      mutate(cs_id = 1:n()) %>% 
+      ungroup() %>% 
+      mutate(lengthm = as.numeric(st_length(.)))
+  }
+  
+}
+
 #' Get Points across transects with elevation values
 #' @param cs Hydrographic LINESTRING Network
 #' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
@@ -194,14 +283,14 @@ cross_section_pts = function(cs,
 
 classify_points = function(cs_pts){
   
-  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- bf_width  <- count_left <- 
+  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_widths  <- count_left <- 
     count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <-  NULL
   
   filter(cs_pts) %>% 
     group_by(hy_id, cs_id) %>% 
     mutate(third = ceiling(n() / 3),
            mean_dist = mean(diff(relative_distance)),
-           in_channel_pts = ceiling(bf_width[1] / mean_dist),
+           in_channel_pts = ceiling(cs_widths[1] / mean_dist),
            b1 = ceiling(in_channel_pts / 2),
            b2 = in_channel_pts - b1,
            low_pt  = min(Z[third[1]:(2*third[1] - 1)]),
@@ -228,7 +317,7 @@ classify_points = function(cs_pts){
            class = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
            class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
     ungroup() %>% 
-    select(hy_id, cs_id, pt_id, Z, relative_distance, bf_width, class)
+    select(hy_id, cs_id, pt_id, Z, relative_distance, cs_widths, class)
   
 }
 
