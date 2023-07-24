@@ -177,8 +177,18 @@ cut_cross_sections2 = function(net,
                                    smooth = TRUE,
                                    densify = 2,
                                    rm_self_intersect = TRUE,
+                                   fix_braids = TRUE,
                                    add = FALSE
                                    ){
+  # net       = net3
+  # id        = "comid"
+  # cs_widths = pmax(50, net3$bf_width * 7)
+  # num       = 5
+  # add       = TRUE
+  # smooth = TRUE
+  # densify = 2
+  # rm_self_intersect = TRUE
+  # add = TRUE
   
   # keep track of the CRS of the input to retransform return 
   start_crs <- sf::st_crs(net, parameters = T)$epsg
@@ -283,6 +293,13 @@ cut_cross_sections2 = function(net,
                   by = c("hy_id" = id)
                   # by = c("hy_id" = "comid")
                   )
+  }
+  
+  if(fix_braids) {
+    
+    # fix the braided transects
+    ll <- fix_braid_transects(net, ll)
+    
   }
   
   # transform CRS back to input CRS
