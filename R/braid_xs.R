@@ -1,20 +1,20 @@
-# library(pbapply)
-library(terra)
-library(sf)
-library(dplyr)
-# library(terrainSliceR)
-library(mapview)
-library(smoothr)
-library(nhdplusTools)
-library(wk)
-library(geos)
-library(vctrs)
-library(AOI)
-library(ggplot2)
-library(tidyr)
-
-source("R/transects.R")
-source("R/braids.R")
+# # library(pbapply)
+# library(terra)
+# library(sf)
+# library(dplyr)
+# # library(terrainSliceR)
+# library(mapview)
+# library(smoothr)
+# library(nhdplusTools)
+# library(wk)
+# library(geos)
+# library(vctrs)
+# library(AOI)
+# library(ggplot2)
+# library(tidyr)
+# 
+# source("R/transects.R")
+# source("R/braids.R")
 
 # *********************************************
 # ---- Test data for fix_braid_transects() ----
@@ -26,33 +26,33 @@ source("R/braids.R")
 
 # net2 <- dplyr::select(net2, comid, divergence, totdasqkm, fromnode, tonode)
 
-# add bf_width column to network
-net3 <-
-  net2 %>% 
-  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>% 
-  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm))) 
-
-transects_fixed = cut_cross_sections2(
-  net       = net3,
-  id        = "comid",
-  cs_widths = pmax(50, net3$bf_width * 7),
-  num       = 5,
-  fix_braids = TRUE,
-  add       = TRUE
-  ) 
-
-transects_nofix = cut_cross_sections2(
-  net       = net3,
-  id        = "comid",
-  cs_widths = pmax(50, net3$bf_width * 7),
-  num       = 5,
-  fix_braids = FALSE,
-  add       = TRUE
-) 
-
-mapview::mapview(transects_fixed, color = "red") + 
-  mapview::mapview(transects_nofix, color = "green") +
-  mapview::mapview(net3, color = "dodgerblue")
+# # add bf_width column to network
+# net3 <-
+#   net2 %>% 
+#   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>% 
+#   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm))) 
+# 
+# transects_fixed = cut_cross_sections2(
+#   net       = net3,
+#   id        = "comid",
+#   cs_widths = pmax(50, net3$bf_width * 7),
+#   num       = 5,
+#   fix_braids = TRUE,
+#   add       = TRUE
+#   ) 
+# 
+# transects_nofix = cut_cross_sections2(
+#   net       = net3,
+#   id        = "comid",
+#   cs_widths = pmax(50, net3$bf_width * 7),
+#   num       = 5,
+#   fix_braids = FALSE,
+#   add       = TRUE
+# ) 
+# 
+# mapview::mapview(transects_fixed, color = "red") + 
+#   mapview::mapview(transects_nofix, color = "green") +
+#   mapview::mapview(net3, color = "dodgerblue")
 
 # *********************************************
 # *********************************************
@@ -107,18 +107,10 @@ augment_transect <- function(x, id, geoms_to_cut, cs_width, bf_width) {
     map           = TRUE
   )
   
-  # head_map$as_list()
-  # tail_map$as_list()
-  
+  # extract the linestring shapes
   tail_ext <- tail_map$get("line")
   head_ext <- head_map$get("line")
   
-  # mapview::mapview(geoms_to_cut, color = "dodgerblue") +
-  #   mapview::mapview(x, color = "gold")+
-  #   mapview::mapview(tail_ext, color = "red") +
-  #   mapview::mapview(head_ext, color = "green")
-  # mapview::mapview(res_geom, color = "cyan") +
-  # mapview::mapview(tail_ext) + head_ext + tline + others
   # TODO CHECK which extended line should be selected when number of interesections is the same
   # IF: number of. intersection for each extended line is TIED, select the shorter of the two? NOT SURE WHAT THE CALL IS HERE
   # ELSE: return the one with more interesections (which.max)
