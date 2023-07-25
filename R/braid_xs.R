@@ -1,45 +1,61 @@
-# # library(pbapply)
-# library(terra)
-# library(sf)
-# library(dplyr)
-# # library(terrainSliceR)
-# library(mapview)
-# library(smoothr)
-# library(nhdplusTools)
-# library(wk)
-# library(geos)
-# library(vctrs)
-# library(AOI)
-# library(ggplot2)
-# library(tidyr)
+# library(pbapply)
+library(terra)
+library(sf)
+library(dplyr)
+# library(terrainSliceR)
+library(mapview)
+library(smoothr)
+library(nhdplusTools)
+library(wk)
+library(geos)
+library(vctrs)
+library(AOI)
+library(ggplot2)
+library(tidyr)
+
+source("R/transects.R")
+source("R/braids.R")
+
+# # *********************************************
+# # ---- Test data for fix_braid_transects() ----
+# # *********************************************
+# # ggplot theme 
+# thm <- 
+#   ggplot2::theme_bw() +
+#   ggplot2::theme(
+#     plot.title = ggplot2::element_text(size = 16, face = "bold", hjust = 0.5),
+#     plot.subtitle =  ggplot2::element_text(size = 14, hjust = 0.5)
+#   )
+# # net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 100)
+# # net2 <- nhdplusTools::navigate_network(start = 1079041, mode = "UT",  distance_km = 40)
+# # net2 <- nhdplusTools::navigate_network(start = 17608987, mode = "UT", distance_km = 100)
+# net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT", distance_km = 30)
+# mapview::mapview(net2)
 # 
-# source("R/transects.R")
-# source("R/braids.R")
-
-# *********************************************
-# ---- Test data for fix_braid_transects() ----
-# *********************************************
-
-# net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 150)
-# net2 <- nhdplusTools::navigate_network(start = 17608987, mode = "UT", distance_km = 100)
-# net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT", distance_km = 200)
-
-# net2 <- dplyr::select(net2, comid, divergence, totdasqkm, fromnode, tonode)
-
-# # add bf_width column to network
+# braids <- find_braids(
+#   network = net2,
+#   return_as = "dataframe", 
+#   add = T, 
+#   nested = FALSE
+# )%>% 
+#   dplyr::arrange(hydroseq)
+# 
+# make_braids_gif(braids, 
+#                 save_path  = "/Users/anguswatters/Desktop/small_braid_animation2.gif",       
+#                 height     = 8,
+#                 width      = 10,
+#                 gif_width  = 1800, 
+#                 gif_height = 1500,
+#                 delay      = 0.8,
+#                 legend_pos = "bottom",
+#                 verbose    = TRUE
+# )
+# 
+# # # add bf_width column to network
 # net3 <-
-#   net2 %>% 
-#   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>% 
-#   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm))) 
-# 
-# transects_fixed = cut_cross_sections2(
-#   net       = net3,
-#   id        = "comid",
-#   cs_widths = pmax(50, net3$bf_width * 7),
-#   num       = 5,
-#   fix_braids = TRUE,
-#   add       = TRUE
-#   ) 
+#   net2 %>%
+#   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>%
+#   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
 # 
 # transects_nofix = cut_cross_sections2(
 #   net       = net3,
@@ -48,15 +64,2050 @@
 #   num       = 5,
 #   fix_braids = FALSE,
 #   add       = TRUE
-# ) 
+# )
+# orig_trans_plot <- 
+#   ggplot2::ggplot() +
+#   ggplot2::geom_sf(data = net3) +
+#   ggplot2::geom_sf(data = transects_nofix, color = "red", lwd = 1) + 
+#   ggplot2::labs(title = "Original braid transects") +
+#   thm
 # 
-# mapview::mapview(transects_fixed, color = "red") + 
-#   mapview::mapview(transects_nofix, color = "green") +
-#   mapview::mapview(net3, color = "dodgerblue")
+# ggplot2::ggsave(orig_trans_plot, filename = "/Users/anguswatters/Desktop/original_transects.png",
+#                 height = 8, width = 12, scale = 1)
+# transects_fixed = cut_cross_sections2(
+#   net       = net3,
+#   id        = "comid",
+#   cs_widths = pmax(50, net3$bf_width * 7),
+#   num       = 5,
+#   fix_braids = TRUE,
+#   add       = TRUE
+# )
+# 
+# fixed_trans_plot <- 
+#   ggplot2::ggplot() +
+#   ggplot2::geom_sf(data = net3) +
+#   ggplot2::geom_sf(data = transects_fixed, color = "forestgreen", lwd = 1) +
+#   ggplot2::labs(title = "Updated braid transects") +
+#   thm
+# library(patchwork)
+# trans_plot <- orig_trans_plot + fixed_trans_plot 
+# fixed_trans_plot
+# ggplot2::ggsave(fixed_trans_plot, filename = "/Users/anguswatters/Desktop/fixed_transects.png",
+#                 height = 8, width = 12, scale = 1)
+# ggplot2::ggsave(trans_plot, filename = "/Users/anguswatters/Desktop/updating_transects_plots.png",
+#                 height = 8, width = 12, scale = 1)
+# 
+# 
+# 
+# net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT", distance_km = 60)
+# ggplot2::ggplot() +
+#   ggplot2::geom_sf(data = net2)
+# braids <- find_braids(
+#   network = net2,
+#   return_as = "dataframe", 
+#   add = T, 
+#   nested = FALSE
+# )%>% 
+#   dplyr::arrange(hydroseq)
+# 
+# make_braids_gif(braids, 
+#                 save_path  = "/Users/anguswatters/Desktop/small_braid_animation2.gif",       
+#                 height     = 8,
+#                 width      = 10,
+#                 gif_width  = 1800, 
+#                 gif_height = 1500,
+#                 delay      = 0.8,
+#                 verbose    = TRUE
+# )
+# net3 <- nhdplusTools::navigate_network(start = 1079041, mode = "UT",  distance_km = 40)
+# # net3 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 100 )
+# # net2 <- nhdplusTools::navigate_network(start = 17608987, mode = "UT", distance_km = 100)
+# # net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT", distance_km = 200)
+# mapview::mapview(net3)
+# net3 <-
+#   net3 %>%
+#   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>%
+#   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+# 
+# transects_fixed2 = cut_cross_sections2(
+#   net       = net3,
+#   id        = "comid",
+#   cs_widths = pmax(50, net3$bf_width * 7),
+#   num       = 5,
+#   fix_braids = FALSE,
+#   add       = TRUE
+# )
+# 
+# unfixed_trans_plot2 <-
+#   ggplot2::ggplot() +
+#   ggplot2::geom_sf(data = net3) +
+#   ggplot2::geom_sf(data = transects_fixed2, color = "red", lwd = 1) +
+#   # ggplot2::labs(title = "Updated braid transects") +
+#   thm
+# 
+# ggplot2::ggsave(unfixed_trans_plot2, filename = "/Users/anguswatters/Desktop/old_transects.png",
+#                 height = 8, width = 12, scale = 1)
+# 
+# braids <- find_braids(
+#   network = net3,
+#   return_as = "dataframe", 
+#   add = T, 
+#   nested = FALSE
+# ) %>% 
+#   dplyr::arrange(hydroseq)
+# 
+# braids %>% 
+#   nhdplusTools::get_sorted(split = T)
+# 
+# make_braids_gif(braids, 
+#                 save_path  = "/Users/anguswatters/Desktop/large_braid_animation.gif",       
+#                 height     = 8,
+#                 width      = 10,
+#                 gif_width  = 1800, 
+#                 gif_height = 1500,
+#                 delay      = 0.8,
+#                 verbose    = TRUE
+# )
 
-# *********************************************
-# *********************************************
+# *******************************
+# -------- TEST DATASETS --------
+# *******************************
 
+# net3 <- nhdplusTools::navigate_network(start = 1079041, mode = "UT",  distance_km = 40)
+# net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 100 )
+net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 200 )
+# # net2 <- nhdplusTools::navigate_network(start = 17608987, mode = "UT", distance_km = 100)
+# # net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT", distance_km = 200)
+# 
+# net2 <- dplyr::select(net2, comid, divergence, totdasqkm, fromnode, tonode)
+# plot(net2$geometry)
+# # add bf_width column to network
+net3 <-
+  net2 %>%
+  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>%
+  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+# # 
+# transects_fixed = cut_cross_sections2(
+#   net       = net3,
+#   id        = "comid",
+#   cs_widths = pmax(50, net3$bf_width * 7),
+#   num       = 5,
+#   fix_braids = F,
+#   add       = TRUE
+#   )
+# 
+transects_nofix = cut_cross_sections2(
+  net       = net3,
+  id        = "comid",
+  cs_widths = pmax(50, net3$bf_width * 7),
+  num       = 5,
+  fix_braids = FALSE,
+  add       = TRUE
+)
+transects_fixed <- find_middle_flowlines(net3, transects_nofix)
+
+transects_nofix = cut_cross_sections2(
+  net       = net3,
+  id        = "comid",
+  cs_widths = pmax(50, net3$bf_width * 7),
+  num       = 5,
+  fix_braids = FALSE,
+  add       = TRUE
+)
+# 
+mapview::mapview(transects_fixed, color = "red") +
+  # mapview::mapview(new_trans, color = "red") +
+  mapview::mapview(transects_nofix, color = "green") +
+  mapview::mapview(net3, color = "dodgerblue")
+
+# *********************************************************
+# *********************************************************
+# *********************************************************
+# function for extending/updating transect cross section linestrings 
+# Description: Specifically to be used for situations where a river network is braided. 
+# x: transect line to try and extend to cover braided river sections 
+# id: unique identifier (COMID/hy_id) of transect line 
+# geoms_to_cut: other lingestrings (flowlines) of network that x should attempt to extend out to, and cut across 
+# cs_width: numeric, cross section width
+# bf_width: numeric, bankful width
+augment_transect2 <- function(x, id, geoms_to_cut, cs_width, bf_width) {
+  
+  # x            = tline
+  # id           = com
+  # geoms_to_cut = others
+  # cs_width     = xs[i, ]$cs_widths
+  # bf_width     = xs[i, ]$bf_width
+  # mapview::mapview(others, color = "dodgerblue") +
+  #   mapview::mapview(tline, color = "green") +
+  #   mapview::mapview(braids, color = "red")
+  
+  # lengths(sf::st_intersects(geoms_to_cut, x))
+  
+  # if 'x' intersects with flowlines from the start, return NULL immediately
+  if(lengths(sf::st_intersects(x, geoms_to_cut)) != 0) {
+    message("---------------------------------")
+    message("!!!!! SKIPPING initial transect already intersects a flowline !!!!!")
+    message("---> intersection count: ", lengths(sf::st_intersects(x, geoms_to_cut)) , " ---")
+    message("---------------------------------")
+    return(NULL)
+  }
+  
+  # max distance from transect of interest and rest of braid flowlines 
+  # TODO (need a better method of determing max possible extension of flowline)
+  max_dist <- as.numeric(
+                max(
+                  sf::st_distance(  
+                    geoms_to_cut, 
+                    x
+                  )
+                )
+              )
+
+  # sequence from 0 to the max possible extension distance 
+  dist_vect <- seq(0, max(c(max_dist, 2000)), bf_width/2)
+  # dist_vect <- seq(0, max(c(max_dist, 2000)), multi_transects[i, ]$bf_width)
+  
+  # EXTEND OUT lines 
+  # extend transect line out in both directions and find the side that interests with m
+  # extend line out from HEAD side of line 
+  # the line will extend out until it has gone "max_dist" AND all the possible flowlines have been intersected with 
+  head_map <- extend_out2(
+    x             = 1,
+    line          = x, 
+    distances     = dist_vect,
+    geoms_to_cut  = geoms_to_cut, 
+    ids           = c(id), 
+    dir           = "head",
+    map           = TRUE
+  )
+  
+  # extend line out from TAIL side of line 
+  # the line will extend out until it has gone "max_dist" AND all the possible flowlines have been intersected with 
+  tail_map <- extend_out2(
+    x             = 1,
+    line          = x, 
+    distances     = dist_vect,
+    geoms_to_cut  = geoms_to_cut, 
+    ids           = c(id), 
+    dir           = "tail",
+    map           = TRUE
+  )
+  
+  # extract the linestring shapes
+  tail_ext <- tail_map$get("line")
+  head_ext <- head_map$get("line")
+  
+  # mapview::mapview(others, color = "dodgerblue") +
+  #   mapview::mapview(tline, color = "green") +
+  #   mapview::mapview(braids, color = "red") +
+  #   mapview::mapview(tail_ext, color = "green") +
+  #   mapview::mapview(head_ext, color = "red")
+  
+  # TODO CHECK which extended line should be selected when number of interesections is the same
+  # IF: number of. intersection for each extended line is TIED, select the shorter of the two? NOT SURE WHAT THE CALL IS HERE
+  # ELSE: return the one with more interesections (which.max)
+  count_intersects <- c(
+                        lengths(sf::st_intersects(head_ext, geoms_to_cut)), 
+                        lengths(sf::st_intersects(tail_ext, geoms_to_cut))
+                      )
+  # In fixbraidstransect:
+  #   Instead of doing the Xs and DIcvxs split, instead keep all lines (0, 1, 2 divergences)
+  # 
+  
+  # Augmentline function:
+  #   If both == 0:
+  #   Return null 
+  # 
+  # If any == 0 and intersect[which(x, y) != 0] == 1:
+  #   
+  #   # Do single direction extension
+  #   
+  # If x == y or max(x, y) -1 == min(x, y): 
+  #   # We found a middle, do double sided extension
+  #   
+  #   Else: 
+  #   Return null 
+  # make a list of head and tail map extensions
+  map_lst <- list(head_map, tail_map)
+  
+  # mapview::mapview(head_ext) + tail_ext + others + tline
+  
+  # create simple feature collection of head and tail extended lines
+  # res_geom <- sf::st_sfc(c(head_ext, tail_ext))
+  
+  # if neither direction had any intersections, skip this iteration:
+  if(all(count_intersects == 0)) {
+    message("---------------------------------")
+    message("--- NO INTERSECT AFTER EXTENDING TRANSECT ---")
+    message("--- CONTINUING TO NEXT TRANSECT ---")
+    message("---------------------------------")
+    return(NULL)
+  }
+
+  # which(count_intersects == 1)
+  # count_intersects[which(count_intersects != 0)] == 1
+  # map_lst[[which(count_intersects != 0)]]
+  
+  # now we know that there is atleast 1 intersection, 
+  # first we'll check if its only in one direction or if intersections occur in BOTH directions
+  # if(any(count_intersects == 0) & count_intersects[which(count_intersects != 0)] == 1) {
+  
+  # now we know that there is atleast 1 intersection, 
+  # first we'll check if its only in one direction or if intersections occur in BOTH directions
+  
+  # if intersection one of the extended lines does not intersect (0) 
+  # AND
+  # the other other extended line intersects EXACTLY 1 other flowline,
+  # then this is a single braid that we will extend across
+  if(any(count_intersects == 0)) {
+
+    # if the NON ZERO intersection extended line, intersects EXACTLY 1 other flowline, then do single extension out
+    if(count_intersects[which(count_intersects != 0)] == 1) {
+      
+      
+      # if()
+      # if(any(count_intersects == 0)) {
+      
+      # Do single direction extension
+      
+      # mapview::mapview(res_geom[which(count_intersects != 0)])
+      
+      # Do single direction extension
+      
+      # set res_geom to whichever direction has intersections
+      # res_geom <-
+      
+      # get the hashmap of the direction that needs to be extended (i.e. the direction that has more than 0 intersections)
+      ext_map <- map_lst[[which(count_intersects != 0)]]
+      
+      # to_extend <- map_lst[[which(count_intersects != 0)]]
+      message("---------------------------------")
+      message("--- ONE DIRECT INTERSECT ! ---")
+      message("---> count_intersect[1]: ", count_intersects[1] , " ---")
+      message("---> count_intersect[2]: ", count_intersects[2] , " ---")
+      message("--- direction: ", ext_map$get("direction") ,"---")
+      message("---------------------------------")
+      
+      # ext_map$as_list()
+      
+      # direction to extend out
+      direction   <- ext_map$get("direction")
+      
+      # line to extend
+      extend_line <- ext_map$get("line")
+      
+      # dist_vect[222]
+      # length(dist_vect)
+      # 307-171/2
+      
+      # start and end points of HEAD extended line
+      start <- lwgeom::st_startpoint(extend_line)
+      end   <- lwgeom::st_endpoint(extend_line)
+      
+      # mapview::mapview(others, color = "dodgerblue") +
+      #   mapview::mapview(extend_line, color = "red") +
+      #   mapview::mapview(x, color = "green")  +
+      #   start + end + all_cross_pts + last_pt +res_geom
+      
+      # points that extended line crosses over other flowlines in the braid
+      all_cross_pts <- sf::st_intersection(extend_line, geoms_to_cut)
+      
+      # mapview::mapview(res_geom) + tline + others + all_cross_pts
+      
+      # get the outtermost point that the line extended from HEAD crosses other braid flowlines
+      # by finding the head_cross_pts that is the FURTHEST from the centroid of the original transect line
+      last_pt <- all_cross_pts[
+        which.max(as.numeric(sf::st_distance(sf::st_centroid(x), all_cross_pts)))
+      ]
+      
+      # minimum distance between start and end points of extended line and the furthest possible intersection point. 
+      diff_distance   <- min(c(
+        as.numeric(sf::st_distance(last_pt, start)),
+        as.numeric(sf::st_distance(last_pt, end))
+      ))
+      
+      # END_PT--------------- CROSSER_PT ----------------------------START_PT
+      # |------------------------|
+      # ^^^^ SMALLER SECTION ^^^^
+      # That would be the minimum distance, we then want to extend from crosser pt to about half the distance of the cross section width 
+      # calculate distance which will be half of one of the CS_widths, minus the smaller distance from the cross section. (ex. above)
+      
+      # extra distance to extend line in direction determined above
+      extra <- (cs_width/2) - diff_distance
+      
+      # # first extend out the head
+      # res_geom <- st_extend_line(
+      #                   x,  
+      #                   ext_map$get("distance") + extra,
+      #                   # 1440,
+      #                   ext_map$get("direction")
+      #                 )
+      
+      res_geom <- st_extend_line(
+        ext_map$get("line"),  
+        extra, 
+        ext_map$get("direction")
+      )
+      
+      return(res_geom)
+    
+    }
+    # mapview::mapview(others, color = "dodgerblue") +
+    #   mapview::mapview(extend_line, color = "red") +
+    #   mapview::mapview(x, color = "green")  +
+    #   start + end + all_cross_pts + last_pt +res_geom + res_geom2 + net3
+    # If x == y or max(x, y) -1 == min(x, y): 
+    #   # We found a middle, do double sided extension
+    #   
+    #   Else: 
+    #   Return null 
+  } 
+  
+  # if the number of intersections is NOT 0 and equal eachother 
+  # OR
+  # the maximum intersection count - 1 is equal to the minimum intersection count
+  # THEN we have found a MIDDLE flowline in a braid
+  if(count_intersects[1] == count_intersects[2] | max(count_intersects) - 1 == min(count_intersects)) {
+    
+    
+  
+  # if count_intersects[1]
+  # else {
+    message("---------------------------------")
+    message("--- BOTH DIRECT INTERSECT ! ---")
+    message("---> count_intersect[1]: ", count_intersects[1] , " ---")
+    message("---> count_intersect[2]: ", count_intersects[2] , " ---")
+    message("---------------------------------")
+    #   direction = "both"
+    # }
+    # Note from 07/22:
+    #  I am working on handling the situation where the line 
+    # should be extended out in both directions, in that case I am trying to merge the head_ext and tail_ext objects so I can then take the endpoints, and from those endpoints find the closest intersection points in "all_cross_pts". 
+    # The CLOSEST 'alL_cross_pts' will give me information on how to calculate the extra extension 
+    # length that the final line needs to be extended out in both directions
+    
+    # the other idea i have is to do a final line extension WITHIN the extend_out function... 
+    # so then I don't even need to deal with the final line extending because it will return the lines 
+    # in a ready-to-go format, all i need to then do is select if I am picking the head, tail, or BOTH
+    
+    # One more note: 
+    # IF this method I am working on within this current function DOES WORK, 
+    # then I will probably need to find a better way of iterating through these transects,
+    # basically either just ordering each COMID by lowest to highest divergence is my best idea. 
+    # I just need a way to "prioritize" lower divergence values (mainstems) when it 
+    # comes to choosing which transect flowlines will be
+    # kept when there is a transect intersecting transect situation.
+    
+    # if (direction == "both") {
+    
+    # start and end points of HEAD extended line
+    start_head <- lwgeom::st_startpoint(head_ext)
+    end_head   <- lwgeom::st_endpoint(head_ext)
+    
+    # start and end points of TAIL extended line
+    start_tail <- lwgeom::st_startpoint(tail_ext)
+    end_tail   <- lwgeom::st_endpoint(tail_ext)
+    
+    # points that HEAD extended line crosses over
+    head_cross_pts <- sf::st_intersection(head_ext, geoms_to_cut)
+    
+    # points that TAIL extended line crosses over
+    tail_cross_pts <- sf::st_intersection(tail_ext, geoms_to_cut)
+    
+    # mapview::mapview(res_geom) + tline + others + all_cross_pts
+    
+    # get the outtermost point that the line extended from HEAD crosses other braid flowlines
+    # by finding the head_cross_pts that is the FURTHEST from the centroid of the original transect line
+    last_head_pt <- head_cross_pts[
+      which.max(as.numeric(sf::st_distance(sf::st_centroid(x), head_cross_pts)))
+    ]
+    
+    # get the outtermost point that the line extended from TAIL crosses other braid flowlines
+    # by finding the head_cross_pts that is the FURTHEST from the centroid of the original transect line
+    last_tail_pt <- tail_cross_pts[
+      which.max(as.numeric(sf::st_distance(sf::st_centroid(x), tail_cross_pts)))
+    ]
+    
+    # these are the distances that the extended HEAD/LINE line is crossing over the outer most flowline of the transect, 
+    # we will subtract this value by cs_widths/2 in order to get the distance we need to extend the HEAD/TAIL line out 
+    # in order to have cs_widths/2 on both sides of the transect
+    
+    # distance for HEAD extended line
+    head_dist   <- min(c(
+      as.numeric(sf::st_distance(last_head_pt, start_head)),
+      as.numeric(sf::st_distance(last_head_pt, end_head))
+    ))
+    
+    # distance for TAIL extended line
+    tail_dist <- min(c(
+      as.numeric(sf::st_distance(last_tail_pt, start_tail)),
+      as.numeric(sf::st_distance(last_tail_pt, end_tail))
+    ))
+    
+    # set distances to 0 if no crossing point is on top of the start/end
+    head_dist   <- ifelse(length(head_dist) == 0, 0, head_dist)
+    tail_dist   <- ifelse(length(tail_dist) == 0, 0,  tail_dist)
+    
+    # check to make sure that extending the line made an intersection
+    if (head_dist == 0 & tail_dist == 0) {
+      # message("--- NO INTERSECTION AFTER EXTENDING TRANSECT ---")
+      # message("--- CONTINUING TO NEXT TRANSECT ---")
+      return(NULL)
+      # next
+    }
+    
+    # END_PT--------------- CROSSER_PT ----------------------------START_PT
+    # |------------------------|
+    # ^^^^ SMALLER SECTION ^^^^
+    # That would be the minimum distance, we then want to extend from crosser pt to about half the distance of the cross section width 
+    # calculate distance which will be half of one of the CS_widths, minus the smaller distance from the cross section. (ex. above)
+    
+    # extra distance to extend HEAD
+    extra_head <- (cs_width/2) - head_dist
+    
+    # extra distance to extend TAIL
+    extra_tail <- (cs_width/2) - tail_dist
+    
+    # first extend out the head
+    res_geom <- st_extend_line(
+      x,  
+      head_map$get("distance") + extra_head, 
+      head_map$get("direction")
+    )
+
+    # then use the head extended line from above and extend the tail
+    res_geom <- st_extend_line(
+      res_geom,  
+      tail_map$get("distance") + extra_tail, 
+      tail_map$get("direction")
+    )
+
+    # mapview::mapview(braids, color = "dodgerblue") +
+    #   mapview::mapview(x, color = "red") +
+    #   mapview::mapview(geoms_to_cut, color = "green") +
+    #   mapview::mapview(res_geom, color = "red") +res_geom2
+    
+    return(res_geom)
+    
+  } else {
+    message("---------------------------------")
+    message("!!!!! SKIPPING BECAUSE EDGE OF MULTIBRAID !!!!!")
+    message("---> count_intersect[1]: ", count_intersects[1] , " ---")
+    message("---> count_intersect[2]: ", count_intersects[2] , " ---")
+    message("---------------------------------")
+    
+    return(NULL)
+    
+  }
+  
+}
+
+# Apply flowline braid length threshold to braided network dataset 
+# Return a list with 2 sf dataframes, the updated braided dataset and the updated original "not_braided" dataset
+# x: braided flowlines
+# originals: not braided flowlines from the same network
+# threshold: braid_threshold numeric value to remove braids with a total braid flowline length greater than 'threshold'
+braid_thresholder2 <- function(x, 
+                              originals,
+                              threshold = NULL, 
+                              verbose   = TRUE
+) {
+  
+  # x         = braids
+  # originals = not_braids
+  # threshold = 30000
+  # verbose = TRUE
+  
+  # input check for input 'x'
+  if(is.null(x)) {
+    stop("missing 'x' input argument")
+  }
+  
+  # input check for input 'originals'
+  if(is.null(originals)) {
+    stop("missing 'originals' input argument")
+  }
+  
+  # input check for input 'threshold'
+  if(is.null(threshold)) {
+    stop("missing 'threshold' input argument")
+  }
+  
+  # unpack nested braid_id column0
+  unpacked <- unnpack_braids(x)
+  
+  # calculate total length of all the linestrings in each braid_id
+  unpacked <- 
+    unpacked %>% 
+    dplyr::group_by(braid_id) %>%
+    dplyr::mutate(
+      braid_length = as.numeric(
+        sum(sf::st_length(geometry), na.rm = T))
+    ) %>%
+    dplyr::ungroup()
+  # dplyr::mutate(braid_length = sf::st_length(geometry)) %>%
+  # dplyr::mutate(braid_length = as.numeric(sum(braid_length, na.rm = T))) %>%
+  
+  # check to make sure some braids are over threshold and can be removed, if NOT then just return original data
+  if(all(unpacked$braid_length <= threshold)) {
+    
+    message("Removing: 0 braids from braided dataset\n", 
+            "Keeping: All braids as all braids have total flowline lengths less than or equal to threshold value: ", threshold)
+    
+    return(list(
+      braids     = x,
+      not_braids = originals)
+    )
+    
+  } 
+  
+  # # table of TRUEs and FALSE for braids to keep/remove given 'threshold'
+  # threshold_tbl <- table(unpacked$braid_length <= threshold)
+  # if(verbose) { message("Removing: ",  threshold_tbl["FALSE"],  
+  # " braids from braided dataset\nKeeping: ", threshold_tbl["TRUE"],
+  #           " braids that have total flowline lengths less than or equal to threshold value: ", threshold)}
+  
+  # comids to keep (total length of braid linestrings is less than or equal to braid_threshold value)
+  to_keep <- dplyr::filter(unpacked, braid_length <= threshold)$comid
+  
+  # # COMIDs that are too large, add them back to the "not_braids" data
+  # to_drop <- dplyr::filter(x, !comid %in% to_keep)
+  
+  # keep track of keeping and removing count
+  orig_nrows <- nrow(originals)
+  x_nrows  <- nrow(x)
+  
+  # add the "too big braid COMIDs" back to original "not_braids" data 
+  # and set these comids braid_ids to "no_braid" and is_multibraid = FALSE
+  originals <- dplyr::bind_rows(
+    originals,
+    dplyr::select(
+      dplyr::mutate(
+        dplyr::filter(
+          x, !comid %in% to_keep
+        ),
+        braid_id      = "no_braid", 
+        is_multibraid = FALSE
+      ),
+      -has_mainstem
+    )
+  )
+  
+  new_orig_nrows <- nrow(originals)
+  
+  # filter out braid_ids/COMIDs that are too big
+  x <- dplyr::filter(x, comid %in% to_keep)
+  
+  # updating count of keeping and removing 
+  new_orig_nrows <- nrow(originals)
+  new_x_nrows <- nrow(x)
+  
+  if(verbose) {
+    message("Removing: ", new_orig_nrows - orig_nrows, 
+            " braids from braided dataset\nKeeping: ",   new_x_nrows,
+            " braids that have total flowline lengths less than or equal to threshold value: ", threshold)
+  }
+  
+  return(list(
+    braids     = x,
+    not_braids = originals)
+  )
+  
+}
+#' Find the middle flowlines in a braided system
+#'
+#' @param net sf object of NHDplusv2 data
+#' @param transect_lines sf linestring dataframe, containing cross sections of flowlines in 'net' the output of "cut_cross_sections2()" function
+#' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
+#' lengths less than or equal to the threshold will be considered by function(i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#' Default is NULL, which will attempt to fix all the braid transects in the data
+#'
+#' @return sf object of transect linestrings
+#' @export
+#'
+#' @examples
+fix_braid_transects_mid <- function(
+    net, 
+    transect_lines,
+    braid_threshold = NULL
+) {
+  
+  # transect_lines <-  transects_nofix
+  # net <- net3
+  # braid_threshold = NULL
+  # braid_threshold = 25000
+  # braid_threshold = NULL
+  
+  # keep track of the original CRS of the inputs to retransform return 
+  start_crs1 <- sf::st_crs(net, parameters = T)$epsg
+  start_crs2 <- sf::st_crs(transect_lines, parameters = T)$epsg
+  
+  message("Start CRS: ", start_crs1)
+  
+  # check if net CRS is 5070, if not, transform it to 5070
+  if(start_crs1 != 5070) {
+    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
+    message("Transforming CRS to EPSG: 5070")
+    net <- sf::st_transform(net, 5070) 
+  }
+  
+  # check if net CRS is 5070, if not, transform it to 5070
+  if(start_crs2 != 5070) {
+    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
+    message("Transforming CRS to EPSG: 5070")
+    transect_lines <- sf::st_transform(transect_lines, 5070) 
+  }
+  
+  message("Identifying braids...")
+  
+  # add braid_id column to network
+  braids <- find_braids(
+    network   = net,
+    return_as = "dataframe",
+    nested    = TRUE,
+    # nested    = FALSE,
+    add       = TRUE
+  )
+  
+  if (all(braids$braid_id == "no_braid")) {
+    
+    message("No braids identified, returning original transects")
+    
+    # transform CRS back to input CRS
+    if(start_crs2 != 5070) {
+      message("Transforming CRS back to EPSG: ", start_crs2)
+      transect_lines <- sf::st_transform(transect_lines, start_crs2)
+    }
+    
+    return(transect_lines)
+  }
+  
+  # not braided flowlines
+  not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
+  # not_braids <- braids[!braids$comid %in% only_braids$comid, ]
+  
+  # trim down network to just the braided parts, and add a comid count to separate out multibraids
+  # only_braids <-
+  braids <-  
+    braids %>% 
+    dplyr::filter(braid_id != "no_braid") %>% 
+    # dplyr::group_by(comid) %>% 
+    # dplyr::mutate(ncomid = n()) %>% 
+    # dplyr::ungroup() %>% 
+    dplyr::group_by(braid_id) %>% 
+    dplyr::mutate(has_mainstem = any(divergence == 0)) %>% 
+    dplyr::ungroup()
+  
+  # view data on map
+  # mapview::mapview(not_braids, color = "dodgerblue") +
+  # mapview::mapview(only_braids, color = "red") 
+  
+  if(!is.null(braid_threshold)) {
+    
+    # remove braids that have a total flowline length greater than braid_threshold
+    braids <- braid_thresholder(
+      x         = braids, 
+      originals = not_braids, 
+      threshold = braid_threshold,
+      verbose   = TRUE
+    )
+    
+    # reassign braids and not_braids datasets to the updated values in 'braids' list (REASSIGNMENT ORDER MATTERS HERE)
+    not_braids <- braids$not_braids
+    braids     <- braids$braids
+  }
+  
+  # # unique braid_ids/COMIDs
+  # ubraids <- unique(only_braids$braid_id)
+  # ucoms <- unique(only_braids$comid)
+  
+  # join cross sections w/ braid flowlines
+  xs <- 
+    transect_lines %>%
+    dplyr::filter(hy_id %in% braids$comid) %>%
+    dplyr::left_join(
+      sf::st_drop_geometry(
+        dplyr::select(
+          braids, comid, braid_id, is_multibraid
+        )
+      ),
+      by = c("hy_id" = "comid")
+    ) %>% 
+    # dplyr::filter(divergence == 0)
+    dplyr::group_by(braid_id) %>% 
+    dplyr::mutate(has_mainstem = any(divergence == 0)) %>% 
+    dplyr::ungroup()
+  
+  # keep track of all original crossections
+  all_xs <- paste0(xs$hy_id, "_", xs$cs_id)
+  
+  # # there are sometimes braids that don't have any divergence == 0 transects, 
+  # # so we need to use whatever transect is avalaible with the lowest 'divergence' value 
+  # # (hopefully its divergence == 1, but sometimes its divergence == 2)
+  # div_xs <- 
+  #   xs %>% 
+  #   dplyr::filter(
+  #     !has_mainstem
+  #     # hy_id %in% extra_comids,
+  #   ) %>% 
+  #   dplyr::group_by(braid_id) %>% 
+  #   dplyr::slice_min(divergence, with_ties = FALSE) %>% 
+  #   dplyr::ungroup()
+  # 
+  # # from original cross sections, only keep divergence == 0 and remove the comids that are in "div_xs"
+  # # filter to just divergence == 0 and comids NOT in 'div_xs'
+  # xs <- dplyr::filter(xs, 
+  #                     divergence == 0, 
+  #                     !hy_id %in% div_xs$hy_id
+  # )
+  
+  # flag determining whether transect should be replaced
+  xs$changed <- FALSE
+  
+  # check if any transects exist, if not, just return the original transects
+  if (nrow(xs) == 0) {
+    
+    message("===== NO 'xs' transect lines =====")
+    message("===== returning original data =====")
+    
+    return(transect_lines)
+    
+  } else {
+    message("===== ", nrow(xs) , " 'xs' transect lines =====")
+    message("===== returning original data =====")
+  }
+  
+  # determine if a cross section is a middle, outer, single or no intersection 
+  xs <- classify_transects(x = braids, transects = xs)
+  # xs$braid_class %>% unique()
+  
+  # NON middle transects
+  other_xs <- xs %>% dplyr::filter(braid_class == "single")
+  # other_xs <- xs %>% dplyr::filter(braid_class != "middle")
+  
+  # keep only middle transect
+  xs <- xs %>% dplyr::filter(braid_class == "middle")
+  
+  # order from largest to smallest totdasqkm
+  xs <-  dplyr::arrange(xs, -totdasqkm)
+  
+  # mapview::mapview(xs, color = "green") +
+  #   mapview::mapview(braids, color = "dodgerblue") +
+  #   mapview::mapview(not_braids, color = "gold") +
+  #   mapview::mapview(other_xs, color = "red") +
+  #   mapview::mapview(mid_xs, color = "green") 
+  
+  for(i in 1:nrow(xs)) {
+    
+    # message("i: ", i, "/", nrow(xs))
+    
+    # transect line
+    tline <- xs[i, ]$geometry
+    
+    # comid of transect line
+    com <- xs[i, ]$hy_id
+    
+    # braid IDs of interest
+    bids <- strsplit(xs[i, ]$braid_id, ", ")[[1]]
+    
+    # get all linestrings that are apart of the braid_ids of interest
+    bids_check <- sapply(1:length(braids$braid_id), function(x) {
+      any(
+        strsplit(braids$braid_id[x], ", ")[[1]] %in% bids
+      )
+    })
+    
+    
+    # braid flowlines other than self that are within our given braid id or are nearby
+    others <- dplyr::filter(
+      braids,
+      braid_id %in% unique(c(braids[bids_check, ]$braid_id,
+                             unlist(strsplit(braids[bids_check, ]$braid_id, ", "))
+      )
+      ),
+      # braid_id %in% Reduce(c, strsplit(braids[bids_check, ]$braid_id, ", ")),
+      comid != com
+    )
+    
+    # resulting geometry after extension
+    res_geom <- augment_transect(
+      x            = tline,
+      id           = com,
+      geoms_to_cut = others,
+      cs_width     = xs[i, ]$cs_widths,
+      bf_width     = xs[i, ]$bf_width
+    )
+    
+    # if augment_transect returns a NULL geometry, was NOT updated, 
+    # so we can skip this iteration because no matter how far you extend out this transect, 
+    # it does NOT end up interesecting any of the other flowlines in this set of braided flowlines
+    if(is.null(res_geom)) {
+      # message("--- SKIPPING - NO INTERSECTION AFTER EXTENDING TRANSECT ---")
+      # message("--- CONTINUING TO NEXT TRANSECT ---")
+      # message("=================")
+      next
+    }
+    
+    # ONLY UPDATE geometry if it does NOT intersect with any of the other multibraid transects (EXCEPT SELF)
+    if(!any(lengths(sf::st_intersects(res_geom, xs[-i,])) > 0)){
+      
+      # # # message stating that replacement was made
+      # message("----> REPLACING ", i, " transect")
+      
+      # updatem geometry with new, extended cross section
+      xs[i,]$geometry <- sf::st_geometry(res_geom)
+      
+      # flag determining whether transect should be replaced
+      xs[i, ]$changed <- TRUE
+      
+    }
+    # message("=================")
+  }
+  
+  # # keep track of cross sections to drop
+  # xs_drop <- dplyr::filter(xs,!changed)
+
+  # keep only the transects that were changed/extended
+  xs <- dplyr::filter(xs, changed)
+  # xs_d <- dplyr::filter(xs, changed)
+  
+  # mapview::mapview(xs, color = "green") +
+  #   mapview::mapview(braids, color = "dodgerblue") +
+  #   mapview::mapview(not_braids, color = "gold") +
+  #   mapview::mapview(other_xs, color = "red") +
+  #   mapview::mapview(xs_d, color = "red") +     mapview::mapview(xs2, color = "red")
+
+  
+  # indices of div_xs transects that now intersect with the updated/extended 'xs' transects
+  net_intersects <- sf::st_intersects(not_braids, xs)
+  # # other_intersects <- sf::st_intersects(other_xs, xs)
+  
+  # any(lengths(net_intersects) > 0) | any(lengths(other_intersects) > 0)
+  
+  # if there ARE some intersections, remove those intersecting lines from 'xs'
+  if(any(lengths(net_intersects) > 0)) {
+  # if(any(lengths(net_intersects) > 0) | any(lengths(other_intersects) > 0)) {
+    message("Removing ", length(unlist(net_intersects)) + length(unlist(other_intersects)), " transect lines from 'xs'")
+    drops <- unlist(net_intersects)
+    # drops <- unique(c(unlist(net_intersects), unlist(other_intersects)))
+    
+    # drop div_xs transects that are overlapping with 'xs' transects
+    xs <- xs[-drops, ]
+    
+  }
+  
+  # nrow(braids)
+  # nrow(not_braids)
+  # nrow(braids) + nrow(not_braids)
+  # nrow(braids) + nrow(not_braids) == nrow(net)
+  # tmpy <- xs2[lengths(sf::st_intersects(xs2, not_braids)) > 0, ]
+  # mapview::mapview(xs2, color = "green") +
+  #   mapview::mapview(tmpy, color = "gold") +
+  #   mapview::mapview(not_braids, color = "dodgerblue") + 
+  #   mapview::mapview(braids, color = "red") +
+  # mapview::mapview(xs, color = "green")
+  
+  # indices of div_xs transects that now intersect with the updated/extended 'xs' transects
+  other_intersects <- sf::st_intersects(xs, other_xs)
+  
+  # if there ARE some intersections, remove those intersecting lines from 'div_xs'
+  if(any(lengths(other_intersects) > 0)) {
+    message("Removing ", length(unlist(other_intersects)), " transect lines from 'other_xs'")
+    
+    # drop div_xs transects that are overlapping with 'xs' transects
+    other_xs <- other_xs[-unlist(other_intersects), ]
+  }
+  
+  # flag determining whether transect should be replaced
+  other_xs$changed <- FALSE
+  
+  if (nrow(other_xs) > 0) {
+    
+    message("===== ", nrow(other_xs)  ," 'other_xs' transect lines =====")
+    
+    for (i in 1:nrow(other_xs)) {
+      
+      # message("i: ", i, "/", nrow(other_xs))
+      
+      # transect line
+      tline <- other_xs[i, ]$geometry
+      
+      # comid of transect line
+      com <- other_xs[i, ]$hy_id
+      
+      # # check if geom intersects 
+      # if(any(lengths(sf::st_intersects(tline, xs)) > 0)) {
+      #   message("!!!!! SKIPPING, other_xs[i, ] ALREADY INTERSECTS WITH 'xs' !!!!! ")
+      #   message("=================")
+      #   next
+      # }
+      
+      # braid IDs of interest
+      bids <- strsplit(other_xs[i, ]$braid_id, ", ")[[1]]
+      
+      # get all linestrings that are apart of the braid_ids of interest
+      bids_check <- sapply(1:length(braids$braid_id), function(x) {
+        any(
+          strsplit(braids$braid_id[x], ", ")[[1]] %in% bids
+        )
+      })
+      
+      
+      # braid flowlines other than self that are within our given braid id or are nearby (the unique() filtering part)
+      others <- dplyr::filter(
+        braids,
+        braid_id %in% unique(c(braids[bids_check, ]$braid_id,
+                               unlist(strsplit(braids[bids_check, ]$braid_id, ", ")))),
+        comid != com
+      )
+      
+      # resulting geometry after extension
+      res_geom <- augment_transect(
+        x            = tline,
+        id           = com,
+        geoms_to_cut = others,
+        cs_width     = other_xs[i, ]$cs_widths,
+        bf_width     = other_xs[i, ]$bf_width
+      )
+      
+      # if augment_transect returns a NULL geometry, was NOT updated, 
+      # so we can skip this iteration because no matter how far you extend out this transect, 
+      # it does NOT end up interesecting any of the other flowlines in this set of braided flowlines
+      if(is.null(res_geom)) {
+        # message("--- SKIPPING - NO INTERSECTION AFTER EXTENDING TRANSECT ---")
+        # message("--- CONTINUING TO NEXT TRANSECT ---")
+        # message("=================")
+        next
+      }
+      
+      # ONLY UPDATE geometry if it does NOT intersect with any of the other multibraid transects (EXCEPT SELF)
+      # AND it does NOT intersect with any other transects in 'xs' (the rest of the main transects lines)
+      if(
+        !any(lengths(sf::st_intersects(res_geom, other_xs[-i,])) > 0) & 
+        !any(lengths(sf::st_intersects(res_geom, xs)) > 0)
+      ) {
+        
+        # # # # message stating that replacement was made
+        # message("----> REPLACING ", i, " transect")
+        
+        # replace geometry with extended line
+        other_xs[i,]$geometry <- sf::st_geometry(res_geom)
+        
+        # flag determining whether transect should be replaced
+        other_xs[i, ]$changed <- TRUE
+        
+      }
+      # message("=================")
+    }
+    
+    # # keep only the transects that were changed/extended
+    # div_drop <- dplyr::filter(other_xs, !changed)
+    
+    # keep only the transects that were changed/extended
+    other_xs <- dplyr::filter(other_xs, changed)
+    
+    # bind together final updated transect lines
+    out <- dplyr::bind_rows(
+      dplyr::select(xs, 
+                    -braid_id, -is_multibraid, -has_mainstem, -changed),
+      dplyr::select(other_xs,
+                    -braid_id, -is_multibraid, -has_mainstem, -changed)
+    )
+    
+    # mapview::mapview(other_xs, color = "green") +
+    #   # mapview::mapview(tmpy, color = "gold") +
+    #   mapview::mapview(not_braids, color = "gold") +
+    #   mapview::mapview(braids, color = "dodgerblue") +
+    # mapview::mapview(other_xs2, color = "green") +
+    #   mapview::mapview(out, color = "red")
+    
+  } else {
+    
+    message("===== NO 'other_xs' transect lines =====")
+    
+    # bind together final updated transect lines
+    out <- dplyr::select(xs, -braid_id, -is_multibraid, -has_mainstem, -changed)
+    
+  }
+  
+  
+  return(out)
+  # mapview::mapview(other_xs, color = "green") +
+  #   # mapview::mapview(tmpy, color = "gold") +
+  #   mapview::mapview(not_braids, color = "gold") +
+  #   mapview::mapview(braids, color = "dodgerblue") +
+  #   mapview::mapview(xs, color = "green") +
+  #   mapview::mapview(out, color = "red")
+  
+}
+classify_transects <- function(x, transects) {
+  # x = braids
+  # transects = xs
+  # 
+  # i = 1
+  
+  # make groups for each braided section
+  braid_groups <- lapply(1:nrow(transects), function(i) {
+    
+    # message("i: ", i, "/", nrow(transects))
+    
+    # braid IDs of interest
+    bids <- strsplit(transects[i, ]$braid_id, ", ")[[1]]
+    
+    # get all linestrings that are apart of the braid_ids of interest
+    bids_check <- sapply(1:length(x$braid_id), function(y) {
+      any(
+        strsplit(x$braid_id[y], ", ")[[1]] %in% bids
+      )
+    })
+    
+    sort(unique(c(x[bids_check, ]$braid_id,
+                  unlist(strsplit(x[bids_check, ]$braid_id, ", "))
+    )))
+    
+  }) %>% 
+    unique()
+  
+  # for(i in 1:length(braid_groups)) {
+  # for(i in 1:length(braid_groups)) {
+  out <- lapply(1:length(braid_groups), function(k) {
+    # k = 1
+    # group of cross sections
+    xs_group <- dplyr::filter(transects, braid_id %in% braid_groups[[k]])
+    
+    # braid flowlines other than self that are within our given braid id or are nearby
+    others <- dplyr::filter(
+      x,
+      braid_id %in% braid_groups[[k]]
+      # braid_id %in% unique(c(x[bids_check, ]$braid_id,
+      #                        unlist(strsplit(x[bids_check, ]$braid_id, ", ")))),
+      # comid != com
+    )
+    
+    # max distance from transect of interest and rest of braid flowlines 
+    # TODO (need a better method of determing max possible extension of flowline)
+    max_dist <- max(xs_group$cs_widths * 2.5)
+    # max_dist <- max(xs_group$cs_widths * 10)
+    
+    # mapview::mapview(transects, color = "green") +
+    #   mapview::mapview(x, color = "red") +
+    #   mapview::mapview(not_braids, color = "dodgerblue") + xs_group
+    
+    extenders <- lapply(1:nrow(xs_group), function(z) {
+      
+      # message(z, "/", nrow(xs_group))
+      # extend head out
+      head_ext <-
+        st_extend_line(xs_group$geometry[z], max_dist, "head") %>% 
+        sf::st_as_sf() %>% 
+        dplyr::mutate(hy_id = xs_group$hy_id[z]) %>% 
+        dplyr::rename(geometry = x)
+      
+      # extend tail out
+      tail_ext <-
+        st_extend_line(xs_group$geometry[z], max_dist, "tail") %>% 
+        sf::st_as_sf() %>% 
+        dplyr::mutate(hy_id = xs_group$hy_id[z]) %>% 
+        dplyr::rename(geometry = x)
+      
+      # count interesections
+      count_intersects <- c(
+        lengths(sf::st_intersects(head_ext$geometry,  
+                                  dplyr::filter(others, comid != head_ext$hy_id) )),
+        lengths(sf::st_intersects(tail_ext$geometry, 
+                                  dplyr::filter(others, comid != tail_ext$hy_id)))
+      )
+      
+      if(all(count_intersects == 0)) {
+        
+        type = "no_intersects"
+        
+      } else {
+        
+        
+        # if intersection one of the extended lines does not intersect (0) 
+        # AND
+        # the other other extended line intersects EXACTLY 1 other flowline,
+        # then this is a single braid that we will extend across
+        if(any(count_intersects == 0)) {
+          
+          # if the NON ZERO intersection extended line, intersects EXACTLY 1 other flowline, then do single extension out
+          if(count_intersects[which(count_intersects != 0)] == 1) {
+            
+            type = "single"
+          }
+          
+        } else if (count_intersects[1] == count_intersects[2] | max(count_intersects) - 1 == min(count_intersects)) {
+          
+          type = "middle"
+          
+        } else {
+          
+          type = "outer"
+          
+        }
+        
+      }
+      
+      data.frame(
+        hy_id = xs_group$hy_id[z],
+        cs_id = xs_group$cs_id[z],
+        tmp_id = paste0(xs_group$hy_id[z], "_", xs_group$cs_id[z]),
+        braid_class = type,
+        head_count = count_intersects[1],
+        tail_count = count_intersects[2]
+      )
+      # list(
+      #   hy_id = xs_group$hy_id[z],
+      #   cs_id = xs_group$cs_id[z],
+      #   type = type,
+      #   intersection_counts = count_intersects
+      #   )
+      
+      
+    }) %>% 
+      dplyr::bind_rows()
+    
+    extenders
+    
+  }) %>% 
+    dplyr::bind_rows()
+  # })
+  # out %>% 
+  #   dplyr::group_by(tmp_id) %>% 
+  #   dplyr::slice(1)
+  
+  # remove duplicate tmp_id rows
+  out <- out[!duplicated(out$tmp_id), ] 
+  
+  # join transects data with the braid classification data and return this
+  out <- dplyr::select(
+    dplyr::left_join(
+      dplyr::mutate(
+        transects,
+        tmp_id = paste0(hy_id, "_", cs_id)
+      ),
+      dplyr::select(out, tmp_id, braid_class, head_count, tail_count),
+      by = "tmp_id"
+    ),
+    -tmp_id
+  )
+  
+  return(out)
+  
+}
+# function for extending/updating transect cross section linestrings 
+# Description: Specifically to be used for situations where a river network is braided. 
+# x: transect line to try and extend to cover braided river sections 
+# id: unique identifier (COMID/hy_id) of transect line 
+# geoms_to_cut: other lingestrings (flowlines) of network that x should attempt to extend out to, and cut across 
+# cs_width: numeric, cross section width
+# bf_width: numeric, bankful width
+select_middle <- function(x, id, geoms_to_cut, cs_width, bf_width) {
+  
+  # x            = tline
+  # id           = com
+  # geoms_to_cut = others
+  # cs_width     = xs[i, ]$cs_widths
+  # bf_width     = xs[i, ]$bf_width
+  # mapview::mapview(others, color = "dodgerblue") +
+  #   mapview::mapview(tline, color = "green") +
+  #   mapview::mapview(braids, color = "red")
+  
+  # lengths(sf::st_intersects(geoms_to_cut, x))
+  
+  # if 'x' intersects with flowlines from the start, return NULL immediately
+  if(lengths(sf::st_intersects(x, geoms_to_cut)) != 0) {
+    message("---------------------------------")
+    message("!!!!! SKIPPING initial transect already intersects a flowline !!!!!")
+    message("---> intersection count: ", lengths(sf::st_intersects(x, geoms_to_cut)) , " ---")
+    message("---------------------------------")
+    return(NULL)
+  }
+  
+  # max distance from transect of interest and rest of braid flowlines 
+  # TODO (need a better method of determing max possible extension of flowline)
+  max_dist <- as.numeric(
+    max(
+      sf::st_distance(  
+        geoms_to_cut, 
+        x
+      )
+    )
+  )
+  
+  # sequence from 0 to the max possible extension distance 
+  dist_vect <- seq(0, max(c(max_dist, 2000)), bf_width/2)
+  # dist_vect <- seq(0, max(c(max_dist, 2000)), multi_transects[i, ]$bf_width)
+  
+  # EXTEND OUT lines 
+  # extend transect line out in both directions and find the side that interests with m
+  # extend line out from HEAD side of line 
+  # the line will extend out until it has gone "max_dist" AND all the possible flowlines have been intersected with 
+  head_map <- extend_out2(
+    x             = 1,
+    line          = x, 
+    distances     = dist_vect,
+    geoms_to_cut  = geoms_to_cut, 
+    ids           = c(id), 
+    dir           = "head",
+    map           = TRUE
+  )
+  
+  # extend line out from TAIL side of line 
+  # the line will extend out until it has gone "max_dist" AND all the possible flowlines have been intersected with 
+  tail_map <- extend_out2(
+    x             = 1,
+    line          = x, 
+    distances     = dist_vect,
+    geoms_to_cut  = geoms_to_cut, 
+    ids           = c(id), 
+    dir           = "tail",
+    map           = TRUE
+  )
+  
+  # extract the linestring shapes
+  tail_ext <- tail_map$get("line")
+  head_ext <- head_map$get("line")
+  
+  # mapview::mapview(others, color = "dodgerblue") +
+  #   mapview::mapview(tline, color = "green") +
+  #   mapview::mapview(braids, color = "red") +
+  #   mapview::mapview(tail_ext, color = "green") +
+  #   mapview::mapview(head_ext, color = "red")
+  
+  # TODO CHECK which extended line should be selected when number of interesections is the same
+  # IF: number of. intersection for each extended line is TIED, select the shorter of the two? NOT SURE WHAT THE CALL IS HERE
+  # ELSE: return the one with more interesections (which.max)
+  count_intersects <- c(
+    lengths(sf::st_intersects(head_ext, geoms_to_cut)), 
+    lengths(sf::st_intersects(tail_ext, geoms_to_cut))
+  )
+  # In fixbraidstransect:
+  #   Instead of doing the Xs and DIcvxs split, instead keep all lines (0, 1, 2 divergences)
+  # 
+  
+  # Augmentline function:
+  #   If both == 0:
+  #   Return null 
+  # 
+  # If any == 0 and intersect[which(x, y) != 0] == 1:
+  #   
+  #   # Do single direction extension
+  #   
+  # If x == y or max(x, y) -1 == min(x, y): 
+  #   # We found a middle, do double sided extension
+  #   
+  #   Else: 
+  #   Return null 
+  # make a list of head and tail map extensions
+  map_lst <- list(head_map, tail_map)
+  
+  # mapview::mapview(head_ext) + tail_ext + others + tline
+  
+  # create simple feature collection of head and tail extended lines
+  # res_geom <- sf::st_sfc(c(head_ext, tail_ext))
+  
+  # if neither direction had any intersections, skip this iteration:
+  if(all(count_intersects == 0)) {
+    message("---------------------------------")
+    message("--- NO INTERSECT AFTER EXTENDING TRANSECT ---")
+    message("--- CONTINUING TO NEXT TRANSECT ---")
+    message("---------------------------------")
+    return(NULL)
+  }
+  
+  # which(count_intersects == 1)
+  # count_intersects[which(count_intersects != 0)] == 1
+  # map_lst[[which(count_intersects != 0)]]
+  
+  # now we know that there is atleast 1 intersection, 
+  # first we'll check if its only in one direction or if intersections occur in BOTH directions
+  # if(any(count_intersects == 0) & count_intersects[which(count_intersects != 0)] == 1) {
+  
+  # now we know that there is atleast 1 intersection, 
+  # first we'll check if its only in one direction or if intersections occur in BOTH directions
+  
+  # if intersection one of the extended lines does not intersect (0) 
+  # AND
+  # the other other extended line intersects EXACTLY 1 other flowline,
+  # then this is a single braid that we will extend across
+  if(any(count_intersects == 0)) {
+    
+    # if the NON ZERO intersection extended line, intersects EXACTLY 1 other flowline, then do single extension out
+    if(count_intersects[which(count_intersects != 0)] == 1) {
+      
+      
+      # if()
+      # if(any(count_intersects == 0)) {
+      
+      # Do single direction extension
+      
+      # mapview::mapview(res_geom[which(count_intersects != 0)])
+      
+      # Do single direction extension
+      
+      # set res_geom to whichever direction has intersections
+      # res_geom <-
+      
+      # get the hashmap of the direction that needs to be extended (i.e. the direction that has more than 0 intersections)
+      ext_map <- map_lst[[which(count_intersects != 0)]]
+      
+      # to_extend <- map_lst[[which(count_intersects != 0)]]
+      message("---------------------------------")
+      message("--- ONE DIRECT INTERSECT ! ---")
+      message("---> count_intersect[1]: ", count_intersects[1] , " ---")
+      message("---> count_intersect[2]: ", count_intersects[2] , " ---")
+      message("--- direction: ", ext_map$get("direction") ,"---")
+      message("---------------------------------")
+      
+      # ext_map$as_list()
+      
+      # direction to extend out
+      direction   <- ext_map$get("direction")
+      
+      # line to extend
+      extend_line <- ext_map$get("line")
+      
+      # dist_vect[222]
+      # length(dist_vect)
+      # 307-171/2
+      
+      # start and end points of HEAD extended line
+      start <- lwgeom::st_startpoint(extend_line)
+      end   <- lwgeom::st_endpoint(extend_line)
+      
+      # mapview::mapview(others, color = "dodgerblue") +
+      #   mapview::mapview(extend_line, color = "red") +
+      #   mapview::mapview(x, color = "green")  +
+      #   start + end + all_cross_pts + last_pt +res_geom
+      
+      # points that extended line crosses over other flowlines in the braid
+      all_cross_pts <- sf::st_intersection(extend_line, geoms_to_cut)
+      
+      # mapview::mapview(res_geom) + tline + others + all_cross_pts
+      
+      # get the outtermost point that the line extended from HEAD crosses other braid flowlines
+      # by finding the head_cross_pts that is the FURTHEST from the centroid of the original transect line
+      last_pt <- all_cross_pts[
+        which.max(as.numeric(sf::st_distance(sf::st_centroid(x), all_cross_pts)))
+      ]
+      
+      # minimum distance between start and end points of extended line and the furthest possible intersection point. 
+      diff_distance   <- min(c(
+        as.numeric(sf::st_distance(last_pt, start)),
+        as.numeric(sf::st_distance(last_pt, end))
+      ))
+      
+      # END_PT--------------- CROSSER_PT ----------------------------START_PT
+      # |------------------------|
+      # ^^^^ SMALLER SECTION ^^^^
+      # That would be the minimum distance, we then want to extend from crosser pt to about half the distance of the cross section width 
+      # calculate distance which will be half of one of the CS_widths, minus the smaller distance from the cross section. (ex. above)
+      
+      # extra distance to extend line in direction determined above
+      extra <- (cs_width/2) - diff_distance
+      
+      # # first extend out the head
+      # res_geom <- st_extend_line(
+      #                   x,  
+      #                   ext_map$get("distance") + extra,
+      #                   # 1440,
+      #                   ext_map$get("direction")
+      #                 )
+      
+      res_geom <- st_extend_line(
+        ext_map$get("line"),  
+        extra, 
+        ext_map$get("direction")
+      )
+      
+      return(res_geom)
+      
+    }
+    # mapview::mapview(others, color = "dodgerblue") +
+    #   mapview::mapview(extend_line, color = "red") +
+    #   mapview::mapview(x, color = "green")  +
+    #   start + end + all_cross_pts + last_pt +res_geom + res_geom2 + net3
+    # If x == y or max(x, y) -1 == min(x, y): 
+    #   # We found a middle, do double sided extension
+    #   
+    #   Else: 
+    #   Return null 
+  } 
+  
+  # if the number of intersections is NOT 0 and equal eachother 
+  # OR
+  # the maximum intersection count - 1 is equal to the minimum intersection count
+  # THEN we have found a MIDDLE flowline in a braid
+  if(count_intersects[1] == count_intersects[2] | max(count_intersects) - 1 == min(count_intersects)) {
+    
+    
+    
+    # if count_intersects[1]
+    # else {
+    message("---------------------------------")
+    message("--- BOTH DIRECT INTERSECT ! ---")
+    message("---> count_intersect[1]: ", count_intersects[1] , " ---")
+    message("---> count_intersect[2]: ", count_intersects[2] , " ---")
+    message("---------------------------------")
+    #   direction = "both"
+    # }
+    # Note from 07/22:
+    #  I am working on handling the situation where the line 
+    # should be extended out in both directions, in that case I am trying to merge the head_ext and tail_ext objects so I can then take the endpoints, and from those endpoints find the closest intersection points in "all_cross_pts". 
+    # The CLOSEST 'alL_cross_pts' will give me information on how to calculate the extra extension 
+    # length that the final line needs to be extended out in both directions
+    
+    # the other idea i have is to do a final line extension WITHIN the extend_out function... 
+    # so then I don't even need to deal with the final line extending because it will return the lines 
+    # in a ready-to-go format, all i need to then do is select if I am picking the head, tail, or BOTH
+    
+    # One more note: 
+    # IF this method I am working on within this current function DOES WORK, 
+    # then I will probably need to find a better way of iterating through these transects,
+    # basically either just ordering each COMID by lowest to highest divergence is my best idea. 
+    # I just need a way to "prioritize" lower divergence values (mainstems) when it 
+    # comes to choosing which transect flowlines will be
+    # kept when there is a transect intersecting transect situation.
+    
+    # if (direction == "both") {
+    
+    # start and end points of HEAD extended line
+    start_head <- lwgeom::st_startpoint(head_ext)
+    end_head   <- lwgeom::st_endpoint(head_ext)
+    
+    # start and end points of TAIL extended line
+    start_tail <- lwgeom::st_startpoint(tail_ext)
+    end_tail   <- lwgeom::st_endpoint(tail_ext)
+    
+    # points that HEAD extended line crosses over
+    head_cross_pts <- sf::st_intersection(head_ext, geoms_to_cut)
+    
+    # points that TAIL extended line crosses over
+    tail_cross_pts <- sf::st_intersection(tail_ext, geoms_to_cut)
+    
+    # mapview::mapview(res_geom) + tline + others + all_cross_pts
+    
+    # get the outtermost point that the line extended from HEAD crosses other braid flowlines
+    # by finding the head_cross_pts that is the FURTHEST from the centroid of the original transect line
+    last_head_pt <- head_cross_pts[
+      which.max(as.numeric(sf::st_distance(sf::st_centroid(x), head_cross_pts)))
+    ]
+    
+    # get the outtermost point that the line extended from TAIL crosses other braid flowlines
+    # by finding the head_cross_pts that is the FURTHEST from the centroid of the original transect line
+    last_tail_pt <- tail_cross_pts[
+      which.max(as.numeric(sf::st_distance(sf::st_centroid(x), tail_cross_pts)))
+    ]
+    
+    # these are the distances that the extended HEAD/LINE line is crossing over the outer most flowline of the transect, 
+    # we will subtract this value by cs_widths/2 in order to get the distance we need to extend the HEAD/TAIL line out 
+    # in order to have cs_widths/2 on both sides of the transect
+    
+    # distance for HEAD extended line
+    head_dist   <- min(c(
+      as.numeric(sf::st_distance(last_head_pt, start_head)),
+      as.numeric(sf::st_distance(last_head_pt, end_head))
+    ))
+    
+    # distance for TAIL extended line
+    tail_dist <- min(c(
+      as.numeric(sf::st_distance(last_tail_pt, start_tail)),
+      as.numeric(sf::st_distance(last_tail_pt, end_tail))
+    ))
+    
+    # set distances to 0 if no crossing point is on top of the start/end
+    head_dist   <- ifelse(length(head_dist) == 0, 0, head_dist)
+    tail_dist   <- ifelse(length(tail_dist) == 0, 0,  tail_dist)
+    
+    # check to make sure that extending the line made an intersection
+    if (head_dist == 0 & tail_dist == 0) {
+      # message("--- NO INTERSECTION AFTER EXTENDING TRANSECT ---")
+      # message("--- CONTINUING TO NEXT TRANSECT ---")
+      return(NULL)
+      # next
+    }
+    
+    # END_PT--------------- CROSSER_PT ----------------------------START_PT
+    # |------------------------|
+    # ^^^^ SMALLER SECTION ^^^^
+    # That would be the minimum distance, we then want to extend from crosser pt to about half the distance of the cross section width 
+    # calculate distance which will be half of one of the CS_widths, minus the smaller distance from the cross section. (ex. above)
+    
+    # extra distance to extend HEAD
+    extra_head <- (cs_width/2) - head_dist
+    
+    # extra distance to extend TAIL
+    extra_tail <- (cs_width/2) - tail_dist
+    
+    # first extend out the head
+    res_geom <- st_extend_line(
+      x,  
+      head_map$get("distance") + extra_head, 
+      head_map$get("direction")
+    )
+    
+    # then use the head extended line from above and extend the tail
+    res_geom <- st_extend_line(
+      res_geom,  
+      tail_map$get("distance") + extra_tail, 
+      tail_map$get("direction")
+    )
+    
+    # mapview::mapview(braids, color = "dodgerblue") +
+    #   mapview::mapview(x, color = "red") +
+    #   mapview::mapview(geoms_to_cut, color = "green") +
+    #   mapview::mapview(res_geom, color = "red") +res_geom2
+    
+    return(res_geom)
+    
+  } else {
+    message("---------------------------------")
+    message("!!!!! SKIPPING BECAUSE EDGE OF MULTIBRAID !!!!!")
+    message("---> count_intersect[1]: ", count_intersects[1] , " ---")
+    message("---> count_intersect[2]: ", count_intersects[2] , " ---")
+    message("---------------------------------")
+    
+    return(NULL)
+    
+  }
+  
+}
+# Fix transects found on braided river sections
+# net: sf object of NHDplusv2 data
+# transect_lines: sf linestring dataframe, containing cross sections of flowlines in 'net'
+#                 the output of "cut_cross_sections2()" function
+# braid_threshold: numeric value, value of the total length of all flowlines in a braid. 
+#             Only braids with total flowline lengths less than or equal to the threshold will be considered by function
+#             (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#             Default is NULL, which will attempt to fix all the braid transects in the data
+
+#' Fix transects found on braided river sections
+#'
+#' @param net sf object of NHDplusv2 data
+#' @param transect_lines sf linestring dataframe, containing cross sections of flowlines in 'net' the output of "cut_cross_sections2()" function
+#' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
+#' lengths less than or equal to the threshold will be considered by function(i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#' Default is NULL, which will attempt to fix all the braid transects in the data
+#'
+#' @return sf object of transect linestrings
+#' @export
+#'
+#' @examples
+fix_braid_transects_mid2 <- function(
+    net, 
+    transect_lines,
+    braid_threshold = NULL
+) {
+  
+  transect_lines <-  transects_nofix
+  net <- net3
+  braid_threshold = NULL
+  # braid_threshold = 25000
+  # braid_threshold = NULL
+  
+  # keep track of the original CRS of the inputs to retransform return 
+  start_crs1 <- sf::st_crs(net, parameters = T)$epsg
+  start_crs2 <- sf::st_crs(transect_lines, parameters = T)$epsg
+  
+  message("Start CRS: ", start_crs1)
+  
+  # check if net CRS is 5070, if not, transform it to 5070
+  if(start_crs1 != 5070) {
+    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
+    message("Transforming CRS to EPSG: 5070")
+    net <- sf::st_transform(net, 5070) 
+  }
+  
+  # check if net CRS is 5070, if not, transform it to 5070
+  if(start_crs2 != 5070) {
+    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
+    message("Transforming CRS to EPSG: 5070")
+    transect_lines <- sf::st_transform(transect_lines, 5070) 
+  }
+  
+  message("Identifying braids...")
+  
+  # add braid_id column to network
+  braids <- find_braids(
+    network   = net,
+    return_as = "dataframe",
+    nested    = TRUE,
+    # nested    = FALSE,
+    add       = TRUE
+  )
+  
+  if (all(braids$braid_id == "no_braid")) {
+    
+    message("No braids identified, returning original transects")
+    
+    # transform CRS back to input CRS
+    if(start_crs2 != 5070) {
+      message("Transforming CRS back to EPSG: ", start_crs2)
+      transect_lines <- sf::st_transform(transect_lines, start_crs2)
+    }
+    
+    return(transect_lines)
+  }
+  
+  # not braided flowlines
+  not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
+  # not_braids <- braids[!braids$comid %in% only_braids$comid, ]
+  
+  # trim down network to just the braided parts, and add a comid count to separate out multibraids
+  # only_braids <-
+  braids <-  
+    braids %>% 
+    dplyr::filter(braid_id != "no_braid") %>% 
+    # dplyr::group_by(comid) %>% 
+    # dplyr::mutate(ncomid = n()) %>% 
+    # dplyr::ungroup() %>% 
+    dplyr::group_by(braid_id) %>% 
+    dplyr::mutate(has_mainstem = any(divergence == 0)) %>% 
+    dplyr::ungroup()
+  
+  # view data on map
+  # mapview::mapview(not_braids, color = "dodgerblue") +
+  # mapview::mapview(only_braids, color = "red") 
+  
+  if(!is.null(braid_threshold)) {
+    
+    # remove braids that have a total flowline length greater than braid_threshold
+    braids <- braid_thresholder(
+      x         = braids, 
+      originals = not_braids, 
+      threshold = braid_threshold,
+      verbose   = TRUE
+    )
+    
+    # reassign braids and not_braids datasets to the updated values in 'braids' list (REASSIGNMENT ORDER MATTERS HERE)
+    not_braids <- braids$not_braids
+    braids     <- braids$braids
+  }
+  
+  # # unique braid_ids/COMIDs
+  # ubraids <- unique(only_braids$braid_id)
+  # ucoms <- unique(only_braids$comid)
+  
+  # join cross sections w/ braid flowlines
+  xs <- 
+    transect_lines %>%
+    dplyr::filter(hy_id %in% braids$comid) %>%
+    dplyr::left_join(
+      sf::st_drop_geometry(
+        dplyr::select(
+          braids, comid, braid_id, is_multibraid
+        )
+      ),
+      by = c("hy_id" = "comid")
+    ) %>% 
+    # dplyr::filter(divergence == 0)
+    dplyr::group_by(braid_id) %>% 
+    dplyr::mutate(has_mainstem = any(divergence == 0)) %>% 
+    dplyr::ungroup()
+  
+  # keep track of all original crossections
+  all_xs <- paste0(xs$hy_id, "_", xs$cs_id)
+  
+  # # there are sometimes braids that don't have any divergence == 0 transects, 
+  # # so we need to use whatever transect is avalaible with the lowest 'divergence' value 
+  # # (hopefully its divergence == 1, but sometimes its divergence == 2)
+  # div_xs <- 
+  #   xs %>% 
+  #   dplyr::filter(
+  #     !has_mainstem
+  #     # hy_id %in% extra_comids,
+  #   ) %>% 
+  #   dplyr::group_by(braid_id) %>% 
+  #   dplyr::slice_min(divergence, with_ties = FALSE) %>% 
+  #   dplyr::ungroup()
+  # 
+  # # from original cross sections, only keep divergence == 0 and remove the comids that are in "div_xs"
+  # # filter to just divergence == 0 and comids NOT in 'div_xs'
+  # xs <- dplyr::filter(xs, 
+  #                     divergence == 0, 
+  #                     !hy_id %in% div_xs$hy_id
+  # )
+  
+  # flag determining whether transect should be replaced
+  xs$changed <- FALSE
+  
+  # check if any transects exist, if not, just return the original transects
+  if (nrow(xs) == 0) {
+    
+    message("===== NO 'xs' transect lines =====")
+    message("===== returning original data =====")
+    
+    return(transect_lines)
+    
+  } else {
+    message("===== ", nrow(xs) , " 'xs' transect lines =====")
+    message("===== returning original data =====")
+  }
+  
+  # mapview::mapview(xs, color = "green") +
+  #   mapview::mapview(braids, color = "red") +
+  #   mapview::mapview(not_braids, color = "dodgerblue")
+  # 1078427
+  # i = 59
+  for(i in 1:nrow(xs)) {
+  # for(i in 1:7) {
+    # i = 8
+    # for(i in 1:58) {
+    message("i: ", i, "/", nrow(xs))
+    
+    # transect line
+    tline <- xs[i, ]$geometry
+    
+    # comid of transect line
+    com <- xs[i, ]$hy_id
+    
+    # braid IDs of interest
+    bids <- strsplit(xs[i, ]$braid_id, ", ")[[1]]
+    
+    # get all linestrings that are apart of the braid_ids of interest
+    bids_check <- sapply(1:length(braids$braid_id), function(x) {
+      any(
+        strsplit(braids$braid_id[x], ", ")[[1]] %in% bids
+      )
+    })
+    
+    
+    # braid flowlines other than self that are within our given braid id or are nearby
+    others <- dplyr::filter(
+      braids,
+      braid_id %in% unique(c(braids[bids_check, ]$braid_id,
+                             unlist(strsplit(braids[bids_check, ]$braid_id, ", "))
+      )
+      ),
+      # braid_id %in% Reduce(c, strsplit(braids[bids_check, ]$braid_id, ", ")),
+      comid != com
+    )
+    # mapview::mapview(others, color = "dodgerblue") + 
+    #   mapview::mapview(tline, color = "green") +
+    # mapview::mapview(braids, color = "red")
+    # resulting geometry after extension
+    res_geom <- augment_transect2(
+      x            = tline,
+      id           = com,
+      geoms_to_cut = others,
+      cs_width     = xs[i, ]$cs_widths,
+      bf_width     = xs[i, ]$bf_width
+    )
+    
+    # if augment_transect returns a NULL geometry, was NOT updated, 
+    # so we can skip this iteration because no matter how far you extend out this transect, 
+    # it does NOT end up interesecting any of the other flowlines in this set of braided flowlines
+    if(is.null(res_geom)) {
+      # message("--- SKIPPING - NO INTERSECTION AFTER EXTENDING TRANSECT ---")
+      # message("--- CONTINUING TO NEXT TRANSECT ---")
+      # message("=================")
+      next
+    }
+    
+    # ONLY UPDATE geometry if it does NOT intersect with any of the other multibraid transects (EXCEPT SELF)
+    if(!any(lengths(sf::st_intersects(res_geom, xs[-i,])) > 0)){
+      
+      # # message stating that replacement was made
+      # message("----> REPLACING ", i, " transect")
+      
+      # updatem geometry with new, extended cross section
+      xs[i,]$geometry <- sf::st_geometry(res_geom)
+      
+      # flag determining whether transect should be replaced
+      xs[i, ]$changed <- TRUE
+      
+    }
+    # message("=================")
+  }
+  mapview::mapview(xs, color = "green") +
+    mapview::mapview(braids, color = "red") +
+    mapview::mapview(not_braids, color = "dodgerblue") + 
+    mapview::mapview(xs, color = "green") +
+    mapview::mapview(xs_drop, color = "gold") +
+    mapview::mapview(xs_changed, color = "green") 
+  # # keep track of cross sections to drop
+  # xs_drop <- dplyr::filter(xs,!changed)
+  # xs_changed <- dplyr::filter(xs,changed)
+  
+  # keep only the transects that were changed/extended
+  xs <- dplyr::filter(xs, changed)
+  
+  # not_braids <- braids[!braids$comid %in% braids$comid, ]
+  # any(lengths(sf::st_intersects(xs, not_braids)) > 0)
+  # indices of div_xs transects that now intersect with the updated/extended 'xs' transects
+  net_intersects <- sf::st_intersects(not_braids, xs)
+  
+  # if there ARE some intersections, remove those intersecting lines from 'xs'
+  if(any(lengths(net_intersects) > 0)) {
+    message("Removing ", length(unlist(net_intersects)), " transect lines from 'xs'")
+    
+    # drop div_xs transects that are overlapping with 'xs' transects
+    xs <- xs[-unlist(net_intersects), ]
+  }
+  
+  # nrow(braids)
+  # nrow(not_braids)
+  # nrow(braids) + nrow(not_braids)
+  # nrow(braids) + nrow(not_braids) == nrow(net)
+  # tmpy <- xs2[lengths(sf::st_intersects(xs2, not_braids)) > 0, ]
+  # mapview::mapview(xs2, color = "green") +
+  #   mapview::mapview(tmpy, color = "gold") +
+  #   mapview::mapview(not_braids, color = "dodgerblue") + 
+  #   mapview::mapview(braids, color = "red") +
+  # mapview::mapview(xs, color = "green")
+  
+  # indices of div_xs transects that now intersect with the updated/extended 'xs' transects
+  div_intersects <- sf::st_intersects(xs, div_xs)
+  
+  # if there ARE some intersections, remove those intersecting lines from 'div_xs'
+  if(any(lengths(div_intersects) > 0)) {
+    message("Removing ", length(unlist(div_intersects)), " transect lines from 'div_xs'")
+    
+    # drop div_xs transects that are overlapping with 'xs' transects
+    div_xs <- div_xs[-unlist(div_intersects), ]
+  }
+  
+  # flag determining whether transect should be replaced
+  div_xs$changed <- FALSE
+  
+  if (nrow(div_xs) > 0) {
+    
+    message("===== ", nrow(div_xs)  ," 'div_xs' transect lines =====")
+    
+    for (i in 1:nrow(div_xs)) {
+      
+      message("i: ", i, "/", nrow(div_xs))
+      
+      # transect line
+      tline <- div_xs[i, ]$geometry
+      
+      # comid of transect line
+      com <- div_xs[i, ]$hy_id
+      
+      # # check if geom intersects 
+      # if(any(lengths(sf::st_intersects(tline, xs)) > 0)) {
+      #   message("!!!!! SKIPPING, div_xs[i, ] ALREADY INTERSECTS WITH 'xs' !!!!! ")
+      #   message("=================")
+      #   next
+      # }
+      
+      # braid IDs of interest
+      bids <- strsplit(div_xs[i, ]$braid_id, ", ")[[1]]
+      
+      # get all linestrings that are apart of the braid_ids of interest
+      bids_check <- sapply(1:length(braids$braid_id), function(x) {
+        any(
+          strsplit(braids$braid_id[x], ", ")[[1]] %in% bids
+        )
+      })
+      
+      
+      # braid flowlines other than self that are within our given braid id or are nearby (the unique() filtering part)
+      others <- dplyr::filter(
+        braids,
+        braid_id %in% unique(c(braids[bids_check, ]$braid_id,
+                               unlist(strsplit(braids[bids_check, ]$braid_id, ", ")))),
+        comid != com
+      )
+      
+      # resulting geometry after extension
+      res_geom <- augment_transect(
+        x            = tline,
+        id           = com,
+        geoms_to_cut = others,
+        cs_width     = div_xs[i, ]$cs_widths,
+        bf_width     = div_xs[i, ]$bf_width
+      )
+      
+      # if augment_transect returns a NULL geometry, was NOT updated, 
+      # so we can skip this iteration because no matter how far you extend out this transect, 
+      # it does NOT end up interesecting any of the other flowlines in this set of braided flowlines
+      if(is.null(res_geom)) {
+        message("--- SKIPPING - NO INTERSECTION AFTER EXTENDING TRANSECT ---")
+        message("--- CONTINUING TO NEXT TRANSECT ---")
+        message("=================")
+        next
+      }
+      
+      # ONLY UPDATE geometry if it does NOT intersect with any of the other multibraid transects (EXCEPT SELF)
+      # AND it does NOT intersect with any other transects in 'xs' (the rest of the main transects lines)
+      if(
+        !any(lengths(sf::st_intersects(res_geom, div_xs[-i,])) > 0) & 
+        !any(lengths(sf::st_intersects(res_geom, xs)) > 0)
+      ) {
+        
+        # # # message stating that replacement was made
+        message("----> REPLACING ", i, " transect")
+        
+        # replace geometry with extended line
+        div_xs[i,]$geometry <- sf::st_geometry(res_geom)
+        
+        # flag determining whether transect should be replaced
+        div_xs[i, ]$changed <- TRUE
+        
+      }
+      message("=================")
+    }
+    
+    # # keep only the transects that were changed/extended
+    # div_drop <- dplyr::filter(div_xs, !changed)
+    
+    # keep only the transects that were changed/extended
+    div_xs <- dplyr::filter(div_xs, changed)
+    
+    # bind together final updated transect lines
+    out <- dplyr::bind_rows(
+      dplyr::select(xs, 
+                    -braid_id, -is_multibraid, -has_mainstem, -changed),
+      dplyr::select(div_xs,
+                    -braid_id, -is_multibraid, -has_mainstem, -changed)
+    )
+    
+  } else {
+    
+    message("===== NO 'div_xs' transect lines =====")
+    
+    # bind together final updated transect lines
+    out <- dplyr::select(xs, -braid_id, -is_multibraid, -has_mainstem, -changed)
+    
+  }
+  
+  # to_keep <- paste0(xs$hy_id, "_", xs$cs_id)
+  # to_keep %in% all_xs
+  # all_xs %in% to_keep
+  
+  # drop all of the transects that are on braids, and replace them with the updated/extended transect lines in "out"
+  transect_lines <-  dplyr::bind_rows(
+    # from original transect_lines, remove all of the cross sections on braids,
+    dplyr::select(
+      dplyr::filter(   
+        dplyr::mutate(transect_lines, 
+                      tmp_id = paste0(hy_id, "_", cs_id)
+        ),
+        !tmp_id %in% all_xs
+      ),
+      -tmp_id
+    ),
+    # updated braid cross sections
+    out
+  )
+  
+  # mapview::mapview(braids, color = "dodgerblue") +
+  # mapview::mapview(not_braids, color = "gold") +
+  # mapview::mapview(transect_lines, color = "green") +
+  # mapview::mapview(transect_lines2, color = "red")
+  
+  # transform CRS back to input CRS
+  if(start_crs2 != 5070) {
+    message("Transforming CRS back to EPSG: ", start_crs2)
+    transect_lines <- sf::st_transform(transect_lines, start_crs2)
+  }
+  
+  return(transect_lines)
+  
+}
 # function for extending/updating transect cross section linestrings 
 # Description: Specifically to be used for situations where a river network is braided. 
 # x: transect line to try and extend to cover braided river sections 
@@ -68,14 +2119,16 @@ augment_transect <- function(x, id, geoms_to_cut, cs_width, bf_width) {
 
   # max distance from transect of interest and rest of braid flowlines 
   # TODO (need a better method of determing max possible extension of flowline)
-  max_dist <- as.numeric(
-                  max(
-                    sf::st_distance(  
-                      geoms_to_cut, 
-                      x
-                    )
-                  )
-                )
+  # max_dist <- as.numeric(
+  #                 max(
+  #                   sf::st_distance(  
+  #                     geoms_to_cut, 
+  #                     x
+  #                   )
+  #                 )
+  #               )
+  
+  max_dist <- max(cs_width * 5)
   
   # sequence from 0 to the max possible extension distance 
   dist_vect <- seq(0, max(c(max_dist, 2000)), bf_width/2)
@@ -150,7 +2203,12 @@ augment_transect <- function(x, id, geoms_to_cut, cs_width, bf_width) {
     
     # get the hashmap of the direction that needs to be extended (i.e. the direction that has more than 0 intersections)
     ext_map <- map_lst[[which(count_intersects != 0)]]
+    
     # to_extend <- map_lst[[which(count_intersects != 0)]]
+    # message("---------------------------------")
+    # message("--- ONE DIRECT INTERSECT ! ---")
+    # message("--- direction: ", ext_map$get("direction") ,"---")
+    # message("---------------------------------")
     
     # ext_map$as_list()
     
@@ -331,7 +2389,150 @@ augment_transect <- function(x, id, geoms_to_cut, cs_width, bf_width) {
   
 }
 
-fix_braid_transects <- function(net, transect_lines) {
+# Apply flowline braid length threshold to braided network dataset 
+# Return a list with 2 sf dataframes, the updated braided dataset and the updated original "not_braided" dataset
+# x: braided flowlines
+# originals: not braided flowlines from the same network
+# threshold: braid_threshold numeric value to remove braids with a total braid flowline length greater than 'threshold'
+braid_thresholder <- function(x, 
+                              originals,
+                              threshold = NULL, 
+                              verbose   = TRUE
+                              ) {
+  
+  # x         = braids
+  # originals = not_braids
+  # threshold = 30000
+  # verbose = TRUE
+
+  # input check for input 'x'
+  if(is.null(x)) {
+    stop("missing 'x' input argument")
+  }
+  
+  # input check for input 'originals'
+  if(is.null(originals)) {
+    stop("missing 'originals' input argument")
+  }
+  
+  # input check for input 'threshold'
+  if(is.null(threshold)) {
+    stop("missing 'threshold' input argument")
+  }
+  
+  # unpack nested braid_id column0
+  unpacked <- unnpack_braids(x)
+  
+  # calculate total length of all the linestrings in each braid_id
+  unpacked <- 
+    unpacked %>% 
+    dplyr::group_by(braid_id) %>%
+    dplyr::mutate(
+      braid_length = as.numeric(
+        sum(sf::st_length(geometry), na.rm = T))
+    ) %>%
+    dplyr::ungroup()
+  # dplyr::mutate(braid_length = sf::st_length(geometry)) %>%
+  # dplyr::mutate(braid_length = as.numeric(sum(braid_length, na.rm = T))) %>%
+  
+  # check to make sure some braids are over threshold and can be removed, if NOT then just return original data
+  if(all(unpacked$braid_length <= threshold)) {
+    
+    message("Removing: 0 braids from braided dataset\n", 
+            "Keeping: All braids as all braids have total flowline lengths less than or equal to threshold value: ", threshold)
+    
+    return(list(
+      braids     = x,
+      not_braids = originals)
+    )
+    
+  } 
+  
+  # # table of TRUEs and FALSE for braids to keep/remove given 'threshold'
+  # threshold_tbl <- table(unpacked$braid_length <= threshold)
+  # if(verbose) { message("Removing: ",  threshold_tbl["FALSE"],  
+    # " braids from braided dataset\nKeeping: ", threshold_tbl["TRUE"],
+    #           " braids that have total flowline lengths less than or equal to threshold value: ", threshold)}
+  
+  # comids to keep (total length of braid linestrings is less than or equal to braid_threshold value)
+  to_keep <- dplyr::filter(unpacked, braid_length <= threshold)$comid
+  
+  # # COMIDs that are too large, add them back to the "not_braids" data
+  # to_drop <- dplyr::filter(x, !comid %in% to_keep)
+  
+  # keep track of keeping and removing count
+  orig_nrows <- nrow(originals)
+  x_nrows  <- nrow(x)
+  
+  # add the "too big braid COMIDs" back to original "not_braids" data 
+  # and set these comids braid_ids to "no_braid" and is_multibraid = FALSE
+  originals <- dplyr::bind_rows(
+    originals,
+    dplyr::select(
+      dplyr::mutate(
+        dplyr::filter(
+          x, !comid %in% to_keep
+        ),
+        braid_id      = "no_braid", 
+        is_multibraid = FALSE
+      ),
+      -has_mainstem
+    )
+  )
+  
+  new_orig_nrows <- nrow(originals)
+  
+  # filter out braid_ids/COMIDs that are too big
+  x <- dplyr::filter(x, comid %in% to_keep)
+  
+  # updating count of keeping and removing 
+  new_orig_nrows <- nrow(originals)
+  new_x_nrows <- nrow(x)
+
+  if(verbose) {
+    message("Removing: ", new_orig_nrows - orig_nrows, 
+            " braids from braided dataset\nKeeping: ",   new_x_nrows,
+            " braids that have total flowline lengths less than or equal to threshold value: ", threshold)
+  }
+  
+  return(list(
+    braids     = x,
+    not_braids = originals)
+  )
+  
+}
+
+# Fix transects found on braided river sections
+# net: sf object of NHDplusv2 data
+# transect_lines: sf linestring dataframe, containing cross sections of flowlines in 'net'
+#                 the output of "cut_cross_sections2()" function
+# braid_threshold: numeric value, value of the total length of all flowlines in a braid. 
+#             Only braids with total flowline lengths less than or equal to the threshold will be considered by function
+#             (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#             Default is NULL, which will attempt to fix all the braid transects in the data
+
+#' Fix transects found on braided river sections
+#'
+#' @param net sf object of NHDplusv2 data
+#' @param transect_lines sf linestring dataframe, containing cross sections of flowlines in 'net' the output of "cut_cross_sections2()" function
+#' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
+#' lengths less than or equal to the threshold will be considered by function(i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#' Default is NULL, which will attempt to fix all the braid transects in the data
+#'
+#' @return sf object of transect linestrings
+#' @export
+#'
+#' @examples
+fix_braid_transects <- function(
+    net, 
+    transect_lines,
+    braid_threshold = NULL
+    ) {
+  
+  # transect_lines <-  transects_nofix
+  # net <- net3
+  # braid_threshold = 25000
+  # braid_threshold = NULL
   
   # keep track of the original CRS of the inputs to retransform return 
   start_crs1 <- sf::st_crs(net, parameters = T)$epsg
@@ -342,14 +2543,14 @@ fix_braid_transects <- function(net, transect_lines) {
   # check if net CRS is 5070, if not, transform it to 5070
   if(start_crs1 != 5070) {
     # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
-    message("Transforming CRS to EPSG:5070")
+    message("Transforming CRS to EPSG: 5070")
     net <- sf::st_transform(net, 5070) 
   }
   
   # check if net CRS is 5070, if not, transform it to 5070
   if(start_crs2 != 5070) {
     # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
-    message("Transforming CRS to EPSG:5070")
+    message("Transforming CRS to EPSG: 5070")
     transect_lines <- sf::st_transform(transect_lines, 5070) 
   }
   
@@ -364,12 +2565,26 @@ fix_braid_transects <- function(net, transect_lines) {
     add       = TRUE
   )
   
+  if(all(braids$braid_id == "no_braid")) {
+    
+    message("No braids identified, returning original transects")
+    
+    # transform CRS back to input CRS
+    if(start_crs2 != 5070) {
+      message("Transforming CRS back to EPSG: ", start_crs2)
+      transect_lines <- sf::st_transform(transect_lines, start_crs2)
+    }
+    
+    return(transect_lines)
+  }
+  
   # not braided flowlines
   not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
+  # not_braids <- braids[!braids$comid %in% only_braids$comid, ]
   
   # trim down network to just the braided parts, and add a comid count to separate out multibraids
-  # only_braids <- 
-  braids <- 
+  # only_braids <-
+  braids <-  
     braids %>% 
     dplyr::filter(braid_id != "no_braid") %>% 
     # dplyr::group_by(comid) %>% 
@@ -379,7 +2594,25 @@ fix_braid_transects <- function(net, transect_lines) {
     dplyr::mutate(has_mainstem = any(divergence == 0)) %>% 
     dplyr::ungroup()
   
-  # not_braids <- braids[!braids$comid %in% only_braids$comid, ]
+  # view data on map
+  # mapview::mapview(not_braids, color = "dodgerblue") +
+  # mapview::mapview(only_braids, color = "red") 
+  
+  if(!is.null(braid_threshold)) {
+    
+    # remove braids that have a total flowline length greater than braid_threshold
+    braids <- braid_thresholder(
+                x         = braids, 
+                originals = not_braids, 
+                threshold = braid_threshold,
+                verbose   = TRUE
+                )
+    
+    # reassign braids and not_braids datasets to the updated values in 'braids' list (REASSIGNMENT ORDER MATTERS HERE)
+    not_braids <- braids$not_braids
+    braids     <- braids$braids
+  }
+  
   # # unique braid_ids/COMIDs
   # ubraids <- unique(only_braids$braid_id)
   # ucoms <- unique(only_braids$comid)
@@ -426,6 +2659,19 @@ fix_braid_transects <- function(net, transect_lines) {
    
    # flag determining whether transect should be replaced
    xs$changed <- FALSE
+   
+   # check if any transects exist, if not, just return the original transects
+   if (nrow(xs) == 0) {
+     
+     message("===== NO 'xs' transect lines =====")
+     message("===== returning original data =====")
+     
+     return(transect_lines)
+     
+   } else {
+     message("===== ", nrow(xs) , " 'xs' transect lines =====")
+     message("===== returning original data =====")
+   }
    
    for(i in 1:nrow(xs)) {
      
@@ -538,94 +2784,108 @@ fix_braid_transects <- function(net, transect_lines) {
    # flag determining whether transect should be replaced
    div_xs$changed <- FALSE
    
-   for(i in 1:nrow(div_xs)) {
+   if (nrow(div_xs) > 0) {
      
-     # message("i: ", i, "/", nrow(div_xs))
+     message("===== ", nrow(div_xs)  ," 'div_xs' transect lines =====")
      
-     # transect line
-     tline <- div_xs[i, ]$geometry
-     
-     # comid of transect line
-     com <- div_xs[i, ]$hy_id
-     
-     # # check if geom intersects 
-     # if(any(lengths(sf::st_intersects(tline, xs)) > 0)) {
-     #   message("!!!!! SKIPPING, div_xs[i, ] ALREADY INTERSECTS WITH 'xs' !!!!! ")
-     #   message("=================")
-     #   next
-     # }
-     
-     # braid IDs of interest
-     bids <- strsplit(div_xs[i, ]$braid_id, ", ")[[1]]
-     
-     # get all linestrings that are apart of the braid_ids of interest
-     bids_check <- sapply(1:length(braids$braid_id), function(x) {
-       any(
-         strsplit(braids$braid_id[x], ", ")[[1]] %in% bids
-         )
-     })
-     
-     
-     # braid flowlines other than self that are within our given braid id or are nearby (the unique() filtering part)
-     others <- dplyr::filter(
-                   braids,
-                   braid_id %in% unique(c(braids[bids_check, ]$braid_id,
-                                          unlist(strsplit(braids[bids_check, ]$braid_id, ", ")))),
-                   comid != com
-                 )
-     
-     # resulting geometry after extension
-     res_geom <- augment_transect(
-                     x            = tline,
-                     id           = com,
-                     geoms_to_cut = others,
-                     cs_width     = div_xs[i, ]$cs_widths,
-                     bf_width     = div_xs[i, ]$bf_width
+     for (i in 1:nrow(div_xs)) {
+       
+       message("i: ", i, "/", nrow(div_xs))
+       
+       # transect line
+       tline <- div_xs[i, ]$geometry
+       
+       # comid of transect line
+       com <- div_xs[i, ]$hy_id
+       
+       # # check if geom intersects 
+       # if(any(lengths(sf::st_intersects(tline, xs)) > 0)) {
+       #   message("!!!!! SKIPPING, div_xs[i, ] ALREADY INTERSECTS WITH 'xs' !!!!! ")
+       #   message("=================")
+       #   next
+       # }
+       
+       # braid IDs of interest
+       bids <- strsplit(div_xs[i, ]$braid_id, ", ")[[1]]
+       
+       # get all linestrings that are apart of the braid_ids of interest
+       bids_check <- sapply(1:length(braids$braid_id), function(x) {
+         any(
+           strsplit(braids$braid_id[x], ", ")[[1]] %in% bids
+           )
+       })
+       
+       
+       # braid flowlines other than self that are within our given braid id or are nearby (the unique() filtering part)
+       others <- dplyr::filter(
+                     braids,
+                     braid_id %in% unique(c(braids[bids_check, ]$braid_id,
+                                            unlist(strsplit(braids[bids_check, ]$braid_id, ", ")))),
+                     comid != com
                    )
-                   
-     # if augment_transect returns a NULL geometry, was NOT updated, 
-     # so we can skip this iteration because no matter how far you extend out this transect, 
-     # it does NOT end up interesecting any of the other flowlines in this set of braided flowlines
-     if(is.null(res_geom)) {
-       # message("--- SKIPPING - NO INTERSECTION AFTER EXTENDING TRANSECT ---")
-       # message("--- CONTINUING TO NEXT TRANSECT ---")
-       # message("=================")
-       next
+       
+       # resulting geometry after extension
+       res_geom <- augment_transect(
+                       x            = tline,
+                       id           = com,
+                       geoms_to_cut = others,
+                       cs_width     = div_xs[i, ]$cs_widths,
+                       bf_width     = div_xs[i, ]$bf_width
+                     )
+                     
+       # if augment_transect returns a NULL geometry, was NOT updated, 
+       # so we can skip this iteration because no matter how far you extend out this transect, 
+       # it does NOT end up interesecting any of the other flowlines in this set of braided flowlines
+       if(is.null(res_geom)) {
+         message("--- SKIPPING - NO INTERSECTION AFTER EXTENDING TRANSECT ---")
+         message("--- CONTINUING TO NEXT TRANSECT ---")
+         message("=================")
+         next
+       }
+       
+       # ONLY UPDATE geometry if it does NOT intersect with any of the other multibraid transects (EXCEPT SELF)
+       # AND it does NOT intersect with any other transects in 'xs' (the rest of the main transects lines)
+       if(
+         !any(lengths(sf::st_intersects(res_geom, div_xs[-i,])) > 0) & 
+         !any(lengths(sf::st_intersects(res_geom, xs)) > 0)
+          ) {
+         
+         # # # message stating that replacement was made
+         message("----> REPLACING ", i, " transect")
+         
+         # replace geometry with extended line
+         div_xs[i,]$geometry <- sf::st_geometry(res_geom)
+         
+         # flag determining whether transect should be replaced
+         div_xs[i, ]$changed <- TRUE
+         
+         }
+       message("=================")
      }
      
-     # ONLY UPDATE geometry if it does NOT intersect with any of the other multibraid transects (EXCEPT SELF)
-     # AND it does NOT intersect with any other transects in 'xs' (the rest of the main transects lines)
-     if(
-       !any(lengths(sf::st_intersects(res_geom, div_xs[-i,])) > 0) & 
-       !any(lengths(sf::st_intersects(res_geom, xs)) > 0)
-        ) {
-       
-       # # # message stating that replacement was made
-       # message("----> REPLACING ", i, " transect")
-       
-       # replace geometry with extended line
-       div_xs[i,]$geometry <- sf::st_geometry(res_geom)
-       
-       # flag determining whether transect should be replaced
-       div_xs[i, ]$changed <- TRUE
-       
-       }
-     # message("=================")
+     # # keep only the transects that were changed/extended
+     # div_drop <- dplyr::filter(div_xs, !changed)
+     
+     # keep only the transects that were changed/extended
+     div_xs <- dplyr::filter(div_xs, changed)
+     
+     # bind together final updated transect lines
+     out <- dplyr::bind_rows(
+                 dplyr::select(xs, 
+                               -braid_id, -is_multibraid, -has_mainstem, -changed),
+                 dplyr::select(div_xs,
+                               -braid_id, -is_multibraid, -has_mainstem, -changed)
+                 )
+     
+   } else {
+     
+     message("===== NO 'div_xs' transect lines =====")
+     
+     # bind together final updated transect lines
+     out <- dplyr::select(xs, -braid_id, -is_multibraid, -has_mainstem, -changed)
+     
    }
    
-   # # keep only the transects that were changed/extended
-   # div_drop <- dplyr::filter(div_xs, !changed)
-   
-   # keep only the transects that were changed/extended
-   div_xs <- dplyr::filter(div_xs, changed)
-   
-   # bind together final updated transect lines
-   out <- dplyr::bind_rows(
-               dplyr::select(xs, 
-                             -braid_id, -is_multibraid, -has_mainstem, -changed),
-               dplyr::select(div_xs,
-                             -braid_id, -is_multibraid, -has_mainstem, -changed)
-               )
    # to_keep <- paste0(xs$hy_id, "_", xs$cs_id)
    # to_keep %in% all_xs
    # all_xs %in% to_keep
@@ -646,9 +2906,14 @@ fix_braid_transects <- function(net, transect_lines) {
                          out
                        )
    
+   # mapview::mapview(braids, color = "dodgerblue") +
+   # mapview::mapview(not_braids, color = "gold") +
+   # mapview::mapview(transect_lines, color = "green") +
+   # mapview::mapview(transect_lines2, color = "red")
+   
    # transform CRS back to input CRS
    if(start_crs2 != 5070) {
-     message("Transforming CRS back to EPSG:", start_crs2)
+     message("Transforming CRS back to EPSG: ", start_crs2)
      transect_lines <- sf::st_transform(transect_lines, start_crs2)
    }
   

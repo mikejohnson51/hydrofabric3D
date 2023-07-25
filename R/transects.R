@@ -178,6 +178,7 @@ cut_cross_sections2 = function(net,
                                    densify = 2,
                                    rm_self_intersect = TRUE,
                                    fix_braids = TRUE,
+                                   braid_threshold = NULL,
                                    add = FALSE
                                    ){
   # net       = net3
@@ -196,7 +197,7 @@ cut_cross_sections2 = function(net,
   # check if net CRS is 5070, if not, transform it to 5070
   if(start_crs != 5070) {
   # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
-    message("Transforming CRS to EPSG:5070")
+    message("Transforming CRS to EPSG: 5070")
     net <- sf::st_transform(net, 5070) 
   }
   
@@ -298,13 +299,17 @@ cut_cross_sections2 = function(net,
   if(fix_braids) {
     
     # fix the braided transects
-    ll <- fix_braid_transects(net, ll)
+    ll <- fix_braid_transects(
+              net             = net, 
+              transect_lines  = ll,
+              braid_threshold = braid_threshold
+            )
     
   }
   
   # transform CRS back to input CRS
   if(start_crs != 5070) {
-    message("Transforming CRS back to EPSG:", start_crs)
+    message("Transforming CRS back to EPSG: ", start_crs)
     ll <- sf::st_transform(ll, start_crs)
   }
   

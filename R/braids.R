@@ -4192,6 +4192,7 @@ make_braids_gif <- function(network,
                             gif_width  = 1800, 
                             gif_height = 1500,
                             delay      = 0.8,
+                            legend_pos = "bottom",
                             verbose    = FALSE
 ) {
   
@@ -4213,7 +4214,7 @@ make_braids_gif <- function(network,
   # check if new temp dir alrteady exists
   if(dir.exists(new_dir)) {
     
-    stop(new_dir, " already exists")
+    warning(new_dir, " already exists")
     
   }
   
@@ -4245,12 +4246,14 @@ make_braids_gif <- function(network,
       ggplot2::geom_sf(ggplot2::aes(color = braid_id)) +
       gghighlight::gghighlight(braid_id ==  ubraids[i]) + 
       ggplot2::labs(
-        caption = paste0(i, " / ", length(ubraids))
+        caption = paste0(i, " / ", length(ubraids)),
+        color = "",
         # caption = paste0("(", i, " / ", length(ubraids), ")")
       ) + 
       ggplot2::theme_bw() + 
       ggplot2::theme(
-        plot.caption = ggplot2::element_text(size = 12, face = "bold")
+        plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+        legend.position = legend_pos
       ) 
     
     temp_file <- tempfile(pattern =  paste0(ifelse(i < 10, paste0("0", i), i), "_braid"), 
@@ -4286,6 +4289,31 @@ make_braids_gif <- function(network,
   
   # unlink deletes temporary directory holding PNGs
   unlink(new_dir, recursive = TRUE) 
+  
+}
+
+# Utility function that takes the output from 'find_braids(nested = TRUE)' and unpacks/unnests braid_id column
+# unnests the comma seperated braid_id column into individual rows for each braid ID/comid pairing.
+# (there can thus be duplicate COMIDs as some COMIDs are part of more than 1 braid )
+# (i.e. COMID 1: braid_id: "braid_1", "braid_2", "braid_4", 
+#  ---- > these 3 braid_ids for COMID 1 would become 3 separate rows after unpacking)
+unnpack_braids <- function(braids) {
+  
+  if(!"braid_id" %in% tolower(names(braids))) {
+    stop("'braids' input does not contain 'braid_id' column ")
+  }
+  
+  unnested_braids <- 
+    braids %>% 
+    dplyr::mutate(split_braid_ids = stringr::str_split(braid_id, ", ")) %>%
+    tidyr::unnest(cols = c(split_braid_ids)) %>% 
+    dplyr::rename(
+      braid_members = braid_id, 
+      braid_id      = split_braid_ids
+    ) %>% 
+    dplyr::relocate(comid, braid_id, braid_members)
+  
+  return(unnested_braids)
   
 }
 
