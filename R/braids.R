@@ -4297,7 +4297,7 @@ make_braids_gif <- function(network,
 # (there can thus be duplicate COMIDs as some COMIDs are part of more than 1 braid )
 # (i.e. COMID 1: braid_id: "braid_1", "braid_2", "braid_4", 
 #  ---- > these 3 braid_ids for COMID 1 would become 3 separate rows after unpacking)
-unnpack_braids <- function(braids) {
+unnpack_braids <- function(braids, into_list = FALSE) {
   
   if(!"braid_id" %in% tolower(names(braids))) {
     stop("'braids' input does not contain 'braid_id' column ")
@@ -4312,6 +4312,10 @@ unnpack_braids <- function(braids) {
       braid_id      = split_braid_ids
     ) %>% 
     dplyr::relocate(comid, braid_id, braid_members)
+  
+  if(into_list) {
+    unnested_braids <- split(unnested_braids$comid, unnested_braids$braid_id) 
+  }
   
   return(unnested_braids)
   
@@ -5177,3 +5181,1970 @@ find_first_cycles <- function(
   return(result)
   
 }
+
+# ------- SNAP NETWORK LINES TO MAKE CORRECT TO AND FROM NODES FOR UNDIRECTED GRAPH ----
+
+#   # Function to find the closest node ID for each linestring
+# assign_nodes <- function(sf_linestrings) {
+#   # Convert linestrings to points representing start and end points
+#   points <- st_cast(sf_linestrings, "POINT")
+#   
+#   # Compute pairwise distances between points
+#   dist_matrix <- as.matrix(st_distance(points, points))
+#   plot(points$geometry)
+#   # Find the closest point for each point (excluding points from the same linestring)
+#   closest_points <- apply(dist_matrix, 1, function(row) {
+#     idx <- order(row)[-1]  # Exclude the first (diagonal) entry
+#     closest_point_idx <- idx[1]
+#     return(closest_point_idx)
+#   })
+#   
+#   # Extract the IDs of the closest points
+#   closest_point_ids <- sf_linestrings$comid[closest_points]
+#   
+#   # Create a new sf data frame with the "fromnode" and "tonode" columns
+#   nodes_sf <- st_sf(ID = sf_linestrings$comid,
+#                     fromnode2 = closest_point_ids,
+#                     tonode2 = closest_point_ids)
+#   
+#   return(nodes_sf)
+# }
+# sf_linestrings <- roads_sf
+# # Get the nodes_sf with "fromnode" and "tonode" columns
+# nodes_sf <- assign_nodes(roads_sf)
+# 
+# # Combine nodes_sf with the original linestrings
+# final_sf <- st_set_attributes(roads_sf, nodes_sf[, c("fromnode", "tonode")])
+# 
+# print(final_sf)
+
+#' # ---- TEST NEW ALGO ----
+#' # net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 50 )
+#' net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 20 )
+#' plot(net2$geometry)
+#' 
+#' # get the braid_ids of all neighboring braids from a specified braid_id
+#' # provide a network with braid_ids and a vector of braid_ids that you want to get all neighboring/memboring braid IDs for the specified braid
+#' # x: sf object network flowlines with braid_id column
+#' # ids: character vector braid_id(s)
+#' # Only unique: if TRUE, then only unique braid IDs are returned, otherwise all are returned
+#' get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) {
+#'   
+#'   # x <- braids
+#'   # ids <- big_names
+#' 
+#'   # make groups for each braided section
+#'   braid_groups <- lapply(1:length(ids), function(i) {
+#'     
+#'     message("i: ", i, "/", length(ids))
+#'     
+#'     # braid IDs of interest
+#'     # bids <- strsplit(transects[i, ]$braid_id, ", ")[[1]]
+#'     bids <- strsplit(ids, ", ")[[1]]
+#'     
+#'     # get all linestrings that are apart of the braid_ids of interest
+#'     
+#'     bids_check <- sapply(1:length(x$braid_id), function(y) {
+#'       any(
+#'         strsplit(x$braid_id[y], ", ")[[1]] %in% bids
+#'       )
+#'     })
+#'     
+#'     out <- sort(
+#'               unique(c(
+#'                 x[bids_check, ]$braid_id,
+#'                 unlist(strsplit(x[bids_check, ]$braid_id, ", "))
+#'               )
+#'               )
+#'             )
+#'     
+#'     # split_ids is TRUE, then the coimma seperated braid_ids are seperated into individual braid_ids
+#'     if(split_ids) {
+#'       
+#'       out <- sort(unique(unlist(strsplit(out, ", "))))
+#'       
+#'     }
+#'     
+#'     out
+#'     
+#'   }) 
+#'   
+#'   # assign names
+#'   names(braid_groups) <- ids
+#'   
+#'   # remove uniques if desired
+#'   if(only_unique) {
+#'     braid_groups <- unique(braid_groups)
+#'   }
+#'   return(braid_groups)
+#' }
+#' 
+#' # Convert Network --> Adjaceny list/topology map (undirected graph)
+#' # takes network object and creates a fastmap() topology map/adjacency list (undirected graph)
+#' network_to_adj <- function(network, start = NULL, verbose = TRUE) {
+#'   # # here we need to make 
+#'   # network <- dplyr::filter(network, comid %in% big_braids)
+#'   
+#'   names(network) <- tolower(names(network))
+#'   
+#'   # turn network into a directed graph
+#'   dag <- create_dag(network)
+#'   
+#'   # get the fromnode associated with a given COMID 'start'
+#'   start_node <- comid_to_node(dag, start)
+#'   
+#'   if(verbose) {
+#'     message("Starting braid detection at ", 
+#'             ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
+#'   }
+#'   
+#'   # mapview::mapview(sub_dag)
+#'   
+#'   # drop graph geometry
+#'   dag <- sf::st_drop_geometry(dag)
+#'   
+#'   # graph <- sf::st_drop_geometry(graph)
+#'   
+#'   # stash comids and from IDs
+#'   comid_map <- dplyr::select(
+#'     # graph,
+#'     dag,
+#'     comid,
+#'     fromnode,
+#'     tonode
+#'   )
+#'   
+#'   # create artificial cycles from circuits in graph, doing this allows for 
+#'   # sections of river that form a circuit to be identfied as a cycle and thus a braid
+#'   # Questionable at this point, other option is the code below that uses 
+#'   # single_cycles() function (COMMENTED OUT CODE BELOW)
+#'   regraph <- renode_circuits(dag, verbose = FALSE)
+#'   
+#'   # make an undirected graph
+#'   undir <- make_undirected(regraph)
+#'   
+#'   # make topology map (adjaceny list/relationships)
+#'   topo <- make_topo_map(
+#'     from_nodes = undir$fromnode,
+#'     to_nodes   = undir$tonode
+#'   )
+#'   
+#'   topo <- list(
+#'             adjacency = topo,
+#'             comids    = comid_map,
+#'             graph     = undir
+#'             )
+#'   
+#'   return(topo)
+#'   
+#' }
+#' 
+#' # paths is a list of lists where each outter list element represents a node on an undirected graph, 
+#' # and inner list represents the path sequences (each inner list element is a character vector (i.e. c("1", "3", "5"))) between nodes, 
+#' # starting from the original 'from_node' (outer list element)
+#' make_path_map <- function(paths) {
+#' 
+#'   # add from_node names if they don't already exist
+#'   if(is.null(names(paths))) {
+#'     names(paths) <- paste0(1:length(paths))
+#'   }
+#'   
+#'   path_map <- fastmap::fastmap()
+#'   
+#'   for (i in 1:length(paths)) {
+#'     # message("iteration ", i, "/", length(paths))
+#'     
+#'     from_node <- names(paths[i])
+#'     node_paths <- paths[[i]]
+#'     
+#'     # check if from_node has been added to hashmap already
+#'     if (!path_map$has(from_node)) {
+#'       edge_str <- sapply(1:length(node_paths), function(k) {
+#'         paste0(node_paths[[k]], collapse = "-") 
+#'       })
+#'       
+#'       names(node_paths) <- paste0(1:length(node_paths))
+#'       
+#'       map_entry <- list(
+#'         paths       = node_paths,
+#'         edge        = edge_str,
+#'         count       = length(edge_str)
+#'       )
+#'       
+#'       # set new entry in topology map
+#'       path_map$set(from_node, map_entry)
+#'       
+#'     } else {
+#'       # edge string
+#'       edge_str <- sapply(1:length(node_paths), function(k) {
+#'         paste0(node_paths[[k]], collapse = "-") 
+#'       })
+#'       
+#'       names(node_paths) <- paste0(1:length(node_paths))
+#'       
+#'       map_entry <- list(
+#'         paths       = c(path_map$get(from_node)$paths, node_paths),
+#'         edge        = c(path_map$get(from_node)$edge, edge_str),
+#'         count       = c(path_map$get(from_node)$count + 1)
+#'       )
+#'       
+#'       # Update the existing entry in topo_map
+#'       path_map$set(from_node, map_entry)
+#'     }
+#'   }
+#'   
+#'   return(path_map)
+#' }
+#' 
+#' 
+#' # graph is a fastmap::fastmap() representing a from_node/to_node topology of an undirected graph
+#' # format, boolean, whether return sohuld be well formatted list from fastmap()$as_list() or, 
+#' # if FALSE, just a list of lists with the outer list being the starting node and the inner lists containing the cycle paths
+#' extract_cycles <- function(graph, format = TRUE) {
+#' 
+#'   # graph = topo
+#'   # format = FALSE
+#'   
+#'   # define DFS function for generating all cycles
+#'   dfs <- function(graph, start, end) {
+#'     stack <- fastmap::faststack()
+#'     
+#'     stack$push(list(start, list()))
+#'     
+#'     paths <- list()
+#'     count = 0
+#'     
+#'     while (stack$size() > 0) {
+#'       node <- stack$pop()
+#'       state <- node[[1]]
+#'       path <- node[[2]]
+#'       
+#'       # if(!is.null(state)) { message("state: ", state) } 
+#'       # if(!is.null(path)) { message("path: ", path) }
+#'       if (length(path) > 0 && state == end) {
+#'         paths <- c(paths, list(path))
+#'         next
+#'       }
+#'       
+#'       # ---- NEW WAY USING HASHMAP ADJ LIST ----
+#'       # curr_state <- graph$get(as.character(state))$to_node
+#'       
+#'       for (next_state in graph$get(as.character(state))$to_node) {
+#'       # for (next_state in curr_state) {
+#'         # message("next_state: ", next_state)
+#'         if (next_state %in% path) {
+#'           next
+#'         }
+#'         
+#'         new_node <- list(next_state, c(path, next_state))
+#'         stack$push(new_node)
+#'         count = count + 1
+#'         
+#'       }
+#'       # # ---- ORIGINAL WAY USING LIST ADJ LIST ----
+#'       # # message("ITERATING THRU --> graph[[state]]: ",   paste0(graph[[state]], collapse = "-"))
+#'       # for (next_state in graph[[state]]) {
+#'       #   message("next_state: ", next_state)
+#'       #   if (next_state %in% path) {
+#'       #     next
+#'       #   }
+#'       #   new_node <- list(next_state, c(path, next_state))
+#'       #   stack$push(new_node)
+#'       #   count = count + 1
+#'       # message("=====================")
+#'       # message("======== END ========")
+#'       # message("======== count: ", count , " ========")
+#'       # message("=====================")
+#'       # }
+#'     }
+#'     
+#'     return(paths)
+#'   }
+#' 
+#'   # topo_map <- make_topo_map(
+#'   #   from_nodes = undir$fromnode,
+#'   #   to_nodes = undir$tonode,
+#'   #   directed = FALSE)
+#'   # # topo_map$as_list()
+#'   # graph  <- topo_map
+#'   # graph$as_list()
+#'   # # # map/list to store current level nodes
+#'   # # v <- vctrs::vec_c()
+#'   
+#'   # generate all cycles
+#'   cycles <- lapply(graph$keys(), function(node) {
+#'     
+#'     # run DFS on each start node
+#'     lapply(dfs(graph, node, node), function(path) {
+#'       unlist(c(node, path))
+#'     })
+#'     
+#'   })
+#'   
+#'   # if data should be returned in a formatted fastmap list (hashmap)
+#'   if(format) {
+#'     cycles <- make_path_map(cycles)$as_list()
+#'     
+#'     return(cycles)
+#'     
+#'   }
+#'   
+#'   # add names
+#'   names(cycles) <- paste0(1:length(cycles))
+#'   # names(cycles) <- paste0("cycle_", 1:length(cycles))
+#'   
+#'   return(cycles)
+#'   
+#'   # OLD DFS
+#'   # dfs <- function(graph, start, end) {
+#'   #   stack <- fastmap::faststack()
+#'   #   stack$push(list(start, list()))
+#'   #   paths <- list()
+#'   #   while (stack$size() > 0) {
+#'   #     node <- stack$pop()
+#'   #     state <- node[[1]]
+#'   #     path <- node[[2]]
+#'   #     if (length(path) > 0 && state == end) {
+#'   #       paths <- c(paths, list(path))
+#'   #       next
+#'   #     }
+#'   #     for (next_state in graph[[state]]) {
+#'   #       if (next_state %in% path) { next }
+#'   #       new_node <- list(next_state, c(path, next_state))
+#'   #       stack$push(new_node)
+#'   #     }}
+#'   #   return(paths)
+#'   # }
+#'   # graph <- list(
+#'   #   "1" = c(2), "2" = c(1, 3, 4),
+#'   #   "3" = c(2, 5, 6), "4" = c(2, 5),
+#'   #   "5" = c(3, 4, 7, 8),
+#'   #   "6" = c(3, 7), 
+#'   # "7" = c(5, 6),
+#'   # "8" = c(5))
+#'   
+#' }
+#' 
+#' # Clean the outputs of extract_cycles (internal)
+#' # cycles is a list of lists each outter list element is the starting node and 
+#' # the inner list elements are the node IDs of any cycles found from the starting node
+#' # edge_minimum: numeric, minimum number of edges to be considered a cycle. Default is 3, all cycles with less than 3 edges are removed
+#' clean_cycles <- function(cycles, edge_minimum = 3) {
+#'   # cycles = sub_cycles
+#'   # edge_minimum = 5
+#'   # filter out the single circuit/simple braids, and keep the unique list elements
+#'   trim_cycles <- lapply(1:length(cycles), function(k) {
+#'     # k = 16
+#'     # cycles
+#'     # filter to cycles that have more than 3 members
+#'     cycles[[k]] <- cycles[[k]][
+#'       lengths(cycles[[k]]) > edge_minimum
+#'     ]
+#'     
+#'     if(length(cycles[[k]]) == 0) {
+#'       NULL
+#'     } else {
+#'       cycles[[k]]
+#'     }
+#'   }) %>% 
+#'     unique()
+#'   
+#'   # go through each of the trimmed down cycles and further remove duplicates
+#'   # keep only the unique and then unlist the output retrim list
+#'   trim_cycles <- lapply(1:length(trim_cycles), function(k) {
+#'     
+#'     # just return NULL if no cycle nodes
+#'     if(is.null(trim_cycles[[k]])) {
+#'       NULL
+#'     } else {
+#'       
+#'       # for each cycle path for a given node, grab the unique node values, sort the vector, and make a string from path (sep = "-")
+#'       lapply(1:length(trim_cycles[[k]]), function(z) {
+#'         path <- trim_cycles[[k]][[z]]
+#'         paste0(sort(unique(path)), collapse = "-")
+#'       }) %>% 
+#'         unique()
+#'     }
+#'     
+#'   }) %>% 
+#'     unique() %>% 
+#'     unlist()
+#'   
+#'   # split each braid into individual braids
+#'   trim_cycles <- strsplit(trim_cycles, "-")
+#'   
+#'   # assign names to braid
+#'   names(trim_cycles) <- paste0("new_braid_", 1:length(trim_cycles))
+#'   
+#'   return(trim_cycles)
+#'   
+#' }
+#' tmpfunc <- function() {
+#'   
+#' 
+#'   # define DFS function for generating all cycles
+#'   dfs <- function(graph, start, end) {
+#'     stack <- fastmap::faststack()
+#'     
+#'     stack$push(list(start, list()))
+#'     
+#'     paths <- list()
+#'     count = 0
+#'     
+#'     while (stack$size() > 0) {
+#'       node <- stack$pop()
+#'       state <- node[[1]]
+#'       path <- node[[2]]
+#'       
+#'       # if(!is.null(state)) { message("state: ", state) } 
+#'       # if(!is.null(path)) { message("path: ", path) }
+#'       if (length(path) > 0 && state == end) {
+#'         paths <- c(paths, list(path))
+#'         next
+#'       }
+#'       
+#'       # ---- NEW WAY USING HASHMAP ADJ LIST ----
+#'       # curr_state <- graph$get(as.character(state))$to_node
+#'       
+#'       for (next_state in graph$get(as.character(state))$to_node) {
+#'         # for (next_state in curr_state) {
+#'         # message("next_state: ", next_state)
+#'         if (next_state %in% path) {
+#'           next
+#'         }
+#'         
+#'         new_node <- list(next_state, c(path, next_state))
+#'         stack$push(new_node)
+#'         count = count + 1
+#'         
+#'       }
+#'       # # ---- ORIGINAL WAY USING LIST ADJ LIST ----
+#'       # # message("ITERATING THRU --> graph[[state]]: ",   paste0(graph[[state]], collapse = "-"))
+#'       # for (next_state in graph[[state]]) {
+#'       #   message("next_state: ", next_state)
+#'       #   if (next_state %in% path) {
+#'       #     next
+#'       #   }
+#'       #   new_node <- list(next_state, c(path, next_state))
+#'       #   stack$push(new_node)
+#'       #   count = count + 1
+#'       # message("=====================")
+#'       # message("======== END ========")
+#'       # message("======== count: ", count , " ========")
+#'       # message("=====================")
+#'       # }
+#'     }
+#'     
+#'     return(paths)
+#'   }
+#'   library(fastmap)
+#'   df
+#'   graph
+#'   # # Sample dataframe representing the graph with "fromnode" and "tonode" columns
+#'   # df <- data.frame(
+#'   #   fromnode = c(1, 1, 1, 2, 3, 2, 4, 8, 8, 9),
+#'   #   tonode = c(2, 3, 4, 3, 4, 6, 6, 7, 9, 7)
+#'   # )
+#'   df <- graph
+#'   library(fastmap)
+#'   
+#'   # Sample dataframe representing the graph with "fromnode" and "tonode" columns
+#'   df <- data.frame(
+#'     fromnode = c(1, 1, 1, 2, 3, 2, 4, 8, 8, 9),
+#'     tonode = c(2, 3, 4, 3, 4, 6, 6, 7, 9, 7)
+#'   )
+#'   
+#'   cycles <- list()
+#'   
+#'   main <- function() {
+#'     for (i in 1:nrow(df)) {
+#'       visited_nodes <- c(df$fromnode[i])
+#'       findNewCycles(list(df$fromnode[i]), visited_nodes, visited_edges = character(0))
+#'     }
+#'     
+#'     for (cy in cycles) {
+#'       path <- sapply(cy, function(node) { as.character(node) })
+#'       s <- paste(path, collapse = ",")
+#'       print(s)
+#'     }
+#'   }
+#'   
+#'   findNewCycles <- function(path, visited_nodes, visited_edges) {
+#'     start_node <- path[[1]]
+#'     next_node <- NULL
+#'     sub <- list()
+#'     
+#'     for (i in 1:nrow(df)) {
+#'       node1 <- df$fromnode[i]
+#'       node2 <- df$tonode[i]
+#'       edge <- paste(node1, node2, sep = "->")
+#'       if (start_node == node1 || start_node == node2) {
+#'         if (node1 == start_node) {
+#'           next_node <- node2
+#'         } else {
+#'           next_node <- node1
+#'         }
+#'         
+#'         if (!(next_node %in% visited_nodes)) {
+#'           sub <- list(next_node)
+#'           sub <- c(sub, path)
+#'           visited_nodes <- c(visited_nodes, next_node)
+#'           visited_edges <- c(visited_edges, edge)
+#'           findNewCycles(sub, visited_nodes, visited_edges)
+#'         } else if (length(path) > 2 && next_node == path[[length(path)]]) {
+#'           p <- rotate_to_smallest(path)
+#'           inv <- invert(p)
+#'           if (isNew(p) && isNew(inv) && all(duplicated(visited_edges) == FALSE)) {
+#'             cycles <<- c(cycles, list(p))
+#'           }
+#'         }
+#'       }
+#'     }
+#'   }
+#'   
+#'   invert <- function(path) {
+#'     return(rotate_to_smallest(rev(path)))
+#'   }
+#'   
+#'   rotate_to_smallest <- function(path) {
+#'     n <- which.min(path)
+#'     return(c(path[n:length(path)], path[1:(n - 1)]))
+#'   }
+#'   
+#'   isNew <- function(path) {
+#'     sorted_path <- sort(sapply(path, as.character))
+#'     for (cy in cycles) {
+#'       sorted_cy <- sort(sapply(cy, as.character))
+#'       if (identical(sorted_cy, sorted_path)) {
+#'         return(FALSE)
+#'       }
+#'     }
+#'     return(TRUE)
+#'   }
+#'   
+#'   main()
+#'   
+#'   
+#'   cycles <- list()
+#'   
+#'   main <- function() {
+#'     res <- vctrs::vec_c()
+#'     
+#'     for (i in 1:nrow(df)) {
+#'       findNewCycles(list(df$fromnode[i]), vector())
+#'     }
+#'     
+#'     for (cy in cycles) {
+#'       path <- sapply(cy, function(node) { as.character(node) })
+#'       s <- paste(path, collapse = "-")
+#'       print(s)
+#'       
+#'       res <- vctrs::vec_c(res, s)
+#'       
+#'     }
+#'     return(res)
+#'   }
+#'   
+#'   findNewCycles <- function(path, visited_nodes) {
+#'     start_node <- path[[1]]
+#'     next_node <- NULL
+#'     sub <- list()
+#'     
+#'     for (i in 1:nrow(df)) {
+#'       node1 <- df$fromnode[i]
+#'       node2 <- df$tonode[i]
+#'       if (start_node == node1 || start_node == node2) {
+#'         if (node1 == start_node) {
+#'           next_node <- node2
+#'         } else {
+#'           next_node <- node1
+#'         }
+#'         
+#'         if (!(next_node %in% visited_nodes)) {
+#'           sub <- list(next_node)
+#'           sub <- c(sub, path)
+#'           visited_nodes <- c(visited_nodes, next_node)
+#'           findNewCycles(sub, visited_nodes)
+#'         } else if (length(path) > 2 && next_node == path[[length(path)]]) {
+#'           p <- rotate_to_smallest(path)
+#'           inv <- invert(p)
+#'           if (isNew(p) && isNew(inv)) {
+#'             cycles <<- c(cycles, list(p))
+#'           }
+#'         }
+#'       }
+#'     }
+#'   }
+#'   
+#'   invert <- function(path) {
+#'     return(rotate_to_smallest(rev(path)))
+#'   }
+#'   
+#'   rotate_to_smallest <- function(path) {
+#'     n <- which.min(path)
+#'     return(c(path[n:length(path)], path[1:(n - 1)]))
+#'   }
+#'   
+#'   isNew <- function(path) {
+#'     sorted_path <- sort(sapply(path, as.character))
+#'     for (cy in cycles) {
+#'       sorted_cy <- sort(sapply(cy, as.character))
+#'       if (identical(sorted_cy, sorted_path)) {
+#'         return(FALSE)
+#'       }
+#'     }
+#'     return(TRUE)
+#'   }
+#'   
+#'   out <- main()
+#'   graph <- list(
+#'     c(1, 2),
+#'     c(1, 3), 
+#'     c(1, 4), 
+#'     c(2, 3), 
+#'     c(3, 4),
+#'     c(2, 6),
+#'     c(4, 6), 
+#'     c(8, 7), 
+#'     c(8, 9), 
+#'     c(9, 7)
+#'   )
+#'   
+#'   cycles <- list()
+#'   
+#'   main <- function() {
+#'     for (edge in graph) {
+#'       for (node in edge) {
+#'         findNewCycles(list(node))
+#'       }
+#'     }
+#'     
+#'     for (cy in cycles) {
+#'       path <- sapply(cy, function(node) { as.character(node) })
+#'       s <- paste(path, collapse = ",")
+#'       print(s)
+#'     }
+#'   }
+#'   
+#'   findNewCycles <- function(path) {
+#'     start_node <- path[[1]]
+#'     next_node <- NULL
+#'     sub <- list()
+#'     
+#'     for (edge in graph) {
+#'       node1 <- edge[[1]]
+#'       node2 <- edge[[2]]
+#'       if (start_node %in% edge) {
+#'         if (node1 == start_node) {
+#'           next_node <- node2
+#'         } else {
+#'           next_node <- node1
+#'         }
+#'         
+#'         if (!visited(next_node, path)) {
+#'           sub <- list(next_node)
+#'           sub <- c(sub, path)
+#'           findNewCycles(sub)
+#'         } else if (length(path) > 2 && next_node == path[[length(path)]]) {
+#'           p <- rotate_to_smallest(path)
+#'           inv <- invert(p)
+#'           if (isNew(p) && isNew(inv)) {
+#'             cycles <<- c(cycles, list(p))
+#'           }
+#'         }
+#'       }
+#'     }
+#'   }
+#'   
+#'   invert <- function(path) {
+#'     return(rotate_to_smallest(rev(path)))
+#'   }
+#'   
+#'   rotate_to_smallest <- function(path) {
+#'     n <- which.min(path)
+#'     return(c(path[n:length(path)], path[1:(n - 1)]))
+#'   }
+#'   
+#'   isNew <- function(path) {
+#'     sorted_path <- sort(sapply(path, as.character))
+#'     for (cy in cycles) {
+#'       sorted_cy <- sort(sapply(cy, as.character))
+#'       if (identical(sorted_cy, sorted_path)) {
+#'         return(FALSE)
+#'       }
+#'     }
+#'     return(TRUE)
+#'   }
+#'   
+#'   visited <- function(node, path) {
+#'     return(node %in% path)
+#'   }
+#'   
+#'   main()
+#'   
+#' }
+#' find_all_cycles <- function(
+#'     network,
+#'     start        = NULL,
+#'     return_as    = "list",
+#'     add          = FALSE,
+#'     nested       = TRUE,
+#'     verbose      = FALSE
+#' ) {
+#'   
+#'   # check valid return_as input
+#'   if(!return_as %in% c("list", "dataframe")) {
+#'     stop("Invalid 'return_as' argument '",
+#'          return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
+#'   }
+#'   
+#'   # # check relationship argument is valid
+#'   # if(return_as == "dataframe") {
+#'   #   if(!relationship %in% c("one-to-one", "one-to-many")) {
+#'   #     stop("Invalid 'relationship' argument '",
+#'   #          relationship, "'\n'relationship' must be: 'one-to-one' or 'one-to-many'")
+#'   #   }
+#'   # }
+#'   # net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 50 )
+#'   net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 20)
+#'   plot(net2$geometry)
+#'   network <- net2
+#'   start        = NULL
+#'   return_as    = "list"
+#'   add          = FALSE
+#'   nested       = TRUE
+#'   verbose      = TRUE
+#'   
+#'   # lower case names
+#'   names(network) <- tolower(names(network))
+#'   
+#'   # turn network into a directed graph
+#'   dag <- create_dag(network)
+#'   
+#'   # get the fromnode associated with a given COMID 'start'
+#'   start_node <- comid_to_node(dag, start)
+#'   
+#'   if(verbose) {
+#'     message("Starting braid detection at ", 
+#'             ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
+#'   }
+#'   
+#'   # drop graph geometry
+#'   dag <- sf::st_drop_geometry(dag)
+#'   # graph <- sf::st_drop_geometry(graph)
+#'   
+#'   # stash comids and from IDs
+#'   comid_map <- dplyr::select(
+#'     # graph,
+#'     dag,
+#'     comid,
+#'     fromnode,
+#'     tonode
+#'   )
+#'   
+#'   # create artificial cycles from circuits in graph, doing this allows for 
+#'   # sections of river that form a circuit to be identfied as a cycle and thus a braid
+#'   # Questionable at this point, other option is the code below that uses 
+#'   # single_cycles() function (COMMENTED OUT CODE BELOW)
+#'   regraph <- renode_circuits(dag, verbose = FALSE)
+#'   
+#'   # ##### - GET_SINGLE_CYCLES CODE -
+#'   # # check for single cycles (2 nodes A,B that have unique edges)
+#'   # # (i.e. 2 comids w/ exact same fromnodes/tonodes)
+#'   # single_cycles <- get_single_cycles(dag)
+#'   # # if cycles were found
+#'   # if(!is.null(cycles)) {
+#'   #   # match each fromnode with original COMIDs
+#'   #   braids <- sapply(1:length(cycles), function(k) {
+#'   #     # get COMIDs of each braid
+#'   #     comid_map[comid_map$fromnode %in% cycles[[k]], ]$comid
+#'   #   })
+#'   #   # if single cycles are found in network
+#'   #   if(!is.null(single_cycles)) {
+#'   #     braids <- c(braids, unname(single_cycles))
+#'   #   }
+#'   #   # if NO cycles were found
+#'   # } else {
+#'   #   # if single cycles are found in network
+#'   #   if(!is.null(single_cycles)) {
+#'   #     braids <- c(unname(single_cycles))
+#'   #   } else {
+#'   #     message("No braids found, returning NULL")
+#'   #     return(NULL)
+#'   #   }
+#'   # }
+#'   
+#'   # make an undirected graph
+#'   undir <- make_undirected(regraph)
+#'   
+#'   # make a topology hashmap to use in DFS 
+#'   topo_map <- make_topo_map(
+#'     from_nodes = undir$fromnode,
+#'     to_nodes   = undir$tonode,
+#'     directed   = FALSE
+#'   )
+#'   
+#'   # cycles <- extract_cycles(graph = topo_map, format = TRUE)
+#'   # cycles2 <- extract_cycles(graph = topo_map, format = F)
+#'   # 
+#'   # comid_map$braid_count <- lengths(cycles2)
+#'   # trim_cycles <- lapply(1:length(cycles2), function(k) {
+#'   #   
+#'   #   cycles2[[k]] <- cycles2[[k]][
+#'   #     lengths(cycles2[[k]]) > 3
+#'   #   ]
+#'   #   
+#'   #   if(length(cycles2[[k]]) == 0) {
+#'   #     NULL
+#'   #   } else {
+#'   #     cycles2[[k]]
+#'   #   }
+#'   # })
+#'   
+#'   braids <- find_braids(network = network, return_as = "dataframe", add = T, nested = TRUE, verbose = T)
+#'   braids_un <- find_braids(network = network, return_as = "dataframe", add = T, nested = F, verbose = T)
+#'   braids_un <-  dplyr::arrange(braids_un, hydroseq)
+#'   
+#'   braids_lst <- find_braids(network = network, 
+#'                             return_as = "list", 
+#'                             add = T, 
+#'                             nested = T, 
+#'                             verbose = T
+#'                             )
+#'   
+#'   # unpack nested braids into list format
+#'   unpacked <- 
+#'     braids %>% 
+#'     sf::st_drop_geometry() %>% 
+#'     dplyr::filter(braid_id != "no_braid") %>% 
+#'     dplyr::select(comid, braid_id) %>% 
+#'     unnpack_braids(into_list = T)
+#'   
+#'   # braids$braid_id
+#'   # 
+#'   # 
+#'   # braids %>% 
+#'   #   dplyr::mutate(
+#'   #     braid_id
+#'   #   )
+#'   # 
+#'   # unpacked <- unnpack_braids(braids)
+#'   # 
+#'   # 
+#'   # make_braids_gif(braids_un,
+#'   #                 save_path  = "/Users/anguswatters/Desktop/braid_check.gif",
+#'   #                 height     = 8,
+#'   #                 width      = 10,
+#'   #                 gif_width  = 1800,
+#'   #                 gif_height = 1500,
+#'   #                 delay      = 0.8,
+#'   #                 legend_pos = "bottom",
+#'   #                 verbose    = TRUE
+#'   # )
+#'   # 
+#'   # lst <- braids_lst
+#'   # no_overlap_val = FALSE
+#'   
+#'   overlaps <- find_overlaps(unpacked,   
+#'                             no_overlap_val = TRUE,
+#'                             rm_no_overlap  = FALSE
+#'                             )
+#'   
+#'   # # Find the indices of elements that are not TRUE (i.e., numbers)
+#'   total_overlaps <- 1:length(overlaps)
+#' 
+#'   # get indicies of braids that have multiple overlaps and also the main large braid
+#'   big_idx <- c(
+#'                 total_overlaps[which(!sapply(overlaps, isTRUE))],
+#'                 unique(unlist(overlaps[which(!sapply(overlaps, isTRUE))]))
+#'               )
+#'   
+#'   # get indicies of main large braids
+#'   big_idx <- unique(
+#'               unlist(
+#'                 overlaps[which(!sapply(overlaps, isTRUE))]
+#'                 )
+#'               )
+#'   
+#'   # big_idx <- unique(unlist(overlaps))
+#'   
+#'   # big_braids <- braids_lst[big_idx]
+#'   big_names <- names(unpacked[big_idx])
+#'   
+#'   # get the comids of the big braids
+#'   big_braids <- unique(unlist(unname(unpacked[big_idx])))
+#'   
+#'   # locate neighboring braids to our big_names braid_ids of interest
+#'   bids <- get_neighbor_braids(
+#'     x   = braids, 
+#'     ids = big_names,
+#'     split_ids = TRUE
+#'     # only_unique = T
+#'     )
+#'   
+#'   # boi[[1]]
+#'   
+#'   lapply(1:length(bids), function(k) {
+#'     k = 1
+#'     
+#'     # main braid name
+#'     bname <- names(bids)[[k]]
+#'     
+#'     # braids of interest
+#'     bois <- bids[[k]]
+#'     
+#'     big_bids <- unique(
+#'                   unlist(
+#'                     unname(
+#'                       unpacked[names(unpacked) %in% bois]
+#'                       )
+#'                     )
+#'                   )
+#'     # here we need to make 
+#'     sub_net <- dplyr::filter(braids, comid %in% big_bids)
+#'     
+#'     
+#'     topo <- network_to_adj(network = sub_net,
+#'                            start = NULL, 
+#'                            verbose = TRUE
+#'                            )
+#'     
+#'     # comid map and topology hashmap
+#'     comid_map <- topo$comids
+#'     topology  <- topo$adjacency
+#'     graph     <- topo$graph
+#'     
+#'     # find_cycles(graph = graph)
+#'     # trav <- dfs_traversal2(graph = graph, return_as = "dataframe", graph_as_map = F, verbose = T)
+#'     # 
+#'     # trav$from_node <-  sub("(.*)->.*", "\\1",   trav$edge)
+#'     # 
+#'     # unique(sort(graph$tonode)) %in% unique(sort(as.numeric(trav$from_node)))
+#'     # 
+#'     # trav$from_node %>% unique()
+#'     # 
+#'     # 
+#'     # dfs_traversal2(graph = topology, return_as = "list", graph_as_map = T, verbose = T)
+#'     
+#'     # extract sub cycles
+#'     sub_cycles <- extract_cycles(graph = topology, format = F)
+#'     
+#'     # remove non cycles and duplicates and give braid_ids
+#'     sub_cycles <- clean_cycles(sub_cycles, edge_minimum = 3)
+#'     
+#'     base_cycle <- 
+#'       sub_net %>% 
+#'       dplyr::select(comid, braid_id, fromnode, tonode) %>% 
+#'       dplyr::left_join(
+#'         dplyr::select(
+#'           comid_map, 
+#'           comid, 
+#'           from_node = fromnode,
+#'           to_node = tonode
+#'         ), 
+#'         by = "comid"
+#'       )
+#'     
+#'     sub_cycles
+#'     res = c()
+#'     i = 1
+#'     for (i in 1:length(sub_cycles)) {
+#'       sub_cycles[[i]]
+#'       
+#'       tmp <- 
+#'         base_cycle %>% 
+#'         dplyr::filter(!from_node %in% sub_cycles[[i]])
+#'       
+#'       # tmp_map <- 
+#'       #   comid_map %>% 
+#'       #   dplyr::filter(!fromnode %in% sub_cycles[[i]])
+#'       
+#'       mapview::mapview(base_cycle, color = "dodgerblue") + 
+#'         mapview::mapview(updated_braids, color = "green") + 
+#'         mapview::mapview(tmp, color = "red") 
+#'       
+#'       add_ids <- sub_cycles[[i]]
+#'       add_comids <- comid_map[comid_map$fromnode %in% sub_cycles[[i]], ]$comid
+#'       
+#'       for (z in 1:length(add_comids)) {
+#'         z = 1
+#'         add_ids[z]
+#'         add_comids[z]
+#'         
+#'         # map_add <- comid_map[comid_map$comid == add_comids[z], ]
+#'         to_add <- base_cycle[base_cycle$comid == add_comids[z], ]
+#'         
+#'         before_add <- is_braided(dplyr::select(
+#'           tmp,
+#'           -from_node, -to_node)
+#'           )
+#'         
+#'         # temporarily add new edge
+#'         # tmp_map <- dplyr::bind_rows(tmp_map, map_add)  
+#'         tmp <- dplyr::bind_rows(tmp, to_add)  
+#'         
+#'        is_braided(dplyr::select(
+#'           base_cycle,
+#'           -from_node, -to_node)
+#'         )
+#'         
+#'         
+#'       }
+#'       
+#'       
+#'       i = 1
+#'       
+#'     }
+#'     
+#'     
+#'     new_braids <- lapply(1:length(sub_cycles), function(k) {
+#'       
+#'       res <- dplyr::filter(comid_map, fromnode %in% sub_cycles[[k]]) 
+#'       
+#'       res$braid_id <- names(sub_cycles)[[k]]
+#'       
+#'       res
+#'       
+#'     }) %>% 
+#'       dplyr::bind_rows()
+#'     
+#'     orig_braids <- 
+#'       braids %>% 
+#'       dplyr::select(comid, old_braid_id = braid_id, fromnode, tonode, geometry)
+#'     
+#'     updated_braids <- 
+#'       orig_braids %>% 
+#'       dplyr::filter(comid %in% new_braids$comid) %>% 
+#'       dplyr::left_join(
+#'         dplyr::select(new_braids, comid, from_node = fromnode, to_node = tonode, braid_id),
+#'         by = "comid"
+#'       )
+#'     mapview::mapview(orig_braids, color = "dodgerblue") + 
+#'       mapview::mapview(updated_braids, color = "red") +
+#'       mapview::mapview(new_biggy, color = "green") +
+#'       # mapview::mapview(the_rest, color = "gold") +
+#'       mapview::mapview(braids, color = "gold") 
+#'     mapview::mapview(biggy, color = "dodgerblue") + 
+#'       mapview::mapview(smalls, color = "red") +
+#'       mapview::mapview(smalls_all, color = "green") +
+#'       mapview::mapview(the_rest, color = "gold") +
+#'       mapview::mapview(braids, color = "gold") 
+#'     
+#'     new_big_map <- 
+#'       comid_map %>% 
+#'       dplyr::filter(!comid %in% new_braids$comid)
+#'     new_biggy <- 
+#'       orig_braids %>% 
+#'       # dplyr::filter(comid %in% big_bids, !comid %in% new_braids$comid) %>% 
+#'       dplyr::filter(comid %in% big_bids) %>% 
+#'       dplyr::left_join(
+#'         dplyr::select(new_big_map, comid, from_node = fromnode, to_node = tonode),
+#'         by = "comid"
+#'       )
+#'     
+#'     mapview::mapview(orig_braids, color = "dodgerblue") + 
+#'       mapview::mapview(updated_braids, color = "red") +
+#'       mapview::mapview(new_biggy, color = "green") +
+#'       # mapview::mapview(the_rest, color = "gold") +
+#'       mapview::mapview(braids, color = "gold") 
+#'     biggy <- 
+#'       braids %>% 
+#'       dplyr::filter(comid %in% big_bids) %>% 
+#'       dplyr::select(comid, fromnode, tonode)
+#'     
+#'     smalls <- 
+#'       braids %>% 
+#'       dplyr::filter(comid %in% unname(unlist(sub_cycles)))
+#'     sub_cycles
+#'     unname(unlist(sub_cycles))
+#'     
+#'     smalls_coms <- dplyr::filter(comid_map, 
+#'         fromnode %in% unname(unlist(sub_cycles))
+#'         # fromnode %in% unname(unlist(sub_cycles)) |  tonode %in% unname(unlist(sub_cycles))
+#'       )$comid  
+#'     
+#'     smalls_coms_all <-  dplyr::filter(comid_map,
+#'                       # fromnode %in% unname(unlist(sub_cycles))
+#'                       fromnode %in% unname(unlist(sub_cycles)) |  tonode %in% unname(unlist(sub_cycles))
+#'                     )$comid
+#'     smalls <- 
+#'       braids %>% 
+#'       dplyr::filter(comid %in% smalls_coms)
+#'     
+#'     smalls_all <- 
+#'       braids %>% 
+#'       dplyr::filter(comid %in% smalls_coms_all)
+#'     the_rest <- 
+#'       biggy %>% 
+#'       dplyr::filter(!comid %in% smalls_coms)
+#'     
+#'     mapview::mapview(biggy, color = "dodgerblue") + 
+#'       mapview::mapview(smalls, color = "red") +
+#'       mapview::mapview(smalls_all, color = "green") +
+#'       mapview::mapview(the_rest, color = "gold") +
+#'     mapview::mapview(braids, color = "gold") 
+#'       # mapview::mapview(biggy, color = "dodgerblue")
+#'     
+#'     })
+#'   
+#'   
+#'   unpacked[names(unpacked) %in% bids[[1]]]
+#'   
+#'   overlaps
+#'   
+#'   # tt <-  c(tt, list(braid_5 = c(tt$braid_6, "braid_3")))
+#'   # tt <-  c(tt, list(braid_5 = c(tt$braid_6)))
+#'   # tt %>% unique()
+#'   
+#'   # tmp <- 
+#'   #   braids %>% 
+#'   #   dplyr::filter(braid_id != "no_braid") %>% 
+#'   #   dplyr::filter(braid_id %in% big_names | grepl(big_names, braid_id)) %>% 
+#'   #   dplyr::select(braid_id, comid, geometry)
+#'   # 
+#'   # tmp2 <- 
+#'   #   braids %>% 
+#'   #   dplyr::filter(braid_id != "no_braid") %>% 
+#'   #   dplyr::filter(braid_id %in% boi[[1]] | grepl(big_names, braid_id)) %>%
+#'   #   dplyr::select(braid_id, comid, geometry)
+#'   
+#'   # mapview::mapview(tmp, color = "red") +
+#'   #   mapview::mapview(tmp2, color = "green") +
+#'   #   dplyr::select(braids, braid_id, comid)
+#'   
+#'   # here we need to make 
+#'   sub_net <- network %>% dplyr::filter(comid %in% big_braids)
+#'   
+#'   names(sub_net) <- tolower(names(sub_net))
+#'   
+#'   # turn network into a directed graph
+#'   sub_dag <- create_dag(sub_net)
+#'   
+#'   # get the fromnode associated with a given COMID 'start'
+#'   sub_start <- comid_to_node(sub_dag, start)
+#'   
+#'   if(verbose) {
+#'     message("Starting braid detection at ", 
+#'             ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
+#'   }
+#'   # mapview::mapview(sub_dag)
+#'   # drop graph geometry
+#'   sub_dag <- sf::st_drop_geometry(sub_dag)
+#'   # graph <- sf::st_drop_geometry(graph)
+#'   
+#'   # stash comids and from IDs
+#'   sub_comid_map <- dplyr::select(
+#'     # graph,
+#'     sub_dag,
+#'     comid,
+#'     fromnode,
+#'     tonode
+#'   )
+#'   
+#'   # create artificial cycles from circuits in graph, doing this allows for 
+#'   # sections of river that form a circuit to be identfied as a cycle and thus a braid
+#'   # Questionable at this point, other option is the code below that uses 
+#'   # single_cycles() function (COMMENTED OUT CODE BELOW)
+#'   sub_regraph <- renode_circuits(sub_dag, verbose = FALSE)
+#'   
+#'   # make an undirected graph
+#'   sub_undir <- make_undirected(sub_regraph)
+#'   
+#'   sub_topo <- make_topo_map(
+#'     from_nodes = sub_undir$fromnode,
+#'     to_nodes = sub_undir$tonode
+#'   )
+#'   
+#'   sub_cycles <- extract_cycles(graph = sub_topo, format = F)
+#'   # sub_cycles <- extract_cycles(graph = topo, format = TRUE)
+#'   # sub_cycles2 <- extract_cycles(graph = topo, format = F)
+#'   # length(sub_cycles2)
+#'   # unname(lengths(sub_cycles2))
+#'   # comid_map$braid_count <- lengths(sub_cycles)
+#'   clean_cycles <- function(cycles, edge_minimum = 3) {
+#'     
+#'     # filter out the single circuit/simple braids, and keep the unique list elements
+#'     trim_cycles <- lapply(1:length(cycles), function(k) {
+#'       
+#'       # filter to cycles that have more than 3 members
+#'       cycles[[k]] <- cycles[[k]][
+#'         lengths(cycles[[k]]) > edge_minimum
+#'       ]
+#'       
+#'       if(length(cycles[[k]]) == 0) {
+#'         NULL
+#'       } else {
+#'         cycles[[k]]
+#'       }
+#'     }) %>% 
+#'       unique()
+#'     
+#'     # go through each of the trimmed down cycles and further remove duplicates
+#'     # keep only the unique and then unlist the output retrim list
+#'     trim_cycles <- lapply(1:length(trim_cycles), function(k) {
+#'       
+#'       # just return NULL if no cycle nodes
+#'       if(is.null(trim_cycles[[k]])) {
+#'         NULL
+#'       } else {
+#'         
+#'         # for each cycle path for a given node, grab the unique node values, sort the vector, and make a string from path (sep = "-")
+#'         lapply(1:length(trim_cycles[[k]]), function(z) {
+#'           path <- trim_cycles[[k]][[z]]
+#'           paste0(sort(unique(path)), collapse = "-")
+#'         }) %>% 
+#'           unique()
+#'       }
+#'       
+#'     }) %>% 
+#'       unique() %>% 
+#'       unlist()
+#'     
+#'     # split each braid into individual braids
+#'     trim_cycles <- strsplit(trim_cycles, "-")
+#'     
+#'     # assign names to braid
+#'     names(trim_cycles) <- paste0("new_braid_", 1:length(trim_cycles))
+#'     
+#'     return(trim_cycles)
+#'     
+#'   }
+#'   # # filter out the single circuit/simple braids, and keep the unique list elements
+#'   # trim_cycles <- lapply(1:length(sub_cycles), function(k) {
+#'   #   
+#'   #   # filter to cycles that have more than 3 members
+#'   #   sub_cycles[[k]] <- sub_cycles[[k]][
+#'   #                               lengths(sub_cycles[[k]]) > 3
+#'   #                             ]
+#'   #   
+#'   #   if(length(sub_cycles[[k]]) == 0) {
+#'   #     NULL
+#'   #   } else {
+#'   #     sub_cycles[[k]]
+#'   #   }
+#'   # }) %>% 
+#'   #   unique()
+#'   # 
+#'   # # go through each of the trimmed down cycles and further remove duplicates
+#'   # # keep only the unique and then unlist the output retrim list
+#'   # trim_cycles <- lapply(1:length(trim_cycles), function(k) {
+#'   #   
+#'   #   # just return NULL if no cycle nodes
+#'   #   if(is.null(trim_cycles[[k]])) {
+#'   #     NULL
+#'   #   } else {
+#'   #     
+#'   #     # for each cycle path for a given node, grab the unique node values, sort the vector, and make a string from path (sep = "-")
+#'   #     lapply(1:length(trim_cycles[[k]]), function(z) {
+#'   #       path <- trim_cycles[[k]][[z]]
+#'   #       paste0(sort(unique(path)), collapse = "-")
+#'   #     }) %>% 
+#'   #       unique()
+#'   #   }
+#'   #   
+#'   # }) %>% 
+#'   #   unique() %>% 
+#'   #   unlist()
+#'   # 
+#'   # # split each braid into individual braids
+#'   # trim_cycles <- strsplit(trim_cycles, "-")
+#'   # 
+#'   # # assign names to braid
+#'   # names(trim_cycles) <- paste0("new_braid_", 1:length(trim_cycles))
+#'   
+#'   # retrim[[1]][[1]]
+#'   # sub_comid_map$fromnode %in% retrim[[1]]
+#' 
+#'   new_braids <- lapply(1:length(retrim), function(k) {
+#' 
+#'     res <- dplyr::filter(sub_comid_map, fromnode %in% retrim[[k]]) 
+#'     
+#'     res$braid_id <- names(retrim)[[k]]
+#'     
+#'     res
+#'     
+#'     }) %>% 
+#'     dplyr::bind_rows()
+#'   
+#'   orig_braids <- 
+#'     braids %>% 
+#'     dplyr::select(comid, old_braid_id = braid_id, fromnode, tonode, geometry)
+#'   
+#'   updated_braids <- 
+#'     orig_braids %>% 
+#'     dplyr::filter(comid %in% new_braids$comid) %>% 
+#'     dplyr::left_join(
+#'       dplyr::select(new_braids, comid, from_node = fromnode, to_node = tonode, braid_id),
+#'       by = "comid"
+#'     )
+#'   updated_braids
+#'   mapview::mapview(orig_braids, color = "dodgerblue") +
+#'     mapview::mapview(updated_braids, color = "red")
+#'   
+#'   trim_cycles[[4]][[1]] == trim_cycles[[4]][[2]]
+#'   unique(unlist(trim_cycles[[4]]))
+#'   
+#'   length(unique(trim_cycles))
+#'   topo <- make_topo_map(
+#'     from_nodes = braid_nodes$fromnode,
+#'     to_nodes = braid_nodes$tonode
+#'   )
+#'   
+#'   topo$as_list()
+#'   cyc1 <- extract_cycles(graph = topo, format = TRUE)
+#'   cyc2 <- extract_cycles(graph = topo, format = FALSE)
+#'   
+#'   # cycles <- extract_cycles(graph = topo_map, format = TRUE)
+#'   # cycles2 <- extract_cycles(graph = topo_map, format = FALSE)
+#'   overlaps[overlaps == FALSE] = TRUE
+#'   
+#'   braids_lst[overlaps]
+#'   braids
+#'   only_braids <- dplyr::filter(braids, braid_id != "no_braid")
+#'   # only_braids$braid_id
+#'   only_braids$nbraids <- lengths(strsplit(only_braids$braid_id, ", ")) 
+#'   only_braids <- only_braids %>% 
+#'     dplyr::relocate(comid, braid_id, nbraids)
+#'   only_braids$fromnode
+#'   braid6 <- braids_un %>% dplyr::filter(braid_id == "braid_6")
+#'   braid6_nested <- braids %>% dplyr::filter(braid_id == "braid_6" | grepl("braid_6", braid_id))
+#'   
+#'   mapview::mapview(only_braids, color = "gold") +
+#'     mapview::mapview(braids, color = "dodgerblue") + 
+#'     mapview::mapview(braid6, color = "red") + 
+#'     mapview::mapview(braid6_nested, color = "green") 
+#'   
+#'   only_braids$braid_id %>% unique()
+#'   tmp_net <- 
+#'     network %>% 
+#'     dplyr::select(comid, fromnode, tonode, divergence, hydroseq) %>% 
+#'     dplyr::left_join(
+#'       dplyr::select(comid_map,
+#'                     comid, from_node = fromnode, to_node = tonode),
+#'       by = "comid"
+#'     )
+#'   mapview::mapview(tmp_net)
+#'   cycles <- extract_cycles(graph = topo_map, format = TRUE)
+#'   cycles2 <- extract_cycles(graph = topo_map, format = FALSE)
+#'   comid_map$braid_count <- lengths(cycles2)
+#' lengths(unname(cycles2))
+#'   
+#'   trim_cycles <- lapply(1:length(cycles2), function(k) {
+#' 
+#'     cycles2[[k]] <- cycles2[[k]][
+#'                       lengths(cycles2[[k]]) > 3
+#'                       ]
+#'                     
+#'     if(length(cycles2[[k]]) == 0) {
+#'       NULL
+#'     } else {
+#'       cycles2[[k]]
+#'     }
+#'   })
+#'   cycles2[[10]][!cycles2[[10]] %in% trim_cycles[[10]]]
+#'   lengths(trim_cycles)
+#'   unique(trim_cycles)
+#'   lengths(unique(trim_cycles))
+#'   length(unique(trim_cycles))
+#'   comid_map
+#'   comid_map
+#'   cycles
+#'   length(undir$fromnode %>% unique())
+#'   length(undir$tonode %>% unique())
+#'   # --------------------------------------
+#'   # --------------------------------------
+#'   # --------------------------------------
+#'   
+#'   # topo_map$as_list()
+#'   
+#'   # keep track of visited nodes
+#'   visits <- fastmap::fastmap()
+#'   
+#'   # # set all marked values to FALSE
+#'   visits$mset(.list = stats::setNames(
+#'     lapply(1:length(unique(c(graph$fromnode, graph$tonode))),
+#'            function(i){ 0 }),
+#'     unique(c(graph$fromnode, graph$tonode))
+#'   )
+#'   )
+#'   # visits$as_list()
+#'   # keep track of cycles nodes
+#'   cycles <- fastmap::fastmap()
+#'   
+#'   # keep track of visited nodes
+#'   prev_nodes <- fastmap::fastmap()
+#'   
+#'   # # set all marked values to FALSE
+#'   prev_nodes$mset(.list = stats::setNames(
+#'     lapply(1:length(unique(c(graph$fromnode, graph$tonode))),
+#'            function(i){ 0 }),
+#'     unique(c(graph$fromnode, graph$tonode))
+#'     # lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), 
+#'     # function(i){ 0 }),
+#'     # unique(c(ungraph$fromnode, ungraph$tonode))
+#'   )
+#'   )
+#'   start_node
+#'   topo_map$as_list()
+#'   fringe <- fastmap::fastmap()
+#'   f <- fastmap::fastmap()
+#'   
+#'   stack <- fastmap::faststack()
+#'   
+#'   f$set(start_node, list(start = start_node, start_list = list()))
+#'   
+#'   flist <- list(
+#'     start_node, 
+#'     list(start = start_node, start_list = list())
+#'     )
+#'   
+#'   # f$as_list()
+#'   stack$push(flist)
+#'   stack$as_list()
+#'   fringe <- list(list(start_node, list()))
+#'   start_node = start_node
+#'   
+#'   fringe[-length(fringe)]
+#'   ll = list(1, 4, 6, 4)
+#'   
+#'   ll[-length(ll)]
+#'   ll[length(ll)]
+#'   sp <- stack$pop()
+#'   state <- sp[[1]]
+#'   path <- sp[[2]]
+#'   
+#'   stack <- fastmap::faststack()
+#'   
+#'   # push element to the top of the list
+#'   stack$push()
+#'   
+#'   # pops top element from stack
+#'   stack$pop()
+#'   
+#'   # cycle number count
+#'   dfs <- function(graph, start, end) {
+#'     fringe <- list(list(start, list()))
+#'     paths <- list()
+#'     
+#'     while (length(fringe) > 0) {
+#'       node <- fringe[[length(fringe)]]
+#'       fringe <- fringe[-length(fringe)]
+#'       state <- node[[1]]
+#'       path <- node[[2]]
+#'       
+#'       if (length(path) > 0 && state == end) {
+#'         paths <- c(paths, list(path))
+#'         next
+#'       }
+#'       
+#'       for (next_state in graph[[state]]) {
+#'         if (next_state %in% path) {
+#'           next
+#'         }
+#'         
+#'         new_node <- list(next_state, c(path, next_state))
+#'         fringe <- c(fringe, list(new_node))
+#'       }
+#'     }
+#'     
+#'     return(paths)
+#'   }
+#'   
+#'   graph <- list(
+#'     "1" = c(2),
+#'     "2" = c(1, 3, 4),
+#'     "3" = c(2, 5, 6),
+#'     "4" = c(2, 5),
+#'     "5" = c(3, 4, 7, 8),
+#'     "6" = c(3, 7),
+#'     "7" = c(5, 6),
+#'     "8" = c(5)
+#'   )
+#'   
+#'   cycles <- lapply(names(graph), function(node) {
+#'     lapply(dfs(graph, node, node), function(path) {
+#'       c(node, path)
+#'     })
+#'   })
+#'   library(coro)
+#'   
+#'   dfs <- function(graph, start, end) {
+#'     fringe <- list(list(start, list()))
+#'     paths <- list()
+#'     
+#'     while (length(fringe) > 0) {
+#'       node <- fringe[[length(fringe)]]
+#'       fringe <- fringe[-length(fringe)]
+#'       state <- node[[1]]
+#'       path <- node[[2]]
+#'       
+#'       if (length(path) > 0 && state == end) {
+#'         paths <- c(paths, list(path))
+#'         next
+#'       }
+#'       
+#'       for (next_state in graph[[state]]) {
+#'         if (next_state %in% path) {
+#'           next
+#'         }
+#'         
+#'         new_node <- list(next_state, c(path, next_state))
+#'         fringe <- c(fringe, list(new_node))
+#'       }
+#'     }
+#'     
+#'     return(paths)
+#'   }
+#' stack$size()
+#' 
+#' 
+#'   dfs <- function(graph, start, end) {
+#'     stack <- fastmap::faststack()
+#'     # out <- fastmap::fastmap()
+#'     stack$push(list(start, list()))
+#'     
+#'     paths <- list()
+#'     
+#'     while (stack$size() > 0) {
+#'       node <- stack$pop()
+#'       state <- node[[1]]
+#'       path <- node[[2]]
+#'       
+#'       if (length(path) > 0 && state == end) {
+#'         paths <- c(paths, list(path))
+#'         next
+#'       }
+#'       
+#'       for (next_state in graph[[state]]) {
+#'         if (next_state %in% path) {
+#'           next
+#'         }
+#'         
+#'         new_node <- list(next_state, c(path, next_state))
+#'         stack$push(new_node)
+#'       }
+#'     }
+#'     
+#'     return(paths)
+#'   }
+#'   
+#'   graph <- list(
+#'     "1" = c(2),
+#'     "2" = c(1, 3, 4),
+#'     "3" = c(2, 5, 6),
+#'     "4" = c(2, 5),
+#'     "5" = c(3, 4, 7, 8),
+#'     "6" = c(3, 7),
+#'     "7" = c(5, 6),
+#'     "8" = c(5)
+#'   )
+#'   
+#'   path_map <- fastmap::fastmap()
+#'   
+#'   cycles <- lapply(names(graph), function(node) {
+#'      lapply(dfs(graph, node, node), function(path) {
+#'         unlist(c(node, path))
+#'         # paste0(c(node, path), collapse = "-")
+#'       # if (!path_map$has(node)) {
+#'       #   path_map$set(node ,list(braid = paste0(c(node, path), collapse = "-")))
+#'       # }
+#'       # list( nodes = c(node, path),  p = paste0(c(node, path), collapse = "-"))
+#'     })
+#'   })
+#'   
+#'   
+#'   
+#'   # names(cycles) <- paste0("node_", 1:length(cycles))
+#'   
+#'   names(cycles) <- paste0(1:length(cycles))
+#'   
+#'   path_map <- fastmap::fastmap()
+#'   
+#'   for (i in 1:length(cycles)) {
+#'     
+#'     message("iteration ", i, "/", length(cycles))
+#'     
+#'     from_node <- names(cycles[i])
+#'     cyc <-   cycles[[i]]
+#'     
+#'     # check if from_node has been added to hashmap already
+#'     if (!path_map$has(from_node)) {
+#' 
+#'       edge_str <- sapply(1:length(cyc), function(k) {
+#'         paste0(cyc[[k]], collapse = "-") 
+#'       })
+#'       
+#'       # add cycle names
+#'       names(cyc) <- paste0(1:length(cyc))
+#'       # names(cyc) <- paste0("cycle_", 1:length(cyc))
+#'       
+#'       map_entry <- list(
+#'         cycle       = cyc,
+#'         edge        = edge_str,
+#'         count       = length(edge_str)
+#'       )
+#' 
+#'       # set new entry in topology map
+#'       path_map$set(from_node, map_entry)
+#'       
+#'       # path_map$as_list()
+#'       # path_map$get("2")
+#'       
+#'     } else {
+#'       
+#'       # edge string
+#'       edge_str <- sapply(1:length(cyc), function(k) {
+#'         paste0(cyc[[k]], collapse = "-") 
+#'       })
+#'       
+#'       names(cyc) <- paste0(1:length(cyc))
+#'       # names(cyc) <- paste0("cycle_", 1:length(cyc))
+#'       
+#'       map_entry <- list(
+#'         to_node     = c(topo_map$get(from_node)$cycle, cyc),
+#'         edge        = c(topo_map$get(from_node)$edge, edge_str),
+#'         count       = c(topo_map$get(from_node)$count + 1)
+#'       )
+#'       
+#'       # if(length(add_args) > 0) {
+#'       #   for (n in 1:length(names(add_args))) {
+#'       #     key = names(add_args)[n]
+#'       #     map_entry[[key]] <- c(topo_map$get(from_node)[[key]], add_args[[key]][i])
+#'       #   }
+#'       # }
+#'       #  Update the existing entry in topo_map
+#'       path_map$set(from_node, map_entry)
+#'     }
+#'   }
+#'   path_map$as_list()
+#'   path_map$keys()
+#'   path_map$get("3")
+#'   names(cycles) <- paste0("node_", 1:length(cycles))
+#'   path_map <- fastmap::fastmap()
+#'   path_map$mset(node_2 = unlist(cycles[[2]]), nothing = c(31))
+#'   path_map$mset(cycles = cycle)
+#'   cycles$node_1
+#'   path_map$as_list()
+#'   cycles
+#'   names(cycles)[1]
+#'   cycles[[2]]
+#'   unlist(cycles[[2]])
+#'   c(10, 20, 30)
+#'   # Create the fastmap object
+#'   m <- fastmap::fastmap()
+#'   m$mset(numbers = c(10, 20, 30), nothing = c(31))
+#'   m$as_list()
+#'   m$keys()
+#'   path_map$set(key =   names(cycles)[1])
+#'   cycles[[2]]
+#'   path_map$as_list()
+#'   cycles[[1]]
+#'   cycles[[2]][[2]]
+#'   
+#'   names(cycles) <- paste0("node_", 1:length(cycles))
+#'   c(node, path)
+#'   
+#'   cycles$node_1[[1]]
+#'   n =   cycles$node_1[[1]][[1]]
+#'   p =   cycles$node_1[[1]][-1]
+#'   
+#'   paste0(c(n, p), collapse = "-")
+#'   
+#'   
+#'   for (i in 1:length(names(cycles))) {
+#'     
+#'     
+#'     
+#'     
+#'   }
+#'   
+#'   
+#'   class(cycles[[1]])
+#'   class(cycles[[2]])
+#'   cycles[[2]]$sub_braid_2
+#'   length(cycles[[2]])
+#'   
+#'   tt <- lapply(names(graph), function(node) {
+#'     message(node)
+#'     x = node
+#'     node
+#'     lapply(dfs(graph, node, node), function(path) {
+#'       c(node, path)
+#'     })
+#'     x
+#'   })
+#'   
+#'   node = tt[[2]]
+#'   
+#'   class(cycles)
+#'   names(cycles) <- paste0("node_", 1:length(cycles))
+#'   names(cycles)
+#'   
+#'   length(cycles)
+#'   length(cycles[[7]])
+#'   
+#'   # Function to convert a cycle to a unique string representation
+#'   cycle_to_string <- function(cycle) {
+#'     cycle_str <- paste(sort(as.character(cycle)), collapse = '-')
+#'     return(cycle_str)
+#'   }
+#'   
+#'   # Applying DFS and removing duplicates
+#'   unique_cycles <- list()
+#'   all_cycles <- lapply(names(graph), function(node) {
+#'     lapply(dfs(graph, node, node), function(path) {
+#'       cycle <- c(node, path)
+#'       cycle_str <- cycle_to_string(cycle)
+#'       if (!(cycle_str %in% unique_cycles)) {
+#'         unique_cycles <- c(unique_cycles, cycle_str)
+#'         cycle
+#'       } else {
+#'         NULL
+#'       }
+#'     })
+#'   })
+#'   
+#'   # Filter out NULL elements and count the number of unique cycles
+#'   unique_cycles <- Filter(Negate(is.null), unlist(all_cycles, recursive = FALSE))
+#'   num_unique_cycles <- length(unique_cycles)
+#'   
+#'   dfs <- function(graph, start, end, unique_cycles = list()) {
+#'     stack <- fastmap::faststack()
+#'     stack$push(list(start, list()))
+#'     
+#'     paths <- list()
+#'     
+#'     while (stack$size() > 0) {
+#'       node <- stack$pop()
+#'       state <- node[[1]]
+#'       path <- node[[2]]
+#'       
+#'       if (length(path) > 0 && state == end) {
+#'         cycle <- c(start, path)
+#'         cycle_str <- paste(sort(as.character(cycle)), collapse = '-')
+#'         
+#'         if (!(cycle_str %in% unique_cycles)) {
+#'           unique_cycles <- c(unique_cycles, cycle_str)
+#'           paths <- c(paths, list(path))
+#'         }
+#'         
+#'         next
+#'       }
+#'       
+#'       for (next_state in graph[[state]]) {
+#'         if (next_state %in% path) {
+#'           next
+#'         }
+#'         
+#'         new_node <- list(next_state, c(path, next_state))
+#'         stack$push(new_node)
+#'       }
+#'     }
+#'     
+#'     return(list(paths, unique_cycles))
+#'   }
+#'   
+#'   graph <- list(
+#'     "1" = c(2),
+#'     "2" = c(1, 3, 4),
+#'     "3" = c(2, 5, 6),
+#'     "4" = c(2, 5),
+#'     "5" = c(3, 4, 7, 8),
+#'     "6" = c(3, 7),
+#'     "7" = c(5, 6),
+#'     "8" = c(5)
+#'   )
+#'   
+#'   # Applying DFS and getting the unique cycles
+#'   start_node <- names(graph)[1]
+#'   cycles_result <- dfs(graph, start_node, start_node)
+#'   all_cycles <- cycles_result[[1]]
+#'   unique_cycles <- cycles_result[[2]]
+#' }
+#' #' Traverse graph in a Depth First Search (DFS) manner
+#' #' @description Given a network with ID and toID columns, and a starting ID, traverse a river network using a Depth First Search (DFS) algorithm to explore all nodes of directed acyclic graph (DAG)
+#' #' @param graph data.frame with ID, toID, hydroseq, startflag, terminalpa, and divergence attributes.
+#' #' @param as_df logical, whether to return DFS traversal as a dataframe or as a list. If TRUE (default) DFS traversal will be returned as a dataframe.
+#' #' @param return_as character string of how to return DFS traversal output. Either "list", "dataframe", "vector". Default is "list".
+#' #' @param start ID of node to start traversal and go upstream from
+#' #' @param dendritic logical, whether to make network dendritic or not. If FALSE, divergent nodes (divergence value of 2), will be connected to the upstream flowline and the network will contain cycles. Default is FALSE
+#' #' @param verbose logical print status updates?
+#' #' @return data.frame containing the distance between pairs of network outlets.
+#' dfs_traversal2 <- function(
+#'     graph,
+#'     # as_df   = TRUE,
+#'     return_as = "list",
+#'     # start   = NULL,
+#'     # dendritic = TRUE,
+#'     graph_as_map = FALSE,
+#'     verbose = FALSE
+#' ) {
+#'   
+#'   #
+#'   # # create topology hashmap
+#'   # topo_map <- make_topo_map(
+#'   #   from_nodes  = graph$tonode,
+#'   #   to_nodes    = graph$fromnode,
+#'   #   from_ids    = graph$tocomid,
+#'   #   to_ids      = graph$comid,
+#'   #   streamcalc  = graph$streamcalc,
+#'   #   streamorder = graph$streamorde,
+#'   #   divergence  = graph$divergence
+#'   # )
+#'   # graph = comid_map
+#'   # if(!graph_as_map) {
+#'     # create topology hashmap
+#'     topo_map <- make_topo_map(
+#'       from_nodes  = graph$fromnode,
+#'       to_nodes    = graph$tonode
+#'       # from_nodes  = graph$tonode,
+#'       # to_nodes    = graph$fromnode,
+#'     )
+#'   #   
+#'   # } else {
+#'     
+#'   #   topo_map <- graph
+#'   #   
+#'   # }
+#'   
+#'   # topology  <- topo$adjacency
+#'   # topo_map <- topology
+#'   # graph = comid_map
+#'   # verbose = T
+#'   # return_as = "list"
+#'   # # create topology hashmap
+#'   # topo_map <- make_topo_map(
+#'   #   from_nodes  = graph$fromnode,
+#'   #   to_nodes    = graph$tonode
+#'   #   # from_nodes  = graph$tonode,
+#'   #   # to_nodes    = graph$fromnode,
+#'   # )
+#'   
+#'   # keep track of visited nodes
+#'   marked <- fastmap::fastmap()
+#'   
+#'   # set all marked values to FALSE
+#'   marked$mset(.list = stats::setNames(
+#'     lapply(1:length(unique(c(graph$fromnode, graph$tonode))), function(i){ FALSE }),
+#'     unique(c(graph$fromnode, graph$tonode))
+#'   )
+#'   )
+#'   # marked$as_list()
+#'   # start DFS traversal from root node
+#'   # graph
+#'   
+#'   # graph$tonode == 0
+#'   
+#'   root = as.character(graph$fromnode[1])
+#'   # root <- as.character(graph[graph$tocomid == "0", ]$tonode)
+#'   
+#'   # output result object
+#'   if (return_as %in% c("list", "dataframe")) {
+#'     res <- list()
+#'     
+#'   } else {
+#'     # vector
+#'     res <- vctrs::vec_c()
+#'     # res <- vctrs::vec_c(topo_map$get(root)$to_node)
+#'     
+#'   }
+#'   
+#'   # initialize stack
+#'   stack <- fastmap::faststack()
+#'   
+#'   # push root to top of stack
+#'   stack$push(root)
+#'   
+#'   # counter
+#'   count = 0
+#'   
+#'   # while stack is non empty
+#'   while (stack$size() > 0) {
+#'     
+#'     count = count + 1
+#'     
+#'     # message("stack size: ", stack$size())
+#'     # message("count: ", count)
+#'     # message("Stack top to bottom:\n--------------------\n",
+#'     #         # rev(paste0(" - ", c(unlist(stack$as_list())), sep = "\n"))
+#'     #         rev(paste0(" - ", c(unlist(stack$as_list())), sep = " "))
+#'     #         )
+#'     
+#'     # pop from top of stack
+#'     node <- stack$pop()
+#'     
+#'     # convert node to character for fastmap
+#'     node <- as.character(node)
+#'     
+#'     # message("Popped ", node, " from top of stack")
+#'     
+#'     # if vertex hasn't been visited
+#'     if(!marked$get(node)) {
+#'       
+#'       # message("!!!!!!! THIS IS THE VISITING PORTION OF THE DFS ALGO !!!!!!!")
+#'       # Process the current node, add to result object
+#'       if (return_as %in% c("list", "dataframe")) {
+#'         
+#'         # list
+#'         res[[count]] <- topo_map$get(node)
+#'         
+#'       } else {
+#'         # vector
+#'         res <- vctrs::vec_c(res, vctrs::vec_c(node))
+#'         # res <- vctrs::vec_c(res, vctrs::vec_c(topo_map$get(node)$to_node))
+#'         # res <- vctrs::vec_c(res, vctrs::vec_c(topo_map$get(node)$edge))
+#'         # data.frame(   order     = count, from_node = strsplit("112->111", "->")[[1]][1],
+#'         #   to_node   = strsplit("112->111", "->")[[1]][2])
+#'         
+#'       }
+#'       # res[[count]] <- topo_map$get(node)
+#'       # res <- vctrs::vec_c(res, vctrs::vec_c(topo_map$get(node)$to_node))
+#'       
+#'       # set vertex to marked
+#'       marked$set(node, TRUE)
+#'       # marked$get(node)
+#'       
+#'       # neighbors of current vertex
+#'       neighbors <- topo_map$get(node)$to_node
+#'       
+#'       # message("Neighbors of node ", node , " are:\n",  paste0(" --> ", c(neighbors), sep = "\n"))
+#'       
+#'       # iterate through neighbors and add to stack if NOT VISITED
+#'       for (n in neighbors) {
+#'         # message("neighbor n: ", n)
+#'         if(!marked$get(n)) {
+#'           # message("**** neighbor ", n, " HAS NOT BEEN VISITED ****")
+#'           # message("Pushing ", n, " onto stack")
+#'           
+#'           stack$push(n)
+#'           
+#'         }
+#'         # message("*************")
+#'       }
+#'     }
+#'     # message("ONTO NEXT ITERATION OF WHILE LOOP")
+#'     # message("====================================")
+#'   }
+#'   if(verbose) {
+#'     message("Returning DFS traversal order")
+#'   }
+#'   
+#'   # format return into dataframe if as_df is TRUE
+#'   if (return_as == "dataframe") {
+#'     res <- dplyr::bind_rows(res)
+#'   }
+#'   
+#'   return(res)
+#'   
+#' }
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
+#' 
