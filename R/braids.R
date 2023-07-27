@@ -5223,62 +5223,73 @@ find_first_cycles <- function(
 #' net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 20 )
 #' plot(net2$geometry)
 #' 
-#' # get the braid_ids of all neighboring braids from a specified braid_id
-#' # provide a network with braid_ids and a vector of braid_ids that you want to get all neighboring/memboring braid IDs for the specified braid
-#' # x: sf object network flowlines with braid_id column
-#' # ids: character vector braid_id(s)
-#' # Only unique: if TRUE, then only unique braid IDs are returned, otherwise all are returned
-#' get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) {
-#'   
-#'   # x <- braids
-#'   # ids <- big_names
-#' 
-#'   # make groups for each braided section
-#'   braid_groups <- lapply(1:length(ids), function(i) {
-#'     
-#'     message("i: ", i, "/", length(ids))
-#'     
-#'     # braid IDs of interest
-#'     # bids <- strsplit(transects[i, ]$braid_id, ", ")[[1]]
-#'     bids <- strsplit(ids, ", ")[[1]]
-#'     
-#'     # get all linestrings that are apart of the braid_ids of interest
-#'     
-#'     bids_check <- sapply(1:length(x$braid_id), function(y) {
-#'       any(
-#'         strsplit(x$braid_id[y], ", ")[[1]] %in% bids
-#'       )
-#'     })
-#'     
-#'     out <- sort(
-#'               unique(c(
-#'                 x[bids_check, ]$braid_id,
-#'                 unlist(strsplit(x[bids_check, ]$braid_id, ", "))
-#'               )
-#'               )
-#'             )
-#'     
-#'     # split_ids is TRUE, then the coimma seperated braid_ids are seperated into individual braid_ids
-#'     if(split_ids) {
-#'       
-#'       out <- sort(unique(unlist(strsplit(out, ", "))))
-#'       
-#'     }
-#'     
-#'     out
-#'     
-#'   }) 
-#'   
-#'   # assign names
-#'   names(braid_groups) <- ids
-#'   
-#'   # remove uniques if desired
-#'   if(only_unique) {
-#'     braid_groups <- unique(braid_groups)
-#'   }
-#'   return(braid_groups)
-#' }
-#' 
+# get the braid_ids of all neighboring braids from a specified braid_id
+# provide a network with braid_ids and a vector of braid_ids that you want to get all neighboring/memboring braid IDs for the specified braid
+# x: sf object network flowlines with braid_id column
+# ids: character vector braid_id(s)
+# Only unique: if TRUE, then only unique braid IDs are returned, otherwise all are returned
+get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) {
+
+
+  # x = braids
+  # ids = bids
+  # only_unique = T
+  # split_ids = FALSE
+  
+  # make groups for each braided section
+  braid_groups <- lapply(1:length(ids), function(i) {
+
+    # message("i: ", i, "/", length(ids))
+
+    # braid IDs of interest
+    bids <- strsplit(ids[i], ", ")[[1]]
+    # bids <- strsplit(transects[i, ]$braid_id, ", ")[[1]]
+
+    # get all linestrings that are apart of the braid_ids of interest
+
+    bids_check <- sapply(1:length(x$braid_id), function(y) {
+      any(
+        strsplit(x$braid_id[y], ", ")[[1]] %in% bids
+      )
+    })
+    
+    # out <- unique(c(
+    #             x[bids_check, ]$braid_id,
+    #             unlist(strsplit(x[bids_check, ]$braid_id, ", "))
+    #             )
+    #           )
+    out <- sort(
+              unique(c(
+                x[bids_check, ]$braid_id,
+                unlist(strsplit(x[bids_check, ]$braid_id, ", "))
+              )
+              )
+            )
+
+    # split_ids is TRUE, then the coimma seperated braid_ids are seperated into individual braid_ids
+    if(split_ids) {
+
+      out <- sort(
+        unique(unlist(strsplit(out, ", ")))
+        )
+      # out <- unique(unlist(strsplit(out, ", ")))
+    
+    }
+
+    out
+
+  })
+
+  # assign names
+  names(braid_groups) <- ids
+  
+  # remove uniques if desired
+  if(only_unique) {
+    braid_groups <- unique(unname(unlist(braid_groups)))
+  }
+  return(braid_groups)
+}
+
 #' # Convert Network --> Adjaceny list/topology map (undirected graph)
 #' # takes network object and creates a fastmap() topology map/adjacency list (undirected graph)
 #' network_to_adj <- function(network, start = NULL, verbose = TRUE) {
