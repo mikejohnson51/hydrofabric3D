@@ -298,13 +298,20 @@ cut_cross_sections2 = function(net,
   
   if(fix_braids) {
     
-    # fix the braided transects
-    ll <- fix_braid_transects(
-              net             = net, 
-              transect_lines  = ll,
-              braid_threshold = braid_threshold
-            )
+    # # fix the braided transects
+    # ll <- fix_braid_transects(
+    #           net             = net, 
+    #           transect_lines  = ll,
+    #           braid_threshold = braid_threshold
+    #         )
     
+    # fix the braided transects
+    ll <- fix_braid_transects_latest(
+                net             = net, 
+                transect_lines  = ll,
+                braid_threshold = braid_threshold
+              )
+              
   }
   
   # transform CRS back to input CRS
