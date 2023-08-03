@@ -4186,7 +4186,8 @@ seperate_braids <- function(
 #' }
 
 make_braids_gif <- function(network, 
-                            save_path  = NULL,       
+                            save_path  = NULL, 
+                            title = "",
                             height     = 8,
                             width      = 10,
                             gif_width  = 1800, 
@@ -4246,6 +4247,7 @@ make_braids_gif <- function(network,
       ggplot2::geom_sf(ggplot2::aes(color = braid_id)) +
       gghighlight::gghighlight(braid_id ==  ubraids[i]) + 
       ggplot2::labs(
+        title = title,
         caption = paste0(i, " / ", length(ubraids)),
         color = "",
         # caption = paste0("(", i, " / ", length(ubraids), ")")
@@ -4396,12 +4398,17 @@ make_adj_matrix <- function(graph) {
 #' @param verbose logical print status updates?
 #' @return data.frame containing the distance between pairs of network outlets.
 bfs_traversal2 <- function(
-    graph, 
+    network, 
     start     = NULL,
     reverse = FALSE,
     return_as = "vector",
     verbose   = FALSE
 ) {
+  # network = net3
+  # start     = starts$comid[1]
+  # reverse = FALSE
+  # return_as = "list"
+  # verbose   = T
   
   # lower case names
   names(network) <- tolower(names(network))
@@ -4439,34 +4446,34 @@ bfs_traversal2 <- function(
   
   # make an undirected graph
   undir <- make_undirected(dag)
-  # if a start COMID/Node is given
-  if(!is.null(start)) {
-    
-    # if start COMID is NOT found in the network, throw error
-    if(!start %in% graph$fromnode) { stop(start, " node not found in graph")}
-    
-    # if(verbose) { message("Starting braid detection at COMID: ", start)  }
-    
-    # find fromnode of comid to start cycle detection at
-    # start_node <- as.character(graph$fromnode[graph$comid == start])
-    start_node <- as.character(start)
-    
-  } else {
-    # If no "start" is given, pick a node to start at
-    if ("0" %in% graph$tonode) {
-      
-      # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
-      start_node <- as.character(graph$fromnode[graph$tonode == "0"])[1]
-      
-      # if(verbose) {message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])}
-      
-    } else {
-      
-      # if(verbose) { message("No 'tocomid' value equal to '0' found", 
-      # "\nStarting braid detection at COMID: ", graph$comid[graph$fromnode == as.character(graph$fromnode)[1]] ) }
-      start_node <- as.character(graph$fromnode)[1]
-    }
-  }
+  # # if a start COMID/Node is given
+  # if(!is.null(start)) {
+  #   
+  #   # if start COMID is NOT found in the network, throw error
+  #   if(!start %in% dag$fromnode) { stop(start, " node not found in graph")}
+  #   
+  #   # if(verbose) { message("Starting braid detection at COMID: ", start)  }
+  #   
+  #   # find fromnode of comid to start cycle detection at
+  #   # start_node <- as.character(graph$fromnode[graph$comid == start])
+  #   start_node <- as.character(start)
+  #   
+  # } else {
+  #   # If no "start" is given, pick a node to start at
+  #   if ("0" %in% dag$tonode) {
+  #     
+  #     # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
+  #     start_node <- as.character(dag$fromnode[graph$tonode == "0"])[1]
+  #     
+  #     # if(verbose) {message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])}
+  #     
+  #   } else {
+  #     
+  #     # if(verbose) { message("No 'tocomid' value equal to '0' found", 
+  #     # "\nStarting braid detection at COMID: ", graph$comid[graph$fromnode == as.character(graph$fromnode)[1]] ) }
+  #     start_node <- as.character(graph$fromnode)[1]
+  #   }
+  # }
   
   # if(verbose) {
   #   message("Starting braid detection at node: ", start_node)
@@ -4474,22 +4481,22 @@ bfs_traversal2 <- function(
   
   # make a topology hashmap to use in DFS 
   topo_map <- make_topo_map(
-    from_nodes = graph$fromnode,
-    to_nodes   = graph$tonode
+    from_nodes = undir$fromnode,
+    to_nodes   = undir$tonode
     # from_nodes = graph$tonode,
     # to_nodes   = graph$fromnode
   )
   
-  root <- as.character(graph[graph$tocomid == "0", ]$fromnode)
-
+  # root <- as.character(undir[undir$tocomid == "0", ]$fromnode)
+  root <- as.character(start_node)
   # keep track of visited nodes
   marked <- fastmap::fastmap()
   
   # set all marked values to FALSE
   marked$mset(.list = stats::setNames(
-    lapply(1:length(unique(c(graph$fromnode, graph$tonode))), 
+    lapply(1:length(unique(c(undir$fromnode, undir$tonode))), 
            function(i){ FALSE }), 
-    unique(c(graph$fromnode, graph$tonode))
+    unique(c(undir$fromnode, undir$tonode))
   )
   )
   
@@ -4640,17 +4647,45 @@ bfs_traversal2 <- function(
     message("=============================")
   }
   
+  # lengths(res)
+  # lvls <- res
+  # out_df <- data.frame(
+  #   fromnode = Reduce(c, res),
+  #   level    = rep(names(res), lengths(res))
+  #   )
+  # comid_map %>% 
+  #   dplyr::bind_rows(
+  #     lapply(1:length(res[-length(res)]), function(i) {
+  #       data.frame(
+  #         fromnode = res[[i]],
+  #         level    = as.numeric(names(res)[[i]])
+  #       )
+  #     })
+  #   )
+  #   dplyr::filter(fromnode %in% unique(Reduce(c, res))) 
   
   if(return_as == "dataframe") {
     
-    res <-  dplyr::bind_rows(
-      lapply(1:length(res), function(i) {
-        data.frame(
-          fromnode = res[[i]],
-          level    = as.numeric(names(res)[[i]])
+    res <- data.frame(
+      fromnode = as.character(Reduce(c, res)),
+      level    = rep(names(res), lengths(res))
+    ) %>% 
+      dplyr::left_join(
+        dplyr::mutate(
+          comid_map,
+          fromnode = as.character(fromnode)
+          ),
+        by = "fromnode"
         )
-      })
-    )
+    
+    # res <-  dplyr::bind_rows(
+    #   lapply(1:length(res), function(i) {
+    #     data.frame(
+    #       fromnode = res[[i]],
+    #       level    = as.numeric(names(res)[[i]])
+    #     )
+    #   })
+    # )
     
   } else if (return_as == "vector") {
     

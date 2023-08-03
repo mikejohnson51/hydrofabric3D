@@ -35,12 +35,7 @@ cut_transect = function(edge, width){
 #' @export
 
 get_transects = function(edges, line, bf_width){
-  # get_transects(edges, line, cs_widths[j])
-  # edges <- edges[[1]]
-  # line <- line[[1]]
-  # bf_width
-  
-  # bf_width = cs_widths[j]
+
   if(length(bf_width) != length(edges)){
     bf_width = rep(bf_width[1], length(edges))
   }
@@ -48,19 +43,155 @@ get_transects = function(edges, line, bf_width){
   transects <- geos_empty()
   
   for(i in 1:length(edges)){
-    
+
+    # message("TRANSECT: ", i)
     tran = cut_transect(edges[i], bf_width[i])
     
+  
     # If a MULTIPOINT, then it crosses more the once
     if(geos_type(geos_intersection(tran, line)) == "point") {
+      # message("intersect IS point ")
       # Ensure that there are no intersections with previously computed cross sections
       if (!any(geos_intersects(tran, transects))) {
+        # message("----> KEEPING TRANSECT: ", i)
         transects <-  vec_c(transects, tran)
-      }
-    }
+      } 
+
+    } 
   }
 
   transects[!geos_is_empty(transects)]
+  
+}
+
+#' Generate Multiple cross section along a linestring
+#' @param edges data.frame of LINESTRINGs (pieces of line)
+#' @param line original line element
+#' @param bf_width Bankfull Width (length of cross section)
+#' @return GEOS object
+#' @export
+get_transects2 = function(edges, line, bf_width) {
+  
+  # validate "bf_wdith" input
+  if(length(bf_width) != length(edges)){
+    bf_width = rep(bf_width[1], length(edges))
+  }
+  
+  # initialize empty geos geometry
+  transects <- geos::geos_empty()
+
+  # iterate through edges and create a transect line at each edge on the 'line', and keep only transect lines that do NOT intersect w/ previously computed transect lines
+  for(i in 1:length(edges)){
+
+    # message("TRANSECT: ", i)
+    tran = cut_transect(edges[i], bf_width[i])
+
+    # Ensure that there are no intersections with previously computed cross sections
+    if (!any(geos::geos_intersects(tran, transects))) {
+      transects <-  vctrs::vec_c(transects, tran)
+    }
+  }
+  
+  # Drop transects that cross 'line' more than once (geos_intersection appears as a MULTIPOINT)
+  transects <- drop_multicrossings(transects, line)
+  
+  return(transects[!geos::geos_is_empty(transects)])
+  
+  # if(length(bf_width) != length(edges)){
+  #   bf_width = rep(bf_width[1], length(edges))
+  # }
+  # 
+  # transects <- geos::geos_empty()
+  # 
+  # for(i in 1:length(edges)){
+  #   # message("TRANSECT: ", i)
+  #   tran <- cut_transect(edges[i], bf_width[i])
+  #   transects <-  vctrs::vec_c(transects, tran)
+  # }
+  # 
+  # return(transects[!geos::geos_is_empty(transects)])
+}
+
+# Remove transect lines in 'transects' for a specific linesegment that cross the linesegment MORE THAN ONCE
+# - More efficient checking of all the transect lines on a given linestring,
+# - Removes some of the extraneous calls to "geos_intersection" and "geos_intersects"
+drop_multicrossings <- function(transects, line) {
+
+  # check for multipoint intersections with the primary line segement, 
+  # remove transects that cut through more than once ("multipoints")
+  # index and keep only the transects that have a "point" intersections, and NOT the "multipoint" intersections
+  transects <- transects[geos::geos_type(
+                    geos::geos_intersection(
+                      transects,
+                      line
+                    )
+                  ) == "point"]
+  
+  return(transects)
+  
+}
+
+# Check transect lines for double crosses and intersections with other transects in the set of transects
+# - More efficient checking of all the transect lines on a given linestring,
+# - Removes some of the extraneous calls to "geos_intersection" and "geos_intersects"
+check_intersects <- function(transects, line) {
+
+  # reverse the order of the transects, to keep starting from the end of the vector
+  transects <- rev(transects)
+  
+  # check for multipoint intersections with the primary line segement, 
+  # remove transects that cut through more than once ("multipoints")
+  # index and keep only the transects that have a "point" intersections, and NOT the "multipoint" intersections
+  transects <- transects[geos::geos_type(
+                            geos::geos_intersection(
+                              transects,
+                              line
+                            )
+                          ) == "point"]
+  
+  # empty geometry
+  to_keep <- geos::geos_empty()
+  
+  # while there is more than one geometry left in the 'transects_rev' geos geometry:
+  #  - each iteration we take the transect at the end of the list which is also the most upstream line,
+  #  - we stash this line because we are going to add it to our 'to_keep' geometry vector during each iteration
+  #  - We then do the intersection between our current transect (most upstream transect left in the geos vector)
+  #     and the rest of the geometries in the vector. We apply a "!" to the results of geos_intersects() so that we are getting a boolean 
+  #     that is TRUE for ALL the geometries downstream that do NOT intersect with our current most upstream transect,
+  # - we then set transects_rev equal to all the transects that are NOT intersecting our current most upstream transect (i.e. dropping the intersections we have so far)
+  # - we then add our "stash" geometry (most upstream transect we stashed at the beginning of each iteration), to the "to_keep" geometry vector
+  while (length(transects) > 0) {
+    #   
+    # message("length(xx_rev): ", length(transects))
+    # message("length(to_keep): ", length(to_keep))
+    
+    # stash current most upstream transect to keep at end of iteration
+    stash <- transects[length(transects)]
+    
+    # compare current most upstream transect (i.e. geometry that is at the end of our "transects_rev" vector) 
+    # to the other downstream transects, and then drop any geometries that intersect with our current transect at the end of the list
+    # this step DROPS THE INTERSECTING DOWNSTREAM TRANSECTS, removing them from future (unneccessary) checks 
+    transects <- transects[-length(transects)][
+      !geos::geos_intersects(
+        transects[length(transects)],
+        transects[-length(transects)]
+      )
+    ]
+    
+    # add "stash" to the 'to_keep' vector
+    to_keep <-  vctrs::vec_c(to_keep, stash)
+    
+    # message("=============")
+    
+  }
+  
+  # drop empty geometries in the vector
+  to_keep <- to_keep[!geos::geos_is_empty(to_keep)]
+  
+  # # reverse 'to_keep' back to original ordering
+  # to_keep <- rev(to_keep)
+  
+  return(to_keep)
   
 }
 
@@ -181,16 +312,17 @@ cut_cross_sections2 = function(net,
                                    braid_threshold = NULL,
                                    add = FALSE
                                    ){
+  
   # net       = net3
   # id        = "comid"
   # cs_widths = pmax(50, net3$bf_width * 7)
-  # num       = 5
+  # num       = 10
   # add       = TRUE
   # smooth = TRUE
   # densify = 2
   # rm_self_intersect = TRUE
   # add = TRUE
-  
+
   # keep track of the CRS of the input to retransform return 
   start_crs <- sf::st_crs(net, parameters = T)$epsg
   
@@ -224,7 +356,7 @@ cut_cross_sections2 = function(net,
   
   message("Cutting")
   for(j in 1:nrow(net)){
-    
+    message("==== JJJJ: ", j, " =====")
     line <- as_geos_geometry(net[j,])
     
     vertices <- wk_vertices(line)
@@ -245,7 +377,11 @@ cut_cross_sections2 = function(net,
         edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
       }
     }
-    
+    # tmp <- get_transects(edges, line, cs_widths[j])
+    # if(is.null(tmp)){
+    #   break
+    # }
+    # ll[[j]] = tmp
     ll[[j]] = get_transects(edges, line, cs_widths[j])
   }
   
@@ -323,6 +459,207 @@ cut_cross_sections2 = function(net,
   
 }
 
+cut_cross_sections3 = function(net, 
+                               id = NULL,
+                               cs_widths = 100, 
+                               num = 10,
+                               smooth = TRUE,
+                               densify = 2,
+                               rm_self_intersect = TRUE,
+                               fix_braids = TRUE,
+                               braid_threshold = NULL,
+                               add = FALSE,
+                               use_original = FALSE
+){
+  
+  # net       = net3
+  # id        = "comid"
+  # cs_widths = pmax(50, net$bf_width * 7)
+  # num       = 10
+  # fix_braids = FALSE
+  # add       = TRUE
+  # smooth = TRUE
+  # densify = 2
+  # rm_self_intersect = TRUE
+  # use_original = FALSE
+  
+  # net       = net3
+  # id        = "comid"
+  # cs_widths = pmax(50, net3$bf_width * 7)
+  # num       = 5
+  # add       = TRUE
+  # smooth = TRUE
+  # densify = 2
+  # rm_self_intersect = TRUE
+  # add = TRUE
+  
+  # keep track of the CRS of the input to retransform return 
+  start_crs <- sf::st_crs(net, parameters = T)$epsg
+  
+  # check if net CRS is 5070, if not, transform it to 5070
+  if(start_crs != 5070) {
+    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
+    message("Transforming CRS to EPSG: 5070")
+    net <- sf::st_transform(net, 5070) 
+  }
+  
+  if(smooth){ 
+    message("Smoothing")
+    net = smoothr::smooth(net, "ksmooth")
+    # net = smoothr::smooth(net, "spline") 
+  }
+  
+  if(!is.null(densify)){ 
+    message("Densifying")
+    net = smoothr::densify(net, densify) 
+  }
+  
+  ll = list()
+  
+  if(length(cs_widths) != nrow(net)){
+    cs_widths = rep(cs_widths[1], nrow(net))
+  }
+  
+  if(length(num) != nrow(net)){
+    num = pmax(3, rep(num[1], nrow(net)))
+  }
+  
+  message("Cutting")
+
+
+  # system.time({
+  
+   # iterate through each linestring in "net" and generate transect lines along each line 
+  for(j in 1:nrow(net)){
+  # for(j in 1:30){
+    # message("==== JJJJ: ", j, " =====")
+    
+    # convert sf line to geos_geometry
+    line <- geos::as_geos_geometry(net[j,])
+    
+    # vertices of line
+    vertices <- wk::wk_vertices(line)
+    
+    # create evenly spaced linestring geometries along line of interest
+    edges <- geos::as_geos_geometry(
+      wk::wk_linestring(
+        vertices[c(1, rep(seq_along(vertices)[-c(1, length(vertices))], each = 2), length(vertices))],
+        feature_id = rep(seq_len(length(vertices) - 1), each = 2)
+      )
+    )
+    
+    # keep all lines except first and last edges
+    edges = edges[-c(1, length(edges))]
+    
+    # create a sequence of edges along 'line'
+    if(!is.null(num)){
+      if(num[j] == 1){
+        edges = edges[as.integer(ceiling(length(edges)/ 2))]
+      } else {
+        edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
+      }
+    }
+
+    # # # generate transect lines for 'line'
+    # tlines <- get_transects2(edges, line, cs_widths[j])
+    # if(is.null(tlines)) {
+    #   message("STOPPING BC MULTIPOINT ", j)
+    #   break
+    # }
+    
+    if(!use_original) {
+      
+      # cut transect lines at each 'edge' generated along our line of interest
+      ll[[j]] = get_transects2(edges, line, cs_widths[j])
+    
+      } else {
+      
+      # cut transect lines at each 'edge' generated along our line of interest
+      ll[[j]] = get_transects(edges, line, cs_widths[j])
+    
+      }
+    # cut transect lines at each 'edge' generated along our line of interest
+    # ll[[j]] = get_transects2(edges, line, cs_widths[j])
+    # ll[[j]] = tlines
+    # ll[[j]] = get_transects(edges, line, cs_widths[j])
+    # ll[[j]] = check_intersects(get_transects2(edges, line, cs_widths[j]), line)
+  }
+  # })
+  
+  # geos::geos_intersects_matrix(tlines, line)
+  ids_length = lengths(ll)
+  ll = st_as_sf(Reduce(c,ll))
+  
+  if(nrow(ll) == 0){
+    return(NULL)
+  }
+  
+  message("Formating")
+  
+  # add id column if provided as an input
+  if(!is.null(id)){
+    ll$hy_id = rep(net[[id]], times = ids_length)
+  } else {
+    ll$hy_id = rep(1:nrow(net), times = ids_length)
+  }
+  
+  # add back cross sections width column
+  ll$cs_widths = rep(cs_widths, times = ids_length)
+  
+  # remove self intersecting transects or not
+  if(rm_self_intersect){
+    ll <- 
+      ll[lengths(st_intersects(ll)) == 1, ] %>% 
+      group_by(hy_id) %>% 
+      mutate(cs_id = 1:n()) %>% 
+      ungroup() %>% 
+      mutate(lengthm = as.numeric(st_length(.)))
+  } else {
+    ll <- 
+      ll %>% 
+      group_by(hy_id) %>% 
+      mutate(cs_id = 1:n()) %>% 
+      ungroup() %>% 
+      mutate(lengthm = as.numeric(st_length(.)))
+  }
+  
+  # if original columns of data should be added to transects dataset
+  if(add) {
+    ll <-
+      dplyr::left_join(
+        ll,
+        sf::st_drop_geometry(net),
+        by = c("hy_id" = id)
+        # by = c("hy_id" = "comid")
+      )
+  }
+  
+  if(fix_braids) {
+    
+    # # fix the braided transects
+    # ll <- fix_braid_transects(
+    #           net             = net, 
+    #           transect_lines  = ll,
+    #           braid_threshold = braid_threshold
+    #         )
+    
+    # fix the braided transects
+    ll <- fix_braid_transects_latest2(
+      net             = net,
+      transect_lines  = ll,
+      braid_threshold = braid_threshold
+    )
+  }
+  
+  # transform CRS back to input CRS
+  if(start_crs != 5070) {
+    message("Transforming CRS back to EPSG: ", start_crs)
+    ll <- sf::st_transform(ll, start_crs)
+  }
+  
+  return(ll)
+  
+}
 #' Get Points across transects with elevation values
 #' @param cs Hydrographic LINESTRING Network
 #' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
@@ -447,7 +784,70 @@ classify_points = function(cs_pts){
     select(hy_id, cs_id, pt_id, Z, relative_distance, cs_widths, class)
   
 }
+# transects <- geos_empty()
+# # xxx <- get_transects2(edges, line, cs_widths[j])
+# xx_org <- get_transects(edges, line, cs_widths[j])
+# xx <- get_transects2(edges, line, cs_widths[j])
+# xx_rev <- rev(xx)
+# keeps = 0
+# 
+# # i = 1
+# # 
+# # i = length(xx_rev)
+# 
+# to_keep <- geos::geos_empty()
+# plot(xx_org)
+# plot(to_keep)
 
+# xx_rev[length(xx_rev)]
+# xx_rev[-length(xx_rev)]
+# length(xx_rev)
+
+# while (length(xx_rev) > 0) {
+#   
+#   message("length(xx_rev): ", length(xx_rev))
+#   message("length(to_keep): ", length(to_keep))
+#   stash <- xx_rev[length(xx_rev)]
+#   
+#   # geos::geos_intersects(
+#   #   xx_rev[length(xx_rev)], 
+#   #   xx_rev[-length(xx_rev)]
+#   # )
+#   xx_rev <- xx_rev[-length(xx_rev)][
+#     !geos::geos_intersects(
+#       xx_rev[length(xx_rev)], 
+#       xx_rev[-length(xx_rev)]
+#     )
+#   ]
+#   
+#   to_keep <-  vctrs::vec_c(to_keep, stash)
+#   
+#   message("=============")
+#   
+# }
+# stash <- xx_rev[length(xx_rev)]
+# 
+# geos::geos_intersects(
+#   xx_rev[length(xx_rev)], 
+#   xx_rev[-length(xx_rev)]
+# )
+# xx_rev <- xx_rev[-length(xx_rev)][
+#   !geos::geos_intersects(
+#     xx_rev[length(xx_rev)], 
+#     xx_rev[-length(xx_rev)]
+#   )
+# ]
+# 
+# to_keep <-  vctrs::vec_c(to_keep, stash)
+# 
+# 
+# vctrs::vec_c()
+# transects <-  vec_c(transects, tran)
+# to_keep
+# length(tlines_rev)
+# 
+# 
+# plot(tlines)
 #############################################################################
 ################################# SCRAPS ####################################
 #############################################################################
