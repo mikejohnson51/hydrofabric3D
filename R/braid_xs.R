@@ -15,10 +15,799 @@ library(tidyr)
 
 source("R/transects.R")
 source("R/braids.R")
+source("R/fix_transects.R")
 
 # # *********************************************
 # # ---- Test data for fix_braid_transects() ----
 # # *********************************************
+ref_net <- sf::read_sf("/Users/anguswatters/Downloads/01_reference_features.gpkg", layer = "flowlines") 
+names(ref_net) <- tolower(names(ref_net))
+
+# ref_net$
+
+# terminal
+
+
+ref_net <- 
+  ref_net %>% 
+  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+starts <- c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774, 1974485, 1974615)
+# starts <- c(1853299)
+counts %>%
+  dplyr::filter(terminalpa %in% starts)
+# dplyr::summarise(tot = sum(nrows))
+
+net <- 
+  ref_net %>% 
+  dplyr::filter(terminalpa %in% starts)
+system.time({
+  transect_lines = cut_cross_sections3(
+    net       = net,
+    id        = "comid",
+    cs_widths = pmax(50, net$bf_width * 7),
+    num       = 10,
+    fix_braids = TRUE,
+    add       = TRUE,
+    use_original = T
+  )
+})
+braids <- find_braids_df(
+  network = net, 
+  add = T, 
+  nested  = T
+) %>% 
+  dplyr::filter(braid_id != "no_braid")
+mapview::mapview(transect_lines, color = "green") + mapview::mapview(braids, color = "red")  + net
+# find
+
+# ********************************************************
+# ---- TEST NUMBER OF CONNECTED COMPONENTS IN A GRAPH ----
+# ********************************************************
+ends <- unique(ref_net$terminalpa )
+# count up number of linestrings in each terminalpa set of lienstrings
+counts <- lapply(1:length(ends), function(i) {
+  # message(i, "/", length(ends))
+  data.frame(
+    terminalpa = ends[i],
+    nrows = nrow(dplyr::filter(ref_net, terminalpa == ends[i]))
+  )
+}) %>% 
+  dplyr::bind_rows()
+
+starts <- c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774)
+starts <- c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774, 1974485, 1974615, 2040883)
+# starts <- c(1853299)
+counts %>% 
+  dplyr::filter(terminalpa %in% starts)
+  # dplyr::summarise(tot = sum(nrows))
+
+nets <- 
+  ref_net %>% 
+  dplyr::filter(terminalpa %in% starts)
+
+bs <- find_braids_df(nets, add = T, nested = F)
+bs$braid_id %>% unique()
+
+bbbbs <- bs %>% 
+  dplyr::filter(braid_id != "no_braid")
+nobraids <- bs %>% 
+  dplyr::filter(braid_id == "no_braid")
+
+mapview::mapview(nobraids) + mapview::mapview(bbbbs, color= "red")
+nets
+seperate_nets <- find_connected_components(ref_net, add = TRUE)
+
+seperate_nets$component_id %>% unique() %>% length()
+
+ggplot2::ggplot() +
+  ggplot2::geom_sf(data = bs, ggplot2::aes(color = braid_id))
+find_braids(
+  network = dplyr::filter(seperate_nets, component_id == "1"), 
+  return_as = "list"
+  )
+
+find_braids(
+  network = dplyr::filter(seperate_nets, component_id == "2"), 
+  return_as = "list"
+)
+
+find_braids(
+  network = dplyr::filter(seperate_nets, component_id == "3"), 
+  return_as = "list"
+)
+mapview::mapview(nets)
+
+
+#' Count the number of distinct networks in NHDPlus dataframe
+#' Determine the number of distinct (unconnected) networks there are in a dataframe or sf object of flowlines. Requires fromnode and tonode columns.
+#' Used internally within 'find_braids()' function
+#' @param network data.frame or sf object with comid, tonode, fromnode, and divergence attributes. If a "tocomid" column exists, it is recommended to remove this beforehand
+#' @return logical, number of distinct contiguious networks in 'network'
+count_networks <- function(
+    network
+) {
+  
+  # lower case names
+  names(network) <- tolower(names(network))
+  
+  # get to comids
+  network <- 
+    nhdplusTools::get_tocomid(
+      dplyr::select(network, 
+                    comid, fromnode, tonode, divergence),
+      return_dendritic = TRUE,
+      remove_coastal   = FALSE
+      )
+  
+  # sort network and get terminalID column
+  network <- nhdplusTools::get_sorted(
+                              network,
+                              split = TRUE
+                              )
+  
+  # count of unique terminal IDs
+  count <- length(unique(network$terminalID)) 
+  
+  
+  # # number of rows that have a tonode that is NOT found in the fromnode column (i.e. they lead out of network)
+  # count <-  nrow(
+  #             dplyr::filter(network,
+  #                           !tonode %in% fromnode
+  #                           )
+  #             )
+  return(count)
+
+}
+
+#' Add the terminal ID of for each flowline in NHDPlus dataframe
+#' Determine comid of the terminal flowline leading out of a basin. Requires fromnode and tonode columns.
+#' Used internally within 'find_braids()' function
+#' @param network data.frame or sf object with comid, tonode, fromnode, and divergence attributes. If a "tocomid" column exists, it is recommended to remove this beforehand
+#' @param add logical, whether to add the component_id to the original dataset. If TRUE (default) a terminalID column is added to original data, otherwise (FALSE) a vector of the unique terminalIDs is returned 
+#' @return data.frame, sf data.frame or numeric vector
+get_terminal_ids <- function(
+    network, 
+    add = TRUE
+) {
+  
+  # x <- network
+  # rm(x)
+  # network <- nets
+  
+  # lower case names
+  names(network) <- tolower(names(network))
+  
+  # get to comids
+  x <- 
+    nhdplusTools::get_tocomid(
+      dplyr::select(network, 
+                    comid, fromnode, tonode, divergence),
+      return_dendritic = TRUE,
+      remove_coastal   = FALSE
+    )
+  
+  # sort network and get terminalID column
+  x <- nhdplusTools::get_sorted(
+    x,
+    split = TRUE
+  )
+  
+  # if add is TRUE, return the original dataframe with terminal ID added
+  if (add) {
+    
+    # join x back with original 'network' data, adding the terminalID column
+    x <- dplyr::left_join(
+            network,
+            dplyr::select(
+              sf::st_drop_geometry(x), 
+              comid, terminalID
+              ),
+            by = "comid"
+            )
+    
+    return(x)
+  } 
+  
+  # if add was NOT TRUE, then return the unique terminal IDs
+  term_ids <- unique(x$terminalID)
+
+  return(term_ids)
+  
+}
+
+#' Find the connected components in a NHDPlus flowlines Network
+#' Determine how many different, unconnected/seperate sets of flowlines are within a set of NHDPlus flowlines. 
+#' The input 'network' dataset must contain a comid, tonode, fromnode, and then (optionally) divergence and terminalpa attributes.
+#' Used internally within 'find_braids()' function to make sure each connected set of flowlines is addressed and braids are searched for in each seperated component.
+#' @param network data.frame or sf object with comid, tonode, fromnode, and (optionally) divergence and terminalpa attributes. If a "tocomid" column exists, it is recommended to remove this beforehand
+#' @param add logical, whether to add the component_id to the original dataset. If TRUE (default) the original dataset is returned with an additional component_id column, indicating the set of connected components each comid belongs too. If FALSE, a dataframe with the 
+#' @param verbose logical print status updates, if TRUE, messages will print. Default is FALSE.
+#' @return logical, If TRUE, atleast one braid was detected in network, FALSE if no braids were found
+#' @export
+#'
+#' @examples
+find_connected_components <- function(
+    network,
+    add     = TRUE,
+    verbose = FALSE
+) {
+  
+  # network = nets
+  # add = T
+  
+  # nets %>% 
+  #   dplyr::filter(!tonode %in% fromnode)
+  # network <- nets
+  # network <- dplyr::select(network, -tocomid)
+  # add = FALSE
+  
+  # initialize NULL dropped_col value to store dropped to comid column if necessary
+  dropped_col <- NULL
+  
+  # Store the original column order
+  col_order <- c("component_id", names(network))
+
+  # lower case names
+  names(network) <- tolower(names(network))
+  
+  # try and detect a "tocomid" like column, if its found in the network columns, remove that column
+  if (any(names(network) %in% c("tocomid", "toCOMID", "to_comid", "TOCOMID", "to_COMID", "to_Comid", "TO_COMID"))) {  
+
+    # name of the "tocomid" column in network that should be removed
+    drop_tocomid <- names(network)[names(network) %in% c("tocomid", "toCOMID", "to_comid", "TOCOMID", "to_COMID", "to_Comid", "TO_COMID")]
+    
+    # store the dropped tocomid column to add back later if needed
+    dropped_col <- sf::st_drop_geometry(network[, c("comid", drop_tocomid)])
+    # network[, c("comid", drop_tocomid), drop = T]
+    
+    # remove to comid type column if found
+    network <- network[, names(network) != drop_tocomid]
+    
+  }
+  
+  # create directed acyclic graph
+  graph <- create_dag(network)
+  
+  # # # get the fromnode associated with a given COMID 'start'
+  # start_nodes <- sapply(network_starts$comid, function(i) {comid_to_node(graph, i)})
+  # start_node <- comid_to_node(graph, start_nodes)
+  
+  # drop graph geometry
+  graph <- sf::st_drop_geometry(graph)
+  
+  # # stash comids and from IDs
+  comid_map <- dplyr::select(
+                      graph,
+                      comid,
+                      fromnode,
+                      tonode
+                    )
+  
+  # create artificial cycles from circuits in graph, doing this allows for 
+  # sections of river that form a circuit to be identified as a cycle and thus a braid
+  # Questionable at this point, other option is the code using single_cycles() function 
+  graph <- renode_circuits(graph, verbose = verbose)
+  
+  # make an undirected graph from DAG
+  graph <- make_undirected(graph)  
+  
+  # make hashmap for tonode/fromnode topology for traversing graph
+  topo_map <- make_topo_map(
+    from_nodes = graph$fromnode,
+    to_nodes   = graph$tonode
+  )
+  
+  # Depth first search function to use to find/delinate connected components of network object
+  dfs <- function(node, visit) {
+    
+    # message("VISITING node: ", node)
+    
+    # visit node
+    visit$set(node, TRUE)
+    
+    # get the neighbors of current node
+    neighbors <- topo_map$get(node)$to_node
+    
+    # message("---> Neighbors of node: ",  node, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
+    
+    # iterate through the neighbors of current node and run DFS on them if they have not been visited yet
+    for (i in neighbors) {
+      
+      # message(" - NEIGHBOR: ", i)
+      
+      # if neighbor i has NOT been visited
+      if (!visit$get(i)) {
+        
+        # message("!!!!!!!", i, " NOT VISISTED ---> RUN DFS !!!!!!!!!")
+        dfs(i, visit)
+        
+      }
+      
+      # message("NEIGHBOR: ", i)          
+      # message("===========================================")
+      # message("===========================================")
+    }
+  
+  }
+  
+  # keep track of visited nodes
+  visit <- fastmap::fastmap()
+  
+  # # set all marked values to FALSE
+  visit$mset(.list = stats::setNames(
+                        lapply(1:length(unique(c(graph$fromnode, graph$tonode))), function(i){ FALSE }),
+                        unique(c(graph$fromnode, graph$tonode)))
+                        )
+  
+  # initialize i pointer
+  i = 1
+  
+  # initialize count
+  count = 0
+  
+  # hashmap for output components
+  out <- fastmap::fastmap()
+  
+  # topo_map$as_list()[3]
+  # length(topo_map$as_list())
+  topo_map$get("929")
+  # while there are still values left in the visit and topo_map hashmap
+  while(visit$size() > 0 & topo_map$size() > 0) {
+  # while(visit$size() > 0 & length(start_nodes) > 0) {
+    
+    # node to kickoff DFS from, get the node at the end of the list
+    start_node <- names(
+                      topo_map$as_list()[
+                        length(topo_map$as_list())
+                        ]
+                      )
+    # start_node <- names(topo_map$as_list()[i])
+    
+    message("===========================================")
+    message("========== ITERATION: ", i, " =============")
+    message("========== start_node: ", start_node, " =============")
+    message("===========================================")
+
+    # run DFS from the 'start_node'
+    dfs(start_node, visit)
+    # dfs(start_nodes[[i]], visit)
+    
+    # extract the newly visited nodes
+    new_visits <- visit$as_list()
+    
+    # remove newly visited nodes
+    to_remove <- names(new_visits[new_visits == TRUE])
+    
+    # increment component count
+    count = count + 1
+    
+    # remove set of connected components
+    visit$remove(to_remove)
+    
+    topo_map$remove(to_remove)
+    
+    # store connectd component in out hashmap with the key being the connected component count number and 
+    # the value being the nodes in the connected component
+    out$set(as.character(count), to_remove)
+    
+    # increment i pointer
+    i = i + 1
+
+  }
+  
+  # resulting output
+  out <- out$as_list()
+
+  # ccreate dataframe of component number and node ID 
+  out <- dplyr::tibble(
+            component_id = rep(names(out), lengths(out)),
+            fromnode     = as.integer(Reduce(c, out))
+          )
+  
+  # join component ID back with original comid_map dataframe
+  res <- 
+    comid_map %>% 
+    dplyr::left_join(
+      out,
+      by = "fromnode"
+    )
+  
+  # out$fromnode %>% unique() %>% length()
+  # res$fromnode %>% unique()
+  
+  # if add is TRUE, add the component ID to the original 'network' input
+  if(add) {
+
+    res <- dplyr::left_join(
+              network,
+              dplyr::select(res, 
+                            comid, component_id
+                            ),
+              by = "comid"
+              )
+    # names(res2)
+    # if dropped_col is NOT NULL, then join the dropped call back with dataset
+    if (!is.null(dropped_col)) {
+  
+      res <- dplyr::left_join(res, 
+                               dropped_col,
+                               by = "comid"
+                               )
+      
+    }
+    
+    # reorder columns to have original order with component_id as the first column
+    res <- res[, col_order]
+    
+  # if add is FALSE, return dataframe with comid, fromnode, tnode, and component_id
+  } else {
+    
+    # join just the comid, fromnode, tonode, data from 'network' with the comid and component_id from 'res'
+    res <-  dplyr::left_join(
+                dplyr::select(
+                    sf::st_drop_geometry(network), 
+                    comid, fromnode, tonode
+                    ),
+                dplyr::select(res, 
+                              comid, component_id
+                              ),
+                by = "comid"
+                )
+    }
+  
+  return(res)
+  
+  # count_components <- function(topo, visit) {
+  #   count = 0
+  #   for(i in 1:length(topo$as_list())) {
+  #     node <- names(topo$as_list()[i])
+  #     message("============ ITERATION i: ", i, " =============")
+  #     message("============: ", node, " =============")
+  #     if (!visit$get(node)) {
+  #       message("INCREASING COUNT: ", count)
+  #       count = count + 1
+  #       dfs(node, visit)
+  #     }
+  #   }
+  #   return(count)
+  # }
+  # count_components(topo = topo_map, visit = visit)
+}
+
+
+nets %>% 
+  dplyr::mutate(terminalpa = as.character(terminalpa)) %>% 
+  ggplot2::ggplot() +
+  ggplot2::geom_sf(ggplot2::aes(color = terminalpa))
+
+# turn network into a directed graph
+dag <- create_dag(nets)
+x
+x = nets
+start     = NULL
+add       = TRUE
+drop_geom = FALSE
+reverse   = FALSE
+
+topo <-
+  x %>% 
+  dplyr::select(comid, fromnode, tonode, divergence) %>% 
+  get_tocomid(
+    return_dendritic = TRUE,
+    remove_coastal = FALSE, 
+    add = TRUE
+    )
+
+topo
+topo %>% make_node_topology()
+
+# make lower case names
+names(x) <- tolower(names(x))
+
+# if an "id" column exists, remove it
+if("id" %in% names(x)) {
+  # if(any(grepl("id", names(x)))) {
+  x <- dplyr::select(x, -id)
+}
+
+# if divergence column is given, make a dendritic network node topology
+if("divergence" %in% names(x)) {
+  dendritic = TRUE
+} else {
+  dendritic = FALSE
+}
+# x
+# x$divergxencec = 0
+# x <- nhdplusTools::make_standalone(x)
+
+# get dendritic network
+network <-  dplyr::select(
+  nhdplusTools::get_tocomid(
+    x,
+    # dplyr::select(x, comid, fromnode, tonode, hydroseq,
+    # streamleve, streamorde, streamcalc, divergence),
+    return_dendritic = dendritic,
+    # return_dendritic = TRUE,
+    add              = TRUE, 
+    remove_coastal   = FALSE
+  ),
+  -fromnode, -tonode
+)
+
+# if(flag) {
+#   x[x$comid %in% network[duplicated(network$comid), ]$comid, ]$divergence = 2
+#   network[duplicated(network$comid), ]$divergence <- 2
+# }
+
+# if NOT dendritic, remove duplicates and return node topology
+if(!dendritic) {
+  # message("NON DENDRITIC")
+  # remove duplicates
+  network <- network[!duplicated(network$comid), ]
+  
+  # make node topology
+  network <- nhdplusTools::make_node_topology(
+    network,
+    add = TRUE
+  )
+  
+} else {
+  
+  # message("DENDRITIC")
+  # get divergent tocomids
+  div <- nhdplusTools::get_tocomid(
+    x,
+    # dplyr::select(x, comid, fromnode, tonode, hydroseq,
+    # streamleve, streamorde, streamcalc, divergence),
+    return_dendritic = FALSE,
+    remove_coastal   = FALSE
+  )
+  
+  # divergences w/ unique fromids in x but don't in div
+  div <- div[div$tocomid %in% x$comid[x$divergence == 2], ]
+  
+  network <- nhdplusTools::make_node_topology(
+    network,
+    div,
+    add = TRUE
+  )
+  
+}
+
+# whether to add back original columns or cut them out
+if(!add) {
+  # message("NOT ADDING TO ORIGINAL DATA")
+  # only return relevent columns, no divergence is dendritic = FALSE
+  if(!dendritic) {
+    # message("NO DIV COLUMN")
+    network <- dplyr::select(network, comid, tocomid, fromnode, tonode)
+  } else {
+    # message("HAS DIV COLUMN")
+    network <- dplyr::select(network, comid, tocomid, fromnode, tonode, divergence)
+  }
+}
+
+# drop geometry
+if(drop_geom) {
+  # message("DROPPING GEOM")
+  # drop geometry
+  network <- sf::st_drop_geometry(network)
+}
+mapview::mapview(nets)
+# ********************************************************
+# ********************************************************
+# ********************************************************
+system.time({
+tnet = cut_cross_sections3(
+  net       = ref_net,
+  id        = "comid",
+  cs_widths = pmax(50, ref_net$bf_width * 7),
+  num       = 5,
+  fix_braids = TRUE,
+  add       = TRUE,
+  use_original = T
+)
+})
+# net <- 
+#   ref_net %>% 
+#   dplyr::filter(terminalpa == 1921053) 
+  # dplyr::filter(terminalpa == ends[i])
+
+# transects_nofix = cut_cross_sections3(
+#   net       = net,
+#   id        = "comid",
+#   cs_widths = pmax(50, net$bf_width * 7),
+#   num       = 10,
+#   fix_braids = F,
+#   add       = TRUE,
+#   use_original = T
+# )
+# net$terminalfl %>% unique()
+ends <- unique(ref_net$terminalpa )
+ends
+# i = 4
+
+counts <- lapply(1:length(ends), function(i) {
+
+  
+  
+  
+  # i = 1
+  message(i, "/", length(ends))
+
+  # net <-
+    data.frame(
+      terminalpa = ends[i],
+      nrows = ref_net %>%
+                dplyr::filter(terminalpa == ends[i]) %>% 
+                nrow()
+    )
+  
+  }) %>% 
+  dplyr::bind_rows()
+tlist = list()
+system.time({
+  # for (i in 1:length(ends)) {
+  # transects <- lapply(1:length(ends), function(i) {
+for (i in 1:length(ends)) {
+  
+  
+
+    # i = 1
+    message(i, "/", length(ends))
+    # net <- nhdplusTools::navigate_network(start = 719018, mode = "UT",  distance_km = 6)
+    # net <- 
+    #   net %>% 
+    #   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+    #   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+    # transect_lines = cut_cross_sections3(
+    #                     net          = net,
+    #                     id           = "comid",
+    #                     cs_widths    = pmax(50, net$bf_width * 7),
+    #                     num          = 5,
+    #                     fix_braids   = F,
+    #                     add          = TRUE,
+    #                     use_original = TRUE
+    #                   )
+    # plot(net$geometry)0
+     net <-
+       ref_net %>%
+       dplyr::filter(terminalpa == ends[i])
+     
+     if(nrow(net) <= 1) {
+       message("==== ONLY 1 row in net, SKIPPING ====")
+       next
+     }
+      # dplyr::filter(terminalpa == 1921053)
+    
+     # plot(net$geom)
+     # # mapview::mapview(tmp_net) +
+     # #   mapview::mapview(transects_fix_new, color = "red") +
+     # #   mapview::mapview(transects_nofix, color = "green")
+     # 
+     # system.time({
+       tnet = cut_cross_sections3(
+         net       = net,
+         id        = "comid",
+         cs_widths = pmax(50, net$bf_width * 7),
+         num       = 5,
+         fix_braids = TRUE,
+         add       = TRUE,
+         use_original = T
+       )
+     # })
+     # 
+     # transects_fix_new$geometry
+     # plot(transects_fix_new$geometry)
+     # system.time({
+       # transect_lines = cut_cross_sections3(
+       #   net       = net,
+       #   id        = "comid",
+       #   cs_widths = pmax(50, net$bf_width * 7),
+       #   num       = 5,
+       #   fix_braids = T,
+       #   add       = TRUE,
+       #   use_original = T
+       # )
+  
+       # })
+     # plot(net$geometry)
+     # plot(transect_lines$geometry, col = "red", add = T)
+     # mapview::mapview(net) +
+     #   mapview::mapview(transects_fix_new, color = "red") +
+     #   mapview::mapview(transect_lines, color = "green")
+       
+       tlist[[i]] <- tnet
+    # })
+    }
+  })
+
+mapview::mapview(net) + mapview::mapview(starts, color  = "red")
+counts %>% unlist() %>% sum()
+nrow(net)
+starts 
+
+starts <- 
+  net %>% 
+  dplyr::filter(terminalfl == 1)
+mapview::mapview(net) + mapview::mapview(starts, color  = "red")
+net %>% names()
+net %>% 
+  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>%
+  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+sf::st_layers("/Users/anguswatters/Downloads/01_reference_features.gpkg")
+net_tbl <- sf::read_sf("/Users/anguswatters/Downloads/uniform_01.gpkg", layer = "network") %>% 
+  dplyr::filter(type == "network")
+
+net <- sf::read_sf("/Users/anguswatters/Downloads/uniform_01.gpkg", layer = "flowpaths") 
+
+net <- 
+  net %>%
+  dplyr::mutate(comid = stringr::str_extract(member_comid, "^[^,]+")) %>% 
+  dplyr::relocate(comid) %>% 
+  nhdplusTools::align_nhdplus_names() %>% 
+  dplyr::rename(tot_drainage_areasqkm = totdasqkm)
+
+net$comid %>% unique() %>% length()
+mapview::mapview(net[1, ])
+
+test_gpkg$type %>% unique()
+test_gpkg
+sf::st_layers("/Users/anguswatters/Downloads/uniform_01.gpkg")
+
+# net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT",  distance_km = 500)
+net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 100)
+# net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT",  distance_km = 50)
+net3 <- 
+  net2 %>%
+  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>%
+  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+system.time({
+  transects_fix = cut_cross_sections2(
+    net       = net3,
+    id        = "comid",
+    cs_widths = pmax(50, net3$bf_width * 7),
+    num       = 5,
+    fix_braids = TRUE,
+    add       = TRUE
+  )
+  
+})
+
+system.time({
+  transects_fix_new = cut_cross_sections3(
+    net       = net3,
+    id        = "comid",
+    cs_widths = pmax(50, net3$bf_width * 7),
+    num       = 10,
+    fix_braids = TRUE,
+    add       = TRUE,
+    use_original = FALSE
+  )
+})
+
+# big_net <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 500)
+big_net <- nhdplusTools::navigate_network(start = 3555480, mode = "UT", distance_km = 400)
+# net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT",  distance_km = 50)
+big_net2 <- 
+  big_net %>%
+  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode) %>%
+  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+
+
+system.time({
+  transects_fix_new2 = cut_cross_sections3(
+    net       = big_net2,
+    id        = "comid",
+    cs_widths = pmax(50, big_net2$bf_width * 7),
+    num       = 10,
+    fix_braids = TRUE,
+    add       = TRUE,
+    use_original = F
+  )
+})
+
 # # ggplot theme 
 # thm <- 
 #   ggplot2::theme_bw() +
