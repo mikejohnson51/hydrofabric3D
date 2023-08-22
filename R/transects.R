@@ -508,18 +508,27 @@ cut_cross_sections2 = function(net,
 }
 
 cut_cross_sections3 = function(net, 
-                               id = NULL,
-                               cs_widths = 100, 
-                               num = 10,
-                               smooth = TRUE,
-                               densify = 2,
+                               id                = NULL,
+                               cs_widths         = 100, 
+                               num               = 10,
+                               smooth            = TRUE,
+                               densify           = 2,
                                rm_self_intersect = TRUE,
-                               fix_braids = TRUE,
-                               braid_threshold = NULL,
-                               add = FALSE,
-                               use_original = FALSE
-){
+                               fix_braids        = TRUE,
+                               terminal_id       = NULL,
+                               braid_threshold   = NULL,
+                               add               = FALSE,
+                               use_original      = FALSE
+                               ){
   
+  # net       = net
+  # id        = "comid"
+  # cs_widths = pmax(50, net$bf_width * 7)
+  # num       = 6
+  # densify = 3
+  # fix_braids = TRUE
+  # add       = TRUE
+  # use_original = T
   # net       = ref_net
   # id        = "comid"
   # cs_widths = pmax(50, ref_net$bf_width * 7)
@@ -586,7 +595,7 @@ cut_cross_sections3 = function(net,
   # Densify network flowlines, adds more points to each linestring
   if(!is.null(densify)){ 
     message("Densifying")
-    net = smoothr::densify(net, densify) 
+    net = smoothr::densify(net, 2) 
   }
   
   end_time <- Sys.time()
@@ -729,6 +738,7 @@ cut_cross_sections3 = function(net,
       )
   }
   
+  # if fix_braids is set to TRUE, then fix the braided transect lines
   if(fix_braids) {
     
     # # fix the braided transects
@@ -741,9 +751,10 @@ cut_cross_sections3 = function(net,
     start_time <- Sys.time()
     
     # fix the braided transects
-    ll <- fix_braid_transects2(
+    ll <- fix_braid_transects(
                     net             = net,
                     transect_lines  = ll,
+                    terminal_id     = terminal_id,
                     braid_threshold = braid_threshold
                   )
     

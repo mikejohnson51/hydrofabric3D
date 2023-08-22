@@ -1,16 +1,15 @@
-#' Find braids in a network
+#' Find braids and add to a dataframe/sf dataframe
 #'
 #' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
 #'
 #' @param network The network object representing the river network.
-#' @param start Optional argument specifying the starting point for braid detection.
-#' @param return_as Specifies the format of the output. Options are "list" (default) or "dataframe".
+#' @param terminal_id character, column name containing a unique identifier, delineating seperate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network' 
 #' @param add Logical indicating whether to add braid information to the original network data.
 #' @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)
 #' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
 #'
-#' @return Either a list of braids detected in the network. Each element of the list represents a braid and contains the COMIDs  that form the braid. Or a dataframe of COMIDs associated with there respective braid_id(s)
-#'
+#' @return dataframe or sf dataframe with added braid_id
+#' 
 #' @examples
 #' net <- nhdplusTools::navigate_network(
 #'  start       = 101,
@@ -19,486 +18,40 @@
 #'  ) %>%
 #' dplyr::select( comid, divergence, totdasqkm, fromnode, tonode)
 #'
-#' # get a list of COMIDs in each braid of network
-#' braid_list = find_braids(network = net, return_as = "list")
+#' # get a dataframe of COMIDs and braid IDs
+#' braids <- find_braids(network = net, add = FALSE)
 #'
 #' # add braid_id column to original dataset
 #' braid_df = find_braids(network   = net,
-#'                        return_as = "dataframe",
+#'                        add       = TRUE,
 #'                        nested    = TRUE,
-#'                        add       = TRUE
 #'                        )
 #'
 #' # returnal original data with each braid_id represented
 #' # by its individual COMIDs (may contain duplicate COMIDs)
-#' braid_df = find_braids(network   = net,
-#'                        return_as = "dataframe",
-#'                        nested    = FALSE,
-#'                        add       = TRUE
+#' nested_braids = find_braids(network   = net,
+#'                        add       = TRUE,
+#'                        nested    = FALSE
 #'                        )
-#' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
-#' @importFrom sf st_drop_geometry
-#' @importFrom stats setNames
-#' @importFrom magrittr %>%
-#'
-#' @export
-find_braids <- function(
-    network,
-    start        = NULL,
-    return_as    = "list",
-    add          = FALSE,
-    nested       = TRUE,
-    verbose      = FALSE
-) {
-
-  # check valid return_as input
-  if(!return_as %in% c("list", "dataframe")) {
-    stop("Invalid 'return_as' argument '",
-         return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
-  }
-
-  # # check relationship argument is valid
-  # if(return_as == "dataframe") {
-  #   if(!relationship %in% c("one-to-one", "one-to-many")) {
-  #     stop("Invalid 'relationship' argument '",
-  #          relationship, "'\n'relationship' must be: 'one-to-one' or 'one-to-many'")
-  #   }
-  # }
-
-  # lower case names
-  names(network) <- tolower(names(network))
-
-  # turn network into a directed graph
-  dag <- create_dag(network)
-
-  # get the fromnode associated with a given COMID 'start'
-  start_node <- comid_to_node(dag, start)
-
-  if(verbose) {
-    message("Starting braid detection at ",
-            ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
-  }
-
-  # drop graph geometry
-  dag <- sf::st_drop_geometry(dag)
-  # graph <- sf::st_drop_geometry(graph)
-
-  # stash comids and from IDs
-  comid_map <- dplyr::select(
-    # graph,
-    dag,
-    comid,
-    fromnode,
-    tonode
-  )
-
-  # create artificial cycles from circuits in graph, doing this allows for
-  # sections of river that form a circuit to be identfied as a cycle and thus a braid
-  # Questionable at this point, other option is the code below that uses
-  # single_cycles() function (COMMENTED OUT CODE BELOW)
-  regraph <- renode_circuits(dag, verbose = FALSE)
-
-  # ##### - GET_SINGLE_CYCLES CODE -
-  # # check for single cycles (2 nodes A,B that have unique edges)
-  # # (i.e. 2 comids w/ exact same fromnodes/tonodes)
-  # single_cycles <- get_single_cycles(dag)
-  # # if cycles were found
-  # if(!is.null(cycles)) {
-  #   # match each fromnode with original COMIDs
-  #   braids <- sapply(1:length(cycles), function(k) {
-  #     # get COMIDs of each braid
-  #     comid_map[comid_map$fromnode %in% cycles[[k]], ]$comid
-  #   })
-  #   # if single cycles are found in network
-  #   if(!is.null(single_cycles)) {
-  #     braids <- c(braids, unname(single_cycles))
-  #   }
-  #   # if NO cycles were found
-  # } else {
-  #   # if single cycles are found in network
-  #   if(!is.null(single_cycles)) {
-  #     braids <- c(unname(single_cycles))
-  #   } else {
-  #     message("No braids found, returning NULL")
-  #     return(NULL)
-  #   }
-  # }
-
-  # make an undirected graph
-  undir <- make_undirected(regraph)
-
-  # find cycles in undirected graph (proxy for braids)
-  cycles <- find_cycles(
-    graph     = undir,
-    start     = start_node,
-    return_as = "list",
-    edge      = FALSE,
-    wide      = TRUE,
-    verbose   = verbose
-  )
-
-  # if(cycles$size() == 0 & is.null(single_braids)) {
-  if(is.null(cycles)) {
-    # message("No cycles found, returning NULL")
-    return(NULL)
-  }
-
-  # remove added nodes from renode_circuits()
-  braids <- lapply(cycles, function(i) {
-    i[i %in% comid_map$fromnode]
-  })
-
-  # # match fromnodes from comid_map to nodes identified in each cycle
-  braids <- lapply(1:length(braids), function(k) {
-    # get COMIDs of each braid
-    comid_map[comid_map$fromnode %in% braids[[k]], ] %>%
-      dplyr::filter(tonode %in% braids[[k]]) %>%
-      .$comid
-  })
-
-  # set braid_id names
-  braids <- stats::setNames(braids, paste0("braid_",  1:length(braids)))
-
-  # # if multibraids should be untangled
-  # if(untangle) {
-  #   if(verbose) { message("Attempting to seperate multibraids...") }
-  #   braids <- seperate_braids(network, braids)
-  # }
-
-  # if data should be returned as a 2 column dataframe with comid and braid_ids
-  if(return_as == "dataframe") {
-
-    # get comids of multibraids
-    multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
-
-    # format braids into a dataframe
-    braids <- lapply(1:length(braids), function(k) {
-      # braids_df <- lapply(1:length(braids), function(k) {
-
-      # get COMIDs of each braid
-      data.frame(
-        comid    = braids[[k]],
-        braid_id = names(braids[k])
-      )
-    }) %>%
-      dplyr::bind_rows() %>%
-      dplyr::tibble()
-
-    # if each comid should have a list of all the braids it is a part of
-    # if relationship == "one-to-one" then COMIDs may appear more than once
-    # in dataset as a COMID may be apart of more than one braid
-    # if(relationship == "one-to-many") {
-    if(nested) {
-
-      braids <-
-        braids %>%
-        dplyr::group_by(comid) %>%
-        dplyr::summarise(
-          braid_id = paste0(braid_id, collapse = ", ")
-        ) %>%
-        dplyr::ungroup()
-
-    }
-
-    # add a logical value that says whether a COMID is part of a multibraided system,
-    # or is a flowline in more than one braid (multiple braid_ids)
-    braids$is_multibraid <- braids$comid %in% multibraids
-
-    # if braid data should be added to original data
-    if(add) {
-
-      # join back with original data
-      braids <-
-        dplyr::mutate(
-          dplyr::left_join(
-            network,
-            braids,
-            by = "comid"
-          ),
-          braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
-        )
-      # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
-    }
-
-    # set no_braid values to FALSE
-    braids$is_multibraid <- ifelse(is.na(braids$is_multibraid),
-                                   FALSE, braids$is_multibraid)
-
-    # move braid_id and is_multibraided columns to front of dataframe
-    braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
-    # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
-  }
-
-  return(braids)
-}
-
-
-#' #' Internal function for finding braids in a single contiguous network
-#' #'
-#' #' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
-#' #'
-#' #' @param network The network object representing the river network.
-#' #' @param start Optional argument specifying the starting point for braid detection.
-#' #' @param return_as Specifies the format of the output. Options are "list" (default) or "dataframe".
-#' #' @param add Logical indicating whether to add braid information to the original network data.
-#' #' @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)
-#' #' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
-#' #'
-#' #' @return Either a list of braids detected in the network. Each element of the list represents a braid and contains the COMIDs  that form the braid. Or a dataframe of COMIDs associated with there respective braid_id(s)
-#' #'
-#' #' @examples
-#' #' net <- nhdplusTools::navigate_network(
-#' #'  start       = 101,
-#' #'  mode        = "UT", 
-#' #'  distance_km = 100
-#' #'  ) %>% 
-#' #' dplyr::select( comid, divergence, totdasqkm, fromnode, tonode) 
-#' #' 
-#' #' # get a list of COMIDs in each braid of network
-#' #' braid_list = find_braids(network = net, return_as = "list")
-#' #' 
-#' #' # add braid_id column to original dataset
-#' #' braid_df = find_braids(network   = net, 
-#' #'                        return_as = "dataframe",
-#' #'                        nested    = TRUE,
-#' #'                        add       = TRUE
-#' #'                        )
-#' #'                        
-#' #' # returnal original data with each braid_id represented 
-#' #' # by its individual COMIDs (may contain duplicate COMIDs)
-#' #' braid_df = find_braids(network   = net, 
-#' #'                        return_as = "dataframe",
-#' #'                        nested    = FALSE,
-#' #'                        add       = TRUE
-#' #'                        )
-#' #' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
-#' #' @importFrom sf st_drop_geometry
-#' #' @importFrom stats setNames
-#' #' @importFrom magrittr %>% 
-#' #'
-#' #' @export
-#' internal_find_braids <- function(
-#'     network,
-#'     start        = NULL,
-#'     return_as    = "list",
-#'     add          = FALSE,
-#'     nested       = TRUE,
-#'     verbose      = FALSE
-#' ) {
-#'   
-#'   # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
-#'   if(nrow(network) <= 1) {
-#'     
-#'     if(verbose) {
-#'       message("No cycles found, returning NULL")
-#'     }
-#'     
-#'     return(NULL)
-#'   }
-#'   
-#'   # check valid return_as input
-#'   if(!return_as %in% c("list", "dataframe")) {
-#'     stop("Invalid 'return_as' argument '",
-#'          return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
-#'   }
-#'   
-#'   # # check relationship argument is valid
-#'   # if(return_as == "dataframe") {
-#'   #   if(!relationship %in% c("one-to-one", "one-to-many")) {
-#'   #     stop("Invalid 'relationship' argument '",
-#'   #          relationship, "'\n'relationship' must be: 'one-to-one' or 'one-to-many'")
-#'   #   }
-#'   # }
-#'   
-#'   # lower case names
-#'   names(network) <- tolower(names(network))
-#'   
-#'   # turn network into a directed graph
-#'   dag <- create_dag(network)
-#'   
-#'   # get the fromnode associated with a given COMID 'start'
-#'   start_node <- comid_to_node(dag, start)
-#'   
-#'   if(verbose) {
-#'     message("Starting braid detection at ", 
-#'             ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
-#'   }
-#'   
-#'   # drop graph geometry
-#'   dag <- sf::st_drop_geometry(dag)
-#'   # graph <- sf::st_drop_geometry(graph)
-#'   
-#'   # stash comids and from IDs
-#'   comid_map <- dplyr::select(
-#'     # graph,
-#'     dag,
-#'     comid,
-#'     fromnode,
-#'     tonode
-#'   )
-#'   
-#'   # create artificial cycles from circuits in graph, doing this allows for 
-#'   # sections of river that form a circuit to be identfied as a cycle and thus a braid
-#'   # Questionable at this point, other option is the code below that uses 
-#'   # single_cycles() function (COMMENTED OUT CODE BELOW)
-#'   regraph <- renode_circuits(dag, verbose = FALSE)
-#'   
-#'   # ##### - GET_SINGLE_CYCLES CODE -
-#'   # # check for single cycles (2 nodes A,B that have unique edges)
-#'   # # (i.e. 2 comids w/ exact same fromnodes/tonodes)
-#'   # single_cycles <- get_single_cycles(dag)
-#'   # # if cycles were found
-#'   # if(!is.null(cycles)) {
-#'   #   # match each fromnode with original COMIDs
-#'   #   braids <- sapply(1:length(cycles), function(k) {
-#'   #     # get COMIDs of each braid
-#'   #     comid_map[comid_map$fromnode %in% cycles[[k]], ]$comid
-#'   #   })
-#'   #   # if single cycles are found in network
-#'   #   if(!is.null(single_cycles)) {
-#'   #     braids <- c(braids, unname(single_cycles))
-#'   #   }
-#'   #   # if NO cycles were found
-#'   # } else {
-#'   #   # if single cycles are found in network
-#'   #   if(!is.null(single_cycles)) {
-#'   #     braids <- c(unname(single_cycles))
-#'   #   } else {
-#'   #     message("No braids found, returning NULL")
-#'   #     return(NULL)
-#'   #   }
-#'   # }
-#'   
-#'   # make an undirected graph
-#'   undir <- make_undirected(regraph)
-#'   
-#'   # find cycles in undirected graph (proxy for braids)
-#'   cycles <- find_cycles(
-#'     graph     = undir,
-#'     start     = start_node,
-#'     return_as = "list",
-#'     edge      = FALSE,
-#'     wide      = TRUE,
-#'     verbose   = verbose
-#'   )
-#'   
-#'   # if(cycles$size() == 0 & is.null(single_braids)) {
-#'   if(is.null(cycles)) {
-#'     # message("No cycles found, returning NULL")
-#'     return(NULL)
-#'   }
-#'   
-#'   # remove added nodes from renode_circuits()
-#'   braids <- lapply(cycles, function(i) { 
-#'     i[i %in% comid_map$fromnode] 
-#'   })
-#'   
-#'   # # match fromnodes from comid_map to nodes identified in each cycle
-#'   braids <- lapply(1:length(braids), function(k) {
-#'     # get COMIDs of each braid
-#'     comid_map[comid_map$fromnode %in% braids[[k]], ] %>%
-#'       dplyr::filter(tonode %in% braids[[k]]) %>%
-#'       .$comid
-#'   })
-#'   
-#'   # set braid_id names
-#'   braids <- stats::setNames(braids, paste0("braid_",  1:length(braids)))
-#'   
-#'   # # if multibraids should be untangled
-#'   # if(untangle) {
-#'   #   if(verbose) { message("Attempting to seperate multibraids...") }
-#'   #   braids <- seperate_braids(network, braids)
-#'   # }
-#'   
-#'   # if data should be returned as a 2 column dataframe with comid and braid_ids
-#'   if(return_as == "dataframe") {
-#'     
-#'     # get comids of multibraids
-#'     multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
-#'     
-#'     # format braids into a dataframe
-#'     braids <- lapply(1:length(braids), function(k) {
-#'       # braids_df <- lapply(1:length(braids), function(k) {
-#'       
-#'       # get COMIDs of each braid
-#'       data.frame(
-#'         comid    = braids[[k]],
-#'         braid_id = names(braids[k])
-#'       )
-#'     }) %>% 
-#'       dplyr::bind_rows() %>% 
-#'       dplyr::tibble()
-#'     
-#'     # if each comid should have a list of all the braids it is a part of
-#'     # if relationship == "one-to-one" then COMIDs may appear more than once
-#'     # in dataset as a COMID may be apart of more than one braid
-#'     # if(relationship == "one-to-many") {
-#'     if(nested) { 
-#'       
-#'       braids <-
-#'         braids %>%
-#'         dplyr::group_by(comid) %>% 
-#'         dplyr::summarise(
-#'           braid_id = paste0(braid_id, collapse = ", ")
-#'         ) %>% 
-#'         dplyr::ungroup()
-#'       
-#'     }
-#'     
-#'     # add a logical value that says whether a COMID is part of a multibraided system,
-#'     # or is a flowline in more than one braid (multiple braid_ids)
-#'     braids$is_multibraid <- braids$comid %in% multibraids
-#'     
-#'     # if braid data should be added to original data
-#'     if(add) {
-#'       
-#'       # join back with original data
-#'       braids <-
-#'         dplyr::mutate(
-#'           dplyr::left_join(
-#'             network,
-#'             braids,
-#'             by = "comid"
-#'           ),
-#'           braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
-#'         )
-#'       # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
-#'     } 
-#'     
-#'     # set no_braid values to FALSE
-#'     braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
-#'                                    FALSE, braids$is_multibraid)
-#'     
-#'     # move braid_id and is_multibraided columns to front of dataframe
-#'     braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
-#'     # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
-#'   }
-#'   
-#'   return(braids)
-#' }
-
-
-#' Find braids and add to a dataframe/sf dataframe
-#'
-#' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
-#'
-#' @param network The network object representing the river network.
-#' @param add Logical indicating whether to add braid information to the original network data.
-#' @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)
-#' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
-#'
-#' @return list of braid IDs with COMIDs within each braid
+#' # if a column exists that uniquely identifies different contiguous networks,
+#' # the column name can be given to 'terminal_id' to delianiate seperate networks within 'net'
+#' sep_braids = find_braids(network     = net,
+#'                          terminal_id = "terminalpa",
+#'                          add         = TRUE,
+#'                          nested      = FALSE
+#'                        )
 #' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
 #' @importFrom sf st_drop_geometry
 #' @importFrom stats setNames
 #' @importFrom magrittr %>% 
 #'
 #' @export
-find_braids_df <- function(
+find_braids <- function(
     network,
-    add       = FALSE,
-    nested    = TRUE,
-    verbose   = FALSE
+    terminal_id = NULL,
+    add         = FALSE,
+    nested      = TRUE,
+    verbose     = FALSE
     ) {
   
   
@@ -512,7 +65,11 @@ find_braids_df <- function(
   #     ) 
   
   # get a list of braid IDs and comids within each braid
-  braids <- get_braid_list(network)
+  braids <- get_braid_list(
+                network     = network, 
+                terminal_id = terminal_id,
+                verbose     = verbose
+                )
 
   # get comids of multibraids
   multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
@@ -575,167 +132,125 @@ find_braids_df <- function(
   return(braids)
   
 }
+
 #' Create a list of braid IDs containing COMIDs in each braid 
 #'
 #' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
 #'
 #' @param network The network object representing the river network.
-#' @param start Optional argument specifying the starting point for braid detection.
-#' @param terminal_id character of the column containing a unique identifier, deliniating seperate networks in the 'network' dataset. Default is NULL which will use 'get_sorted()' to try and create a terminalID column in 'network' 
+#' @param terminal_id character, column name containing a unique identifier, delineating seperate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network' 
 #' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#' @return list of braid IDs and COMIDs within each braid
+#' @examples
+#' net <- nhdplusTools::navigate_network(
+#'  start       = 101,
+#'  mode        = "UT",
+#'  distance_km = 100
+#'  ) %>%
+#' dplyr::select( comid, divergence, totdasqkm, fromnode, tonode)
 #'
-#' @return list of braid IDs with COMIDs within each braid
-#' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
-#' @importFrom sf st_drop_geometry
-#' @importFrom stats setNames
-#' @importFrom magrittr %>% 
-#'
-#' @export
+#' # get a dataframe of COMIDs and braid IDs
+#' braids <- get_braid_list(network = net)
+#' @export 
 get_braid_list <- function(
     network,
-    start        = NULL,
-    terminal_id  = NULL,
-    verbose      = FALSE
+    terminal_id = NULL,
+    verbose = FALSE
 ) {
+  # ref_net <- sf::read_sf("/Users/anguswatters/Downloads/01_reference_features.gpkg", layer = "flowlines")
+  # names(ref_net) <- tolower(names(ref_net))
+  # network <-
+  #   ref_net %>%
+  #   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+  #   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+  # 
+  # network <- dplyr::filter(network, terminalpa %in% unique(network$terminalpa)[1:25])
+  # 
+  # verbose = TRUE
+  # terminal_id = NULL
+  # terminal_id = "terminalpa"
   
-  # nhdplusTools::navigate_network(start = 101, mode = "UT")
-  # network <- ref_net %>%
-  #   dplyr::filter(
-  #     # terminalpa %in% unique(counts$terminalpa)[1:2]
-  #     # terminalpa %in% c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774)
-  #     terminalpa %in% c(1852198, 1852502, 1852542, 1852774)
-  #     )  %>% 
-  # dplyr::select(-terminalpa)
-  
-
-  # where to start braid search in each network
-  starts <- get_start_ids(network)
-  
-  # loop through each of the unique 'starts' and get a list of braids from each start 
-  braid_list <- lapply(1:length(starts), function(i) {
+  # if no terminal_ids column name is given, create one by finding all connected componenets in network
+  if(is.null(terminal_id)) {
     
-    # message(i, "/", length(starts))
+    # determine which flowlines are part of which contiguous set of linestrings 
+    # (creates a unique identifier for each seperated network of flowlines)
+    network <- find_connected_components(network = network, add = TRUE)
     
-    internal_get_braid_list(
-      network = network, 
-      start   =   starts[i],
-      verbose = verbose
-    )
-  })
-  
-  # braid_list
-  # reduce_braid_list(braid_list)
-  
-  # remove duplicate braids IDs and re number braid IDs
-  braid_list <- reduce_braid_list(braid_list)
-  
-  return(braid_list)
-  
-}
-
-#' Create a list of braid IDs containing COMIDs in each braid 
-#'
-#' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
-#'
-#' @param network The network object representing the river network.
-#' @param start Optional argument specifying the starting point for braid detection.
-#' @param terminal_id character of the column containing a unique identifier, deliniating seperate networks in the 'network' dataset. Default is NULL which will use 'get_sorted()' to try and create a terminalID column in 'network' 
-#' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
-#'
-#' @return list of braid IDs with COMIDs within each braid
-#' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
-#' @importFrom sf st_drop_geometry
-#' @importFrom stats setNames
-#' @importFrom magrittr %>% 
-#'
-#' @export
-get_braid_list2 <- function(
-    network,
-    start        = NULL,
-    terminal_id  = NULL,
-    verbose      = FALSE
-) {
-  
-  # if 'terminal_id' column is given (IS NOT NULL), rename the column to "terminalID"
-  if(!is.null(terminal_id)) {
+    
+  } else { # if a terminal_id IS provided, the column name is checked and changed to "component_id"
     
     # check that 'terminal_id' is a column in 'network', if not throw an error
     if(!terminal_id %in% names(network)) {
       stop("Invalid terminal_id argument '", terminal_id, "', terminal_id must be a column in 'network'")
     }
     
-    message("User provided 'terminal_id': '", terminal_id, "'")
+    if(verbose) { message("User provided 'terminal_id': '", terminal_id, "'")}
     
     # name of the "tocomid" column in network that should be removed
     term_col <- names(network)[names(network) %in% terminal_id]
     
     # replace term_col column name with "terminalID"
-    names(network) <- gsub(term_col, "terminalID", names(network)) 
-    
-  } else { # if NO 'terminal_id' column is given, check for popular terminal ID column names, otherwise, create a terminal ID column
-    
-    # possible terminal column names
-    terminal_cols <- c("terminalpa", "TERMINALPA", "terminalPa", "TerminalPa", "Terminalpa", 
-                       "terminalPA", "terminalID", "terminal_id", "terminalid", "TERMINALID")
-    
-    # (any(names(network) %in% terminal_cols))
-    
-    # try and detect a "tocomid" like column, if its found in the network columns, remove that column
-    if (any(names(network) %in% terminal_cols)) {  
-      
-      # name of the "tocomid" column in network that should be removed
-      term_col <- names(network)[names(network) %in% terminal_cols]
-      
-      message("Found common terminal_id column: '", term_col, "'")
-      message("---> Renaming '", term_col, "' to 'terminalID'")
-      
-      # replace term_col column name with "terminalID"
-      names(network) <- gsub(term_col, "terminalID", names(network)) 
-      
-    } else {
-      
-      message("Adding 'terminalID' column using get_terminal_ids()")
-      
-      # add a terminal ID column to network sf dataframe/dataframe
-      network <- get_terminal_ids(network, add = TRUE)
-      
-    }
-    
+    names(network) <- gsub(term_col, "component_id", names(network)) 
     
   }
   
-  # unique terminal IDs
-  terminal_ids <- as.character(unique(network$terminalID))
+  # unique(network$terminalpa) %>% length()
+  # unique(network$component_id) %>% length()
   
-  # loop through each of the unique terminal_ids and subset 'network' data to each terminal ID and get a list of braid_ids for each terminalID network
-  braid_list <- lapply(1:length(terminal_ids), function(i) {
-    # i = 3
-    message(i, "/", length(terminal_ids))
-    message("Terminal ID: ", terminal_ids[i])
+  # list of the uniqueu component IDs 
+  components <- unique(network$component_id)
+  
+  # loop through each of the unique 'component_id' and get a list of braids for each distinct componenet
+  braid_list <- lapply(1:length(components), function(i) {
     
-    # terminal_ids[i]
+    if(verbose) {
+      message(i, "/", length(components))
+      message("component[i]: ", components[i])
+      message("# rows in component ", components[i], ": ", nrow(
+        dplyr::filter(network, component_id %in% components[i])
+      ))
+      message('=====================')
+    }
     
-    # filter network to set of flowlines with the same terminalID
-    sub_net <- network[network$terminalID == terminal_ids[i], ]
-    
+    # get list of braids for distinct network
+    # filter network down to the iterations component (components[i])
     internal_get_braid_list(
-      network      = sub_net,
-      start        = NULL,
-      verbose      = verbose
+      network = dplyr::filter(network,  component_id %in% components[i]), 
+      start   = NULL,
+      verbose = verbose
     )
     
   })
   
-  # set the list names to the terminal IDs
-  names(braid_list) <- terminal_ids
-  # # braid_list <- stats::setNames(braid_list, terminal_ids)
-  # reduce_braid_ids(braid_list)
-  
-  # rename the list of braid IDs so each braid_id is globally unique (no duplicate braid ID names)
-  braid_list <- reduce_braid_ids(braid_list)
+  # remove duplicate braids IDs and re number braid IDs
+  braid_list <- reduce_braid_list(braid_list)
   
   return(braid_list)
-
+  
+  # network %>% get_terminal_ids(add = F)
+  # roots <- network %>% get_start_ids()
+  # parts <- find_connected_components(network, add = T)
+  # parts$component_id %>% unique()
+  # network %>% 
+  #   dplyr::mutate(terminalpa = as.character(terminalpa)) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = terminalpa))
+  # parts %>% 
+  #   dplyr::mutate(component_id = as.character(component_id)) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = component_id))
+  # mapview::mapview(dplyr::filter(parts, component_id == "1"), color = "dodgerblue") +
+  #   mapview::mapview(dplyr::filter(parts, component_id == "2"), color = "gold") +
+  # mapview::mapview(dplyr::filter(parts, component_id == "3"), color = "red") +
+  # mapview::mapview(dplyr::filter(parts, component_id == "4"), color = "green") + 
+  # mapview::mapview(dplyr::filter(parts, component_id == "5"), color = "hotpink") +
+  #   mapview::mapview(dplyr::filter(parts, component_id == "6"), color = "cyan")
+  # 
+  # parts %>% 
+  # ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = uterms))
+  
 }
 
 #' Create a list of braid IDs containing COMIDs in each braid for a single continguous network
@@ -751,8 +266,6 @@ get_braid_list2 <- function(
 #' @importFrom sf st_drop_geometry
 #' @importFrom stats setNames
 #' @importFrom magrittr %>% 
-#'
-#' @export
 internal_get_braid_list <- function(
     network,
     start        = NULL,
@@ -769,11 +282,11 @@ internal_get_braid_list <- function(
     return(NULL)
   }
   
-  # check valid return_as input
-  if(!return_as %in% c("list", "dataframe")) {
-    stop("Invalid 'return_as' argument '",
-         return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
-  }
+  # # check valid return_as input
+  # if(!return_as %in% c("list", "dataframe")) {
+  #   stop("Invalid 'return_as' argument '",
+  #        return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
+  # }
   
   # # check relationship argument is valid
   # if(return_as == "dataframe") {
@@ -1711,10 +1224,12 @@ is_braided <- function(
   return(!dfs(start_node, "no_previous"))
   
 }
-
-#' Remove repeated braids from a list of braid IDs containing COMIDs
-#'
-#' @param x list
+#' Collapse and rename braid IDs in a list of lists
+#' Internal function. Ensures there are no duplicate braid_ids, making 
+#' each braid ID unique. and collapsing the original list into a single list with list names being the braid_id
+#' Collapse, deduplicate, and rename braid IDs in a list of lists
+#' @description Internal function. Ensures there are no duplicate braid_ids, making each braid ID unique. and collapsing the original list into a single list with list names being the braid_id
+#' @param x list, with each element either being NULL or a list with braid_id names (i.e. "braid_1", "braid_2", etc.)
 #'
 #' @return list with unique braid IDs / COMIDs
 reduce_braid_list <- function(x) {
@@ -1759,48 +1274,6 @@ reduce_braid_list <- function(x) {
   return(new_braids)
 }
 
-
-#' Collapse and rename braid IDs in a list of lists
-#' Internal function. Ensures there are no duplicate braid_ids, making each braid ID unique. and collapsing the original list into a single list with list names being the braid_id
-#' @param x list, with each element either being NULL or a list with braid_id names (i.e. "braid_1", "braid_2", etc.)
-#'
-#' @return original list with braid_ids renamed to have globally unique braid_ids and removal of NULL elements
-reduce_braid_ids <- function(x) {
-  
-  count = 1
-  
-  for(i in 1:length(x)) {
-    
-    # current list in braids list
-    lst = x[[i]]
-    
-    if(is.null(lst)) {
-      # message("NO BRAIDS izn list ", i)
-      next
-    }
-    
-    # message("Updating list: ", i)
-    
-    # make new names
-    new_names <- paste0("braids_", count:(count + length(lst) - 1))
-    
-    # assign new names to list element
-    names(lst) <- new_names
-    
-    # insert new list into original list
-    x[[i]] <- lst
-    
-    # update count of names so far
-    count <- (count + length(lst))
-    
-  }
-  
-  # remove names of each list and remove NULL list elements
-  x <- Reduce(c, x)
-  
-  return(x)
-  
-}
 #' Determine the outlets/start COMIDS of a network
 #' Determine comid of the terminal flowline leading out of a basin. Requires fromnode and tonode columns.
 #' Used internally within 'find_braids()' function
@@ -1861,20 +1334,20 @@ get_terminal_ids <- function(
       return_dendritic = TRUE,
       remove_coastal   = FALSE
     )
-  tmpsplit <- nhdplusTools::get_sorted(
-    x,
-    split = TRUE
-  )
-  tmpsplit$terminalID %>% unique()
-  no_split <- nhdplusTools::get_sorted(
-    x,
-    split = FALSE
-  )
-  x$comid[which(!x$tocomid %in% x$comid)]
-  
-  fl$ID[which(!x$tocomid %in% x$comid)]
-  nhdplusTools::get_terminal(x)
-  no_split$terminalID %>% unique()
+  # tmpsplit <- nhdplusTools::get_sorted(
+  #   x,
+  #   split = TRUE
+  # )
+  # tmpsplit$terminalID %>% unique()
+  # no_split <- nhdplusTools::get_sorted(
+  #   x,
+  #   split = FALSE
+  # )
+  # x$comid[which(!x$tocomid %in% x$comid)]
+  # 
+  # fl$ID[which(!x$tocomid %in% x$comid)]
+  # nhdplusTools::get_terminal(x)
+  # no_split$terminalID %>% unique()
   
   # sort network and get terminalID column
   x <- nhdplusTools::get_sorted(
@@ -1908,14 +1381,12 @@ get_terminal_ids <- function(
 #' Find the connected components in a NHDPlus flowlines Network
 #' Determine how many different, unconnected/seperate sets of flowlines are within a set of NHDPlus flowlines. 
 #' The input 'network' dataset must contain a comid, tonode, fromnode, and then (optionally) divergence and terminalpa attributes.
-#' Used internally within 'find_braids()' function to make sure each connected set of flowlines is addressed and braids are searched for in each seperated component.
+#' Used internally within 'get_braid_list' and 'find_braids()' function to make sure each connected set of flowlines is addressed and braids are searched for in each seperated component.
 #' @param network data.frame or sf object with comid, tonode, fromnode, and (optionally) divergence and terminalpa attributes. If a "tocomid" column exists, it is recommended to remove this beforehand
-#' @param add logical, whether to add the component_id to the original dataset. If TRUE (default) the original dataset is returned with an additional component_id column, indicating the set of connected components each comid belongs too. If FALSE, a dataframe with the 
+#' @param add logical, whether to add the component_id to the original dataset. If TRUE (default) the original dataset is returned with an additional component_id column, indicating the set of connected components each comid belongs too. If FALSE, a dataframe with the COMID and component_id is returned 
 #' @param verbose logical print status updates, if TRUE, messages will print. Default is FALSE.
-#' @return logical, If TRUE, atleast one braid was detected in network, FALSE if no braids were found
+#' @return original dataframe with an added 'component_id' column (if add = TRUE) or a new dataframe with "comid" and "component_id" columns (if add = FALSE)
 #' @export
-#'
-#' @examples
 find_connected_components <- function(
     network,
     add     = TRUE,
@@ -2156,7 +1627,15 @@ find_connected_components <- function(
   # count_components(topo = topo_map, visit = visit)
 }
 
-# given a list of vectors, return the indexes of the list elements that have duplicates in another list element. The value of each returned list element represents the index of the other list element that has duplicated vector values in the original list element
+#' Find overlaping elements in a list of vectors
+#' Given a list of vectors, return the indexes of the list elements that have duplicates in another list element. 
+#' The value of each returned list element represents the index of the other list element that has duplicated vector values in the original list element
+#' @param lst list
+#' @param no_overlap_val numeric, character, or logical value to represent non overlapping values. Default is FALSE
+#' @param rm_no_overlap logical, whether to remove list elements with no overlap. Default is FALSE, thus overlapping elements are not removed
+#' @param verbose logical, whether to print messages or not. Default is FALSE
+#'
+#' @return list with each value representing the index of the other list element that has duplicated vector values
 find_overlaps <- function(
     lst, 
     no_overlap_val = FALSE,
@@ -2215,537 +1694,78 @@ find_overlaps <- function(
   #     }} if (length(matches) > 0) { overs[[i]] <- matches } else {  overs[[i]] <- FALSE}}
   # return(overs)
 }
-# 
-# # find overlapping COMIDs in list of COMID vectors and
-# # remove the overlapping (double counting) of COMIDs in different braids
-# untangle_braids <- function(x) {
-#   # x = braids
-#   
-#   # overlapped braids
-#   overlaps <- find_overlaps(
-#     lst            = x,
-#     no_overlap_val = FALSE, 
-#     rm_no_overlap  = FALSE, 
-#     verbose        = FALSE
-#   ) 
-#   
-#   big_cycles <- 
-#     overlaps %>% 
-#     Reduce(c, . ) %>% 
-#     unique() %>% 
-#     sort()
-#   
-#   # remove 0 values
-#   big_cycles <- big_cycles[big_cycles != 0]
-#   
-#   for(j in 1:length(big_cycles)) {
-#   
-#     
-#     # big cycle iteration which is a cycle that contains one or more OTHER cycles
-#     cyc = big_cycles[j]
-#     
-#     # main big COMID
-#     big <- x[[cyc]]
-#     
-#     message("cyc: ", cyc)
-#     
-#     connects <- sapply(1:length(overlaps), function(k) {
-#       # k = 4
-#       cyc %in% overlaps[[k]]
-#     })
-#     
-#     
-#     smalls <- x[connects]
-#     
-#     # drop small COMIDs from big COMID
-#     dropped <- big[!big %in% Reduce(c, smalls)]
-#     
-#     graph <- 
-#       net %>% 
-#       dplyr::filter(comid %in% big)
-#     
-#     # get COMID for big cycles and the fromnode/tonodes
-#     big_geom <- 
-#       net %>% 
-#       dplyr::filter(comid %in% dropped)
-#     
-#     # get COMID for small cycles and the fromnode/tonodes
-#     small_geom <- 
-#       net %>% 
-#       dplyr::filter(comid %in% Reduce(c, smalls))
-#     
-#     # mapview::mapview(graph, color = "dodgerblue")  + 
-#     #   mapview::mapview(small_geom, color = "red") + 
-#     #   mapview::mapview(big_geom, color = "green") 
-#     # 
-#     # graph$geometry %>% plot()
-#     # graph$geometry %>% plot()
-#     # 
-#   }
-#   
-# }
 
-# # find overlapping COMIDs in list of COMID vectors and
-# # remove the overlapping (double counting) of COMIDs in different braids
-# seperate_braids3 <- function(x, net) {
-#   
-#   # x = braids
-#   # net = network
-#   # cmap <- comid_map
 
-#   # overlapped braids
-#   overlaps <- find_overlaps(
-#     lst            = x,
-#     no_overlap_val = FALSE, 
-#     rm_no_overlap  = FALSE, 
-#     verbose        = FALSE
-#   ) 
-#   
-#   big_cycles <- 
-#     overlaps %>% 
-#     Reduce(c, . ) %>% 
-#     unique() %>% 
-#     sort()
-#   
-#   # remove 0 values
-#   big_cycles <- big_cycles[big_cycles != 0]
-#   
-#   # overlaps[Reduce(c, overlaps) != 0]
-#   
-#   # while(!is.null(overlaps)) {
-#   
-#   # i = 1
-#   # 4 %in% overlaps[[i]]
-#   
-#   for(j in 1:length(big_cycles)) {
-#     # j = 6
-#     
-#     # big cycle iteration which is a cycle that contains one or more OTHER cycles
-#     cyc = big_cycles[j]
-#     
-#     # main big COMID
-#     big <- x[[cyc]]
-#     
-#     message("cyc: ", cyc)
-#     
-#     connects <- sapply(1:length(overlaps), function(k) {
-#       # k = 4
-#       cyc %in% overlaps[[k]]
-#     })
-#     
-#     # overlaps
-#     
-#     smalls <- x[connects]
-#     
-#     # connects
-#     
-#     # drop small COMIDs from big COMID
-#     dropped <- big[!big %in% Reduce(c, smalls)]
-#     
-#     # big
-#     
-#     # x
-#     # dropped
-#     
-#     # get COMID for big cycles and the fromnode/tonodes
-#     big_geom <- 
-#       net %>% 
-#       dplyr::filter(comid %in% dropped)
-#     
-#     # get COMID for small cycles and the fromnode/tonodes
-#     small_geom <- 
-#       net %>% 
-#       dplyr::filter(comid %in% Reduce(c, smalls))
-#     
-#     # tonode in big geom: 550015139
-#     # fromnode in big geom 550015136
-#     #  need to find the linestring in (fromnode/tonode) in small_geom that has:
-#     #  --> tonode == big geom fromnode
-#     #  --> fromnode == big geom tonode
-#     #  --> fromnodes == big geom fromnodes
-#     #  --> tonodes == big geom fromnodes
-#     # small_geom %>% 
-#     #   dplyr::filter(
-#     #     # tonode %in% big_geom$fromnode,
-#     #     # fromnode %in% big_geom$tonode
-#     #     (tonode %in% big_geom$fromnode & fromnode %in% big_geom$tonode) |
-#     #       fromnode %in% big_geom$fromnode
-#     #   )
-#     
-#     # from nodes from big equal to from nodes from small from nodes in big == tonodes in small
-#     # get the connecting linestrings for missing connections after removing small cycle COMIDs
-#     fromtos <- 
-#       small_geom %>% 
-#       dplyr::filter(
-#         # tonode %in% big_geom$fromnode,
-#         # fromnode %in% big_geom$tonode
-#         (tonode %in% big_geom$fromnode & fromnode %in% big_geom$tonode) |
-#           fromnode %in% big_geom$fromnode
-#       ) %>% 
-#       dplyr::group_by(fromnode, tonode) %>% 
-#       dplyr::mutate(tmp_id = 1:n()) %>% 
-#       dplyr::add_count() %>% 
-#       dplyr::ungroup()
-#     
-#     # singleton linestrings to add back
-#     singles <- 
-#       fromtos %>% 
-#       dplyr::filter(n == 1) 
-#     
-#     # cycles with multiple linestrings with the same fromto/tonodes
-#     multis <- 
-#       fromtos %>% 
-#       dplyr::filter(n > 1) 
-#     
-#     # get the linestring from each fromnode/tonode combination that has the lowest divergence value without ties
-#     # bind the single line strings we picked out from 'multi' with the original singletons
-#     keeps <- 
-#       multis %>% 
-#       dplyr::group_by(fromnode, tonode) %>% 
-#       # dplyr::filter(divergence == max(divergence))
-#       dplyr::slice_min(divergence, with_ties = FALSE) %>% 
-#       dplyr::ungroup() %>% 
-#       dplyr::bind_rows(singles)
-#     
-#     # updated big COMIDs
-#     big_update <- c(dropped, keeps$comid)
-#     # x
-#     
-#     # replace COMIDs
-#     x[[cyc]] <- big_update 
-#     # drop_big <- sapply(1:length(overlaps), function(k) {
-#     
-#     for (k in 1:length(overlaps)) {
-#       
-#       # k = 1
-#       # overlaps[[k]]
-#       
-#       # message("k: ", k)
-#       # message("overlaps[[k]]: ", overlaps[[k]])
-#       
-#       if(cyc %in% overlaps[[k]]) {
-#         
-#         # message("FOUND ", cyc, " IN ", overlaps[[k]], " REMOVING ", cyc)
-#         if(length(overlaps[[k]]) == 1) {
-#           
-#           overlaps[[k]] <- FALSE
-#           
-#         } else {
-#           
-#           overlaps[[k]] <- overlaps[[k]][overlaps[[k]] != cyc]
-#           
-#         }
-#       }
-#     }
-#   }
-#   return(x)
-# }
 
-# find overlapping COMIDs in list of COMID vectors and
-# remove the overlapping (double counting) of COMIDs in different braids
-seperate_braids2 <- function(x) {
+#' Get the braid_ids of all neighboring braids from a specified braid_id
+#' 
+#' @param x dataframe, sf object network flowlines with braid_id column
+#' @param ids character vector braid_id(s)
+#' @param split_ids logical, if TRUE, then the comma seperated braid_ids are separated into individual braid_ids
+#' @param only_unique logical, If TRUE, then only unique braid IDs are returned, otherwise (FALSE) all are returned. Default is FALSE. 
+#'
+#' @return character vector of braid IDs neighboring one or multiple braid_ids
+get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) {
   
-  # overlapped braids
-  overlaps <- find_overlaps(
-    lst            = x,
-    no_overlap_val = FALSE, 
-    rm_no_overlap  = FALSE, 
-    verbose        = FALSE
-  )
   
-  while(!is.null(overlaps)) {
-    # # number of multibraids/overlaps
-    # multibraids <- sum(lengths(overlaps[sapply(overlaps, function(i) { !isFALSE(i)}) ]))
+  # x = braids
+  # ids = bids
+  # only_unique = T
+  # split_ids = FALSE
+  
+  # make groups for each braided section
+  braid_groups <- lapply(1:length(ids), function(i) {
     
-    # # number of multibraids/overlaps
-    # multibraids <- length(overlaps[sapply(overlaps, function(i) { !isFALSE(i)})])
-    # multis <- overlaps[sapply(overlaps, function(i) { !isFALSE(i)})]
+    # message("i: ", i, "/", length(ids))
     
-    for (i in 1:length(overlaps)) {
+    # braid IDs of interest
+    bids <- strsplit(ids[i], ", ")[[1]]
+    # bids <- strsplit(transects[i, ]$braid_id, ", ")[[1]]
+    
+    # get all linestrings that are apart of the braid_ids of interest
+    
+    bids_check <- sapply(1:length(x$braid_id), function(y) {
+      any(
+        strsplit(x$braid_id[y], ", ")[[1]] %in% bids
+      )
+    })
+    
+    # out <- unique(c(
+    #             x[bids_check, ]$braid_id,
+    #             unlist(strsplit(x[bids_check, ]$braid_id, ", "))
+    #             )
+    #           )
+    out <- sort(
+      unique(c(
+        x[bids_check, ]$braid_id,
+        unlist(strsplit(x[bids_check, ]$braid_id, ", "))
+      )
+      )
+    )
+    
+    # split_ids is TRUE, then the coimma seperated braid_ids are seperated into individual braid_ids
+    if(split_ids) {
       
-      multis <- overlaps[[i]]  
+      out <- sort(
+        unique(unlist(strsplit(out, ", ")))
+      )
+      # out <- unique(unlist(strsplit(out, ", ")))
       
-      if(isFALSE(multis)) {
-        next
-      }
-      # message("i: ", i)
-      # message("multis: ", multis)
-      
-      for (k in 1:length(multis)) {
-        # message("k: ", k)
-        # message("removing COMIDs from ", multis[k], " that are in ", i)
-        # message("multis[k]: ",      multis[k])
-        
-        # remove braids containing multiple braids
-        x[[multis[k]]] <- x[[multis[k]]][
-          !x[[multis[k]]] %in% x[[i]]
-        ]
-        # message("--------------")
-      }
-      # message("=========================") 
     }
     
-    overlaps <- find_overlaps(
-      lst            = x,
-      no_overlap_val = FALSE,
-      rm_no_overlap  = TRUE,
-      verbose        = FALSE
-    )
+    out
+    
+  })
+  
+  # assign names
+  names(braid_groups) <- ids
+  
+  # remove uniques if desired
+  if(only_unique) {
+    braid_groups <- unique(unname(unlist(braid_groups)))
   }
-  return(x)
+  return(braid_groups)
 }
-
-# find overlapping COMIDs in list of COMID vectors and remove the overlapping (double counting) of COMIDs in different braids
-seperate_braids4 <- function(x) {
-  
-  # overlapped braids
-  overlaps <- find_overlaps(
-    lst            = x,
-    no_overlap_val = FALSE, 
-    rm_no_overlap  = FALSE, 
-    verbose        = FALSE
-  )
-  
-  while(!is.null(overlaps)) {
-
-    # number of multibraids/overlaps
-    multibraids <- length(overlaps[
-      sapply(overlaps, function(i) { !isFALSE(i)})
-    ])
-    
-    overlaps[
-      sapply(overlaps, function(i) { !isFALSE(i)})
-    ]
-    # multibraids <-  length(overlaps[overlaps != FALSE])
-    # message("multibraids: ", multibraids)
-    
-    # smaller braid
-    small <- which(overlaps == TRUE)
-    
-    # larger braid
-    big   <- overlaps[small]
-    
-    for (n in 1:length(small)) {
-      # message("n: ", n)
-      # message("small[[n]]: ", small[[n]])
-      # message("big[[n]]: ", big[[n]])
-      
-      for (k in 1:length(big[[n]])) {
-        # message("k: ", k)
-        # message("[big[[n]][k]]: ", big[[n]][k])
-        
-        # remove braids containing multiple braids
-        x[[big[[n]][k]]] <- x[[big[[n]][k]]][ 
-          !x[[big[[n]]]] %in% x[[small[n]]] 
-        ]
-      }
-      # message('-----------')
-    }
-    
-    
-    overlaps <- find_overlaps(
-      lst            = x,
-      no_overlap_val = FALSE,
-      rm_no_overlap  = TRUE,
-      verbose        = FALSE
-    )
-    # message('======================') 
-  }
-  
-  return(x)
-  
-}
-
-
-
-#' Create a Directed Acyclic Graph (DAG)
-#'
-#' This function creates a Directed Acyclic Graph (DAG) given a network with tonodes and fromnodes. The function allows for trimming the network based on a specific starting node and supports the option to reverse the graph.
-#'
-#' @param x A data frame representing the river network with columns 'comid', 'fromnode', 'tonode', and optionally 'divergence' for dendritic networks.
-#' @param start A character string representing the starting node (COMID) of the network. If provided, the network will be trimmed to include only nodes upstream of the start node (including the start node itself).
-#' @param add logical value indicating whether to add back the original columns to the resulting graph. If FALSE, only comid, tocomid, fromnode, tonode, and optionally divergence columns will be returned.
-#' @param drop_geom logical value indicating whether to drop the geometry column from the resulting graph. If set to TRUE, the geometry column will be removed.
-#' @param reverse A logical value indicating whether to reverse the graph after creating the DAG. If set to TRUE, the graph will be reversed.
-#'
-#' @return A data frame representing the Directed Acyclic Graph (DAG) of the network.
-#'
-#' @details It is highly recommended to include a 'divergence' column in the input 'x' data frame if the resulting graph will be used for locating cycles within the graph.
-#'
-#' @examples
-#' @seealso \code{\link{nhdplusTools::get_tocomid}}, \code{\link{nhdplusTools::make_node_topology}}, \code{\link{reverse_graph}}
-create_topology <- function(
-    x,
-    start     = NULL,
-    add       = TRUE,
-    drop_geom = FALSE,
-    reverse   = FALSE
-) {
-  network <- nets
-  x <- 
-    nhdplusTools::get_tocomid(
-    dplyr::select(network, comid, fromnode, tonode, divergence),
-      return_dendritic = T,
-      # dplyr::select(network, comid, fromnode, tonode),
-      # return_dendritic = F,
-    remove_coastal = F
-  )
-  
-  fin <- find_connected_components(x, add = T)
-  fin$component_id %>% unique()
-  x
-  nets
-  net_sort <- nhdplusTools::get_sorted(
-    # dplyr::relocate(x, 
-    #                 fromnode, tonode), 
-    x,
-    split = T)
-  
-  net_sort$terminalID %>%
-    unique() %>% 
-    length()
-  # just the divergences which have unique fromids in x but don't in new hope.
-  div <- nhdplusTools::get_tocomid(
-    dplyr::select(x, comid, fromnode, tonode),
-    return_dendritic = FALSE,
-    remove_coastal = FALSE
-    )
-  
-  nhdplusTools::get_tocomid(
-    dplyr::select(x, comid, fromnode, tonode, divergence),
-    return_dendritic = T,
-    remove_coastal = FALSE
-  ) %>% 
-    nhdplusTools::make_node_topology()
-  div <- div[div$tocomid %in%
-               x$comid[x$divergence == 2],]
-  
-  y <- make_node_topology(x, div)
-  x <- network %>% 
-    dplyr::relocate(fromnode, tonode)
-  
-  nhdplusTools::make_node_topology(x)
-  
-  # if a start ID is given, trim network down to
-  # only nodes upstream of the ID (including the ID itself)
-  if (!is.null(start)) {
-    # 
-    # message("Trimming network to start at COMID: ", start, " looking ", direction, "...")
-    
-    message("Trimming network to start at COMID: ", start)
-    # if (reverse) {
-    #   # Downstream COMIDs
-    #   dd_comids <- nhdplusTools::get_DD(x, start)
-    #   x         <- dplyr::filter(x, comid %in% dd_comids) 
-    # } else {
-    # upstream COMIDs
-    ut_comids <- nhdplusTools::get_UT(x, start)
-    x <- dplyr::filter(x, comid %in% ut_comids) 
-    
-    # }
-    
-  }
-  
-  # make lower case names
-  names(x) <- tolower(names(x))
-  
-  # if an "id" column exists, remove it
-  if("id" %in% names(x)) {
-    # if(any(grepl("id", names(x)))) {
-    x <- dplyr::select(x, -id)
-  }
-  
-  # if divergence column is given, make a dendritic network node topology
-  if("divergence" %in% names(x)) {
-    dendritic = TRUE
-  } else {
-    dendritic = FALSE
-  }
-  # x$divergxencec = 0
-  
-  # get dendritic network
-  network <-  dplyr::select(
-    nhdplusTools::get_tocomid(
-      x,
-      # dplyr::select(x, comid, fromnode, tonode, hydroseq,
-      # streamleve, streamorde, streamcalc, divergence),
-      return_dendritic = dendritic,
-      # return_dendritic = TRUE,
-      add              = TRUE, 
-      remove_coastal   = FALSE
-    ),
-    -fromnode, -tonode
-  )
-  
-  # if(flag) {
-  #   x[x$comid %in% network[duplicated(network$comid), ]$comid, ]$divergence = 2
-  #   network[duplicated(network$comid), ]$divergence <- 2
-  # }
-  
-  # if NOT dendritic, remove duplicates and return node topology
-  if(!dendritic) {
-    # message("NON DENDRITIC")
-    # remove duplicates
-    network <- network[!duplicated(network$comid), ]
-    
-    # make node topology
-    network <- nhdplusTools::make_node_topology(
-      network,
-      add = TRUE
-    )
-    
-  } else {
-    
-    # message("DENDRITIC")
-    # get divergent tocomids
-    div <- nhdplusTools::get_tocomid(
-      x,
-      # dplyr::select(x, comid, fromnode, tonode, hydroseq,
-      # streamleve, streamorde, streamcalc, divergence),
-      return_dendritic = FALSE,
-      remove_coastal   = FALSE
-    )
-    
-    # divergences w/ unique fromids in x but don't in div
-    div <- div[div$tocomid %in% x$comid[x$divergence == 2], ]
-    
-    network <- nhdplusTools::make_node_topology(
-      network,
-      div,
-      add = TRUE
-    )
-    
-  }
-  
-  # whether to add back original columns or cut them out
-  if(!add) {
-    # message("NOT ADDING TO ORIGINAL DATA")
-    # only return relevent columns, no divergence is dendritic = FALSE
-    if(!dendritic) {
-      # message("NO DIV COLUMN")
-      network <- dplyr::select(network, comid, tocomid, fromnode, tonode)
-    } else {
-      # message("HAS DIV COLUMN")
-      network <- dplyr::select(network, comid, tocomid, fromnode, tonode, divergence)
-    }
-  }
-  
-  # drop geometry
-  if(drop_geom) {
-    # message("DROPPING GEOM")
-    # drop geometry
-    network <- sf::st_drop_geometry(network)
-  }
-  
-  # # reverse graph
-  # if(reverse) {
-  #   message("Reversing graph")
-  #   network <- reverse_graph(network)
-  # }
-  
-  return(network)
-}
-
 
 #' Create a Directed Acyclic Graph (DAG)
 #'
@@ -2971,105 +1991,105 @@ reverse_graph <- function(df) {
   return(df)
 }
 
-#' Reverse the topology of a Directed Acyclic Graph
-#' Given a DAG dataframe with comid, tocomid, fromnode, and tonode, attributes, this function will reverese the topology and start the graph at the most upstream/downstream node. Internal function to be used with create_dag().
-#' @param graph dataframe or sf dataframe with comid, tocomid, fromnode, and tonode attributes
-#'
-#' @return dataframe with originally node topology in reverse
-#' @export
-#'
-#' @examples
-reverse_dag <- function(graph, start = NULL) {
-  
-  start = "8898002"
-  
-  ds_graph <- dplyr::select(
-    dplyr::left_join(
-      sf::st_drop_geometry(
-        dplyr::select(graph,
-                      comid,
-                      tocomid,
-                      fromnode,
-                      tonode
-        )
-      ),
-      sf::st_drop_geometry(
-        dplyr::select(
-          graph, 
-          new_comid = tocomid,
-          new_tocomid = comid,
-          new_fromnode = tonode,
-          new_tonode = fromnode
-        )
-      ),
-      by = c("fromnode" = "new_fromnode", "comid" = "new_comid")
-    ),
-    comid = tocomid,
-    tocomid = comid,
-    fromnode, tonode, new_tocomid, new_tonode
-    # -tonode, -tocomid
-  )
-  
-  ds_graph[ds_graph$tocomid == start, ]$tocomid <- 0
-  ds_graph[ds_graph$tocomid == start, ]$new_tonode  <- 0
-  
-  # set start of graph tcomid and tonode to 0
-  ds_graph[is.na(ds_graph$tonode),]$tocomid <- 0
-  ds_graph[is.na(ds_graph$tonode),]$tonode  <- 0
-  
-  # reverse comid/tocomid fromnode/tonode topology
-  ds_graph <- dplyr::select(
-    dplyr::select(
-      dplyr::left_join(
-        sf::st_drop_geometry(
-          dplyr::select(graph,
-                        comid,
-                        tocomid,
-                        fromnode,
-                        tonode
-          )
-        ),
-        sf::st_drop_geometry(
-          dplyr::select(
-            graph, 
-            new_comid = tocomid,
-            new_tocomid = comid,
-            new_fromnode = tonode,
-            new_tonode = fromnode
-          )
-        ),
-        by = c("fromnode" = "new_fromnode", "comid" = "new_comid")
-      ),
-      -tonode, -tocomid
-    ),
-    comid,
-    tocomid = new_tocomid,
-    fromnode, 
-    tonode = new_tonode
-  )
-  
-  # set start of graph tcomid and tonode to 0
-  ds_graph[is.na(ds_graph$tonode),]$tocomid <- 0
-  ds_graph[is.na(ds_graph$tonode),]$tonode  <- 0
-  
-  # rejoin reversed graph with original dataset
-  ds_graph <- dplyr::relocate(
-    dplyr::left_join(
-      dplyr::select(
-        graph, 
-        -tocomid, 
-        -fromnode,
-        -tonode
-      ),
-      ds_graph,
-      by = "comid"
-    ),
-    comid, tocomid, fromnode, tonode
-  )
-  
-  return(ds_graph)
-  
-}
+#' #' Reverse the topology of a Directed Acyclic Graph
+#' #' Given a DAG dataframe with comid, tocomid, fromnode, and tonode, attributes, this function will reverese the topology and start the graph at the most upstream/downstream node. Internal function to be used with create_dag().
+#' #' @param graph dataframe or sf dataframe with comid, tocomid, fromnode, and tonode attributes
+#' #'
+#' #' @return dataframe with originally node topology in reverse
+#' #' @export
+#' #'
+#' #' @examples
+#' reverse_dag <- function(graph, start = NULL) {
+#'   
+#'   start = "8898002"
+#'   
+#'   ds_graph <- dplyr::select(
+#'     dplyr::left_join(
+#'       sf::st_drop_geometry(
+#'         dplyr::select(graph,
+#'                       comid,
+#'                       tocomid,
+#'                       fromnode,
+#'                       tonode
+#'         )
+#'       ),
+#'       sf::st_drop_geometry(
+#'         dplyr::select(
+#'           graph, 
+#'           new_comid = tocomid,
+#'           new_tocomid = comid,
+#'           new_fromnode = tonode,
+#'           new_tonode = fromnode
+#'         )
+#'       ),
+#'       by = c("fromnode" = "new_fromnode", "comid" = "new_comid")
+#'     ),
+#'     comid = tocomid,
+#'     tocomid = comid,
+#'     fromnode, tonode, new_tocomid, new_tonode
+#'     # -tonode, -tocomid
+#'   )
+#'   
+#'   ds_graph[ds_graph$tocomid == start, ]$tocomid <- 0
+#'   ds_graph[ds_graph$tocomid == start, ]$new_tonode  <- 0
+#'   
+#'   # set start of graph tcomid and tonode to 0
+#'   ds_graph[is.na(ds_graph$tonode),]$tocomid <- 0
+#'   ds_graph[is.na(ds_graph$tonode),]$tonode  <- 0
+#'   
+#'   # reverse comid/tocomid fromnode/tonode topology
+#'   ds_graph <- dplyr::select(
+#'     dplyr::select(
+#'       dplyr::left_join(
+#'         sf::st_drop_geometry(
+#'           dplyr::select(graph,
+#'                         comid,
+#'                         tocomid,
+#'                         fromnode,
+#'                         tonode
+#'           )
+#'         ),
+#'         sf::st_drop_geometry(
+#'           dplyr::select(
+#'             graph, 
+#'             new_comid = tocomid,
+#'             new_tocomid = comid,
+#'             new_fromnode = tonode,
+#'             new_tonode = fromnode
+#'           )
+#'         ),
+#'         by = c("fromnode" = "new_fromnode", "comid" = "new_comid")
+#'       ),
+#'       -tonode, -tocomid
+#'     ),
+#'     comid,
+#'     tocomid = new_tocomid,
+#'     fromnode, 
+#'     tonode = new_tonode
+#'   )
+#'   
+#'   # set start of graph tcomid and tonode to 0
+#'   ds_graph[is.na(ds_graph$tonode),]$tocomid <- 0
+#'   ds_graph[is.na(ds_graph$tonode),]$tonode  <- 0
+#'   
+#'   # rejoin reversed graph with original dataset
+#'   ds_graph <- dplyr::relocate(
+#'     dplyr::left_join(
+#'       dplyr::select(
+#'         graph, 
+#'         -tocomid, 
+#'         -fromnode,
+#'         -tonode
+#'       ),
+#'       ds_graph,
+#'       by = "comid"
+#'     ),
+#'     comid, tocomid, fromnode, tonode
+#'   )
+#'   
+#'   return(ds_graph)
+#'   
+#' }
 
 #' Convert a Directed Acyclic Graph (DAG) into an Undirected Graph
 #'
@@ -3124,15 +2144,12 @@ make_undirected <- function(graph) {
 
 #' Make a topology fastmap object from lists of to and from nodes representing a network
 #' 
-#' @param from_nodes 
-#' @param to_nodes 
+#' @param from_nodes numeric or character vector containing from node topology 
+#' @param to_nodes numeric or character vector containing to node topology 
 #' @param directed logical whether edge strings should be directed connection string ('->') or undirected connection string ('-'). If TRUE, edge strings will seperate nodes with a directed connection string ('->'). Default is TRUE.
 #' @param ... Additional vectors (optional). Additional vectors should be mapped to the from node keys in the hashmap, must be the same length as from_nodes and to_nodes vectors.
 #'
 #' @return fastmap with from_nodes as keys and to_nodes as values in the hashmap
-#' @export
-#'
-#' @examples
 make_topo_map <- function(
     from_nodes,
     to_nodes,
@@ -3544,7 +2561,13 @@ renode_circuits <- function(graph, verbose = FALSE) {
   return(regraph)
 }
 
-# convert edge string "->" to just a "to_node" value
+#' Convert edge string seperating nodes by a "->" to just a "to_node" value
+#'
+#' @param edge character
+#' @param to logical whether to return the tonode (TRUE) or fromnode(FALSE)
+#' @param directed logical, whether the edge string is directed/TRUE ("->") or undirected/FALSE ("-")
+#'
+#' @return character of to or from node
 edge_to_node <- function(edge, 
                          to       = TRUE, 
                          directed = TRUE
@@ -4018,8 +3041,66 @@ find_cycles <- function(
 #   )
 # 
 # create_dag(network)
-# 
-# single_cycles <- get_single_cycles(create_dag(network))
+
+#' Identify the indices of big multibraids 
+#'
+#' @param x list of vectors with each list element containing a vector COMIDs representing a braid
+#'
+#' @return numeric indices of the multibraids
+id_multibraids <- function(x) {
+  
+  # overlapped braids
+  overlaps <- find_overlaps(
+    lst            = x,
+    no_overlap_val = FALSE, 
+    rm_no_overlap  = FALSE, 
+    verbose        = FALSE
+  ) 
+  
+  big_cycles <- sort(
+    unique(
+      Reduce( 
+        c, overlaps )
+    )
+  )
+  
+  # remove 0 values
+  big_cycles <- big_cycles[big_cycles != 0]
+  
+  return(big_cycles)
+  
+}
+
+#' Utility function that takes the output from 'find_braids(nested = TRUE)' and unpacks/unnests braid_id column
+#' Unnests the comma seperated braid_id column into individual rows for each braid ID/comid pairing.
+#' @param braids dataframe or sf dataframe containing a "comid" and "braid_id" column
+#' @param into_list logical, if TRUE, unpacked braid_ids and corresponding comids are returned as a list. Default is FALSE
+#'
+#' @return dataframe or list
+unnpack_braids <- function(braids, into_list = FALSE) {
+  
+  if(!"braid_id" %in% tolower(names(braids))) {
+    stop("'braids' input does not contain 'braid_id' column ")
+  }
+  
+  unnested_braids <- 
+    braids %>% 
+    dplyr::mutate(split_braid_ids = stringr::str_split(braid_id, ", ")) %>%
+    tidyr::unnest(cols = c(split_braid_ids)) %>% 
+    dplyr::rename(
+      braid_members = braid_id, 
+      braid_id      = split_braid_ids
+    ) %>% 
+    dplyr::relocate(comid, braid_id, braid_members)
+  
+  if(into_list) {
+    unnested_braids <- split(unnested_braids$comid, unnested_braids$braid_id) 
+  }
+  
+  return(unnested_braids)
+  
+}
+
 
 #' Locate single braided sections of a river network
 #'
@@ -4081,32 +3162,6 @@ get_single_cycles <- function(
     )
   }
   return(single_cycles)
-}
-
-# Identify the index of big multibraids 
-# x is a list of vectors with each list element containing a vector COMIDs representing a braid
-id_multibraids <- function(x) {
-  
-  # overlapped braids
-  overlaps <- find_overlaps(
-    lst            = x,
-    no_overlap_val = FALSE, 
-    rm_no_overlap  = FALSE, 
-    verbose        = FALSE
-  ) 
-  
-  big_cycles <- sort(
-    unique(
-      Reduce( 
-        c, overlaps )
-    )
-  )
-  
-  # remove 0 values
-  big_cycles <- big_cycles[big_cycles != 0]
-  
-  return(big_cycles)
-  
 }
 
 # seperate multibraided braids in a network object
@@ -6112,6 +5167,21 @@ seperate_braids <- function(
 #'   return(braids)
 #' }
 
+
+
+
+#' Generate and save an animation highlighting all of the braid IDs in a network
+#' @param network sf dataframe with a braid_id column
+#' @param save_path character, path to save gif to
+#' @param title character, title of gif plot
+#' @param height numeric, height in inches
+#' @param width numeric, width in inches
+#' @param gif_width numeric, width of gif output
+#' @param gif_height numeric, height of gif output
+#' @param delay numeric, time delay between animation in seconds
+#' @param legend_pos character, position of legend. Either "bottom", "right", "left", "top", or "none"
+#' @param verbose logical, whether to print messages. Default is TRUE
+#' @return NULL
 make_braids_gif <- function(network, 
                             save_path  = NULL, 
                             title = "",
@@ -6218,35 +5288,6 @@ make_braids_gif <- function(network,
   
   # unlink deletes temporary directory holding PNGs
   unlink(new_dir, recursive = TRUE) 
-  
-}
-
-# Utility function that takes the output from 'find_braids(nested = TRUE)' and unpacks/unnests braid_id column
-# unnests the comma seperated braid_id column into individual rows for each braid ID/comid pairing.
-# (there can thus be duplicate COMIDs as some COMIDs are part of more than 1 braid )
-# (i.e. COMID 1: braid_id: "braid_1", "braid_2", "braid_4", 
-#  ---- > these 3 braid_ids for COMID 1 would become 3 separate rows after unpacking)
-unnpack_braids <- function(braids, into_list = FALSE) {
-  
-  if(!"braid_id" %in% tolower(names(braids))) {
-    stop("'braids' input does not contain 'braid_id' column ")
-  }
-  
-  unnested_braids <- 
-    braids %>% 
-    dplyr::mutate(split_braid_ids = stringr::str_split(braid_id, ", ")) %>%
-    tidyr::unnest(cols = c(split_braid_ids)) %>% 
-    dplyr::rename(
-      braid_members = braid_id, 
-      braid_id      = split_braid_ids
-    ) %>% 
-    dplyr::relocate(comid, braid_id, braid_members)
-  
-  if(into_list) {
-    unnested_braids <- split(unnested_braids$comid, unnested_braids$braid_id) 
-  }
-  
-  return(unnested_braids)
   
 }
 
@@ -6775,374 +5816,608 @@ dfs_traversal2 <- function(
   return(res)
   
 }
+#' 
+#' #' Find next cycle in a NHDPlus flowlines Network
+#' #'
+#' #' @param network data.frame with comid, tonode, fromnode, and (optionally) divergence and terminalpa attributes.
+#' #' @param start integer COMID to start braid detection from. A start COMID should be provided in cases where network is made up of disconnected network components (i.e. a start COMID will detect all braids in each connected flowlines network) Default is NULL and braid checking will start from the flowline that has a tocomid value of "0", or a random flowline otherwise. 
+#' #' @param verbose logical print status updates, if TRUE, messages will print. Default is FALSE.
+#' #' @return logical, If TRUE, atleast one braid was detected in network, FALSE if no braids were found
+#' #' @export
+#' #'
+#' #' @examples
+#' find_next_cycle <- function(
+#'     network,
+#'     start   = NULL,
+#'     verbose = FALSE
+#' ) {
+#'   
+#'   # start  <- "8898002"
+#'   # start  <- "fgdegd"
+#'   # start = NULL
+#'   # plot(network$geometry)
+#'   # # pick a node to start at
+#'   # start_node <- as.character(network$fromnode[1])
+#'   
+#'   # lower case names
+#'   names(network) <- tolower(names(network))
+#'   
+#'   # create directed acyclic graph
+#'   dag <- create_dag(network)
+#'   # graph <- create_dag(network)
+#'   
+#'   # if a start COMID is given
+#'   if(!is.null(start)) {
+#'     
+#'     # if start COMID is NOT found in the network, throw error
+#'     if(!start %in% network$comid) { stop(start, " COMID not found in network")}
+#'     
+#'     if(verbose) {
+#'       message("Starting braid detection at COMID: ", start)
+#'     }
+#'     
+#'     # find fromnode of comid to start cycle detection at
+#'     start_node <- as.character(dag$fromnode[ dag$comid == start])
+#'     # start_node <- as.character(graph$fromnode[ graph$comid == start])
+#'     
+#'   } else {
+#'     
+#'     if ("0" %in% dag$tocomid) {
+#'       
+#'       # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
+#'       # start_node <- as.character(graph$fromnode[graph$tocomid == "0"])[1]
+#'       start_node <- as.character(dag$fromnode[dag$tocomid == "0"])[1]
+#'       
+#'       if(verbose) {
+#'         message("Starting braid detection at COMID: ", dag$comid[dag$tocomid == "0"][1])
+#'         # message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])
+#'       }
+#'       
+#'     } else {
+#'       
+#'       if(verbose) {
+#'         message("No 'tocomid' value equal to '0' found", 
+#'                 "\nStarting braid detection at COMID: ",  
+#'                 dag$comid[dag$fromnode == as.character(dag$fromnode)[1]]
+#'                 # graph$comid[graph$fromnode == as.character(graph$fromnode)[1]]
+#'         )
+#'       }
+#'       
+#'       start_node <- as.character(dag$fromnode)[1]
+#'       # start_node <- as.character(graph$fromnode)[1]
+#'     }
+#'   }
+#'   
+#'   # create artificial cycles from circuits in graph, doing this allows for 
+#'   # sections of river that form a circuit to be identified as a cycle and thus a braid
+#'   # Questionable at this point, other option is the code using single_cycles() function 
+#'   graph <- renode_circuits(dag)
+#'   # graph <- renode_circuits(graph)
+#'   
+#'   # make an undirected graph from DAG
+#'   graph <- make_undirected(graph)  
+#'   
+#'   # make hashmap for tonode/fromnode topology for traversing graph
+#'   topo_map <- make_topo_map(
+#'     from_nodes = graph$tonode,
+#'     to_nodes   = graph$fromnode
+#'   )
+#'   
+#'   # keep track of visited nodes
+#'   visit <- fastmap::fastmap()
+#'   
+#'   # # set all marked values to FALSE
+#'   # visit$mset(.list = stats::setNames(
+#'   #                           lapply(1:length(unique(c(graph$fromnode, graph$tonode))), function(i){ FALSE }), 
+#'   #                           unique(c(graph$fromnode, graph$tonode))))
+#'   
+#'   last_node <- "nope"
+#'   
+#'   # Depth first search function for detecting cycles 
+#'   dfs <- function(node, prev) {
+#'     
+#'     if (visit$has(node)) {
+#'       # if(visit$has(node)) {  
+#'       return(FALSE)
+#'       
+#'     }
+#'     
+#'     # visit node
+#'     visit$set(node, TRUE)
+#'     
+#'     # get the neighbors of current node
+#'     neighbors <- topo_map$get(node)$to_node
+#'     
+#'     message("Neighbors of node: ",  node, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
+#'     
+#'     last_node <<- node
+#'     message("LAST NODE OF CYCLE: ", last_node)
+#'     
+#'     for (i in neighbors) {
+#'       
+#'       message("NEIGHBOR: ", i)
+#'       
+#'       if (i == prev) {
+#'         message("!!! SKIPPING NEIGH == PREVIOUS --> ", i, " == ", prev, " !!!")
+#'         next
+#'       }
+#'       
+#'       if (!dfs(i, node)) {
+#'         message("IN CYCLE: NEIGHBOR: ", i)
+#'         message("IN CYCLE: NODE: ", node)
+#'         message("!!! FOUND A CYCLE !!!")
+#'         return(FALSE)
+#'       }
+#'       message("=============================")
+#'     }
+#'     
+#'     return(TRUE)
+#'   }
+#'   
+#'   # return cycle detection logical
+#'   return(!dfs(start_node, "no_previous"))
+#'   
+#' }
+#' 
+#' find_first_cycles <- function(
+#'     graph,
+#'     start     = NULL,
+#'     return_as = "list",
+#'     verbose   = FALSE
+#' ) {
+#'   
+#'   # if a start COMID/Node is given
+#'   if(!is.null(start)) {
+#'     
+#'     # if start COMID is NOT found in the network, throw error
+#'     if(!start %in% graph$fromnode) { stop(start, " node not found in graph")}
+#'     
+#'     # if(verbose) { message("Starting braid detection at COMID: ", start)  }
+#'     
+#'     # find fromnode of comid to start cycle detection at
+#'     # start_node <- as.character(graph$fromnode[graph$comid == start])
+#'     start_node <- as.character(start)
+#'     
+#'   } else {
+#'     # If no "start" is given, pick a node to start at
+#'     if ("0" %in% graph$tonode) {
+#'       
+#'       # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
+#'       start_node <- as.character(graph$fromnode[graph$tonode == "0"])[1]
+#'       
+#'       # if(verbose) {message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])}
+#'       
+#'     } else {
+#'       
+#'       # if(verbose) { message("No 'tocomid' value equal to '0' found", 
+#'       # "\nStarting braid detection at COMID: ", graph$comid[graph$fromnode == as.character(graph$fromnode)[1]] ) }
+#'       start_node <- as.character(graph$fromnode)[1]
+#'     }
+#'   }
+#'   
+#'   if(verbose) {
+#'     message("Starting braid detection at node: ", start_node)
+#'     # message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])
+#'   }
+#'   
+#'   # make a topology hashmap to use in DFS 
+#'   topo_map <- make_topo_map(
+#'     # from_nodes = graph$tonode,
+#'     # to_nodes   = graph$fromnode
+#'     from_nodes = graph$fromnode,
+#'     to_nodes   = graph$tonode
+#'   )
+#'   # topo_map$as_list()
+#'   # keep track of visited nodes
+#'   visits <- fastmap::fastmap()
+#'   
+#'   # # set all marked values to FALSE
+#'   visits$mset(.list = stats::setNames(
+#'     lapply(1:length(unique(c(graph$fromnode, graph$tonode))),
+#'            function(i){ 0 }),
+#'     unique(c(graph$fromnode, graph$tonode))
+#'     # lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), function(i){ 0 }),
+#'     # unique(c(ungraph$fromnode, ungraph$tonode))
+#'   )
+#'   )
+#'   # visits$as_list()
+#'   
+#'   # keep track of cycles nodes
+#'   cycles <- fastmap::fastmap()
+#'   
+#'   # # # set all marked values to FALSE
+#'   # cycles$mset(.list = stats::setNames(
+#'   #                         lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), function(i){ 0 }),
+#'   #                         unique(c(ungraph$fromnode, ungraph$tonode))))
+#'   
+#'   # keep track of visited nodes
+#'   prev_nodes <- fastmap::fastmap()
+#'   
+#'   # # set all marked values to FALSE
+#'   prev_nodes$mset(.list = stats::setNames(
+#'     lapply(1:length(unique(c(graph$fromnode, graph$tonode))),
+#'            function(i){ 0 }),
+#'     unique(c(graph$fromnode, graph$tonode))
+#'     # lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), 
+#'     # function(i){ 0 }),
+#'     # unique(c(ungraph$fromnode, ungraph$tonode))
+#'   )
+#'   )
+#'   # prev_nodes$as_list()
+#'   
+#'   # cycle number count
+#'   count <- 1
+#'   
+#'   dfs <- function(n, p) {
+#'     # dfs <- function(n, p, visits, prev_nodes) {
+#'     
+#'     # message("node: ", n)
+#'     # message("node ", n, " visit value: ", visits$get(n))
+#'     
+#'     # node has been fully visited
+#'     if (visits$get(n) == 2) {
+#'       return()
+#'     }
+#'     
+#'     # node is in process of visitation
+#'     if (visits$get(n) == 1) {
+#'       
+#'       # # map/list to store current level nodes
+#'       v <- vctrs::vec_c()
+#'       # v    <- list()
+#'       # v <- fastmap::fastmap()
+#'       
+#'       curr <- p
+#'       v <- vctrs::vec_c(v, vctrs::vec_c(curr))
+#'       # v    <- list(v, list(curr))
+#'       
+#'       # message("v BEFORE WHILE LOOP: ", paste0(c(v), sep = "\n"))
+#'       
+#'       # while parent of n is not equal to itself
+#'       while (curr != n) {
+#'         
+#'         # update curr value to previous values of curr
+#'         curr <- prev_nodes$get(curr)
+#'         
+#'         # add cycle vertices to v
+#'         v <- vctrs::vec_c(v, vctrs::vec_c(curr))
+#'         # v = list(v, list(curr))
+#'       }
+#'       
+#'       # message("v AFTER WHILE LOOP: ", paste0(c(v), sep = "\n"))
+#'       # message("!!!! MARKING CYCLE NODE = ", n, " !!!!!")
+#'       # 
+#'       # add vertices for current cycle number to cycles hashmap 
+#'       cycles$set(as.character(count), v)
+#'       
+#'       # incremenet count
+#'       count <<-  count + 1
+#'       
+#'       return()
+#'       
+#'     }
+#'     
+#'     # set parents of node n 
+#'     prev_nodes$set(n, p)
+#'     # prev_nodes$as_list()
+#'     
+#'     # mark node as partially visited
+#'     visits$set(n, 1)
+#'     
+#'     # get neighbors of node n
+#'     neighbors <- topo_map$get(n)$to_node
+#'     
+#'     # message("Neighbors of node: ",  n, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
+#'     
+#'     # iterate through neighbors of node n
+#'     for (vert in neighbors) {
+#'       
+#'       message("vert: ", vert)
+#'       
+#'       if(vert == prev_nodes$get(n)) {
+#'         # message("vert ", vert, " equals parent ", prev_nodes$get(n))
+#'         # message("!!!! SKIPPING ITERTATION !!!! ")
+#'         next
+#'       }
+#'       
+#'       # message("---- RUNNING DFS ON ----")
+#'       # message("---> vert = ", vert)
+#'       # message("---> n = ", n)
+#'       # message("------------------")
+#'       
+#'       dfs(vert, n)
+#'       
+#'       # message("$$$ COUNT = ", count, " $$$")
+#'       
+#'       if(count > 1) {
+#'         # message("COUNT > 1, RETURNING!!!")
+#'         return()
+#'         
+#'       }
+#'       # message("***********")
+#'     }
+#'     # message("!!! MARKING NODE ", n, " to 2 !!! ")
+#'     
+#'     # mark node as fully visited
+#'     visits$set(n, 2)
+#'     
+#'     # message("=============================")
+#'   }
+#'   
+#'   # Start DFS on a node
+#'   dfs(start_node, "no_previous")
+#'   
+#'   # cycles$as_list()
+#'   # cycles$size()
+#'   
+#'   # if(cycles$size() == 0 & is.null(single_braids)) {
+#'   if(cycles$size() == 0) {
+#'     message("No cycles found, returning NULL")
+#'     return(NULL)
+#'   }
+#'   
+#'   # extract cycles hashmap as a list
+#'   result <- cycles$as_list()
+#'   
+#'   # if data should be returned as a 2 column dataframe with node and cycle_id
+#'   if(return_as == "dataframe") {
+#'     
+#'     result <- lapply(1:length(result), function(k) {
+#'       # result <- lapply(1:length(cycles$as_list()), function(k) {
+#'       # get IDs of each node
+#'       data.frame(
+#'         node     = result[[k]],
+#'         cycle_id = names(result[k])
+#'         # node     = cycles$as_list()[[k]],
+#'         # cycle_id = names(cycles$as_list()[k])
+#'       )
+#'     })  %>% 
+#'       dplyr::bind_rows() %>%
+#'       dplyr::group_by(node) %>% 
+#'       dplyr::summarise(
+#'         cycle_id = paste0(cycle_id, collapse = ", ")
+#'       ) %>%
+#'       dplyr::ungroup()
+#'     
+#'   }
+#'   
+#'   return(result)
+#'   
+#' }
 
-#' Find next cycle in a NHDPlus flowlines Network
-#'
-#' @param network data.frame with comid, tonode, fromnode, and (optionally) divergence and terminalpa attributes.
-#' @param start integer COMID to start braid detection from. A start COMID should be provided in cases where network is made up of disconnected network components (i.e. a start COMID will detect all braids in each connected flowlines network) Default is NULL and braid checking will start from the flowline that has a tocomid value of "0", or a random flowline otherwise. 
-#' @param verbose logical print status updates, if TRUE, messages will print. Default is FALSE.
-#' @return logical, If TRUE, atleast one braid was detected in network, FALSE if no braids were found
-#' @export
-#'
-#' @examples
-find_next_cycle <- function(
-    network,
-    start   = NULL,
-    verbose = FALSE
-) {
-  
-  # start  <- "8898002"
-  # start  <- "fgdegd"
-  # start = NULL
-  # plot(network$geometry)
-  # # pick a node to start at
-  # start_node <- as.character(network$fromnode[1])
-  
-  # lower case names
-  names(network) <- tolower(names(network))
-  
-  # create directed acyclic graph
-  dag <- create_dag(network)
-  # graph <- create_dag(network)
-  
-  # if a start COMID is given
-  if(!is.null(start)) {
-    
-    # if start COMID is NOT found in the network, throw error
-    if(!start %in% network$comid) { stop(start, " COMID not found in network")}
-    
-    if(verbose) {
-      message("Starting braid detection at COMID: ", start)
-    }
-    
-    # find fromnode of comid to start cycle detection at
-    start_node <- as.character(dag$fromnode[ dag$comid == start])
-    # start_node <- as.character(graph$fromnode[ graph$comid == start])
-    
-  } else {
-    
-    if ("0" %in% dag$tocomid) {
-      
-      # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
-      # start_node <- as.character(graph$fromnode[graph$tocomid == "0"])[1]
-      start_node <- as.character(dag$fromnode[dag$tocomid == "0"])[1]
-      
-      if(verbose) {
-        message("Starting braid detection at COMID: ", dag$comid[dag$tocomid == "0"][1])
-        # message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])
-      }
-      
-    } else {
-      
-      if(verbose) {
-        message("No 'tocomid' value equal to '0' found", 
-                "\nStarting braid detection at COMID: ",  
-                dag$comid[dag$fromnode == as.character(dag$fromnode)[1]]
-                # graph$comid[graph$fromnode == as.character(graph$fromnode)[1]]
-        )
-      }
-      
-      start_node <- as.character(dag$fromnode)[1]
-      # start_node <- as.character(graph$fromnode)[1]
-    }
-  }
-  
-  # create artificial cycles from circuits in graph, doing this allows for 
-  # sections of river that form a circuit to be identified as a cycle and thus a braid
-  # Questionable at this point, other option is the code using single_cycles() function 
-  graph <- renode_circuits(dag)
-  # graph <- renode_circuits(graph)
-  
-  # make an undirected graph from DAG
-  graph <- make_undirected(graph)  
-  
-  # make hashmap for tonode/fromnode topology for traversing graph
-  topo_map <- make_topo_map(
-    from_nodes = graph$tonode,
-    to_nodes   = graph$fromnode
-  )
-  
-  # keep track of visited nodes
-  visit <- fastmap::fastmap()
-  
-  # # set all marked values to FALSE
-  # visit$mset(.list = stats::setNames(
-  #                           lapply(1:length(unique(c(graph$fromnode, graph$tonode))), function(i){ FALSE }), 
-  #                           unique(c(graph$fromnode, graph$tonode))))
-  
-  last_node <- "nope"
-  
-  # Depth first search function for detecting cycles 
-  dfs <- function(node, prev) {
-    
-    if (visit$has(node)) {
-      # if(visit$has(node)) {  
-      return(FALSE)
-      
-    }
-    
-    # visit node
-    visit$set(node, TRUE)
-    
-    # get the neighbors of current node
-    neighbors <- topo_map$get(node)$to_node
-    
-    message("Neighbors of node: ",  node, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
-    
-    last_node <<- node
-    message("LAST NODE OF CYCLE: ", last_node)
-    
-    for (i in neighbors) {
-      
-      message("NEIGHBOR: ", i)
-      
-      if (i == prev) {
-        message("!!! SKIPPING NEIGH == PREVIOUS --> ", i, " == ", prev, " !!!")
-        next
-      }
-      
-      if (!dfs(i, node)) {
-        message("IN CYCLE: NEIGHBOR: ", i)
-        message("IN CYCLE: NODE: ", node)
-        message("!!! FOUND A CYCLE !!!")
-        return(FALSE)
-      }
-      message("=============================")
-    }
-    
-    return(TRUE)
-  }
-  
-  # return cycle detection logical
-  return(!dfs(start_node, "no_previous"))
-  
-}
-
-find_first_cycles <- function(
-    graph,
-    start     = NULL,
-    return_as = "list",
-    verbose   = FALSE
-) {
-  
-  # if a start COMID/Node is given
-  if(!is.null(start)) {
-    
-    # if start COMID is NOT found in the network, throw error
-    if(!start %in% graph$fromnode) { stop(start, " node not found in graph")}
-    
-    # if(verbose) { message("Starting braid detection at COMID: ", start)  }
-    
-    # find fromnode of comid to start cycle detection at
-    # start_node <- as.character(graph$fromnode[graph$comid == start])
-    start_node <- as.character(start)
-    
-  } else {
-    # If no "start" is given, pick a node to start at
-    if ("0" %in% graph$tonode) {
-      
-      # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
-      start_node <- as.character(graph$fromnode[graph$tonode == "0"])[1]
-      
-      # if(verbose) {message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])}
-      
-    } else {
-      
-      # if(verbose) { message("No 'tocomid' value equal to '0' found", 
-      # "\nStarting braid detection at COMID: ", graph$comid[graph$fromnode == as.character(graph$fromnode)[1]] ) }
-      start_node <- as.character(graph$fromnode)[1]
-    }
-  }
-  
-  if(verbose) {
-    message("Starting braid detection at node: ", start_node)
-    # message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])
-  }
-  
-  # make a topology hashmap to use in DFS 
-  topo_map <- make_topo_map(
-    # from_nodes = graph$tonode,
-    # to_nodes   = graph$fromnode
-    from_nodes = graph$fromnode,
-    to_nodes   = graph$tonode
-  )
-  # topo_map$as_list()
-  # keep track of visited nodes
-  visits <- fastmap::fastmap()
-  
-  # # set all marked values to FALSE
-  visits$mset(.list = stats::setNames(
-    lapply(1:length(unique(c(graph$fromnode, graph$tonode))),
-           function(i){ 0 }),
-    unique(c(graph$fromnode, graph$tonode))
-    # lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), function(i){ 0 }),
-    # unique(c(ungraph$fromnode, ungraph$tonode))
-  )
-  )
-  # visits$as_list()
-  
-  # keep track of cycles nodes
-  cycles <- fastmap::fastmap()
-  
-  # # # set all marked values to FALSE
-  # cycles$mset(.list = stats::setNames(
-  #                         lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), function(i){ 0 }),
-  #                         unique(c(ungraph$fromnode, ungraph$tonode))))
-  
-  # keep track of visited nodes
-  prev_nodes <- fastmap::fastmap()
-  
-  # # set all marked values to FALSE
-  prev_nodes$mset(.list = stats::setNames(
-    lapply(1:length(unique(c(graph$fromnode, graph$tonode))),
-           function(i){ 0 }),
-    unique(c(graph$fromnode, graph$tonode))
-    # lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), 
-    # function(i){ 0 }),
-    # unique(c(ungraph$fromnode, ungraph$tonode))
-  )
-  )
-  # prev_nodes$as_list()
-  
-  # cycle number count
-  count <- 1
-  
-  dfs <- function(n, p) {
-    # dfs <- function(n, p, visits, prev_nodes) {
-    
-    # message("node: ", n)
-    # message("node ", n, " visit value: ", visits$get(n))
-    
-    # node has been fully visited
-    if (visits$get(n) == 2) {
-      return()
-    }
-    
-    # node is in process of visitation
-    if (visits$get(n) == 1) {
-      
-      # # map/list to store current level nodes
-      v <- vctrs::vec_c()
-      # v    <- list()
-      # v <- fastmap::fastmap()
-      
-      curr <- p
-      v <- vctrs::vec_c(v, vctrs::vec_c(curr))
-      # v    <- list(v, list(curr))
-      
-      # message("v BEFORE WHILE LOOP: ", paste0(c(v), sep = "\n"))
-      
-      # while parent of n is not equal to itself
-      while (curr != n) {
-        
-        # update curr value to previous values of curr
-        curr <- prev_nodes$get(curr)
-        
-        # add cycle vertices to v
-        v <- vctrs::vec_c(v, vctrs::vec_c(curr))
-        # v = list(v, list(curr))
-      }
-      
-      # message("v AFTER WHILE LOOP: ", paste0(c(v), sep = "\n"))
-      # message("!!!! MARKING CYCLE NODE = ", n, " !!!!!")
-      # 
-      # add vertices for current cycle number to cycles hashmap 
-      cycles$set(as.character(count), v)
-      
-      # incremenet count
-      count <<-  count + 1
-      
-      return()
-      
-    }
-    
-    # set parents of node n 
-    prev_nodes$set(n, p)
-    # prev_nodes$as_list()
-    
-    # mark node as partially visited
-    visits$set(n, 1)
-    
-    # get neighbors of node n
-    neighbors <- topo_map$get(n)$to_node
-    
-    # message("Neighbors of node: ",  n, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
-    
-    # iterate through neighbors of node n
-    for (vert in neighbors) {
-      
-      message("vert: ", vert)
-      
-      if(vert == prev_nodes$get(n)) {
-        # message("vert ", vert, " equals parent ", prev_nodes$get(n))
-        # message("!!!! SKIPPING ITERTATION !!!! ")
-        next
-      }
-      
-      # message("---- RUNNING DFS ON ----")
-      # message("---> vert = ", vert)
-      # message("---> n = ", n)
-      # message("------------------")
-      
-      dfs(vert, n)
-      
-      # message("$$$ COUNT = ", count, " $$$")
-      
-      if(count > 1) {
-        # message("COUNT > 1, RETURNING!!!")
-        return()
-        
-      }
-      # message("***********")
-    }
-    # message("!!! MARKING NODE ", n, " to 2 !!! ")
-    
-    # mark node as fully visited
-    visits$set(n, 2)
-    
-    # message("=============================")
-  }
-  
-  # Start DFS on a node
-  dfs(start_node, "no_previous")
-  
-  # cycles$as_list()
-  # cycles$size()
-  
-  # if(cycles$size() == 0 & is.null(single_braids)) {
-  if(cycles$size() == 0) {
-    message("No cycles found, returning NULL")
-    return(NULL)
-  }
-  
-  # extract cycles hashmap as a list
-  result <- cycles$as_list()
-  
-  # if data should be returned as a 2 column dataframe with node and cycle_id
-  if(return_as == "dataframe") {
-    
-    result <- lapply(1:length(result), function(k) {
-      # result <- lapply(1:length(cycles$as_list()), function(k) {
-      # get IDs of each node
-      data.frame(
-        node     = result[[k]],
-        cycle_id = names(result[k])
-        # node     = cycles$as_list()[[k]],
-        # cycle_id = names(cycles$as_list()[k])
-      )
-    })  %>% 
-      dplyr::bind_rows() %>%
-      dplyr::group_by(node) %>% 
-      dplyr::summarise(
-        cycle_id = paste0(cycle_id, collapse = ", ")
-      ) %>%
-      dplyr::ungroup()
-    
-  }
-  
-  return(result)
-  
-}
+#' #' Find braids in a network
+#' #' 
+#' #' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+#' #' 
+#' #' @param network The network object representing the river network.
+#' #' @param start Optional argument specifying the starting point for braid detection.
+#' #' @param return_as Specifies the format of the output. Options are "list" (default) or "dataframe".
+#' #' @param add Logical indicating whether to add braid information to the original network data.
+#' #' @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)
+#' #' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#' #' 
+#' #' @return Either a list of braids detected in the network. Each element of the list represents a braid and contains the COMIDs  that form the braid. Or a dataframe of COMIDs associated with there respective braid_id(s)
+#' #' 
+#' #' @examples
+#' #' net <- nhdplusTools::navigate_network(
+#' #'  start       = 101,
+#' #'  mode        = "UT",
+#' #'  distance_km = 100
+#' #'  ) %>%
+#' #' dplyr::select( comid, divergence, totdasqkm, fromnode, tonode)
+#' #' 
+#' #' # get a list of COMIDs in each braid of network
+#' #' braid_list = find_braids(network = net, return_as = "list")
+#' #' 
+#' #' # add braid_id column to original dataset
+#' #' braid_df = find_braids(network   = net,
+#' #'                        return_as = "dataframe",
+#' #'                        nested    = TRUE,
+#' #'                        add       = TRUE
+#' #'                        )
+#' #' 
+#' #' # returnal original data with each braid_id represented
+#' #' # by its individual COMIDs (may contain duplicate COMIDs)
+#' #' braid_df = find_braids(network   = net,
+#' #'                        return_as = "dataframe",
+#' #'                        nested    = FALSE,
+#' #'                        add       = TRUE
+#' #'                        )
+#' #' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
+#' #' @importFrom sf st_drop_geometry
+#' #' @importFrom stats setNames
+#' #' @importFrom magrittr %>%
+#' #' 
+#' #' @export
+#' find_braids <- function(
+#'     network,
+#'     start        = NULL,
+#'     return_as    = "list",
+#'     add          = FALSE,
+#'     nested       = TRUE,
+#'     verbose      = FALSE
+#' ) {
+#' 
+#'   # check valid return_as input
+#'   if(!return_as %in% c("list", "dataframe")) {
+#'     stop("Invalid 'return_as' argument '",
+#'          return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
+#'   }
+#' 
+#'   # # check relationship argument is valid
+#'   # if(return_as == "dataframe") {
+#'   #   if(!relationship %in% c("one-to-one", "one-to-many")) {
+#'   #     stop("Invalid 'relationship' argument '",
+#'   #          relationship, "'\n'relationship' must be: 'one-to-one' or 'one-to-many'")
+#'   #   }
+#'   # }
+#' 
+#'   # lower case names
+#'   names(network) <- tolower(names(network))
+#' 
+#'   # turn network into a directed graph
+#'   dag <- create_dag(network)
+#' 
+#'   # get the fromnode associated with a given COMID 'start'
+#'   start_node <- comid_to_node(dag, start)
+#' 
+#'   if(verbose) {
+#'     message("Starting braid detection at ",
+#'             ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
+#'   }
+#' 
+#'   # drop graph geometry
+#'   dag <- sf::st_drop_geometry(dag)
+#'   # graph <- sf::st_drop_geometry(graph)
+#' 
+#'   # stash comids and from IDs
+#'   comid_map <- dplyr::select(
+#'     # graph,
+#'     dag,
+#'     comid,
+#'     fromnode,
+#'     tonode
+#'   )
+#' 
+#'   # create artificial cycles from circuits in graph, doing this allows for
+#'   # sections of river that form a circuit to be identfied as a cycle and thus a braid
+#'   # Questionable at this point, other option is the code below that uses
+#'   # single_cycles() function (COMMENTED OUT CODE BELOW)
+#'   regraph <- renode_circuits(dag, verbose = FALSE)
+#' 
+#'   # ##### - GET_SINGLE_CYCLES CODE -
+#'   # # check for single cycles (2 nodes A,B that have unique edges)
+#'   # # (i.e. 2 comids w/ exact same fromnodes/tonodes)
+#'   # single_cycles <- get_single_cycles(dag)
+#'   # # if cycles were found
+#'   # if(!is.null(cycles)) {
+#'   #   # match each fromnode with original COMIDs
+#'   #   braids <- sapply(1:length(cycles), function(k) {
+#'   #     # get COMIDs of each braid
+#'   #     comid_map[comid_map$fromnode %in% cycles[[k]], ]$comid
+#'   #   })
+#'   #   # if single cycles are found in network
+#'   #   if(!is.null(single_cycles)) {
+#'   #     braids <- c(braids, unname(single_cycles))
+#'   #   }
+#'   #   # if NO cycles were found
+#'   # } else {
+#'   #   # if single cycles are found in network
+#'   #   if(!is.null(single_cycles)) {
+#'   #     braids <- c(unname(single_cycles))
+#'   #   } else {
+#'   #     message("No braids found, returning NULL")
+#'   #     return(NULL)
+#'   #   }
+#'   # }
+#' 
+#'   # make an undirected graph
+#'   undir <- make_undirected(regraph)
+#' 
+#'   # find cycles in undirected graph (proxy for braids)
+#'   cycles <- find_cycles(
+#'     graph     = undir,
+#'     start     = start_node,
+#'     return_as = "list",
+#'     edge      = FALSE,
+#'     wide      = TRUE,
+#'     verbose   = verbose
+#'   )
+#' 
+#'   # if(cycles$size() == 0 & is.null(single_braids)) {
+#'   if(is.null(cycles)) {
+#'     # message("No cycles found, returning NULL")
+#'     return(NULL)
+#'   }
+#' 
+#'   # remove added nodes from renode_circuits()
+#'   braids <- lapply(cycles, function(i) {
+#'     i[i %in% comid_map$fromnode]
+#'   })
+#' 
+#'   # # match fromnodes from comid_map to nodes identified in each cycle
+#'   braids <- lapply(1:length(braids), function(k) {
+#'     # get COMIDs of each braid
+#'     comid_map[comid_map$fromnode %in% braids[[k]], ] %>%
+#'       dplyr::filter(tonode %in% braids[[k]]) %>%
+#'       .$comid
+#'   })
+#' 
+#'   # set braid_id names
+#'   braids <- stats::setNames(braids, paste0("braid_",  1:length(braids)))
+#' 
+#'   # # if multibraids should be untangled
+#'   # if(untangle) {
+#'   #   if(verbose) { message("Attempting to seperate multibraids...") }
+#'   #   braids <- seperate_braids(network, braids)
+#'   # }
+#' 
+#'   # if data should be returned as a 2 column dataframe with comid and braid_ids
+#'   if(return_as == "dataframe") {
+#' 
+#'     # get comids of multibraids
+#'     multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
+#' 
+#'     # format braids into a dataframe
+#'     braids <- lapply(1:length(braids), function(k) {
+#'       # braids_df <- lapply(1:length(braids), function(k) {
+#' 
+#'       # get COMIDs of each braid
+#'       data.frame(
+#'         comid    = braids[[k]],
+#'         braid_id = names(braids[k])
+#'       )
+#'     }) %>%
+#'       dplyr::bind_rows() %>%
+#'       dplyr::tibble()
+#' 
+#'     # if each comid should have a list of all the braids it is a part of
+#'     # if relationship == "one-to-one" then COMIDs may appear more than once
+#'     # in dataset as a COMID may be apart of more than one braid
+#'     # if(relationship == "one-to-many") {
+#'     if(nested) {
+#' 
+#'       braids <-
+#'         braids %>%
+#'         dplyr::group_by(comid) %>%
+#'         dplyr::summarise(
+#'           braid_id = paste0(braid_id, collapse = ", ")
+#'         ) %>%
+#'         dplyr::ungroup()
+#' 
+#'     }
+#' 
+#'     # add a logical value that says whether a COMID is part of a multibraided system,
+#'     # or is a flowline in more than one braid (multiple braid_ids)
+#'     braids$is_multibraid <- braids$comid %in% multibraids
+#' 
+#'     # if braid data should be added to original data
+#'     if(add) {
+#' 
+#'       # join back with original data
+#'       braids <-
+#'         dplyr::mutate(
+#'           dplyr::left_join(
+#'             network,
+#'             braids,
+#'             by = "comid"
+#'           ),
+#'           braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
+#'         )
+#'       # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
+#'     }
+#' 
+#'     # set no_braid values to FALSE
+#'     braids$is_multibraid <- ifelse(is.na(braids$is_multibraid),
+#'                                    FALSE, braids$is_multibraid)
+#' 
+#'     # move braid_id and is_multibraided columns to front of dataframe
+#'     braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
+#'     # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
+#'   }
+#' 
+#'   return(braids)
+#' }
 
 # ------- SNAP NETWORK LINES TO MAKE CORRECT TO AND FROM NODES FOR UNDIRECTED GRAPH ----
 
@@ -7180,77 +6455,982 @@ find_first_cycles <- function(
 # 
 # print(final_sf)
 
-#' # ---- TEST NEW ALGO ----
+# *************************
+## ---- TEST NEW ALGO2 ----
+# *************************
+
+#' Create a list of braid IDs containing COMIDs in each braid 
+#'
+#' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+#'
+#' @param network The network object representing the river network.
+#' @param start Optional argument specifying the starting point for braid detection.
+#' @param terminal_id character of the column containing a unique identifier, deliniating seperate networks in the 'network' dataset. Default is NULL which will use try and determine the connected components in the graph to try and create a 'component_id' column in 'network' 
+#' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#' @return list of braid IDs and COMIDs within each braid
+get_braid_list_latest <- function(
+    network,
+    terminal_id = NULL,
+    # as_df   = TRUE,
+    # return_as = "list",
+    # start   = NULL,
+    # dendritic = TRUE,
+    verbose = FALSE
+) {
+  # ref_net <- sf::read_sf("/Users/anguswatters/Downloads/01_reference_features.gpkg", layer = "flowlines")
+  # names(ref_net) <- tolower(names(ref_net))
+  # network <-
+  #   ref_net %>%
+  #   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+  #   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+  # 
+  # network <-
+  #   network %>%
+  #   dplyr::filter(terminalpa %in% unique(network$terminalpa)[1:25])
+  # #   # dplyr::slice(1:5000)
+  # 
+  # verbose = TRUE
+  # terminal_id = NULL
+  # terminal_id = "terminalpa"
+  
+  # unique(network$terminalpa) %>% length()
+  # unique(network$component_id) %>% length()
+  
+  # if no terminal_ids column name is given, create one by finding all connected componenets in network
+  if(is.null(terminal_id)) {
+    
+    # determine which flowlines are part of which contiguous set of linestrings 
+    # (creates a unique identifier for each seperated network of flowlines)
+    network <- find_connected_components(network = network, add = TRUE)
+    
+    
+  } else { # if a terminal_id IS provided, the column name is checked and changed to "component_id"
+    
+    # check that 'terminal_id' is a column in 'network', if not throw an error
+    if(!terminal_id %in% names(network)) {
+      stop("Invalid terminal_id argument '", terminal_id, "', terminal_id must be a column in 'network'")
+    }
+    
+    if(verbose) { message("User provided 'terminal_id': '", terminal_id, "'")}
+    
+    # name of the "tocomid" column in network that should be removed
+    term_col <- names(network)[names(network) %in% terminal_id]
+    
+    # replace term_col column name with "terminalID"
+    names(network) <- gsub(term_col, "component_id", names(network)) 
+    
+  }
+  
+  
+  # list of the uniqueu component IDs 
+  components <- unique(network$component_id)
+  
+  # loop through each of the unique 'component_id' and get a list of braids for each distinct componenet
+  braid_list <- lapply(1:length(components), function(i) {
+    
+    if(verbose) {
+      message(i, "/", length(components))
+      message("component[i]: ", components[i])
+      message("# rows in component ", components[i], ": ", nrow(
+        dplyr::filter(network, component_id %in% components[i])
+      ))
+      message('=====================')
+    }
+    
+    # get list of braids for distinct network
+    # filter network down to the iterations component (components[i])
+    internal_get_braid_list(
+      network = dplyr::filter(network,  component_id %in% components[i]), 
+      start   = NULL,
+      verbose = verbose
+    )
+    
+  })
+  
+  # remove duplicate braids IDs and re number braid IDs
+  braid_list <- reduce_braid_list(braid_list)
+  
+  return(braid_list)
+  
+  
+  
+  # parts
+  # network %>% get_terminal_ids(add = F)
+  # roots <- network %>% get_start_ids()
+  # return_as = "list"
+  # parts <- find_connected_components(network, add = T)
+  # parts
+  # parts$component_id %>% unique()
+  # 
+  # network %>% 
+  #   dplyr::mutate(
+  #     terminalpa = as.character(terminalpa)
+  #   ) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = terminalpa))
+  # 
+  # parts %>% 
+  #   dplyr::mutate(
+  #     component_id = as.character(component_id)
+  #   ) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = component_id))
+  # parts2 <- 
+  #   parts %>% 
+  #   dplyr::mutate(
+  #     uterms = paste0(component_id, "_", terminalpa)
+  #   ) %>% 
+  #   dplyr::select(uterms) 
+  # mapview::mapview(dplyr::filter(parts, component_id == "1"), color = "dodgerblue") +
+  #   mapview::mapview(dplyr::filter(parts, component_id == "2"), color = "gold") +
+  # mapview::mapview(dplyr::filter(parts, component_id == "3"), color = "red") +
+  # mapview::mapview(dplyr::filter(parts, component_id == "4"), color = "green") + 
+  # mapview::mapview(dplyr::filter(parts, component_id == "5"), color = "hotpink") +
+  #   mapview::mapview(dplyr::filter(parts, component_id == "6"), color = "cyan")
+  # 
+  # parts %>% 
+  #   # dplyr::group_by(uterms)
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = uterms))
+  
+  }
+# find overlapping COMIDs in list of COMID vectors and
+# remove the overlapping (double counting) of COMIDs in different braids
+seperate_braids2 <- function(x) {
+  
+  # overlapped braids
+  overlaps <- find_overlaps(
+    lst            = x,
+    no_overlap_val = FALSE, 
+    rm_no_overlap  = FALSE, 
+    verbose        = FALSE
+  )
+  
+  while(!is.null(overlaps)) {
+    # # number of multibraids/overlaps
+    # multibraids <- sum(lengths(overlaps[sapply(overlaps, function(i) { !isFALSE(i)}) ]))
+    
+    # # number of multibraids/overlaps
+    # multibraids <- length(overlaps[sapply(overlaps, function(i) { !isFALSE(i)})])
+    # multis <- overlaps[sapply(overlaps, function(i) { !isFALSE(i)})]
+    
+    for (i in 1:length(overlaps)) {
+      
+      multis <- overlaps[[i]]  
+      
+      if(isFALSE(multis)) {
+        next
+      }
+      # message("i: ", i)
+      # message("multis: ", multis)
+      
+      for (k in 1:length(multis)) {
+        # message("k: ", k)
+        # message("removing COMIDs from ", multis[k], " that are in ", i)
+        # message("multis[k]: ",      multis[k])
+        
+        # remove braids containing multiple braids
+        x[[multis[k]]] <- x[[multis[k]]][
+          !x[[multis[k]]] %in% x[[i]]
+        ]
+        # message("--------------")
+      }
+      # message("=========================") 
+    }
+    
+    overlaps <- find_overlaps(
+      lst            = x,
+      no_overlap_val = FALSE,
+      rm_no_overlap  = TRUE,
+      verbose        = FALSE
+    )
+  }
+  return(x)
+}
+
+# find overlapping COMIDs in list of COMID vectors and remove the overlapping (double counting) of COMIDs in different braids
+seperate_braids4 <- function(x) {
+  
+  # overlapped braids
+  overlaps <- find_overlaps(
+    lst            = x,
+    no_overlap_val = FALSE, 
+    rm_no_overlap  = FALSE, 
+    verbose        = FALSE
+  )
+  
+  while(!is.null(overlaps)) {
+    
+    # number of multibraids/overlaps
+    multibraids <- length(overlaps[
+      sapply(overlaps, function(i) { !isFALSE(i)})
+    ])
+    
+    overlaps[
+      sapply(overlaps, function(i) { !isFALSE(i)})
+    ]
+    # multibraids <-  length(overlaps[overlaps != FALSE])
+    # message("multibraids: ", multibraids)
+    
+    # smaller braid
+    small <- which(overlaps == TRUE)
+    
+    # larger braid
+    big   <- overlaps[small]
+    
+    for (n in 1:length(small)) {
+      # message("n: ", n)
+      # message("small[[n]]: ", small[[n]])
+      # message("big[[n]]: ", big[[n]])
+      
+      for (k in 1:length(big[[n]])) {
+        # message("k: ", k)
+        # message("[big[[n]][k]]: ", big[[n]][k])
+        
+        # remove braids containing multiple braids
+        x[[big[[n]][k]]] <- x[[big[[n]][k]]][ 
+          !x[[big[[n]]]] %in% x[[small[n]]] 
+        ]
+      }
+      # message('-----------')
+    }
+    
+    
+    overlaps <- find_overlaps(
+      lst            = x,
+      no_overlap_val = FALSE,
+      rm_no_overlap  = TRUE,
+      verbose        = FALSE
+    )
+    # message('======================') 
+  }
+  
+  return(x)
+  
+}
+
+#' #' Find the connected components in a NHDPlus flowlines Network
+#' #' Determine how many different, unconnected/seperate sets of flowlines are within a set of NHDPlus flowlines. 
+#' #' The input 'network' dataset must contain a comid, tonode, fromnode, and then (optionally) divergence and terminalpa attributes.
+#' #' Used internally within 'find_braids()' function to make sure each connected set of flowlines is addressed and braids are searched for in each seperated component.
+#' #' @param network data.frame or sf object with comid, tonode, fromnode, and (optionally) divergence and terminalpa attributes. If a "tocomid" column exists, it is recommended to remove this beforehand
+#' #' @param add logical, whether to add the component_id to the original dataset. If TRUE (default) the original dataset is returned with an additional component_id column, indicating the set of connected components each comid belongs too. If FALSE, a dataframe with the 
+#' #' @param verbose logical print status updates, if TRUE, messages will print. Default is FALSE.
+#' #' @return logical, If TRUE, atleast one braid was detected in network, FALSE if no braids were found
+#' #' @export
+#' #'
+#' #' @examples
+#' find_connected_components2 <- function(
+#'     network,
+#'     add     = TRUE,
+#'     verbose = FALSE
+#' ) {
+#'   ref_net <- sf::read_sf("/Users/anguswatters/Downloads/01_reference_features.gpkg", layer = "flowlines") 
+#'   names(ref_net) <- tolower(names(ref_net))
+#'   network <-   
+#'     ref_net %>% 
+#'     dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+#'     dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm))) %>%
+#'     dplyr::slice(1:5000)
+#'   
+#'   dd <- network %>% dplyr::filter(!tonode %in% fromnode)
+#'   xx <- find_connected_components(network, add = F)
+#'   xx$component_id %>% unique() %>% as.numeric() %>% sort()
+#'   network %>% get_terminal_ids(add = F)
+#'   
+#'   
+#'   # where to start braid search in each network
+#'   starts <- get_start_ids(network)
+#'   starts
+#'   network$terminalpa %>% unique()
+#'   # network <- nets
+#'   # network <- dplyr::select(network, -tocomid)
+#'   # add = FALSE
+#'   
+#'   # initialize NULL dropped_col value to store dropped to comid column if necessary
+#'   dropped_col <- NULL
+#'   
+#'   # Store the original column order
+#'   col_order <- c("component_id", names(network))
+#'   
+#'   # lower case names
+#'   names(network) <- tolower(names(network))
+#'   
+#'   # try and detect a "tocomid" like column, if its found in the network columns, remove that column
+#'   if (any(names(network) %in% c("tocomid", "toCOMID", "to_comid", "TOCOMID", "to_COMID", "to_Comid", "TO_COMID"))) {  
+#'     
+#'     # name of the "tocomid" column in network that should be removed
+#'     drop_tocomid <- names(network)[names(network) %in% c("tocomid", "toCOMID", "to_comid", "TOCOMID", "to_COMID", "to_Comid", "TO_COMID")]
+#'     
+#'     # store the dropped tocomid column to add back later if needed
+#'     dropped_col <- sf::st_drop_geometry(network[, c("comid", drop_tocomid)])
+#'     # network[, c("comid", drop_tocomid), drop = T]
+#'     
+#'     # remove to comid type column if found
+#'     network <- network[, names(network) != drop_tocomid]
+#'     
+#'   }
+#'   
+#'   # create directed acyclic graph
+#'   graph <- create_dag(network)
+#'   
+#'   # # # get the fromnode associated with a given COMID 'start'
+#'   # start_nodes <- sapply(network_starts$comid, function(i) {comid_to_node(graph, i)})
+#'   # start_node <- comid_to_node(graph, start_nodes)
+#'   
+#'   # drop graph geometry
+#'   graph <- sf::st_drop_geometry(graph)
+#'   
+#'   # # stash comids and from IDs
+#'   comid_map <- dplyr::select(
+#'     graph,
+#'     comid,
+#'     fromnode,
+#'     tonode
+#'   )
+#'   
+#'   # create artificial cycles from circuits in graph, doing this allows for 
+#'   # sections of river that form a circuit to be identified as a cycle and thus a braid
+#'   # Questionable at this point, other option is the code using single_cycles() function 
+#'   graph <- renode_circuits(graph, verbose = verbose)
+#'   
+#'   # make an undirected graph from DAG
+#'   graph <- make_undirected(graph)  
+#'   
+#'   # make hashmap for tonode/fromnode topology for traversing graph
+#'   topo_map <- make_topo_map(
+#'     from_nodes = graph$fromnode,
+#'     to_nodes   = graph$tonode
+#'   )
+#'   
+#'   # Depth first search function to use to find/delinate connected components of network object
+#'   dfs <- function(node, visit) {
+#'     
+#'     # message("VISITING node: ", node)
+#'     
+#'     # visit node
+#'     visit$set(node, TRUE)
+#'     
+#'     # get the neighbors of current node
+#'     neighbors <- topo_map$get(node)$to_node
+#'     
+#'     # message("---> Neighbors of node: ",  node, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
+#'     
+#'     # iterate through the neighbors of current node and run DFS on them if they have not been visited yet
+#'     for (i in neighbors) {
+#'       
+#'       # message(" - NEIGHBOR: ", i)
+#'       
+#'       # if neighbor i has NOT been visited
+#'       if (!visit$get(i)) {
+#'         
+#'         # message("!!!!!!!", i, " NOT VISISTED ---> RUN DFS !!!!!!!!!")
+#'         dfs(i, visit)
+#'         
+#'       }
+#'       
+#'       # message("NEIGHBOR: ", i)          
+#'       # message("===========================================")
+#'       # message("===========================================")
+#'     }
+#'     
+#'   }
+#'   
+#'   # keep track of visited nodes
+#'   visit <- fastmap::fastmap()
+#'   
+#'   # # set all marked values to FALSE
+#'   visit$mset(.list = stats::setNames(
+#'     lapply(1:length(unique(c(graph$fromnode, graph$tonode))), function(i){ FALSE }),
+#'     unique(c(graph$fromnode, graph$tonode)))
+#'   )
+#'   
+#'   # # initialize i pointer
+#'   # i = 1
+#'   
+#'   # initialize count
+#'   count = 0
+#'   
+#'   # hashmap for output components
+#'   out <- fastmap::fastmap()
+#'   
+#'   # while there are still values left in the visit and topo_map hashmap
+#'   while(visit$size() > 0 & topo_map$size() > 0) {
+#'     # while(visit$size() > 0 & length(start_nodes) > 0) {
+#'     
+#'     # node to kickoff DFS from
+#'     start_node <- names(
+#'       topo_map$as_list()[
+#'         length(topo_map$as_list())
+#'       ]
+#'     )
+#'     # start_node <- names(topo_map$as_list()[i])
+#'     
+#'     # message("===========================================")
+#'     # message("========== ITERATION: ", i, " =============")
+#'     # message("========== start_node: ", start_node, " =============")
+#'     # message("===========================================")
+#'     
+#'     # run DFS from the 'start_node'
+#'     dfs(start_node, visit)
+#'     # dfs(start_nodes[[i]], visit)
+#'     
+#'     # extract the newly visited nodes
+#'     new_visits <- visit$as_list()
+#'     
+#'     # remove newly visited nodes
+#'     to_remove <- names(new_visits[new_visits == TRUE])
+#'     
+#'     # increment component count
+#'     count = count + 1
+#'     
+#'     # remove set of connected components
+#'     visit$remove(to_remove)
+#'     
+#'     topo_map$remove(to_remove)
+#'     
+#'     # store connectd component in out hashmap with the key being the connected component count number and 
+#'     # the value being the nodes in the connected component
+#'     out$set(as.character(count), to_remove)
+#'     
+#'     # # increment i pointer
+#'     # i = i + 1
+#'     
+#'   }
+#'   
+#'   # resulting output
+#'   out <- out$as_list()
+#'   
+#'   # ccreate dataframe of component number and node ID 
+#'   out <- dplyr::tibble(
+#'     component_id = rep(names(out), lengths(out)),
+#'     fromnode     = as.integer(Reduce(c, out))
+#'   )
+#'   
+#'   # join component ID back with original comid_map dataframe
+#'   res <- 
+#'     comid_map %>% 
+#'     dplyr::left_join(
+#'       out,
+#'       by = "fromnode"
+#'     )
+#'   
+#'   # out$fromnode %>% unique() %>% length()
+#'   # res$fromnode %>% unique()
+#'   
+#'   # if add is TRUE, add the component ID to the original 'network' input
+#'   if(add) {
+#'     
+#'     res <- dplyr::left_join(
+#'       network,
+#'       dplyr::select(res, 
+#'                     comid, component_id
+#'       ),
+#'       by = "comid"
+#'     )
+#'     # names(res2)
+#'     # if dropped_col is NOT NULL, then join the dropped call back with dataset
+#'     if (!is.null(dropped_col)) {
+#'       
+#'       res <- dplyr::left_join(res, 
+#'                               dropped_col,
+#'                               by = "comid"
+#'       )
+#'       
+#'     }
+#'     
+#'     # reorder columns to have original order with component_id as the first column
+#'     res <- res[, col_order]
+#'     
+#'     # if add is FALSE, return dataframe with comid, fromnode, tnode, and component_id
+#'   } else {
+#'     
+#'     # join just the comid, fromnode, tonode, data from 'network' with the comid and component_id from 'res'
+#'     res <-  dplyr::left_join(
+#'       dplyr::select(
+#'         sf::st_drop_geometry(network), 
+#'         comid, fromnode, tonode
+#'       ),
+#'       dplyr::select(res, 
+#'                     comid, component_id
+#'       ),
+#'       by = "comid"
+#'     )
+#'   }
+#'   
+#'   return(res)
+#'   
+#'   # count_components <- function(topo, visit) {
+#'   #   count = 0
+#'   #   for(i in 1:length(topo$as_list())) {
+#'   #     node <- names(topo$as_list()[i])
+#'   #     message("============ ITERATION i: ", i, " =============")
+#'   #     message("============: ", node, " =============")
+#'   #     if (!visit$get(node)) {
+#'   #       message("INCREASING COUNT: ", count)
+#'   #       count = count + 1
+#'   #       dfs(node, visit)
+#'   #     }
+#'   #   }
+#'   #   return(count)
+#'   # }
+#'   # count_components(topo = topo_map, visit = visit)
+#' }
+
+#' Create a list of braid IDs containing COMIDs in each braid 
+#'
+#' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+#'
+#' @param network The network object representing the river network.
+#' @param start Optional argument specifying the starting point for braid detection.
+#' @param terminal_id character of the column containing a unique identifier, deliniating seperate networks in the 'network' dataset. Default is NULL which will use 'get_sorted()' to try and create a terminalID column in 'network' 
+#' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#'
+#' @return list of braid IDs with COMIDs within each braid
+#' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
+#' @importFrom sf st_drop_geometry
+#' @importFrom stats setNames
+#' @importFrom magrittr %>% 
+get_braid_list2 <- function(
+    network,
+    start        = NULL,
+    terminal_id  = NULL,
+    verbose      = FALSE
+) {
+  
+  # nhdplusTools::navigate_network(start = 101, mode = "UT")
+  # network <- ref_net %>%
+  #   dplyr::filter(
+  #     # terminalpa %in% unique(counts$terminalpa)[1:2]
+  #     # terminalpa %in% c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774)
+  #     terminalpa %in% c(1852198, 1852502, 1852542, 1852774)
+  #     )  %>% 
+  # dplyr::select(-terminalpa)
+  
+  
+  # where to start braid search in each network
+  starts <- get_start_ids(network)
+  
+  # loop through each of the unique 'starts' and get a list of braids from each start 
+  braid_list <- lapply(1:length(starts), function(i) {
+    
+    # message(i, "/", length(starts))
+    
+    internal_get_braid_list(
+      network = network, 
+      start   =   starts[i],
+      verbose = verbose
+    )
+  })
+  
+  # braid_list
+  # reduce_braid_list(braid_list)
+  
+  # remove duplicate braids IDs and re number braid IDs
+  braid_list <- reduce_braid_list(braid_list)
+  
+  return(braid_list)
+  
+}
+
+#' Create a list of braid IDs containing COMIDs in each braid 
+#'
+#' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+#'
+#' @param network The network object representing the river network.
+#' @param start Optional argument specifying the starting point for braid detection.
+#' @param terminal_id character of the column containing a unique identifier, deliniating seperate networks in the 'network' dataset. Default is NULL which will use 'get_sorted()' to try and create a terminalID column in 'network' 
+#' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#'
+#' @return list of braid IDs with COMIDs within each braid
+#' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
+#' @importFrom sf st_drop_geometry
+#' @importFrom stats setNames
+#' @importFrom magrittr %>% 
+#'
+#' @export
+get_braid_list3 <- function(
+    network,
+    start        = NULL,
+    terminal_id  = NULL,
+    verbose      = FALSE
+) {
+  
+  # if 'terminal_id' column is given (IS NOT NULL), rename the column to "terminalID"
+  if(!is.null(terminal_id)) {
+    
+    # check that 'terminal_id' is a column in 'network', if not throw an error
+    if(!terminal_id %in% names(network)) {
+      stop("Invalid terminal_id argument '", terminal_id, "', terminal_id must be a column in 'network'")
+    }
+    
+    message("User provided 'terminal_id': '", terminal_id, "'")
+    
+    # name of the "tocomid" column in network that should be removed
+    term_col <- names(network)[names(network) %in% terminal_id]
+    
+    # replace term_col column name with "terminalID"
+    names(network) <- gsub(term_col, "terminalID", names(network)) 
+    
+  } else { # if NO 'terminal_id' column is given, check for popular terminal ID column names, otherwise, create a terminal ID column
+    
+    # possible terminal column names
+    terminal_cols <- c("terminalpa", "TERMINALPA", "terminalPa", "TerminalPa", "Terminalpa", 
+                       "terminalPA", "terminalID", "terminal_id", "terminalid", "TERMINALID")
+    
+    # (any(names(network) %in% terminal_cols))
+    
+    # try and detect a "tocomid" like column, if its found in the network columns, remove that column
+    if (any(names(network) %in% terminal_cols)) {  
+      
+      # name of the "tocomid" column in network that should be removed
+      term_col <- names(network)[names(network) %in% terminal_cols]
+      
+      message("Found common terminal_id column: '", term_col, "'")
+      message("---> Renaming '", term_col, "' to 'terminalID'")
+      
+      # replace term_col column name with "terminalID"
+      names(network) <- gsub(term_col, "terminalID", names(network)) 
+      
+    } else {
+      
+      message("Adding 'terminalID' column using get_terminal_ids()")
+      
+      # add a terminal ID column to network sf dataframe/dataframe
+      network <- get_terminal_ids(network, add = TRUE)
+      
+    }
+    
+    
+  }
+  
+  # unique terminal IDs
+  terminal_ids <- as.character(unique(network$terminalID))
+  
+  # loop through each of the unique terminal_ids and subset 'network' data to each terminal ID and get a list of braid_ids for each terminalID network
+  braid_list <- lapply(1:length(terminal_ids), function(i) {
+    # i = 3
+    message(i, "/", length(terminal_ids))
+    message("Terminal ID: ", terminal_ids[i])
+    
+    # terminal_ids[i]
+    
+    # filter network to set of flowlines with the same terminalID
+    sub_net <- network[network$terminalID == terminal_ids[i], ]
+    
+    internal_get_braid_list(
+      network      = sub_net,
+      start        = NULL,
+      verbose      = verbose
+    )
+    
+  })
+  
+  # set the list names to the terminal IDs
+  names(braid_list) <- terminal_ids
+  # # braid_list <- stats::setNames(braid_list, terminal_ids)
+  # reduce_braid_ids(braid_list)
+  
+  # rename the list of braid IDs so each braid_id is globally unique (no duplicate braid ID names)
+  braid_list <- reduce_braid_ids(braid_list)
+  
+  return(braid_list)
+  
+}
+
+#' Collapse and rename braid IDs in a list of lists
+#' Internal function. Ensures there are no duplicate braid_ids, making each braid ID unique. and collapsing the original list into a single list with list names being the braid_id
+#' @param x list, with each element either being NULL or a list with braid_id names (i.e. "braid_1", "braid_2", etc.)
+#'
+#' @return original list with braid_ids renamed to have globally unique braid_ids and removal of NULL elements
+reduce_braid_ids <- function(x) {
+  
+  count = 1
+  
+  for(i in 1:length(x)) {
+    
+    # current list in braids list
+    lst = x[[i]]
+    
+    if(is.null(lst)) {
+      # message("NO BRAIDS izn list ", i)
+      next
+    }
+    
+    # message("Updating list: ", i)
+    
+    # make new names
+    new_names <- paste0("braids_", count:(count + length(lst) - 1))
+    
+    # assign new names to list element
+    names(lst) <- new_names
+    
+    # insert new list into original list
+    x[[i]] <- lst
+    
+    # update count of names so far
+    count <- (count + length(lst))
+    
+  }
+  
+  # remove names of each list and remove NULL list elements
+  x <- Reduce(c, x)
+  
+  return(x)
+  
+}
+
+#' #' Create a list of braid IDs containing COMIDs in each braid for a single continguous network
+#' #'
+#' #' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+#' #' Internal function for use in 'get_braid_list()'
+#' #' @param network The network object representing the river network.
+#' #' @param start Optional argument specifying the starting point for braid detection.
+#' #' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#' #'
+#' #' @return list of braid IDs with COMIDs within each braid
+#' #' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
+#' #' @importFrom sf st_drop_geometry
+#' #' @importFrom stats setNames
+#' #' @importFrom magrittr %>% 
+#' internal_get_braid_list2 <- function(
+#'     network,
+#'     start        = NULL,
+#'     verbose      = FALSE
+#' ) {
+#'   
+#'   ref_net <- sf::read_sf("/Users/anguswatters/Downloads/01_reference_features.gpkg", layer = "flowlines") 
+#'   names(ref_net) <- tolower(names(ref_net))
+#'   network <-   
+#'     ref_net %>% 
+#'     dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+#'     dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm))) %>%
+#'     dplyr::slice(1:5000)
+#'   dd <- network %>% dplyr::filter(!tonode %in% fromnode)
+#'   xx <- find_connected_components(network, add = F)
+#'   xx$component_id %>% unique() %>% as.numeric() %>% sort()
+#'   network %>% get_terminal_ids(add = F)
+#'   
+#'   # where to start braid search in each network
+#'   starts <- get_start_ids(network)
+#'   starts
+#'   network$terminalpa %>% unique()
+#'   # loop through each of the unique 'starts' and get a list of braids from each start 
+#'   braid_list <- lapply(1:length(starts), function(i) {
+#'     
+#'     # message(i, "/", length(starts))
+#'     
+#'     internal_get_braid_list(
+#'       network = network, 
+#'       start   =   starts[i],
+#'       verbose = verbose
+#'     )
+#'   })
+#'   
+#'   # braid_list
+#'   # reduce_braid_list(braid_list)
+#'   
+#'   # remove duplicate braids IDs and re number braid IDs
+#'   braid_list <- reduce_braid_list(braid_list)
+#'   
+#'   # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
+#'   if(nrow(network) <= 1) {
+#'     
+#'     if(verbose) {
+#'       message("No cycles found, returning NULL")
+#'     }
+#'     
+#'     return(NULL)
+#'   }
+#'   
+#'   # # check valid return_as input
+#'   # if(!return_as %in% c("list", "dataframe")) {
+#'   #   stop("Invalid 'return_as' argument '",
+#'   #        return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
+#'   # }
+#'   
+#'   # # check relationship argument is valid
+#'   # if(return_as == "dataframe") {
+#'   #   if(!relationship %in% c("one-to-one", "one-to-many")) {
+#'   #     stop("Invalid 'relationship' argument '",
+#'   #          relationship, "'\n'relationship' must be: 'one-to-one' or 'one-to-many'")
+#'   #   }
+#'   # }
+#'   
+#'   # lower case names
+#'   names(network) <- tolower(names(network))
+#'   
+#'   # turn network into a directed graph
+#'   dag <- create_dag(network)
+#'   
+#'   # get the fromnode associated with a given COMID 'start'
+#'   start_node <- comid_to_node(dag, start)
+#'   
+#'   if(verbose) {
+#'     message("Starting braid detection at ", 
+#'             ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
+#'   }
+#'   
+#'   # drop graph geometry
+#'   dag <- sf::st_drop_geometry(dag)
+#'   # graph <- sf::st_drop_geometry(graph)
+#'   
+#'   # stash comids and from IDs
+#'   comid_map <- dplyr::select(
+#'     # graph,
+#'     dag,
+#'     comid,
+#'     fromnode,
+#'     tonode
+#'   )
+#'   
+#'   # create artificial cycles from circuits in graph, doing this allows for 
+#'   # sections of river that form a circuit to be identfied as a cycle and thus a braid
+#'   # Questionable at this point, other option is the code below that uses 
+#'   # single_cycles() function (COMMENTED OUT CODE BELOW)
+#'   regraph <- renode_circuits(dag, verbose = FALSE)
+#'   
+#'   # ##### - GET_SINGLE_CYCLES CODE -
+#'   # # check for single cycles (2 nodes A,B that have unique edges)
+#'   # # (i.e. 2 comids w/ exact same fromnodes/tonodes)
+#'   # single_cycles <- get_single_cycles(dag)
+#'   # # if cycles were found
+#'   # if(!is.null(cycles)) {
+#'   #   # match each fromnode with original COMIDs
+#'   #   braids <- sapply(1:length(cycles), function(k) {
+#'   #     # get COMIDs of each braid
+#'   #     comid_map[comid_map$fromnode %in% cycles[[k]], ]$comid
+#'   #   })
+#'   #   # if single cycles are found in network
+#'   #   if(!is.null(single_cycles)) {
+#'   #     braids <- c(braids, unname(single_cycles))
+#'   #   }
+#'   #   # if NO cycles were found
+#'   # } else {
+#'   #   # if single cycles are found in network
+#'   #   if(!is.null(single_cycles)) {
+#'   #     braids <- c(unname(single_cycles))
+#'   #   } else {
+#'   #     message("No braids found, returning NULL")
+#'   #     return(NULL)
+#'   #   }
+#'   # }
+#'   
+#'   # make an undirected graph
+#'   undir <- make_undirected(regraph)
+#'   
+#'   # find cycles in undirected graph (proxy for braids)
+#'   cycles <- find_cycles(
+#'     graph     = undir,
+#'     start     = start_node,
+#'     return_as = "list",
+#'     edge      = FALSE,
+#'     wide      = TRUE,
+#'     verbose   = verbose
+#'   )
+#'   
+#'   # if(cycles$size() == 0 & is.null(single_braids)) {
+#'   if(is.null(cycles)) {
+#'     # message("No cycles found, returning NULL")
+#'     return(NULL)
+#'   }
+#'   
+#'   # remove added nodes from renode_circuits()
+#'   braids <- lapply(cycles, function(i) { 
+#'     i[i %in% comid_map$fromnode] 
+#'   })
+#'   
+#'   # # match fromnodes from comid_map to nodes identified in each cycle
+#'   braids <- lapply(1:length(braids), function(k) {
+#'     # get COMIDs of each braid
+#'     comid_map[comid_map$fromnode %in% braids[[k]], ] %>%
+#'       dplyr::filter(tonode %in% braids[[k]]) %>%
+#'       .$comid
+#'   })
+#'   
+#'   # set braid_id names
+#'   braids <- stats::setNames(braids, paste0("braid_",  1:length(braids)))
+#'   
+#'   # # if multibraids should be untangled
+#'   # if(untangle) {
+#'   #   if(verbose) { message("Attempting to seperate multibraids...") }
+#'   #   braids <- seperate_braids(network, braids)
+#'   # }
+#'   
+#'   # # if data should be returned as a 2 column dataframe with comid and braid_ids
+#'   # if(return_as == "dataframe") {
+#'   #   
+#'   #   # get comids of multibraids
+#'   #   multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
+#'   #   
+#'   #   # format braids into a dataframe
+#'   #   braids <- lapply(1:length(braids), function(k) {
+#'   #     # braids_df <- lapply(1:length(braids), function(k) {
+#'   #     
+#'   #     # get COMIDs of each braid
+#'   #     data.frame(
+#'   #       comid    = braids[[k]],
+#'   #       braid_id = names(braids[k])
+#'   #     )
+#'   #   }) %>% 
+#'   #     dplyr::bind_rows() %>% 
+#'   #     dplyr::tibble()
+#'   #   
+#'   #   # if each comid should have a list of all the braids it is a part of
+#'   #   # if relationship == "one-to-one" then COMIDs may appear more than once
+#'   #   # in dataset as a COMID may be apart of more than one braid
+#'   #   # if(relationship == "one-to-many") {
+#'   #   if(nested) { 
+#'   #     
+#'   #     braids <-
+#'   #       braids %>%
+#'   #       dplyr::group_by(comid) %>% 
+#'   #       dplyr::summarise(
+#'   #         braid_id = paste0(braid_id, collapse = ", ")
+#'   #       ) %>% 
+#'   #       dplyr::ungroup()
+#'   #     
+#'   #   }
+#'   #   
+#'   #   # add a logical value that says whether a COMID is part of a multibraided system,
+#'   #   # or is a flowline in more than one braid (multiple braid_ids)
+#'   #   braids$is_multibraid <- braids$comid %in% multibraids
+#'   #   
+#'   #   # if braid data should be added to original data
+#'   #   if(add) {
+#'   #     
+#'   #     # join back with original data
+#'   #     braids <-
+#'   #       dplyr::mutate(
+#'   #         dplyr::left_join(
+#'   #           network,
+#'   #           braids,
+#'   #           by = "comid"
+#'   #         ),
+#'   #         braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
+#'   #       )
+#'   #     # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
+#'   #   } 
+#'   #   
+#'   #   # set no_braid values to FALSE
+#'   #   braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
+#'   #                                  FALSE, braids$is_multibraid)
+#'   #   
+#'   #   # move braid_id and is_multibraided columns to front of dataframe
+#'   #   braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
+#'   #   # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
+#'   # }
+#'   
+#'   return(braids)
+#' }
+
+
+# ************************
+## ---- TEST NEW ALGO ----
+# ************************
 #' # net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 50 )
 #' net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 20 )
 #' plot(net2$geometry)
-#' 
-# get the braid_ids of all neighboring braids from a specified braid_id
-# provide a network with braid_ids and a vector of braid_ids that you want to get all neighboring/memboring braid IDs for the specified braid
-# x: sf object network flowlines with braid_id column
-# ids: character vector braid_id(s)
-# Only unique: if TRUE, then only unique braid IDs are returned, otherwise all are returned
-get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) {
-
-
-  # x = braids
-  # ids = bids
-  # only_unique = T
-  # split_ids = FALSE
-  
-  # make groups for each braided section
-  braid_groups <- lapply(1:length(ids), function(i) {
-
-    # message("i: ", i, "/", length(ids))
-
-    # braid IDs of interest
-    bids <- strsplit(ids[i], ", ")[[1]]
-    # bids <- strsplit(transects[i, ]$braid_id, ", ")[[1]]
-
-    # get all linestrings that are apart of the braid_ids of interest
-
-    bids_check <- sapply(1:length(x$braid_id), function(y) {
-      any(
-        strsplit(x$braid_id[y], ", ")[[1]] %in% bids
-      )
-    })
-    
-    # out <- unique(c(
-    #             x[bids_check, ]$braid_id,
-    #             unlist(strsplit(x[bids_check, ]$braid_id, ", "))
-    #             )
-    #           )
-    out <- sort(
-              unique(c(
-                x[bids_check, ]$braid_id,
-                unlist(strsplit(x[bids_check, ]$braid_id, ", "))
-              )
-              )
-            )
-
-    # split_ids is TRUE, then the coimma seperated braid_ids are seperated into individual braid_ids
-    if(split_ids) {
-
-      out <- sort(
-        unique(unlist(strsplit(out, ", ")))
-        )
-      # out <- unique(unlist(strsplit(out, ", ")))
-    
-    }
-
-    out
-
-  })
-
-  # assign names
-  names(braid_groups) <- ids
-  
-  # remove uniques if desired
-  if(only_unique) {
-    braid_groups <- unique(unname(unlist(braid_groups)))
-  }
-  return(braid_groups)
-}
 
 #' # Convert Network --> Adjaceny list/topology map (undirected graph)
 #' # takes network object and creates a fastmap() topology map/adjacency list (undirected graph)

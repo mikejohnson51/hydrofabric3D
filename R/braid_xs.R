@@ -17,11 +17,162 @@ source("R/transects.R")
 source("R/braids.R")
 source("R/fix_transects.R")
 
+# # *******************************
+# # ---- Test data for braids  ----
+# # *******************************
+
+# net <- 
+net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT",  distance_km = 30)
+
+net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 100)
+
+net2 <- 
+  net2 %>%
+  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+
+# net2 <- nhdplusTools::navigate_network(start = 3555480, mode = "UT",  distance_km = 50)
+system.time({
+  transect_lines2 = cut_cross_sections3(
+    net       = net2,
+    id        = "comid",
+    cs_widths = pmax(50, net2$bf_width * 7),
+    num       = 5,
+    densify = 2,
+    fix_braids = TRUE,
+    # terminal_id = NULL,
+    terminal_id = "terminalpa",
+    add       = TRUE,
+    use_original = T
+  )
+})
+mapview::mapview(transect_lines2) + mapview::mapview(braids, color = "red")
+braids <- find_braids(
+  network = net2,
+  add = TRUE, 
+  nested = FALSE,
+  verbose = TRUE
+) %>%
+  dplyr::filter(braid_id != "no_braid")
+net2$geometry %>% plot()
+
+# braids
+
+braids <- find_braids_df(
+  network = net2,
+  add = TRUE, 
+  nested = FALSE,
+  verbose = TRUE
+  )
+braids$braid_id %>% unique()
+braids$braid_id %>% unique() %>% length()
+
+braids2 <- find_braids(  network = net2,
+                         return_as = "dataframe",
+              add = TRUE, 
+              nested = FALSE,
+              verbose = TRUE
+              )
+
+braids2$braid_id %>% unique()
+braids2$braid_id %>% unique() %>% length()
+
+make_braids_gif(braids2,
+                save_path  = "/Users/anguswatters/Desktop/updated_braid_test3.gif",
+                height     = 8,
+                width      = 10,
+                gif_width  = 1800,
+                gif_height = 1500,
+                delay      = 0.9,
+                legend_pos = "bottom",
+                verbose    = TRUE
+)
+make_braids_gif()
+
 # # *********************************************
 # # ---- Test data for fix_braid_transects() ----
 # # *********************************************
+
 ref_net <- sf::read_sf("/Users/anguswatters/Downloads/01_reference_features.gpkg", layer = "flowlines") 
 names(ref_net) <- tolower(names(ref_net))
+# net <-   
+#   ref_net %>% 
+#   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+#   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm))) %>%
+#   dplyr::slice(1:20000)
+ref_net <-
+  ref_net %>%
+  dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+  dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+
+net <-
+  ref_net %>%
+  dplyr::filter(terminalpa %in% unique(ref_net$terminalpa)[1:20])
+#   # dplyr::slice(1:5000)
+
+system.time({
+  transect_lines = cut_cross_sections3(
+    net       = ref_net,
+    id        = "comid",
+    cs_widths = pmax(50, ref_net$bf_width * 7),
+    num       = 5,
+    densify = 2,
+    fix_braids = TRUE,
+    # terminal_id = NULL,
+    terminal_id = "terminalpa",
+    add       = TRUE,
+    use_original = T
+  )
+})
+system.time({
+  transect_lines_unfixed = cut_cross_sections3(
+    net       = ref_net,
+    id        = "comid",
+    cs_widths = pmax(50, ref_net$bf_width * 7),
+    num       = 5,
+    densify = 2,
+    fix_braids = FALSE,
+    # terminal_id = NULL,
+    terminal_id = "terminalpa",
+    add       = TRUE,
+    use_original = T
+  )
+})
+
+
+sf::write_sf(transect_lines, "/Users/anguswatters/Desktop/01_vpu_fixed_transects.gpkg")
+sf::write_sf(transect_lines_unfixed, "/Users/anguswatters/Desktop/01_vpu_unfixed_transects.gpkg")
+net
+system.time({
+  blist <- get_braid_list_latest(
+    network = net
+  )
+})
+
+system.time({
+  blist <- get_braid_list(
+    network = net
+  )
+})
+
+system.time({
+  new_braids <- find_braids_df(
+    network = net, 
+    terminal_id = "terminalpa", 
+    add = T, 
+    nested  = T
+  )
+})
+
+system.time({
+  old_braids <- find_braids_df(
+    network = net, 
+    add = T, 
+    nested  = T,
+    new = FALSE
+  )
+})
+
 
 # ref_net$
 
@@ -33,6 +184,18 @@ ref_net <-
   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
 starts <- c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774, 1974485, 1974615)
+
+ends <- unique(ref_net$terminalpa )
+# count up number of linestrings in each terminalpa set of lienstrings
+counts <- lapply(1:length(ends), function(i) {
+  # message(i, "/", length(ends))
+  data.frame(
+    terminalpa = ends[i],
+    nrows = nrow(dplyr::filter(ref_net, terminalpa == ends[i]))
+  )
+}) %>% 
+  dplyr::bind_rows()
+starts <- unique(counts[1:50,]$terminalpa)
 # starts <- c(1853299)
 counts %>%
   dplyr::filter(terminalpa %in% starts)
@@ -43,10 +206,11 @@ net <-
   dplyr::filter(terminalpa %in% starts)
 system.time({
   transect_lines = cut_cross_sections3(
-    net       = net,
+    net       = ref_net,
     id        = "comid",
-    cs_widths = pmax(50, net$bf_width * 7),
-    num       = 10,
+    cs_widths = pmax(50, ref_net$bf_width * 7),
+    num       = 6,
+    densify = NULL,
     fix_braids = TRUE,
     add       = TRUE,
     use_original = T
