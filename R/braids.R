@@ -54,7 +54,11 @@ find_braids <- function(
     verbose     = FALSE
     ) {
   
-  
+  # network = net2
+  # terminal_id = NULL
+  # add         = FALSE
+  # nested      = TRUE
+  # verbose     = T
   # # ne
   # # nhdplusTools::navigate_network(start = 101, mode = "UT")
   # network <- ref_net %>%
@@ -128,6 +132,99 @@ find_braids <- function(
   # move braid_id and is_multibraided columns to front of dataframe
   braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
   # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
+  
+  return(braids)
+  
+}
+
+#' Find braids and add to a dataframe/sf dataframe
+#'
+#' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+#'
+#' @param network The network object representing the river network.
+#' @param terminal_id character, column name containing a unique identifier, delineating separate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network' 
+#' @param add Logical indicating whether to add braid information to the original network data.
+#' @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)
+#' @param version integer, version number of multibraid classification. Default is 1. Must be either 1 or 2.
+#' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#'
+#' @return dataframe or sf dataframe with added braid_id
+#' 
+#' @examples
+#' net <- nhdplusTools::navigate_network(
+#'  start       = 101,
+#'  mode        = "UT",
+#'  distance_km = 100
+#'  ) %>%
+#' dplyr::select( comid, divergence, totdasqkm, fromnode, tonode)
+#'
+#' # get a dataframe of COMIDs and braid IDs
+#' braids <- find_braids(network = net, add = FALSE)
+#'
+#' # add braid_id column to original dataset
+#' braid_df = find_braids(network   = net,
+#'                        add       = TRUE,
+#'                        nested    = TRUE,
+#'                        )
+#'
+#' # returnal original data with each braid_id represented
+#' # by its individual COMIDs (may contain duplicate COMIDs)
+#' nested_braids = find_braids(network   = net,
+#'                        add       = TRUE,
+#'                        nested    = FALSE
+#'                        )
+#' # if a column exists that uniquely identifies different contiguous networks,
+#' # the column name can be given to 'terminal_id' to delianiate seperate networks within 'net'
+#' sep_braids = find_braids(network     = net,
+#'                          terminal_id = "terminalpa",
+#'                          add         = TRUE,
+#'                          nested      = FALSE
+#'                        )
+#' @importFrom dplyr bind_rows tibble select filter group_by summarise ungroup mutate left_join relocate
+#' @importFrom sf st_drop_geometry
+#' @importFrom stats setNames
+#' @importFrom magrittr %>% 
+#'
+#' @export
+find_braids3 <- function(
+    network,
+    terminal_id = NULL,
+    add         = FALSE,
+    nested      = TRUE,
+    version     = 1,
+    verbose     = FALSE
+) {
+  
+  # network = net2
+  # terminal_id = NULL
+  # add         = FALSE
+  # nested      = TRUE
+  # version     = 1
+  # verbose     = TRUE
+
+  
+  # # nhdplusTools::navigate_network(start = 101, mode = "UT")
+  # network <- ref_net %>%
+  #   dplyr::filter(
+  #     terminalpa %in% unique(counts$terminalpa)[1:5]
+  #     # terminalpa %in% c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774)
+  #     # terminalpa %in% c(1852198, 1852502, 1852542, 1852774)
+  #     ) 
+  
+  # get a list of braid IDs and comids within each braid
+  braids <- get_braid_list(
+    network     = network, 
+    terminal_id = terminal_id,
+    verbose     = verbose
+  )
+  
+  # process multibraided portions of braid list returned above 
+  braids <- process_braids(braids  = braids,
+                           add     = add,
+                           nested  = nested,
+                           version = version,
+                           verbose = verbose
+                           )
   
   return(braids)
   
@@ -1324,7 +1421,39 @@ find_overlaps <- function(
   # return(overs)
 }
 
+# Given a list of braid_ids with each list element being a vector of IDs within the braid_id
+# create a list of all the overlapping braid_ids such that a braid that is
+# overlapping with other braids, will now contain the braid_id of its nearby/overlapping braid_ids
+# x is a list of vectors with each list element having a name 
+# Returns a new list of the same length as x
+find_multibraids <- function(x) {
+  
+  # list to store the names of the list elements whose vectors have overlapping values
+  overlaps <- list()
+  # i = 1
+  # go through original list of IDs and find overlaps
+  for (i in seq_along(x)) {
 
+    # sapply(x, function(vec) {
+    #   vec %in% x[[i]]
+    #   }
+    # )
+    
+    overlap_names <- names(x)[
+      sapply(x, function(vec) any(vec %in% x[[i]]))
+    ]
+    
+    # remove self braid_id and then reinsert it at the front of vector
+    overlap_names <- c(names(x)[i], 
+                       overlap_names[names(x)[i] != overlap_names]
+    )
+    
+    overlaps[[names(x)[i]]] <- overlap_names
+  }
+  
+  return(overlaps)
+  
+}
 
 #' Get the braid_ids of all neighboring braids from a specified braid_id
 #' 
@@ -5454,6 +5583,344 @@ dfs_traversal <- function(
 ##########################
 # ------- OLD CODE -------
 ##########################
+# network     = net
+# terminal_id = terminal_id
+# add         = TRUE
+# nested      = TRUE
+# verbose     = FALSE
+
+find_braids2 <- function(
+    network,
+    terminal_id = NULL,
+    add         = FALSE,
+    nested      = TRUE,
+    verbose     = FALSE
+) {
+  
+  # network     = net
+  # terminal_id = "terminalpa"
+  # add         = FALSE
+  # nested      = TRUE
+  # verbose     = FALSE
+  
+  # network     = net
+  # terminal_id = "terminalpa"
+  # add         = TRUE
+  # nested      = FALSE
+  # verbose     = TRUE
+  
+  # network     = net
+  # terminal_id = terminal_id
+  # add         = TRUE
+  # nested      = TRUE
+  # verbose     = FALSE
+  # # ne
+  # # nhdplusTools::navigate_network(start = 101, mode = "UT")
+  # network <- ref_net %>%
+  #   dplyr::filter(
+  #     terminalpa %in% unique(counts$terminalpa)[1:5]
+  #     # terminalpa %in% c(2010288, 1962269, 1853299, 1852198, 1852502, 1852542, 1852774)
+  #     # terminalpa %in% c(1852198, 1852502, 1852542, 1852774)
+  #     ) 
+  
+  # get a list of braid IDs and comids within each braid
+  braids <- get_braid_list(
+    network     = network, 
+    terminal_id = terminal_id,
+    # terminal_id = NULL,
+    verbose     = verbose
+  )
+
+  
+  # rename braids to numeric values
+  names(braids) <- 1:length(braids)
+  
+  # create a new list of braid_ids that has the braid_ids of 
+  # all other braids connected to the given braid_id
+  # the first braid_id in any of the vectors in "multis" will be the reference/main braid_id and
+  # the following braid_ids will be the rest of the multibraided system
+  multis <- find_multibraids(braids)
+  
+  # # any vector with more than one braid_id is a multibraid
+  # is_multi <- unname(lengths(multis) > 1)
+  
+  # # add a logical value that says whether a COMID is part of a multibraided system,
+  # # or is a flowline in more than one braid (multiple braid_ids) --> column "is_multibraid"
+  
+  # format braids into a dataframe
+  braids <- lapply(1:length(braids), function(k) {
+    
+    # get COMIDs of each braid
+    data.frame(
+      comid         = braids[[k]],
+      braid_id      = names(braids[k]),
+      member_braids = paste0(multis[[names(braids[k])]], collapse = ", "),
+      is_multibraid = length(multis[[names(braids[k])]]) > 1
+    )
+    
+  }) %>% 
+    dplyr::bind_rows() %>% 
+    dplyr::tibble()
+  
+  # if nested is NOT TRUE, then COMIDs (flowlines) may appear more than once in output dataset
+  # ----> (i.e. a COMID/flowline can be a part of more than one braid_id and thus will have a row for "braid_1" and "braid_2")
+  # if each comid should have a list of all the braids it is a part of
+      # if relationship == "one-to-one" then COMIDs may appear more than once
+      # in dataset as a COMID may be apart of more than one braid
+      # if(relationship == "one-to-many") {
+  if(!nested) {
+    
+    # replace numeric braid_id with "braid_<number>"
+    braids$braid_id <- paste0("braid_", braids$braid_id)
+    
+    # drop the member braids column
+    braids <- dplyr::select(braids, -member_braids)
+    
+  } else { # if nested is TRUE, then each COMID is unique and has a braid_id column with a comma seperated character string of all relevent braid_ids
+    
+    # if braid_ids should be nested so that each COMID has a braid_id column that reflects ALL braid_ids related/connected to it
+    braids <- 
+      braids %>% 
+      dplyr::group_by(comid)  %>% 
+      dplyr::summarise(
+        braid_id = paste0(member_braids, collapse = ", ")
+      ) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::mutate(
+        braid_id = lapply(strsplit(braid_id, ", "), function(x) {
+          paste0("braid_", sort(as.numeric(unique(x))))
+        })
+      )
+    
+    # if more than one braid_id in "braid_id" column, then it is a multibraid 
+    braids$is_multibraid <- lengths(braids$braid_id) > 1
+    
+    # collapse braid_ids into comma seperated character string
+    braids$braid_id <- Reduce(c, 
+                              lapply(braids$braid_id, function(k) {
+                                paste0(k, collapse = ", ")
+                                })
+                              )
+    
+    # braids <-
+    #   braids %>%
+    #   dplyr::group_by(comid) %>% 
+    #   dplyr::summarise(
+    #     braid_id = paste0(braid_id, collapse = ", ")
+    #   ) %>% 
+    #   dplyr::ungroup()
+  }
+  
+  # # add a logical value that says whether a COMID is part of a multibraided system,
+  # # or is a flowline in more than one braid (multiple braid_ids)
+  # braids$is_multibraid <- braids$comid %in% multibraids
+
+  # if braid data should be added to original data
+  if(add) {
+
+    # join back with original data
+    braids <- dplyr::mutate(
+                dplyr::left_join(
+                  network,
+                  braids,
+                  by = "comid"
+                ),
+                braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
+              )
+    # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
+  } 
+  
+  # set no_braid values to FALSE
+  braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
+                                 FALSE,
+                                 braids$is_multibraid
+                                 )
+  
+  # move braid_id and is_multibraided columns to front of dataframe
+  braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
+  # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
+  
+  return(braids)
+  
+}
+
+process_braids <- function(braids, add, nested, version = 1, verbose) {
+  
+  if(!version %in% c(1, 2)) {
+    stop("Invalid 'version' argument, 'version' must be equal to 1 or 2")
+  }
+
+  ### process braids (version 1) ###
+  if(version == 1) {
+    
+    # get comids of multibraids
+    multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
+    
+    # format braids into a dataframe
+    braids <- lapply(1:length(braids), function(k) {
+      
+      # get COMIDs of each braid
+      data.frame(
+        comid    = braids[[k]],
+        braid_id = names(braids[k])
+      )
+    }) %>% 
+      dplyr::bind_rows() %>% 
+      dplyr::tibble()
+    
+    # if each comid should have a list of all the braids it is a part of
+    # if relationship == "one-to-one" then COMIDs may appear more than once
+    # in dataset as a COMID may be apart of more than one braid
+    # if(relationship == "one-to-many") {
+    if(nested) { 
+      
+      braids <-
+        braids %>%
+        dplyr::group_by(comid) %>% 
+        dplyr::summarise(
+          braid_id = paste0(braid_id, collapse = ", ")
+        ) %>% 
+        dplyr::ungroup()
+      
+    }
+    
+    # add a logical value that says whether a COMID is part of a multibraided system,
+    # or is a flowline in more than one braid (multiple braid_ids)
+    braids$is_multibraid <- braids$comid %in% multibraids
+    
+    # if braid data should be added to original data
+    if(add) {
+      
+      # join back with original data
+      braids <- dplyr::mutate(
+        dplyr::left_join(
+          network,
+          braids,
+          by = "comid"
+        ),
+        braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
+      )
+      # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
+    } 
+    
+    # set no_braid values to FALSE
+    braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
+                                   FALSE, braids$is_multibraid)
+    
+    # move braid_id and is_multibraided columns to front of dataframe
+    braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
+    # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
+    
+    return(braids)
+    
+
+  } else { ### process braids (version 2) ###
+    
+  
+    # rename braids to numeric values
+    names(braids) <- 1:length(braids)
+    
+    # create a new list of braid_ids that has the braid_ids of 
+    # all other braids connected to the given braid_id
+    # the first braid_id in any of the vectors in "multis" will be the reference/main braid_id and
+    # the following braid_ids will be the rest of the multibraided system
+    multis <- find_multibraids(braids)
+    
+    # # any vector with more than one braid_id is a multibraid
+    # is_multi <- unname(lengths(multis) > 1)
+    
+    # # add a logical value that says whether a COMID is part of a multibraided system,
+    # # or is a flowline in more than one braid (multiple braid_ids) --> column "is_multibraid"
+    
+    # format braids into a dataframe
+    braids <- lapply(1:length(braids), function(k) {
+      
+      # get COMIDs of each braid
+      data.frame(
+        comid         = braids[[k]],
+        braid_id      = names(braids[k]),
+        member_braids = paste0(multis[[names(braids[k])]], collapse = ", "),
+        is_multibraid = length(multis[[names(braids[k])]]) > 1
+      )
+      
+    }) %>% 
+      dplyr::bind_rows() %>% 
+      dplyr::tibble()
+    
+    # if nested is NOT TRUE, then COMIDs (flowlines) may appear more than once in output dataset
+    # ----> (i.e. a COMID/flowline can be a part of more than one braid_id and thus will have a row for "braid_1" and "braid_2")
+    # if each comid should have a list of all the braids it is a part of
+    # if relationship == "one-to-one" then COMIDs may appear more than once
+    # in dataset as a COMID may be apart of more than one braid
+    # if(relationship == "one-to-many") {
+    if(!nested) {
+      
+      # replace numeric braid_id with "braid_<number>"
+      braids$braid_id <- paste0("braid_", braids$braid_id)
+      
+      # drop the member braids column
+      braids <- dplyr::select(braids, -member_braids)
+      
+    } else { # if nested is TRUE, then each COMID is unique and has a braid_id column with a comma seperated character string of all relevent braid_ids
+      
+      # if braid_ids should be nested so that each COMID has a braid_id column that reflects ALL braid_ids related/connected to it
+      braids <- 
+        braids %>% 
+        dplyr::group_by(comid)  %>% 
+        dplyr::summarise(
+          braid_id = paste0(member_braids, collapse = ", ")
+        ) %>% 
+        dplyr::ungroup() %>% 
+        dplyr::mutate(
+          braid_id = lapply(strsplit(braid_id, ", "), function(x) {
+            paste0("braid_", sort(as.numeric(unique(x))))
+          })
+        )
+      
+      # if more than one braid_id in "braid_id" column, then it is a multibraid 
+      braids$is_multibraid <- lengths(braids$braid_id) > 1
+      
+      # collapse braid_ids into comma seperated character string
+      braids$braid_id <- Reduce(c, 
+                                lapply(braids$braid_id, function(k) {
+                                  paste0(k, collapse = ", ")
+                                })
+                                )
+      }
+    
+    # # add a logical value that says whether a COMID is part of a multibraided system,
+    # # or is a flowline in more than one braid (multiple braid_ids)
+    # braids$is_multibraid <- braids$comid %in% multibraids
+    
+    # if braid data should be added to original data
+    if(add) {
+      
+      # join back with original data
+      braids <- dplyr::mutate(
+        dplyr::left_join(
+          network,
+          braids,
+          by = "comid"
+        ),
+        braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
+      )
+      # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
+    } 
+    
+    # set no_braid values to FALSE
+    braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
+                                   FALSE,
+                                   braids$is_multibraid
+    )
+    
+    # move braid_id and is_multibraided columns to front of dataframe
+    braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
+    # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
+    
+    return(braids)
+  }
+  
+}
 
 #' #' Internal function for finding braids in a single contiguous network
 #' #'
@@ -6049,6 +6516,215 @@ dfs_traversal <- function(
 #'   
 #'   return(braids)
 #' }
+
+
+get_braid_list2 <- function(
+    network,
+    terminal_id = NULL,
+    verbose = FALSE
+) {
+  # ref_net <- sf::read_sf("/Users/anguswatters/Downloads/01_reference_features.gpkg", layer = "flowlines")
+  # names(ref_net) <- tolower(names(ref_net))
+  # network <-
+  #   ref_net %>%
+  #   dplyr::select(comid, divergence, totdasqkm, fromnode, tonode, terminalpa) %>%
+  #   dplyr::mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm)))
+  # 
+  # network <- dplyr::filter(network, terminalpa %in% unique(network$terminalpa)[1:25])
+  # 
+  # verbose = TRUE
+  # terminal_id = NULL
+  # terminal_id = "terminalpa"
+
+  # if no terminal_ids column name is given, create one by finding all connected componenets in network
+  if(is.null(terminal_id)) {
+    
+    # determine which flowlines are part of which contiguous set of linestrings 
+    # (creates a unique identifier for each seperated network of flowlines)
+    network <- find_connected_components(network = network, add = TRUE)
+    
+    
+  } else { # if a terminal_id IS provided, the column name is checked and changed to "component_id"
+    
+    # check that 'terminal_id' is a column in 'network', if not throw an error
+    if(!terminal_id %in% names(network)) {
+      stop("Invalid terminal_id argument '", terminal_id, "', terminal_id must be a column in 'network'")
+    }
+    
+    if(verbose) { message("User provided 'terminal_id': '", terminal_id, "'")}
+    
+    # name of the "tocomid" column in network that should be removed
+    term_col <- names(network)[names(network) %in% terminal_id]
+    
+    # replace term_col column name with "terminalID"
+    names(network) <- gsub(term_col, "component_id", names(network)) 
+    
+  }
+  
+  # unique(network$terminalpa) %>% length()
+  # unique(network$component_id) %>% length()
+  
+  # list of the uniqueu component IDs 
+  components <- unique(network$component_id)
+
+  # loop through each of the unique 'component_id' and get a list of braids for each distinct componenet
+  braid_list <- lapply(1:length(components), function(i) {
+    
+    if(verbose) {
+      message(i, "/", length(components))
+      message("component[i]: ", components[i])
+      message("# rows in component ", components[i], ": ", nrow(
+        dplyr::filter(network, component_id %in% components[i])
+      ))
+      message('=====================')
+    }
+    
+    # get list of braids for distinct network
+    # filter network down to the iterations component (components[i])
+    internal_get_braid_list2(
+      network = dplyr::filter(network, 
+                              component_id %in% components[i]), 
+      start   = NULL,
+      verbose = verbose
+    )
+    
+  })
+
+  # remove duplicate braids IDs and re number braid IDs
+  braid_list <- reduce_braid_list(braid_list)
+  
+  return(braid_list)
+  
+  # network %>% get_terminal_ids(add = F)
+  # roots <- network %>% get_start_ids()
+  # parts <- find_connected_components(network, add = T)
+  # parts$component_id %>% unique()
+  # network %>% 
+  #   dplyr::mutate(terminalpa = as.character(terminalpa)) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = terminalpa))
+  # parts %>% 
+  #   dplyr::mutate(component_id = as.character(component_id)) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = component_id))
+  # mapview::mapview(dplyr::filter(parts, component_id == "1"), color = "dodgerblue") +
+  #   mapview::mapview(dplyr::filter(parts, component_id == "2"), color = "gold") +
+  # mapview::mapview(dplyr::filter(parts, component_id == "3"), color = "red") +
+  # mapview::mapview(dplyr::filter(parts, component_id == "4"), color = "green") + 
+  # mapview::mapview(dplyr::filter(parts, component_id == "5"), color = "hotpink") +
+  #   mapview::mapview(dplyr::filter(parts, component_id == "6"), color = "cyan")
+  # 
+  # parts %>% 
+  # ggplot2::ggplot() +
+  #   ggplot2::geom_sf(ggplot2::aes(color = uterms))
+  
+}
+
+internal_get_braid_list2 <- function(
+    network,
+    start        = NULL,
+    verbose      = FALSE
+) {
+  
+  # network = dplyr::filter(network, 
+  #                         component_id %in% components[1])
+  # start   = NULL
+  # verbose = verbose
+  
+  # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
+  if(nrow(network) <= 1) {
+    
+    if(verbose) {
+      message("No cycles found, returning NULL")
+    }
+    
+    return(NULL)
+  }
+  
+  # # check valid return_as input
+  # if(!return_as %in% c("list", "dataframe")) {
+  #   stop("Invalid 'return_as' argument '",
+  #        return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
+  # }
+  
+  # # check relationship argument is valid
+  # if(return_as == "dataframe") {
+  #   if(!relationship %in% c("one-to-one", "one-to-many")) {
+  #     stop("Invalid 'relationship' argument '",
+  #          relationship, "'\n'relationship' must be: 'one-to-one' or 'one-to-many'")
+  #   }
+  # }
+  
+  # lower case names
+  names(network) <- tolower(names(network))
+  
+  # turn network into a directed graph
+  dag <- create_dag(network)
+  
+  # get the fromnode associated with a given COMID 'start'
+  start_node <- comid_to_node(dag, start)
+  
+  if(verbose) {
+    message("Starting braid detection at ", 
+            ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
+  }
+  
+  # drop graph geometry
+  dag <- sf::st_drop_geometry(dag)
+  # graph <- sf::st_drop_geometry(graph)
+  
+  # stash comids and from IDs
+  comid_map <- dplyr::select(
+    # graph,
+    dag,
+    comid,
+    fromnode,
+    tonode
+  )
+  
+  # create artificial cycles from circuits in graph, doing this allows for 
+  # sections of river that form a circuit to be identfied as a cycle and thus a braid
+  # Questionable at this point, other option is the code below that uses 
+  # single_cycles() function (COMMENTED OUT CODE BELOW)
+  regraph <- renode_circuits(dag, verbose = FALSE)
+  
+  # make an undirected graph
+  undir <- make_undirected(regraph)
+  
+  # find cycles in undirected graph (proxy for braids)
+  cycles <- find_cycles(
+    graph     = undir,
+    start     = start_node,
+    return_as = "list",
+    edge      = FALSE,
+    wide      = TRUE,
+    verbose   = verbose
+  )
+  
+  # if(cycles$size() == 0 & is.null(single_braids)) {
+  if(is.null(cycles)) {
+    # message("No cycles found, returning NULL")
+    return(NULL)
+  }
+  
+  # remove added nodes from renode_circuits()
+  braids <- lapply(cycles, function(i) { 
+    i[i %in% comid_map$fromnode] 
+  })
+  
+  # # match fromnodes from comid_map to nodes identified in each cycle
+  braids <- lapply(1:length(braids), function(k) {
+    # get COMIDs of each braid
+    comid_map[comid_map$fromnode %in% braids[[k]], ] %>%
+      dplyr::filter(tonode %in% braids[[k]]) %>%
+      .$comid
+  })
+  
+  # set braid_id names
+  braids <- stats::setNames(braids, paste0("braid_",  1:length(braids)))
+  
+  return(braids)
+}
 
 #' Detect whether a braid exists in a NHDPlus flowlines Network (DEPRECATED)
 #' DEPRECATED 

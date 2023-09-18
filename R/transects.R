@@ -785,6 +785,7 @@ cut_cross_sections <- function(
                                fix_braids        = TRUE,
                                terminal_id       = NULL,
                                braid_threshold   = NULL,
+                               ver               = "v1",
                                add               = FALSE
                                ) {
   
@@ -956,14 +957,87 @@ cut_cross_sections <- function(
     
     start_time <- Sys.time()
     
-    # fix the braided transects
-    ll <- fix_braid_transects(
-      net             = net,
-      transect_lines  = ll,
-      terminal_id     = terminal_id,
-      braid_threshold = braid_threshold
-    )
+    # 1 = braid2_components
+    # 2 = braid_components
+    # 3 = braid2_comids
+    # 4 = braid2_neighs
+    # 5 = braid_comids
+    # 6 = braid_neighs
     
+    if(ver == "braid2_components") {
+      # fix the braided transects
+      ll <- fix_braid_transects1(
+        net             = net,
+        transect_lines  = ll,
+        terminal_id     = terminal_id,
+        braid_threshold = braid_threshold,
+        rm_intersects   = rm_self_intersect
+      )
+    } else if (ver == "braid_components") {
+      
+      # # fix the braided transects
+      ll <- fix_braid_transects2(
+        net             = net,
+        transect_lines  = ll,
+        terminal_id     = terminal_id,
+        braid_threshold = braid_threshold,
+        rm_intersects   = rm_self_intersect
+      )
+      
+    } else if (ver == "braid2_comids") {
+      
+      # # fix the braided transects
+      ll <- fix_braid_transects3(
+        net             = net,
+        transect_lines  = ll,
+        terminal_id     = terminal_id,
+        braid_threshold = braid_threshold,
+        rm_intersects   = rm_self_intersect
+      )
+      
+    } else if (ver == "braid2_neighs") {
+      
+      # # fix the braided transects
+      ll <- fix_braid_transects4(
+        net             = net,
+        transect_lines  = ll,
+        terminal_id     = terminal_id,
+        braid_threshold = braid_threshold,
+        rm_intersects   = rm_self_intersect
+      )
+      
+    } else if (ver == "braid_comids") {
+      
+      # # fix the braided transects
+      ll <- fix_braid_transects5(
+        net             = net,
+        transect_lines  = ll,
+        terminal_id     = terminal_id,
+        braid_threshold = braid_threshold,
+        rm_intersects   = rm_self_intersect
+      )
+      
+    } else if (ver == "braid_neighs") {
+      
+      # # fix the braided transects
+      ll <- fix_braid_transects6(
+        net             = net,
+        transect_lines  = ll,
+        terminal_id     = terminal_id,
+        braid_threshold = braid_threshold,
+        rm_intersects   = rm_self_intersect
+      )
+      
+    } else {
+      # # fix the braided transects
+      ll <- fix_braid_transects(
+        net             = net,
+        transect_lines  = ll,
+        terminal_id     = terminal_id,
+        braid_threshold = braid_threshold
+      )
+    }
+
     end_time <- Sys.time()
     
     braid_time = end_time - start_time
