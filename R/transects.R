@@ -63,11 +63,12 @@ get_transects = function(edges, line, bf_width){
 }
 
 #' Generate Multiple cross section along a linestring
+#' Internal function, version 2 of get_transects(), may provide a slight runtime improvement. 
+#' Lessens the number of total intersection calculations done in total. WIP.
 #' @param edges data.frame of LINESTRINGs (pieces of line)
 #' @param line original line element
 #' @param bf_width Bankfull Width (length of cross section)
 #' @return GEOS object
-#' @export
 get_transects2 = function(edges, line, bf_width) {
   
   # validate "bf_wdith" input
@@ -755,7 +756,6 @@ check_intersects <- function(transects, line) {
 #   
 # }
 
-
 #' Generate Cross Sections Across Hydrographic Network
 #'
 #' @param net Hydrographic LINESTRING Network
@@ -770,25 +770,42 @@ check_intersects <- function(transects, line) {
 #' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
 #' lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
 #' Default is NULL, which will attempt to fix all the braid transects in the data
+#' @param version integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
+#' @param braid_method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
 #' @param add logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.
 #'
 #' @return sf object
 #' @export
 cut_cross_sections <- function(
-                               net, 
-                               id                = NULL,
-                               cs_widths         = 100, 
-                               num               = 10,
-                               smooth            = TRUE,
-                               densify           = 2,
-                               rm_self_intersect = TRUE,
-                               fix_braids        = TRUE,
-                               terminal_id       = NULL,
-                               braid_threshold   = NULL,
-                               ver               = "v1",
-                               add               = FALSE
-                               ) {
+    net, 
+    id                = NULL,
+    cs_widths         = 100, 
+    num               = 10,
+    smooth            = TRUE,
+    densify           = 2,
+    rm_self_intersect = TRUE,
+    fix_braids        = TRUE,
+    terminal_id       = NULL,
+    braid_threshold   = NULL,
+    version           = 2,
+    braid_method      = "comid",
+    add               = FALSE
+) {
   
+  # net
+  # id                = NULL
+  # cs_widths         = 100
+  # num               = 10
+  # smooth            = TRUE
+  # densify           = 2
+  # rm_self_intersect = TRUE
+  # fix_braids        = TRUE
+  # terminal_id       = NULL
+  # braid_threshold   = NULL
+  # version           = 1
+  # braid_method      = "comid"
+  # add               = FALSE
+
   # net       = net
   # id        = "comid"
   # cs_widths = pmax(50, net$bf_width * 7)
@@ -802,8 +819,7 @@ cut_cross_sections <- function(
   
   # check if net CRS is 5070, if not, transform it to 5070
   if(start_crs != 5070) {
-    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
-    message("Transforming CRS to EPSG: 5070")
+    # message("Transforming CRS to EPSG: 5070")
     net <- sf::st_transform(net, 5070) 
   }
   
@@ -817,15 +833,15 @@ cut_cross_sections <- function(
     net = smoothr::smooth(net, "spline")
   }
   
-  end_time <- Sys.time()
-  
-  smooth_time = end_time - start_time
-  
-  message("Time to smooth linestrings:\n- ", 
-          round(smooth_time, 1), " ",  units(smooth_time)
-  )
-  
-  start_time <- Sys.time()
+  # end_time <- Sys.time()
+  # 
+  # smooth_time = end_time - start_time
+  # 
+  # message("Time to smooth linestrings:\n- ", 
+  #         round(smooth_time, 1), " ",  units(smooth_time)
+  # )
+  # 
+  # start_time <- Sys.time()
   
   # Densify network flowlines, adds more points to each linestring
   if(!is.null(densify)){ 
@@ -833,13 +849,13 @@ cut_cross_sections <- function(
     net = smoothr::densify(net, 2) 
   }
   
-  end_time <- Sys.time()
+  # end_time <- Sys.time()
   
-  dense_time = end_time - start_time
+  # dense_time = end_time - start_time
   
-  message("Time to densify linestrings:\n- ", 
-          round(dense_time, 1), " ",  units(dense_time)
-  )
+  # message("Time to densify linestrings:\n- ", 
+  #         round(dense_time, 1), " ",  units(dense_time)
+  # )
   
   # list to store transect outputs
   ll = list()
@@ -855,8 +871,8 @@ cut_cross_sections <- function(
   
   message("Cutting")
   
-  # system.time({
-  start_time <- Sys.time()
+  # # system.time({
+  # start_time <- Sys.time()
   
   # iterate through each linestring in "net" and generate transect lines along each line 
   for(j in 1:nrow(net)){
@@ -887,22 +903,18 @@ cut_cross_sections <- function(
         edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
       }
     }
-  
-      # cut transect lines at each 'edge' generated along our line of interest
-      ll[[j]] = get_transects(edges, line, cs_widths[j])
-      # ll[[j]] = get_transects2(edges, line, cs_widths[j])
-      
-
-      
+    
+    # cut transect lines at each 'edge' generated along our line of interest
+    ll[[j]] = get_transects(edges, line, cs_widths[j])
+    # ll[[j]] = get_transects2(edges, line, cs_widths[j])
+    
   }
   
-  end_time <- Sys.time()
-  
-  transect_time = end_time - start_time
-
-  message("Time to create all transects:\n- ", 
-          round(transect_time, 1), " ",  units(transect_time)
-  )
+  # end_time <- Sys.time()
+  # transect_time = end_time - start_time
+  # message("Time to create all transects:\n- ", 
+  #         round(transect_time, 1), " ",  units(transect_time)
+  # )
   
   # geos::geos_intersects_matrix(tlines, line)
   ids_length = lengths(ll)
@@ -954,9 +966,6 @@ cut_cross_sections <- function(
   
   # if fix_braids is set to TRUE, then fix the braided transect lines
   if(fix_braids) {
-    
-    start_time <- Sys.time()
-    
     # 1 = braid2_components
     # 2 = braid_components
     # 3 = braid2_comids
@@ -964,93 +973,36 @@ cut_cross_sections <- function(
     # 5 = braid_comids
     # 6 = braid_neighs
     
-    if(ver == "braid2_components") {
-      # fix the braided transects
-      ll <- fix_braid_transects1(
-        net             = net,
-        transect_lines  = ll,
-        terminal_id     = terminal_id,
-        braid_threshold = braid_threshold,
-        rm_intersects   = rm_self_intersect
-      )
-    } else if (ver == "braid_components") {
-      
-      # # fix the braided transects
-      ll <- fix_braid_transects2(
-        net             = net,
-        transect_lines  = ll,
-        terminal_id     = terminal_id,
-        braid_threshold = braid_threshold,
-        rm_intersects   = rm_self_intersect
-      )
-      
-    } else if (ver == "braid2_comids") {
-      
-      # # fix the braided transects
-      ll <- fix_braid_transects3(
-        net             = net,
-        transect_lines  = ll,
-        terminal_id     = terminal_id,
-        braid_threshold = braid_threshold,
-        rm_intersects   = rm_self_intersect
-      )
-      
-    } else if (ver == "braid2_neighs") {
-      
-      # # fix the braided transects
-      ll <- fix_braid_transects4(
-        net             = net,
-        transect_lines  = ll,
-        terminal_id     = terminal_id,
-        braid_threshold = braid_threshold,
-        rm_intersects   = rm_self_intersect
-      )
-      
-    } else if (ver == "braid_comids") {
-      
-      # # fix the braided transects
-      ll <- fix_braid_transects5(
-        net             = net,
-        transect_lines  = ll,
-        terminal_id     = terminal_id,
-        braid_threshold = braid_threshold,
-        rm_intersects   = rm_self_intersect
-      )
-      
-    } else if (ver == "braid_neighs") {
-      
-      # # fix the braided transects
-      ll <- fix_braid_transects6(
-        net             = net,
-        transect_lines  = ll,
-        terminal_id     = terminal_id,
-        braid_threshold = braid_threshold,
-        rm_intersects   = rm_self_intersect
-      )
-      
-    } else {
-      # # fix the braided transects
-      ll <- fix_braid_transects(
-        net             = net,
-        transect_lines  = ll,
-        terminal_id     = terminal_id,
-        braid_threshold = braid_threshold
-      )
-    }
-
-    end_time <- Sys.time()
+    # start_time <- Sys.time()
     
-    braid_time = end_time - start_time
+    # message(
+    #   paste0("Applying fixes to braided transects using:\n",
+    #          "- Braid detection version: ", version, "\n",
+    #          "- Braid grouping method: ", braid_method
+    #          )
+    #   )
     
-    message("Time to fix braid transects:\n- ", 
-            round(braid_time, 1), " ",  units(braid_time)
+    ll <- fix_braid_transects(
+      net             = net,
+      transect_lines  = ll,
+      terminal_id     = terminal_id,
+      braid_threshold = braid_threshold,
+      version         = version,
+      method          = braid_method,
+      rm_intersects   = rm_self_intersect
     )
+    
+    # end_time <- Sys.time()
+    # braid_time = end_time - start_time
+    # message("Time to fix braid transects:\n- ", 
+    #         round(braid_time, 1), " ",  units(braid_time)
+    # )
     
   }
   
   # transform CRS back to input CRS
   if(start_crs != 5070) {
-    message("Transforming CRS back to EPSG: ", start_crs)
+    # message("Transforming CRS back to EPSG: ", start_crs)
     ll <- sf::st_transform(ll, start_crs)
   }
   
