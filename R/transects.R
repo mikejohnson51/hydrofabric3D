@@ -2,27 +2,37 @@
 #' @param edge LINESRTING
 #' @param width Length of Perpendicular LINESTRING
 #' @return GEOS object
+#' @importFrom geos geos_interpolate_normalized geos_point_end geos_x geos_y geos_length
+#' @importFrom wk wk_transform wk_affine_compose wk_affine_translate wk_affine_scale wk_affine_rotate wk_set_crs wk_crs
 #' @export
 cut_transect = function(edge, width){
   # edge = edges[i]
   # width = bf_width[i]
   
-  midpoint <- geos_interpolate_normalized(edge, 0.5)
-  ep       <- geos_point_end(edge)
+  midpoint <- geos::geos_interpolate_normalized(edge, 0.5)
+  ep       <- geos::geos_point_end(edge)
   
-  normal_edge <- wk_transform(edge, 
-                               wk_affine_compose(
-                                 wk_affine_translate(dx = -geos_x(midpoint), dy = -geos_y(midpoint)),
-                                 wk_affine_scale(1 / geos_length(edge), 1 / geos_length(edge)),
-                                 wk_affine_rotate(90)))
+  normal_edge <- wk::wk_transform(
+                    edge, 
+                    wk::wk_affine_compose(
+                      wk::wk_affine_translate(dx = -geos::geos_x(midpoint), dy = -geos::geos_y(midpoint)),
+                      wk::wk_affine_scale(1 / geos::geos_length(edge), 1 / geos::geos_length(edge)),
+                      wk::wk_affine_rotate(90)
+                      )
+                    )
   
-  wk_set_crs(wk_transform(
-    normal_edge,
-    wk_affine_compose(
-      wk_affine_scale(width, width),
-      wk_affine_translate(geos_x(ep), geos_y(ep))
-    )
-  ), wk_crs(edge))
+  return(
+    wk::wk_set_crs(
+      wk::wk_transform(
+        normal_edge,
+        wk::wk_affine_compose(
+          wk::wk_affine_scale(width, width),
+          wk::wk_affine_translate(geos::geos_x(ep), geos::geos_y(ep))
+          )
+        ), 
+      wk::wk_crs(edge)
+      )
+  )
 }
 
 
@@ -31,6 +41,8 @@ cut_transect = function(edge, width){
 #' @param line original line element
 #' @param bf_width Bankfull Width (length of cross section)
 #' @return GEOS object
+#' @importFrom geos geos_empty geos_type geos_intersection geos_intersects geos_is_empty
+#' @importFrom vctrs vec_c
 #' @export
 get_transects = function(edges, line, bf_width){
 
@@ -38,7 +50,7 @@ get_transects = function(edges, line, bf_width){
     bf_width = rep(bf_width[1], length(edges))
   }
   
-  transects <- geos_empty()
+  transects <- geos::geos_empty()
   
   for(i in 1:length(edges)){
 
@@ -47,18 +59,18 @@ get_transects = function(edges, line, bf_width){
     
   
     # If a MULTIPOINT, then it crosses more the once
-    if(geos_type(geos_intersection(tran, line)) == "point") {
+    if(geos::geos_type(geos::geos_intersection(tran, line)) == "point") {
       # message("intersect IS point ")
       # Ensure that there are no intersections with previously computed cross sections
-      if (!any(geos_intersects(tran, transects))) {
+      if (!any(geos::geos_intersects(tran, transects))) {
         # message("----> KEEPING TRANSECT: ", i)
-        transects <-  vec_c(transects, tran)
+        transects <-  vctrs::vec_c(transects, tran)
       } 
 
     } 
   }
 
-  transects[!geos_is_empty(transects)]
+  transects[!geos::geos_is_empty(transects)]
   
 }
 
@@ -68,7 +80,12 @@ get_transects = function(edges, line, bf_width){
 #' @param edges data.frame of LINESTRINGs (pieces of line)
 #' @param line original line element
 #' @param bf_width Bankfull Width (length of cross section)
+#' 
+#' @noRd
+#' @keywords internal
 #' @return GEOS object
+#' @importFrom geos geos_empty geos_intersects geos_is_empty
+#' @importFrom vctrs vec_c
 get_transects2 = function(edges, line, bf_width) {
   
   # validate "bf_wdith" input
@@ -104,6 +121,9 @@ get_transects2 = function(edges, line, bf_width) {
 #' More efficient checking of all the transect lines on a given linestring, by removing some of the extraneous calls to geos_intersection() and geos_intersects()
 #' @param transects geos_linestring of transects that cross perpendicularly to 'line'
 #' @param line geos_linestring that is cut by 'transects'
+#' 
+#' @noRd
+#' @keywords internal
 #' @return geos_linestring
 drop_multicrossings <- function(transects, line) {
 
@@ -125,7 +145,12 @@ drop_multicrossings <- function(transects, line) {
 #' DEPRECATED
 #' @param transects geos_linestring
 #' @param line geos_linestring
-#' @return
+#' 
+#' @noRd
+#' @keywords internal
+#' @return geos_geometry list of non intersecting geometries within the list of geometries
+#' @importFrom geos geos_type geos_intersection geos_empty geos_intersects geos_is_empty
+#' @importFrom vctrs vec_c
 check_intersects <- function(transects, line) {
 
   # reverse the order of the transects, to keep starting from the end of the vector
@@ -187,114 +212,505 @@ check_intersects <- function(transects, line) {
   
 }
 
-#' #' Generate Cross Sections Across Hydrographic Network
-#' #' @param net Hydrographic LINESTRING Network
-#' #' @param id  Uniuqe Identifier in net
-#' #' @param cs_widths Bankfull Widths (length of cross sections for each net element)
-#' #' @param num Number of transects per Net element
-#' #' @return sf object
-#' #' @export
-#' cut_cross_sections1 = function(net, id = NULL,
-#'                               cs_widths = 100, 
-#'                               num = 10,
-#'                               smooth = TRUE,
-#'                               densify = 2,
-#'                               rm_self_intersect = TRUE
-#'                               ){
-#'   
-#'   
-#'   if(smooth){ 
-#'     message("Smoothing")
-#'     net = smoothr::smooth(net, "spline") 
-#'   }
-#'   
-#'   if(!is.null(densify)){ 
-#'     message("Densifying")
-#'     net = smoothr::densify(net, densify) 
-#'   }
-#'   
-#'   ll = list()
-#'   
-#'   if(length(cs_widths) != nrow(net)){
-#'     cs_widths = rep(cs_widths[1], nrow(net))
-#'   }
-#'   
-#'   if(length(num) != nrow(net)){
-#'     num = pmax(3, rep(num[1], nrow(net)))
-#'   }
-#'   # fin
-#'   message("Cutting")
-#'   # nrow(net)
-#'   # j = 2
-#'   for(j in 1:nrow(net)){
-#'     
-#'     line <- as_geos_geometry(net[j,])
-#'     
-#'     vertices <- wk_vertices(line)
-#'     
-#'     edges <- as_geos_geometry(
-#'       wk_linestring(
-#'         vertices[c(1, rep(seq_along(vertices)[-c(1, length(vertices))], each = 2), length(vertices))],
-#'         feature_id = rep(seq_len(length(vertices) - 1), each = 2)
-#'       )
-#'     )
-#'     
-#'     edges = edges[-c(1, length(edges))]
-#'     
-#'     if(!is.null(num)){
-#'       if(num[j] == 1){
-#'         edges = edges[as.integer(ceiling(length(edges)/ 2))]
-#'       } else {
-#'         edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
-#'       }
-#'     } 
-#'     
-#'     ll[[j]] = get_transects(edges, line, cs_widths[j])
-#'     
-#'   }
-#'   
-#'   
-#'   ids_length = lengths(ll)
-#'   ll = st_as_sf(Reduce(c,ll))
-#'   
-#'   if(nrow(ll) == 0){
-#'     return(NULL)
-#'   }
-#'   
-#'   # plot(ll$geometry)
-#'   # plot(perp, add = T)
-#'   # perp_sf <- sf::st_as_sf(perp)
-#'   # perp2_sf <- sf::st_as_sf(perp2)
-#'   # 
-#'   # mapview::mapview(ll, color = "red") +   
-#'   #   # mapview::mapview(perp_sf, color = "blue") +
-#'   #   mapview::mapview(perp2_sf, color = "green")
-#'   
-#'   message("Formating")
-#'   
-#'   if(!is.null(id)){
-#'     ll$hy_id = rep(net[[id]], times = ids_length)
-#'   } else {
-#'     ll$hy_id = rep(1:nrow(net), times = ids_length)
-#'   }
-#'   
-#'   ll$cs_widths = rep(cs_widths, times = ids_length)
-#'   
-#'   if(rm_self_intersect){
-#'     ll[lengths(st_intersects(ll)) == 1, ] %>% 
-#'       group_by(hy_id) %>% 
-#'       mutate(cs_id = 1:n()) %>% 
-#'       ungroup() %>% 
-#'       mutate(lengthm = as.numeric(st_length(.)))
-#'   } else {
-#'     ll %>% 
-#'       group_by(hy_id) %>% 
-#'       mutate(cs_id = 1:n()) %>% 
-#'       ungroup() %>% 
-#'       mutate(lengthm = as.numeric(st_length(.)))
-#'   }
-#'  
-#' }
+#' Generate Cross Sections Across Hydrographic Network
+#'
+#' @param net Hydrographic LINESTRING Network
+#' @param id Unique Identifier in net
+#' @param cs_widths Bankfull Widths (length of cross sections for each net element)
+#' @param num Number of transects per Net element
+#' @param smooth logical, whether to smooth linestring geometries or not. Default is TRUE.
+#' @param densify numeric, how many times more points should be added to linestrings. Default is 2.
+#' @param rm_self_intersect logical, whether to remove self intersecting transect linestrings
+#' @param fix_braids logical, whether to fix braided transect lines or not. If TRUE (default), linestrings that are part of a braided network are augmented
+#' @param terminal_id character, column name containing a unique identifier, delineating separate networks in the 'net' dataset. Default is NULL which will best effort determine the connected components in the network to try and create a 'component_id' column in 'net' 
+#' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
+#' lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#' Default is NULL, which will attempt to fix all the braid transects in the data
+#' @param version integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
+#' @param braid_method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
+#' @param add logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.
+#'
+#' @return sf object
+#' @importFrom dplyr group_by mutate ungroup n left_join
+#' @importFrom sf st_crs st_transform st_intersects st_length st_drop_geometry st_as_sf
+#' @importFrom smoothr smooth densify
+#' @importFrom geos as_geos_geometry
+#' @importFrom wk wk_vertices wk_linestring
+#' @export
+cut_cross_sections <- function(
+    net, 
+    id                = NULL,
+    cs_widths         = 100, 
+    num               = 10,
+    smooth            = TRUE,
+    densify           = 2,
+    rm_self_intersect = TRUE,
+    fix_braids        = TRUE,
+    terminal_id       = NULL,
+    braid_threshold   = NULL,
+    version           = 2,
+    braid_method      = "comid",
+    add               = FALSE
+) {
+  
+  # net
+  # id                = NULL
+  # cs_widths         = 100
+  # num               = 10
+  # smooth            = TRUE
+  # densify           = 2
+  # rm_self_intersect = TRUE
+  # fix_braids        = TRUE
+  # terminal_id       = NULL
+  # braid_threshold   = NULL
+  # version           = 1
+  # braid_method      = "comid"
+  # add               = FALSE
+
+  # net       = net
+  # id        = "comid"
+  # cs_widths = pmax(50, net$bf_width * 7)
+  # num       = 6
+  # densify = 3
+  # fix_braids = TRUE
+  # add       = TRUE
+  
+  # keep track of the CRS of the input to retransform return 
+  start_crs <- sf::st_crs(net, parameters = T)$epsg
+  
+  # check if net CRS is 5070, if not, transform it to 5070
+  if(start_crs != 5070) {
+    # message("Transforming CRS to EPSG: 5070")
+    net <- sf::st_transform(net, 5070) 
+  }
+  
+  
+  start_time <- Sys.time()
+  
+  # smooth out flowlines
+  if(smooth){ 
+    message("Smoothing")
+    # net = smoothr::smooth(net, "ksmooth")
+    net = smoothr::smooth(net, "spline")
+  }
+  
+  # end_time <- Sys.time()
+  # 
+  # smooth_time = end_time - start_time
+  # 
+  # message("Time to smooth linestrings:\n- ", 
+  #         round(smooth_time, 1), " ",  units(smooth_time)
+  # )
+  # 
+  # start_time <- Sys.time()
+  
+  # Densify network flowlines, adds more points to each linestring
+  if(!is.null(densify)){ 
+    message("Densifying")
+    net = smoothr::densify(net, 2) 
+  }
+  
+  # end_time <- Sys.time()
+  
+  # dense_time = end_time - start_time
+  
+  # message("Time to densify linestrings:\n- ", 
+  #         round(dense_time, 1), " ",  units(dense_time)
+  # )
+  
+  # list to store transect outputs
+  ll = list()
+  
+  # if there is a missing number of cross section widths given relative to the number of rows in net, fill in the missing values
+  if(length(cs_widths) != nrow(net)){
+    cs_widths = rep(cs_widths[1], nrow(net))
+  }
+  
+  if(length(num) != nrow(net)){
+    num = pmax(3, rep(num[1], nrow(net)))
+  }
+  
+  message("Cutting")
+  
+  # # system.time({
+  # start_time <- Sys.time()
+  
+  # iterate through each linestring in "net" and generate transect lines along each line 
+  for(j in 1:nrow(net)){
+    # message("==== j: ", j, " =====")
+    
+    # convert sf line to geos_geometry
+    line <- geos::as_geos_geometry(net[j,])
+    
+    # vertices of line
+    vertices <- wk::wk_vertices(line)
+    
+    # create evenly spaced linestring geometries along line of interest
+    edges <- geos::as_geos_geometry(
+      wk::wk_linestring(
+        vertices[c(1, rep(seq_along(vertices)[-c(1, length(vertices))], each = 2), length(vertices))],
+        feature_id = rep(seq_len(length(vertices) - 1), each = 2)
+      )
+    )
+    
+    # keep all lines except first and last edges
+    edges = edges[-c(1, length(edges))]
+    
+    # create a sequence of edges along 'line'
+    if(!is.null(num)){
+      if(num[j] == 1){
+        edges = edges[as.integer(ceiling(length(edges)/ 2))]
+      } else {
+        edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
+      }
+    }
+    
+    # cut transect lines at each 'edge' generated along our line of interest
+    ll[[j]] = get_transects(edges, line, cs_widths[j])
+    # ll[[j]] = get_transects2(edges, line, cs_widths[j])
+    
+  }
+  
+  # end_time <- Sys.time()
+  # transect_time = end_time - start_time
+  # message("Time to create all transects:\n- ", 
+  #         round(transect_time, 1), " ",  units(transect_time)
+  # )
+  
+  # geos::geos_intersects_matrix(tlines, line)
+  ids_length = lengths(ll)
+  ll = sf::st_as_sf(Reduce(c,ll))
+  
+  if(nrow(ll) == 0){
+    return(NULL)
+  }
+  
+  message("Formating")
+  
+  # add id column if provided as an input
+  if(!is.null(id)){
+    ll$hy_id = rep(net[[id]], times = ids_length)
+  } else {
+    ll$hy_id = rep(1:nrow(net), times = ids_length)
+  }
+  
+  # add back cross sections width column
+  ll$cs_widths = rep(cs_widths, times = ids_length)
+  
+  # remove self intersecting transects or not
+  if(rm_self_intersect){
+    ll <- 
+      ll[lengths(sf::st_intersects(ll)) == 1, ] %>% 
+      dplyr::group_by(hy_id) %>% 
+      dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+  } else {
+    ll <- 
+      ll %>% 
+      dplyr::group_by(hy_id) %>% 
+      dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+  }
+  
+  # if original columns of data should be added to transects dataset
+  if(add) {
+    ll <-
+      dplyr::left_join(
+        ll,
+        sf::st_drop_geometry(net),
+        by = c("hy_id" = id)
+        # by = c("hy_id" = "comid")
+      )
+  }
+  
+  # if fix_braids is set to TRUE, then fix the braided transect lines
+  if(fix_braids) {
+    # 1 = braid2_components
+    # 2 = braid_components
+    # 3 = braid2_comids
+    # 4 = braid2_neighs
+    # 5 = braid_comids
+    # 6 = braid_neighs
+    
+    # start_time <- Sys.time()
+    
+    # message(
+    #   paste0("Applying fixes to braided transects using:\n",
+    #          "- Braid detection version: ", version, "\n",
+    #          "- Braid grouping method: ", braid_method
+    #          )
+    #   )
+    
+    ll <- fix_braid_transects(
+      net             = net,
+      transect_lines  = ll,
+      terminal_id     = terminal_id,
+      braid_threshold = braid_threshold,
+      version         = version,
+      method          = braid_method,
+      rm_intersects   = rm_self_intersect
+    )
+    
+    # end_time <- Sys.time()
+    # braid_time = end_time - start_time
+    # message("Time to fix braid transects:\n- ", 
+    #         round(braid_time, 1), " ",  units(braid_time)
+    # )
+    
+  }
+  
+  # transform CRS back to input CRS
+  if(start_crs != 5070) {
+    # message("Transforming CRS back to EPSG: ", start_crs)
+    ll <- sf::st_transform(ll, start_crs)
+  }
+  
+  return(ll)
+  
+}
+
+#' Get Points across transects with elevation values
+#' @param cs Hydrographic LINESTRING Network
+#' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
+#' @param min_pts_per_cs Minimun number of points per cross section required.
+#' @param dem the DEM to extract data from
+#' @return sf object
+#' @importFrom dplyr mutate group_by ungroup n select everything
+#' @importFrom terra linearUnits res rast extract project vect crs 
+#' @importFrom sf st_line_sample st_set_geometry st_cast
+#' @export
+cross_section_pts = function(cs,
+                             points_per_cs = NULL,
+                             min_pts_per_cs = 10,
+                             dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){
+  
+  if(is.null(cs)){ return(NULL) }
+  
+  if(is.null(points_per_cs)){
+    if(terra::linearUnits(terra::rast(dem)) == 0){
+      points_per_cs = ceiling((cs$lengthm / 111139) / min(terra::res(terra::rast(dem))))
+    } else {
+      points_per_cs = ceiling((cs$lengthm) / min(terra::res(terra::rast(dem))))
+    }
+  }
+  
+  cs$points_per_cs = pmax(min_pts_per_cs, points_per_cs)
+  
+  extract_pt_val = function(rast, pts){ terra::extract(rast, terra::project(terra::vect(pts), terra::crs(rast)))[, 2] }
+  
+  suppressWarnings({
+    
+    # TODO: use a 'return()' statement here instead of returning the object, just preference...
+    sf::st_set_geometry(cs, sf::st_line_sample(cs, cs$points_per_cs)) %>% 
+      sf::st_cast("POINT") %>%
+      dplyr::mutate(Z   = extract_pt_val(terra::rast(dem), .)) %>% 
+      dplyr::group_by(hy_id, cs_id) %>% 
+      dplyr::mutate(
+        pt_id             = 1:dplyr::n(),
+        relative_distance = seq(from = 0, to = lengthm[1], length.out = dplyr::n())
+        ) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::select(hy_id, cs_id, pt_id, Z, lengthm, relative_distance, dplyr::everything())
+    
+  })
+  
+}
+
+# #Get Points across transects with elevation values
+# #@param cs Hydrographic LINESTRING Network
+# #@param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
+# #@param min_pts_per_cs Minimun number of points per cross section required.
+# #@param dem the DEM to extract data from
+# #@return sf object
+# #@export
+# cross_section_pts = function(cs,
+#                              points_per_cs = NULL,
+#                              min_pts_per_cs = 10,
+#                              dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){
+# 
+#   if(is.null(cs)){ return(NULL) }
+#   
+#   if(is.null(points_per_cs)){
+#     if(linearUnits(rast(dem)) == 0){
+#       points_per_cs = ceiling((cs$lengthm / 111139) / min(res(rast(dem))))
+#     } else {
+#       points_per_cs = ceiling((cs$lengthm) / min(res(rast(dem))))
+#     }
+#   }
+#   
+#   cs$points_per_cs = pmax(min_pts_per_cs, points_per_cs)
+#     
+#   extract_pt_val = function(rast, pts){ extract(rast, project(vect(pts), crs(rast)))[, 2] }
+# 
+#   suppressWarnings({
+#     st_set_geometry(cs, st_line_sample(cs, cs$points_per_cs)) %>% 
+#       st_cast("POINT") %>%
+#       mutate(Z   = extract_pt_val(rast(dem), .)) %>% 
+#       group_by(hy_id, cs_id) %>% 
+#       mutate(pt_id = 1:n(),
+#              relative_distance = seq(from = 0, to = lengthm[1], length.out = n())) %>% 
+#       ungroup() %>% 
+#       select(hy_id, cs_id, pt_id, Z, lengthm, relative_distance, everything())
+#   })
+#   
+# }
+
+#' Classify Cross Section Points 
+#' @param cs_pts CS points
+#' @return sf object
+#' @export
+classify_points = function(cs_pts){
+  
+  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_widths  <- count_left <- 
+    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
+  
+  filter(cs_pts) %>% 
+    group_by(hy_id, cs_id) %>% 
+    mutate(third = ceiling(n() / 3),
+           mean_dist = mean(diff(relative_distance)),
+           in_channel_pts = ceiling(cs_widths[1] / mean_dist),
+           b1 = ceiling(in_channel_pts / 2),
+           b2 = in_channel_pts - b1,
+           low_pt  = min(Z[third[1]:(2*third[1] - 1)]),
+           class = ifelse(Z <= low_pt & between(pt_id, third[1], (2*third[1] - 1)), 
+                          "bottom", 
+                          "bank"),
+           Z2 = c(Z[1], zoo::rollmean(Z, 3), Z[n()]),
+           Z = ifelse(class == "bottom", Z, Z2),
+           min_bottom = which(class == "bottom")[1],
+           mid_bottom = which(class == "bottom")[ceiling(length(which(class == "bottom"))/2)],
+           max_bottom = which(class == "bottom")[length(which(class == "bottom"))],
+           L1 = pmax(1, mid_bottom - b1),
+           L2 = pmax(1, mid_bottom - b2),
+           R1 = pmin(mid_bottom + b2, n()),
+           R2 = pmin(mid_bottom + b1, n()),
+           anchor = ifelse(Z[R2] < Z[L1], 2, 1),
+           L = pmax(third, ifelse(anchor == 1, L1, L2)),
+           R = pmin(2*third[1], ifelse(anchor == 1, R1, R2)),
+           count_left = min_bottom - L,
+           count_right = R - max_bottom,
+           L = ifelse(count_left == 0, L - count_right, L),
+           R = ifelse(count_right == 0, R + count_left, R),
+           class = ifelse(between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+           class = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+           class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
+    ungroup() %>% 
+    select(hy_id, cs_id, pt_id, Z, relative_distance, cs_widths, class)
+  
+}
+
+
+
+#enerate Cross Sections Across Hydrographic Network
+#@param net Hydrographic LINESTRING Network
+#@param id  Uniuqe Identifier in net
+#@param cs_widths Bankfull Widths (length of cross sections for each net element)
+#@param num Number of transects per Net element
+#@return sf object
+#@export
+# cut_cross_sections1 = function(net, id = NULL,
+#                               cs_widths = 100,
+#                               num = 10,
+#                               smooth = TRUE,
+#                               densify = 2,
+#                               rm_self_intersect = TRUE
+#                               ){
+# 
+# 
+#   if(smooth){
+#     message("Smoothing")
+#     net = smoothr::smooth(net, "spline")
+#   }
+# 
+#   if(!is.null(densify)){
+#     message("Densifying")
+#     net = smoothr::densify(net, densify)
+#   }
+# 
+#   ll = list()
+# 
+#   if(length(cs_widths) != nrow(net)){
+#     cs_widths = rep(cs_widths[1], nrow(net))
+#   }
+# 
+#   if(length(num) != nrow(net)){
+#     num = pmax(3, rep(num[1], nrow(net)))
+#   }
+#   # fin
+#   message("Cutting")
+#   # nrow(net)
+#   # j = 2
+#   for(j in 1:nrow(net)){
+# 
+#     line <- as_geos_geometry(net[j,])
+# 
+#     vertices <- wk_vertices(line)
+# 
+#     edges <- as_geos_geometry(
+#       wk_linestring(
+#         vertices[c(1, rep(seq_along(vertices)[-c(1, length(vertices))], each = 2), length(vertices))],
+#         feature_id = rep(seq_len(length(vertices) - 1), each = 2)
+#       )
+#     )
+# 
+#     edges = edges[-c(1, length(edges))]
+# 
+#     if(!is.null(num)){
+#       if(num[j] == 1){
+#         edges = edges[as.integer(ceiling(length(edges)/ 2))]
+#       } else {
+#         edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
+#       }
+#     }
+# 
+#     ll[[j]] = get_transects(edges, line, cs_widths[j])
+# 
+#   }
+# 
+# 
+#   ids_length = lengths(ll)
+#   ll = st_as_sf(Reduce(c,ll))
+# 
+#   if(nrow(ll) == 0){
+#     return(NULL)
+#   }
+# 
+#   # plot(ll$geometry)
+#   # plot(perp, add = T)
+#   # perp_sf <- sf::st_as_sf(perp)
+#   # perp2_sf <- sf::st_as_sf(perp2)
+#   #
+#   # mapview::mapview(ll, color = "red") +
+#   #   # mapview::mapview(perp_sf, color = "blue") +
+#   #   mapview::mapview(perp2_sf, color = "green")
+# 
+#   message("Formating")
+# 
+#   if(!is.null(id)){
+#     ll$hy_id = rep(net[[id]], times = ids_length)
+#   } else {
+#     ll$hy_id = rep(1:nrow(net), times = ids_length)
+#   }
+# 
+#   ll$cs_widths = rep(cs_widths, times = ids_length)
+# 
+#   if(rm_self_intersect){
+#     ll[lengths(st_intersects(ll)) == 1, ] %>%
+#       group_by(hy_id) %>%
+#       mutate(cs_id = 1:n()) %>%
+#       ungroup() %>%
+#       mutate(lengthm = as.numeric(st_length(.)))
+#   } else {
+#     ll %>%
+#       group_by(hy_id) %>%
+#       mutate(cs_id = 1:n()) %>%
+#       ungroup() %>%
+#       mutate(lengthm = as.numeric(st_length(.)))
+#   }
+# 
+# }
 
 
 # cut_cross_sections2 = function(net, 
@@ -755,379 +1171,3 @@ check_intersects <- function(transects, line) {
 #   return(ll)
 #   
 # }
-
-#' Generate Cross Sections Across Hydrographic Network
-#'
-#' @param net Hydrographic LINESTRING Network
-#' @param id Unique Identifier in net
-#' @param cs_widths Bankfull Widths (length of cross sections for each net element)
-#' @param num Number of transects per Net element
-#' @param smooth logical, whether to smooth linestring geometries or not. Default is TRUE.
-#' @param densify numeric, how many times more points should be added to linestrings. Default is 2.
-#' @param rm_self_intersect logical, whether to remove self intersecting transect linestrings
-#' @param fix_braids logical, whether to fix braided transect lines or not. If TRUE (default), linestrings that are part of a braided network are augmented
-#' @param terminal_id character, column name containing a unique identifier, delineating separate networks in the 'net' dataset. Default is NULL which will best effort determine the connected components in the network to try and create a 'component_id' column in 'net' 
-#' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
-#' lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
-#' Default is NULL, which will attempt to fix all the braid transects in the data
-#' @param version integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
-#' @param braid_method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
-#' @param add logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.
-#'
-#' @return sf object
-#' @export
-cut_cross_sections <- function(
-    net, 
-    id                = NULL,
-    cs_widths         = 100, 
-    num               = 10,
-    smooth            = TRUE,
-    densify           = 2,
-    rm_self_intersect = TRUE,
-    fix_braids        = TRUE,
-    terminal_id       = NULL,
-    braid_threshold   = NULL,
-    version           = 2,
-    braid_method      = "comid",
-    add               = FALSE
-) {
-  
-  # net
-  # id                = NULL
-  # cs_widths         = 100
-  # num               = 10
-  # smooth            = TRUE
-  # densify           = 2
-  # rm_self_intersect = TRUE
-  # fix_braids        = TRUE
-  # terminal_id       = NULL
-  # braid_threshold   = NULL
-  # version           = 1
-  # braid_method      = "comid"
-  # add               = FALSE
-
-  # net       = net
-  # id        = "comid"
-  # cs_widths = pmax(50, net$bf_width * 7)
-  # num       = 6
-  # densify = 3
-  # fix_braids = TRUE
-  # add       = TRUE
-  
-  # keep track of the CRS of the input to retransform return 
-  start_crs <- sf::st_crs(net, parameters = T)$epsg
-  
-  # check if net CRS is 5070, if not, transform it to 5070
-  if(start_crs != 5070) {
-    # message("Transforming CRS to EPSG: 5070")
-    net <- sf::st_transform(net, 5070) 
-  }
-  
-  
-  start_time <- Sys.time()
-  
-  # smooth out flowlines
-  if(smooth){ 
-    message("Smoothing")
-    # net = smoothr::smooth(net, "ksmooth")
-    net = smoothr::smooth(net, "spline")
-  }
-  
-  # end_time <- Sys.time()
-  # 
-  # smooth_time = end_time - start_time
-  # 
-  # message("Time to smooth linestrings:\n- ", 
-  #         round(smooth_time, 1), " ",  units(smooth_time)
-  # )
-  # 
-  # start_time <- Sys.time()
-  
-  # Densify network flowlines, adds more points to each linestring
-  if(!is.null(densify)){ 
-    message("Densifying")
-    net = smoothr::densify(net, 2) 
-  }
-  
-  # end_time <- Sys.time()
-  
-  # dense_time = end_time - start_time
-  
-  # message("Time to densify linestrings:\n- ", 
-  #         round(dense_time, 1), " ",  units(dense_time)
-  # )
-  
-  # list to store transect outputs
-  ll = list()
-  
-  # if there is a missing number of cross section widths given relative to the number of rows in net, fill in the missing values
-  if(length(cs_widths) != nrow(net)){
-    cs_widths = rep(cs_widths[1], nrow(net))
-  }
-  
-  if(length(num) != nrow(net)){
-    num = pmax(3, rep(num[1], nrow(net)))
-  }
-  
-  message("Cutting")
-  
-  # # system.time({
-  # start_time <- Sys.time()
-  
-  # iterate through each linestring in "net" and generate transect lines along each line 
-  for(j in 1:nrow(net)){
-    # message("==== j: ", j, " =====")
-    
-    # convert sf line to geos_geometry
-    line <- geos::as_geos_geometry(net[j,])
-    
-    # vertices of line
-    vertices <- wk::wk_vertices(line)
-    
-    # create evenly spaced linestring geometries along line of interest
-    edges <- geos::as_geos_geometry(
-      wk::wk_linestring(
-        vertices[c(1, rep(seq_along(vertices)[-c(1, length(vertices))], each = 2), length(vertices))],
-        feature_id = rep(seq_len(length(vertices) - 1), each = 2)
-      )
-    )
-    
-    # keep all lines except first and last edges
-    edges = edges[-c(1, length(edges))]
-    
-    # create a sequence of edges along 'line'
-    if(!is.null(num)){
-      if(num[j] == 1){
-        edges = edges[as.integer(ceiling(length(edges)/ 2))]
-      } else {
-        edges = edges[as.integer(seq.int(1, length(edges), length.out = min(num[j], length(edges))))]
-      }
-    }
-    
-    # cut transect lines at each 'edge' generated along our line of interest
-    ll[[j]] = get_transects(edges, line, cs_widths[j])
-    # ll[[j]] = get_transects2(edges, line, cs_widths[j])
-    
-  }
-  
-  # end_time <- Sys.time()
-  # transect_time = end_time - start_time
-  # message("Time to create all transects:\n- ", 
-  #         round(transect_time, 1), " ",  units(transect_time)
-  # )
-  
-  # geos::geos_intersects_matrix(tlines, line)
-  ids_length = lengths(ll)
-  ll = st_as_sf(Reduce(c,ll))
-  
-  if(nrow(ll) == 0){
-    return(NULL)
-  }
-  
-  message("Formating")
-  
-  # add id column if provided as an input
-  if(!is.null(id)){
-    ll$hy_id = rep(net[[id]], times = ids_length)
-  } else {
-    ll$hy_id = rep(1:nrow(net), times = ids_length)
-  }
-  
-  # add back cross sections width column
-  ll$cs_widths = rep(cs_widths, times = ids_length)
-  
-  # remove self intersecting transects or not
-  if(rm_self_intersect){
-    ll <- 
-      ll[lengths(st_intersects(ll)) == 1, ] %>% 
-      group_by(hy_id) %>% 
-      mutate(cs_id = 1:n()) %>% 
-      ungroup() %>% 
-      mutate(lengthm = as.numeric(st_length(.)))
-  } else {
-    ll <- 
-      ll %>% 
-      group_by(hy_id) %>% 
-      mutate(cs_id = 1:n()) %>% 
-      ungroup() %>% 
-      mutate(lengthm = as.numeric(st_length(.)))
-  }
-  
-  # if original columns of data should be added to transects dataset
-  if(add) {
-    ll <-
-      dplyr::left_join(
-        ll,
-        sf::st_drop_geometry(net),
-        by = c("hy_id" = id)
-        # by = c("hy_id" = "comid")
-      )
-  }
-  
-  # if fix_braids is set to TRUE, then fix the braided transect lines
-  if(fix_braids) {
-    # 1 = braid2_components
-    # 2 = braid_components
-    # 3 = braid2_comids
-    # 4 = braid2_neighs
-    # 5 = braid_comids
-    # 6 = braid_neighs
-    
-    # start_time <- Sys.time()
-    
-    # message(
-    #   paste0("Applying fixes to braided transects using:\n",
-    #          "- Braid detection version: ", version, "\n",
-    #          "- Braid grouping method: ", braid_method
-    #          )
-    #   )
-    
-    ll <- fix_braid_transects(
-      net             = net,
-      transect_lines  = ll,
-      terminal_id     = terminal_id,
-      braid_threshold = braid_threshold,
-      version         = version,
-      method          = braid_method,
-      rm_intersects   = rm_self_intersect
-    )
-    
-    # end_time <- Sys.time()
-    # braid_time = end_time - start_time
-    # message("Time to fix braid transects:\n- ", 
-    #         round(braid_time, 1), " ",  units(braid_time)
-    # )
-    
-  }
-  
-  # transform CRS back to input CRS
-  if(start_crs != 5070) {
-    # message("Transforming CRS back to EPSG: ", start_crs)
-    ll <- sf::st_transform(ll, start_crs)
-  }
-  
-  return(ll)
-  
-}
-
-#' Get Points across transects with elevation values
-#' @param cs Hydrographic LINESTRING Network
-#' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
-#' @param min_pts_per_cs Minimun number of points per cross section required.
-#' @param dem the DEM to extract data from
-#' @return sf object
-#' @export
-cross_section_pts = function(cs,
-                             points_per_cs = NULL,
-                             min_pts_per_cs = 10,
-                             dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){
-  
-  if(is.null(cs)){ return(NULL) }
-  
-  if(is.null(points_per_cs)){
-    if(linearUnits(rast(dem)) == 0){
-      points_per_cs = ceiling((cs$lengthm / 111139) / min(res(rast(dem))))
-    } else {
-      points_per_cs = ceiling((cs$lengthm) / min(res(rast(dem))))
-    }
-  }
-  
-  cs$points_per_cs = pmax(min_pts_per_cs, points_per_cs)
-  
-  extract_pt_val = function(rast, pts){ extract(rast, project(vect(pts), crs(rast)))[, 2] }
-  
-  suppressWarnings({
-    st_set_geometry(cs, st_line_sample(cs, cs$points_per_cs)) %>% 
-      st_cast("POINT") %>%
-      mutate(Z   = extract_pt_val(rast(dem), .)) %>% 
-      group_by(hy_id, cs_id) %>% 
-      mutate(pt_id = 1:n(),
-             relative_distance = seq(from = 0, to = lengthm[1], length.out = n())) %>% 
-      ungroup() %>% 
-      select(hy_id, cs_id, pt_id, Z, lengthm, relative_distance, everything())
-  })
-  
-}
-
-#' Get Points across transects with elevation values
-#' @param cs Hydrographic LINESTRING Network
-#' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
-#' @param min_pts_per_cs Minimun number of points per cross section required.
-#' @param dem the DEM to extract data from
-#' @return sf object
-#' @export
-cross_section_pts = function(cs,
-                             points_per_cs = NULL,
-                             min_pts_per_cs = 10,
-                             dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){
-
-  if(is.null(cs)){ return(NULL) }
-  
-  if(is.null(points_per_cs)){
-    if(linearUnits(rast(dem)) == 0){
-      points_per_cs = ceiling((cs$lengthm / 111139) / min(res(rast(dem))))
-    } else {
-      points_per_cs = ceiling((cs$lengthm) / min(res(rast(dem))))
-    }
-  }
-  
-  cs$points_per_cs = pmax(min_pts_per_cs, points_per_cs)
-    
-  extract_pt_val = function(rast, pts){ extract(rast, project(vect(pts), crs(rast)))[, 2] }
-
-  suppressWarnings({
-    st_set_geometry(cs, st_line_sample(cs, cs$points_per_cs)) %>% 
-      st_cast("POINT") %>%
-      mutate(Z   = extract_pt_val(rast(dem), .)) %>% 
-      group_by(hy_id, cs_id) %>% 
-      mutate(pt_id = 1:n(),
-             relative_distance = seq(from = 0, to = lengthm[1], length.out = n())) %>% 
-      ungroup() %>% 
-      select(hy_id, cs_id, pt_id, Z, lengthm, relative_distance, everything())
-  })
-  
-}
-
-#' Classify Cross Section Points 
-#' @param cs_pts CS points
-#' @return sf object
-#' @export
-classify_points = function(cs_pts){
-  
-  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_widths  <- count_left <- 
-    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
-  
-  filter(cs_pts) %>% 
-    group_by(hy_id, cs_id) %>% 
-    mutate(third = ceiling(n() / 3),
-           mean_dist = mean(diff(relative_distance)),
-           in_channel_pts = ceiling(cs_widths[1] / mean_dist),
-           b1 = ceiling(in_channel_pts / 2),
-           b2 = in_channel_pts - b1,
-           low_pt  = min(Z[third[1]:(2*third[1] - 1)]),
-           class = ifelse(Z <= low_pt & between(pt_id, third[1], (2*third[1] - 1)), 
-                          "bottom", 
-                          "bank"),
-           Z2 = c(Z[1], zoo::rollmean(Z, 3), Z[n()]),
-           Z = ifelse(class == "bottom", Z, Z2),
-           min_bottom = which(class == "bottom")[1],
-           mid_bottom = which(class == "bottom")[ceiling(length(which(class == "bottom"))/2)],
-           max_bottom = which(class == "bottom")[length(which(class == "bottom"))],
-           L1 = pmax(1, mid_bottom - b1),
-           L2 = pmax(1, mid_bottom - b2),
-           R1 = pmin(mid_bottom + b2, n()),
-           R2 = pmin(mid_bottom + b1, n()),
-           anchor = ifelse(Z[R2] < Z[L1], 2, 1),
-           L = pmax(third, ifelse(anchor == 1, L1, L2)),
-           R = pmin(2*third[1], ifelse(anchor == 1, R1, R2)),
-           count_left = min_bottom - L,
-           count_right = R - max_bottom,
-           L = ifelse(count_left == 0, L - count_right, L),
-           R = ifelse(count_right == 0, R + count_left, R),
-           class = ifelse(between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
-           class = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
-           class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
-    ungroup() %>% 
-    select(hy_id, cs_id, pt_id, Z, relative_distance, cs_widths, class)
-  
-}

@@ -6,7 +6,8 @@
 #' @importFrom terra rast extract project vect crs linearUnits res
 #' @importFrom zoo rollmean
 #' @importFrom smoothr densify smooth 
-
+#' @importFrom fastmap fastmap faststack fastqueue
+#' @importFrom tidyr unnest
 NULL
 
 

@@ -15,8 +15,12 @@
 #' @param rm_intersects logical, whether to remove transect linestrings that intersect with other parts of the network ('net'). Default is TRUE which will remove intersecting linestrings.
 #'
 #' @return sf object of transect linestrings
+#' @importFrom dplyr filter group_by ungroup left_join select arrange bind_rows mutate
+#' @importFrom nhdplusTools rename_geometry
+#' @importFrom sf st_crs st_transform st_drop_geometry st_geometry st_as_sf st_intersects
+#' @importFrom geos as_geos_geometry geos_intersects_any
+#' @importFrom fastmap fastmap
 #' @export
-#' @examples
 fix_braid_transects <- function(
     net, 
     transect_lines,
@@ -612,6 +616,11 @@ fix_braid_transects <- function(
 #' Default is NULL, which will attempt to fix all the braid transects in the data
 #'
 #' @return sf object of transect linestrings
+#' @importFrom dplyr filter group_by ungroup left_join select arrange bind_rows mutate
+#' @importFrom nhdplusTools rename_geometry
+#' @importFrom sf st_crs st_transform st_drop_geometry st_geometry st_as_sf st_intersects
+#' @importFrom geos as_geos_geometry geos_intersects_any
+#' @importFrom fastmap fastmap
 fix_braid_transects2 <- function(
     net, 
     transect_lines,
@@ -1129,13 +1138,16 @@ fix_braid_transects2 <- function(
 #' @param component character or integer, component ID of the origin COMID identifier.
 #' @param method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
 #'
+#' @noRd
+#' @keywords internal
 #' @return sf dataframe containing the subset of nearby geometries to use for cutting.
+#' @importFrom dplyr filter 
 get_geoms_to_cut <- function(x, 
                              id          = NULL, 
                              braid_id    = NULL, 
                              component   = NULL,
                              method      = "comid"
-) {
+                             ) {
   
   # stop the function if an invalid "method" argument is given
   if(!method %in% c("comid", "component", "neighbor")) {
@@ -1238,10 +1250,9 @@ get_geoms_to_cut <- function(x,
 #' @param head_count numeric, count of intersections extending from the "head" end of an extended transect line  
 #' @param tail_count numeric, count of intersections extending from the "tail" end of an extended transect line  
 #'
+#' @noRd
+#' @keywords internal
 #' @return character ("no_intersects", "outer_single", "outer_multi", "inner" , or "in_between")
-#' @export
-#'
-#' @examples
 check_relative_position <- function(head_count, tail_count) {
   
   # given the count of interesections from the head and tail of a linestring, return whether the line has:
@@ -1368,10 +1379,9 @@ check_relative_position <- function(head_count, tail_count) {
 #' @param tail_distance numeric, distance (meters) to extend from "tail" of the line
 #' @param extra_distance numeric, any extra distance (meters) the line should be extended after the original head/tail distances (this is typically going to be the cross section width divded by 2)
 #'
+#' @noRd
+#' @keywords internal
 #' @return geos_geometry, extended by specified distance
-#' @export
-#'
-#' @examples
 geos_extend_transects <- function(
     starter_line, 
     head_distance  = 0, 
@@ -1445,11 +1455,11 @@ geos_extend_transects <- function(
 #' @param as_df logical, whether to return data as dataframe or a list of fastmap::fastmap(). Default is TRUE, returns as a dataframe.
 #' If FALSE, then the return is a list of 2 fastmap::fastmap() containing information on how the head and tail extensions for the transect geometries
 #' @param carry_geom logical, whether to carry geometries and keep them in the functions return. Default is TRUE, which will return the extended geometries with the function returns. 
-#'
+#' @noRd
+#' @keywords internal
 #' @return dataframe or list of fastmap::fastmap() objects with meta data describing how far to extend a given transect line, in which directions and the relative position of the transect line. 
-#' @export
-#'
-#' @examples
+#' @importFrom geos as_geos_geometry
+#' @importFrom fastmap fastmap
 geos_augment_transect <- function(cross_section,
                                   geoms_to_cut, 
                                   geom_ids,
@@ -1471,14 +1481,6 @@ geos_augment_transect <- function(cross_section,
   #               )
   
   # cross_section = xs[i, ]
-  # geoms_to_cut  = geos::as_geos_geometry(others$geometry)
-  # geom_ids      = others$comid
-  # max_distance  = NULL
-  # by            = 1
-  # as_df         = FALSE
-  # carry_geom    = FALSE
-  
-  # cross_section = xs[i, ]
   # geoms_to_cut  = others
   # max_distance  = NULL
   # by            = 1
@@ -1492,6 +1494,7 @@ geos_augment_transect <- function(cross_section,
   bf_width <- cross_section$bf_width
   id       <- cross_section$hy_id
   
+  # convert cross_section geometry columns to geos_geometry
   cs_line  <- geos::as_geos_geometry(cross_section$geometry)
   # cs_line  <- cross_section$geometry
   
@@ -1674,11 +1677,11 @@ geos_augment_transect <- function(cross_section,
 #'  the extending line (distance, number of intersections, IDs of intersected geometries, etc.) 
 #'  or to just return the extended line. Default is TRUE, which will return a fastmap::fastmap() that can be used 
 #'  later on to extend the line the necessary distance.  If FALSE, a geos_geometry of the extended linestring is returned
-#'
+#' @noRd
+#' @keywords internal
 #' @return fastmap::fastmap() with details on line extension, or a geos_geometry of the extended line
-#' @export
-#'
-#' @examples
+#' @importFrom geos as_geos_geometry geos_intersects
+#' @importFrom fastmap fastmap
 geos_extend_out <- function(
     x,
     line,
@@ -1870,34 +1873,17 @@ geos_extend_out <- function(
 #' @param line geos_geometry, linestring to extend out to the point that it crosses the first geometry in "geoms_to_cut"
 #' @param geoms_to_cut geos_geometry, geometries to extend "line" out and cut, when line is extending out and intersects with "geoms_to_cut", algo stops and returns the index of the distance array 
 #' @param direction character, either "head" or "tail", indicating which end of the line to extend out.
-#'
+#' 
+#' @noRd
+#' @keywords internal
 #' @return index of 'distance' vector, representing the minimum extension distance for a line to intersect nearby geometries
-#' @export
-#'
-#' @examples
+#' @importFrom geos geos_intersects
 geos_bs_distance <- function(
     distances, 
     line,
     geoms_to_cut, 
     direction = "head"
 ) {
-  
-  # distances    = distances
-  # line         = line
-  # geoms_to_cut = geoms_to_cut
-  # direction    = dir
-  
-  # sftmp <- st_extend_line(xs[i, ], distances[M], end = dir)
-  # mapview::mapview(geos_tmp, color = "red") +
-  #   mapview::mapview(xs[i, ], color = "dodgerblue") +
-  #   mapview::mapview(sftmp, color = "green")
-  
-  # distances    = distances
-  # line         = line
-  # geoms_to_cut = geoms_to_cut
-  # direction    = dir
-  
-  
   
   # Left and right pointers (start and end of distances vector)
   L = 1
@@ -1931,15 +1917,6 @@ geos_bs_distance <- function(
     new_line <- geos_extend_line(line, distances[M], dir = direction)
     # new_line_sf <- st_extend_line(sf::st_as_sf(line), distances[M], end = direction)
     
-    # geos::geos_intersects(geoms_to_cut, new_line)
-    # sf::st_intersects(  sf::st_as_sf(geoms_to_cut), new_line_sf)
-    # geos::geos_intersects(geoms_to_cut, new_line)
-    # lengths( sf::st_intersects(  sf::st_as_sf(geoms_to_cut), new_line_sf)) > 0
-    # any(geos::geos_intersects(geoms_to_cut, new_line))
-    # any( lengths(sf::st_intersects(  sf::st_as_sf(geoms_to_cut), new_line_sf)) > 0)
-    # plot(new_line, col = "red", lwd= 5, add = F)
-    # plot(line, col = "green", lwd= 5, add = T)
-    
     # check if any of the other braid linestrings get intersected by the extended line:
     # IF: Any interesection occurs, DECREMENT right pointer and search for a SMALLER distance value
     # ELSE: no intersection yet, so INCREMENT left pointer and search for a LARGER distance value
@@ -1968,79 +1945,75 @@ geos_bs_distance <- function(
   return(L)
 }
 
-# mapview::mapview(line, color = "red") +
-# mapview::mapview(ms_xs, color = "red") +
-#   # mapview::mapview(crosser, color = "dodgerblue") +
-#   mapview::mapview(singles, color = "dodgerblue") +
-#   mapview::mapview(multis, color = "green") +
-#   transects
-# mapview::mapview(cross_pt, col.regions = "red") +
-# start + end  + boi + ms_xs + transects + singles
-#   dplyr::filter(boi, !comid %in% com)
+### 
+### Old binary search function
+### 
 
-
-#' Extend a linestring out and determine the minimum extension distance to cross all possible other geometries
-#' Internal function, implements a binary search algorithm to determine the minimum distance the geos_geometry linestring 'line' must be extended to cross all possible geometries in 'geoms_to_cut'
-#' @param distances numeric vector in ascending order
-#' @param line geos_geometry linestring
-#' @param geoms_to_cut geos_geomtry linestrings to try and interesect by extending 'line'
-#' @param direction character, direction to extend linestring from. Either "head", "tail" or "both". Default is "head".
-#'
-#' @return numeric value indicating the index of the value in 'distances' that is the minimum extension distance to intersect all possible geometries in 'geoms_to_cut'
-binary_search_distance <- function(distances, line, geoms_to_cut, direction = "head") {
-  
-  # left and right pointers at the start and end of the 'distances' vector, respectively
-  L = 1
-  R = length(distances)
-  
-  # while left pointer is less than or equal to the right pointer, run binary search
-  while(L <= R) {
-  
-    # calculate midpoint
-    M = (L + R) %/% 2
-    
-    # if midpoint is at the end or start of the 'distances' vector, return left pointer
-    if(M == 0 | M == length(distances)) {
-      # message("EARLY STOPPING bc M = ", M)
-      # message("RETURNING L = ", L)
-      return(L)
-    }
-    
-    # extend linestring by distance value at midpoint (M pointer)
-    new_line <- st_extend_line(line, distances[M], dir = direction)
-
-    # check if any of the other braid linestrings get intersected by the extended line:
-    # IF: Any interesection occurs, DECREMENT right pointer and search for a SMALLER distance value
-    # ELSE: no intersection yet, so INCREMENT left pointer and search for a LARGER distance value
-    if(any(lengths(sf::st_intersects(geoms_to_cut, new_line)) > 0)) {
-      # message("DECREM RIGHT.--> need smaller value")
-      # message("R = R - 1 = : ", M - 1)
-      
-      # decrement right pointer to middle - 1
-      R = M - 1
-    } else {
-      # message("DECREM RIGHT.--> need smaller value")
-      # message("L = M + 1 = : ", M + 1)
-      
-      # increment left pointer to middle + 1
-      L = M + 1
-    }
-    # message("=======================")
-  }
-
-  return(L)
-}
+# #Extend a linestring out and determine the minimum extension distance to cross all possible other geometries
+# #Internal function, implements a binary search algorithm to determine the minimum distance the geos_geometry linestring 'line' must be extended to cross all possible geometries in 'geoms_to_cut'
+# #@param distances numeric vector in ascending order
+# #@param line geos_geometry linestring
+# #@param geoms_to_cut geos_geomtry linestrings to try and interesect by extending 'line'
+# #@param direction character, direction to extend linestring from. Either "head", "tail" or "both". Default is "head".
+# #@noRd
+# #@keywords internal
+# #@return numeric value indicating the index of the value in 'distances' that is the minimum extension distance to intersect all possible geometries in 'geoms_to_cut'
+# #@importFrom sf st_intersects
+# binary_search_distance <- function(distances, line, geoms_to_cut, direction = "head") {
+#   
+#   # left and right pointers at the start and end of the 'distances' vector, respectively
+#   L = 1
+#   R = length(distances)
+#   
+#   # while left pointer is less than or equal to the right pointer, run binary search
+#   while(L <= R) {
+#   
+#     # calculate midpoint
+#     M = (L + R) %/% 2
+#     
+#     # if midpoint is at the end or start of the 'distances' vector, return left pointer
+#     if(M == 0 | M == length(distances)) {
+#       # message("EARLY STOPPING bc M = ", M)
+#       # message("RETURNING L = ", L)
+#       return(L)
+#     }
+#     
+#     # extend linestring by distance value at midpoint (M pointer)
+#     new_line <- st_extend_line(line, distances[M], dir = direction)
+# 
+#     # check if any of the other braid linestrings get intersected by the extended line:
+#     # IF: Any interesection occurs, DECREMENT right pointer and search for a SMALLER distance value
+#     # ELSE: no intersection yet, so INCREMENT left pointer and search for a LARGER distance value
+#     if(any(lengths(sf::st_intersects(geoms_to_cut, new_line)) > 0)) {
+#       # message("DECREM RIGHT.--> need smaller value")
+#       # message("R = R - 1 = : ", M - 1)
+#       
+#       # decrement right pointer to middle - 1
+#       R = M - 1
+#     } else {
+#       # message("DECREM RIGHT.--> need smaller value")
+#       # message("L = M + 1 = : ", M + 1)
+#       
+#       # increment left pointer to middle + 1
+#       L = M + 1
+#     }
+#     # message("=======================")
+#   }
+# 
+#   return(L)
+# }
 
 
 
 #' Find the direction of the endpoints of a linestring
-#'
+#' Internal function used in geos_extend_line() function to identify the the direction of each of the ends of a linestring
 #' @param line geos_geometry, linestring
-#'
+#' 
+#' @noRd
+#' @keywords internal
 #' @return numeric vector of angle directions of a given linestring
-#' @export
-#'
-#' @examples
+#' @importFrom geos as_geos_geometry
+#' @importFrom wk wk_coords
 geos_linestring_dir <- function(line) {
   
   # if NOT a geos_geometry class, coerce
@@ -2077,14 +2050,17 @@ geos_linestring_dir <- function(line) {
 #       If a single value is given when end = "both", the value is recycled and used to extend both ends
 #' @param end character, determines whether to extend the linestring from the 'tail', 'head' or 'both' ends
 #' @param with_crs logical, whether a CRS should be prescribed to extended output geos_geometry linestring
-#'
+#' 
+#' @noRd
+#' @keywords internal
 #' @return geos_geometry linestring extended by 'distance' from either the 'head', 'tail' or 'both' ends of the original linestring
-#' @export
-#'
-#' @examples
+#' @importFrom geos as_geos_geometry geos_make_linestring
+#' @importFrom wk wk_coords wk_crs
 geos_extend_line <- function(line, 
                              distance,
-                             dir = "both", with_crs = TRUE) {
+                             dir = "both", 
+                             with_crs = TRUE
+                             ) {
   # line <- xs[1, ]
   
   # if NOT a geos_geometry class, coerce
@@ -2169,11 +2145,12 @@ geos_extend_line <- function(line,
 #' @param threshold numeric, remove braids with a total braid flowline length greater than 'threshold'
 #' @param new_braid_ids character, what to name braid_id column for braids that were thresholded and removed. Default is "no_braid".
 #' @param verbose logical, whether to output progress messages. If TRUE (default), messages are outputted
-#'
+#' 
+#' @noRd
+#' @keywords internal
 #' @return a list with 2 sf dataframes, the updated braided dataset and the updated original "not_braided" dataset, a list of 2 sf objects containing the updated braids with braids removed that are greater than the threshold value, and an sf object containing the original remaining network linestrings
-#' @export
-#'
-#' @examples
+#' @importFrom dplyr group_by mutate ungroup filter bind_rows
+#' @importFrom sf st_length
 braid_thresholder <- function(x, 
                               originals,
                               threshold = NULL, 
@@ -2297,17 +2274,20 @@ braid_thresholder <- function(x,
 }
 
 #' Find the total length of all flowlines of each braid in a NHDPlus dataset
-#' Internal function
+#' 
+#' Internal function that gets the lengths of each braid ID in an NHDPlus dataset (output of find_braids() function)
+#' 
 #' @param x sf object of braided flowlines (output of find_braids()). Requires 'braid_id' and 'comid' column.
 #' @param keep_geom logical, whether to keep geometries or not. Default is FALSE to drop geometries
-#' @param verbose logical, whether to output progress messages. If TRUE (default), messages are outputted
-#'
+#' 
+#' @noRd
+#' @keywords internal
 #' @return dataframe with 3 columns, the braid_id, length (meters) of the total flowline length, and comids within the braid, and optionally a sf geometry
-#' @export
+#' @importFrom dplyr filter group_by summarize ungroup arrange
+#' @importFrom sf st_length st_drop_geometry
 braid_lengths <- function(x, 
-                          keep_geom = FALSE,
-                          verbose   = TRUE
-) {
+                          keep_geom = FALSE
+                          ) {
   
   # input check for input 'x'
   if(is.null(x)) {
@@ -2339,13 +2319,19 @@ braid_lengths <- function(x,
   
 }
 
-# Retrieve the COMIDs for all connected flowlines in list of "braid_ids"
-# x must be an dataframe/tibble/sf dataframe containing comid, braid_id, and component_id columns. 
-# x dataframe is the result of putting NHDPlus data through find_braids() and find_connected_components() functions
-# braid_ids is a character vector of braid_ids (i.e. c("braid_1", "braid_2", "braid_3"))
+#' Retrieve the COMIDs for all connected flowlines in list of "braid_ids"
+#' 
+#' The 'x' dataframe is the output of putting NHDPlus data through the
+#' find_braids() function and then the find_connected_components() function.
+#' 
+#' @param x must be an dataframe/tibble/sf dataframe containing comid, braid_id, and component_id columns
+#' @param braid_ids character vector of braid_ids (i.e. c("braid_1", "braid_2", "braid_3"))
+#'
+#' @noRd
+#' @keywords internal
+#' @return vector containing the unique COMIDs within each braid_id
+#' @importFrom dplyr filter
 comids_in_braid_ids <- function(x, braid_ids) {
-  # x = braids
-  # braid_ids = bids
 
   # split the braid_id column by the ", " delimiter
   braid_list <- strsplit(x$braid_id, ", ")
@@ -2387,137 +2373,132 @@ comids_in_braid_ids <- function(x, braid_ids) {
 # ------------- PLOTTING (WIP) ------------
 # *****************************************
 
-make_geoms_to_cut_plot <- function(
-    shp,
-    x,
-    id           = NULL,
-    braid_id     = NULL,
-    component    = NULL,
-    save_path = NULL
-) {
-  
-  # shp          = xs[i, ]
-  # x            = braids
-  # id           = com
-  # braid_id     = bid
-  # component    = comp_id
-  # save_path = paste0("/Users/anguswatters/Desktop/transect_figs/geoms_to_cut/geoms_to_cut_component_", 
-  #                    comp_id, 
-  #                    ".png")
-  
-  comid_cuts <- get_geoms_to_cut(
-    x            = x,
-    id           = id,
-    braid_id     = braid_id,
-    component    = component,
-    method       = "comid"
-  )
-  
-  comp_cuts <-  get_geoms_to_cut(
-    x            = x,
-    id           = id,
-    braid_id     = braid_id,
-    component    = component,
-    method       = "component"
-  )
-  
-  neigh_cuts <- get_geoms_to_cut(
-    x            = x,
-    id           = id,
-    braid_id     = braid_id,
-    component    = component,
-    method       = "neighbor"
-  )
-  
-  # ggplot2 theme
-  dark_thm <- 
-    ggplot2::theme_dark() +
-    ggplot2::theme(
-      plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
-      plot.subtitle = ggplot2::element_text(hjust = 0.5)
-      # axis.text.x = ggplot2::element_blank()
-    )
-  
-  comid_plot <- 
-    ggplot2::ggplot() +
-    ggplot2::geom_sf(data = x, color = "cyan",  alpha = 1,lwd = 1) +
-    ggplot2::geom_sf(data = comid_cuts, color = "red", alpha = 1, lwd = 1) +
-    # ggplot2::geom_sf(data = shp, color = "green", lwd = 15) +
-    # ggplot2::geom_sf(data = sf::st_buffer(shp, 750), fill = "green") +
-    ggplot2::geom_sf(data = shp, color = "green", lwd = 2) + 
-    ggplot2::geom_sf(data = sf::st_buffer(shp, 60), fill = "green", color = "black") +
-    ggplot2::labs(
-      title = "COMIDS",
-      subtitle = paste0("# geoms to cut = ", nrow(comid_cuts))
-    ) +
-    dark_thm
-  
-  neigh_plot <- 
-    ggplot2::ggplot() +
-    ggplot2::geom_sf(data = x, color = "cyan",  alpha = 1, lwd = 1) +
-    ggplot2::geom_sf(data = neigh_cuts, color = "red",  alpha = 1, lwd = 1) +
-    # ggplot2::geom_sf(data = shp, color = "green", lwd = 15) + 
-    # ggplot2::geom_sf(data = sf::st_buffer(shp, 750), fill = "green") + 
-    ggplot2::geom_sf(data = shp, color = "green", lwd = 2) + 
-    ggplot2::geom_sf(data = sf::st_buffer(shp, 60), fill = "green", color = "black") +
-    ggplot2::labs(
-      title = "NEIGHBORS",
-      subtitle = paste0("# geoms to cut = ", nrow(neigh_cuts))
-    ) +
-    dark_thm
-  
-  comp_plot <- 
-    ggplot2::ggplot() +
-    ggplot2::geom_sf(data = x, color = "cyan",  alpha = 1, lwd = 1) +
-    ggplot2::geom_sf(data = comp_cuts, color = "red", alpha = 1, lwd = 1) +
-    # ggplot2::geom_sf(data = shp, color = "green", lwd = 15) + 
-    # ggplot2::geom_sf(data = sf::st_buffer(shp, 750), fill = "green") + 
-    ggplot2::geom_sf(data = shp, color = "green", lwd = 2) + 
-    ggplot2::geom_sf(data = sf::st_buffer(shp, 60), fill = "green", color = "black") +
-    ggplot2::labs(
-      title = "COMPONENTS",
-      subtitle = paste0("# geoms to cut = ", nrow(comp_cuts))
-    ) +
-    dark_thm
-  
-  # concatonate all plots together into single plot
-  geoms_to_cuts_plot <- comid_plot + neigh_plot + comp_plot 
-  
-  # save_path = "/Users/anguswatters/Desktop/"
-  # save_path = "/Users/anguswatters/Desktop/test_geoms_to_cut_plot.png"
-  if(!is.null(save_path)) {
-    
-    message("Saving geoms_to_cut plot to:\n ", save_path)
-    
-    ggplot2::ggsave(
-      filename = save_path,
-      plot = geoms_to_cuts_plot,
-      # width = 10,
-      # height = 10,
-      scale = 1
-    )
-    
-  }
-  
-  return(geoms_to_cuts_plot)
-  
-}
+### Function for creating a plot of all 3 types of geoms_to_cut methods to see the difference in which 
+### "other" geometries are being selected and thus transect lines are attempting to cut across
 
-#' Create a plot of all the different transects and there possible groupings
-#' @param net sf object of NHDplusv2 data
-#' @param transect_lines sf linestring dataframe, containing cross sections of flowlines in 'net' the output of "cut_cross_sections2()" function
-#' @param terminal_id character, column name containing a unique identifier, delineating seperate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network' 
-#' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
-#' lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
-#' Default is NULL, which will attempt to fix all the braid transects in the data
-#' @param version integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
-#' @param method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
-#' @param rm_intersects logical, whether to remove transect linestrings that intersect with other parts of the network ('net'). Default is TRUE which will remove intersecting linestrings.
-#' @param keep_plots logical, whether to return a list of ggplot2 plots or have function return NULL. Default is FALSE, returns NULL
-#' @param save_path character, path to a directory to save all ggplot2 plots to.
-#' @return NULL or a list of ggplot2 plots if keep_plots = TRUE
+# make_geoms_to_cut_plot <- function(
+#     shp,
+#     x,
+#     id           = NULL,
+#     braid_id     = NULL,
+#     component    = NULL,
+#     save_path = NULL
+# ) {
+# 
+#   comid_cuts <- get_geoms_to_cut(
+#     x            = x,
+#     id           = id,
+#     braid_id     = braid_id,
+#     component    = component,
+#     method       = "comid"
+#   )
+# 
+#   comp_cuts <-  get_geoms_to_cut(
+#     x            = x,
+#     id           = id,
+#     braid_id     = braid_id,
+#     component    = component,
+#     method       = "component"
+#   )
+# 
+#   neigh_cuts <- get_geoms_to_cut(
+#     x            = x,
+#     id           = id,
+#     braid_id     = braid_id,
+#     component    = component,
+#     method       = "neighbor"
+#   )
+# 
+#   # ggplot2 theme
+#   dark_thm <-
+#     ggplot2::theme_dark() +
+#     ggplot2::theme(
+#       plot.title = ggplot2::element_text(size = 14, face = "bold", hjust = 0.5),
+#       plot.subtitle = ggplot2::element_text(hjust = 0.5)
+#       # axis.text.x = ggplot2::element_blank()
+#     )
+# 
+#   comid_plot <-
+#     ggplot2::ggplot() +
+#     ggplot2::geom_sf(data = x, color = "cyan",  alpha = 1,lwd = 1) +
+#     ggplot2::geom_sf(data = comid_cuts, color = "red", alpha = 1, lwd = 1) +
+#     # ggplot2::geom_sf(data = shp, color = "green", lwd = 15) +
+#     # ggplot2::geom_sf(data = sf::st_buffer(shp, 750), fill = "green") +
+#     ggplot2::geom_sf(data = shp, color = "green", lwd = 2) +
+#     ggplot2::geom_sf(data = sf::st_buffer(shp, 60), fill = "green", color = "black") +
+#     ggplot2::labs(
+#       title = "COMIDS",
+#       subtitle = paste0("# geoms to cut = ", nrow(comid_cuts))
+#     ) +
+#     dark_thm
+# 
+#   neigh_plot <-
+#     ggplot2::ggplot() +
+#     ggplot2::geom_sf(data = x, color = "cyan",  alpha = 1, lwd = 1) +
+#     ggplot2::geom_sf(data = neigh_cuts, color = "red",  alpha = 1, lwd = 1) +
+#     # ggplot2::geom_sf(data = shp, color = "green", lwd = 15) +
+#     # ggplot2::geom_sf(data = sf::st_buffer(shp, 750), fill = "green") +
+#     ggplot2::geom_sf(data = shp, color = "green", lwd = 2) +
+#     ggplot2::geom_sf(data = sf::st_buffer(shp, 60), fill = "green", color = "black") +
+#     ggplot2::labs(
+#       title = "NEIGHBORS",
+#       subtitle = paste0("# geoms to cut = ", nrow(neigh_cuts))
+#     ) +
+#     dark_thm
+# 
+#   comp_plot <-
+#     ggplot2::ggplot() +
+#     ggplot2::geom_sf(data = x, color = "cyan",  alpha = 1, lwd = 1) +
+#     ggplot2::geom_sf(data = comp_cuts, color = "red", alpha = 1, lwd = 1) +
+#     # ggplot2::geom_sf(data = shp, color = "green", lwd = 15) +
+#     # ggplot2::geom_sf(data = sf::st_buffer(shp, 750), fill = "green") +
+#     ggplot2::geom_sf(data = shp, color = "green", lwd = 2) +
+#     ggplot2::geom_sf(data = sf::st_buffer(shp, 60), fill = "green", color = "black") +
+#     ggplot2::labs(
+#       title = "COMPONENTS",
+#       subtitle = paste0("# geoms to cut = ", nrow(comp_cuts))
+#     ) +
+#     dark_thm
+# 
+#   # concatonate all plots together into single plot
+#   geoms_to_cuts_plot <- comid_plot + neigh_plot + comp_plot
+# 
+#   # save_path = "/Users/anguswatters/Desktop/"
+#   # save_path = "/Users/anguswatters/Desktop/test_geoms_to_cut_plot.png"
+#   if(!is.null(save_path)) {
+# 
+#     message("Saving geoms_to_cut plot to:\n ", save_path)
+# 
+#     ggplot2::ggsave(
+#       filename = save_path,
+#       plot = geoms_to_cuts_plot,
+#       # width = 10,
+#       # height = 10,
+#       scale = 1
+#     )
+# 
+#   }
+# 
+#   return(geoms_to_cuts_plot)
+# 
+# }
+
+#Create a plot of all the different transects and there possible groupings
+#
+#@param net sf object of NHDplusv2 data
+#@param transect_lines sf linestring dataframe, containing cross sections of flowlines in 'net' the output of "cut_cross_sections2()" function
+#@param terminal_id character, column name containing a unique identifier, delineating seperate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network'
+#@param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline
+#lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#Default is NULL, which will attempt to fix all the braid transects in the data
+#@param version integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
+#@param method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
+#@param rm_intersects logical, whether to remove transect linestrings that intersect with other parts of the network ('net'). Default is TRUE which will remove intersecting linestrings.
+#@param keep_plots logical, whether to return a list of ggplot2 plots or have function return NULL. Default is FALSE, returns NULL
+#@param save_path character, path to a directory to save all ggplot2 plots to.
+#@return NULL or a list of ggplot2 plots if keep_plots = TRUE
 plot_braid_geoms_to_cut <- function(
-    net, 
+    net,
     transect_lines,
     terminal_id     = NULL,
     braid_threshold = NULL,
@@ -2527,7 +2508,7 @@ plot_braid_geoms_to_cut <- function(
     keep_plots = FALSE,
     save_path = NULL
 ) {
-  
+
   ### TEST DATA INPUTS
   # net = net2
   # transect_lines = transects
@@ -2540,99 +2521,99 @@ plot_braid_geoms_to_cut <- function(
   # braid_threshold = NULL
   # braid_threshold = 25000
   ###
-  
+
   # names that transect_lines starts out with to use at the end
   starting_names <- names(transect_lines)
-  
+
   # set geometry name of network to "geometry"
   net <- nhdplusTools::rename_geometry(net, "geometry")
-  
-  # keep track of the original CRS of the inputs to retransform return 
+
+  # keep track of the original CRS of the inputs to retransform return
   start_crs1 <- sf::st_crs(net, parameters = T)$epsg
   start_crs2 <- sf::st_crs(transect_lines, parameters = T)$epsg
-  
+
   message("Start CRS: ", start_crs1)
-  
+
   # check if net CRS is 5070, if not, transform it to 5070
   if(start_crs1 != 5070) {
     # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
     message("Transforming CRS to EPSG: 5070")
-    net <- sf::st_transform(net, 5070) 
+    net <- sf::st_transform(net, 5070)
   }
-  
+
   # check if net CRS is 5070, if not, transform it to 5070
   if(start_crs2 != 5070) {
     # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
     message("Transforming CRS to EPSG: 5070")
-    transect_lines <- sf::st_transform(transect_lines, 5070) 
+    transect_lines <- sf::st_transform(transect_lines, 5070)
   }
-  
+
   message("Identifying braids...")
-  
+
   braids <- find_braids(
-    network     = net, 
+    network     = net,
     terminal_id = terminal_id,
     add         = TRUE,
     nested      = TRUE,
     version     = version,
     verbose     = FALSE
   )
-  
+
   if(all(braids$braid_id == "no_braid")) {
-    
+
     message("No braids identified, returning original transects")
-    
+
     # transform CRS back to input CRS
     if(start_crs2 != 5070) {
       message("Transforming CRS back to EPSG: ", start_crs2)
       transect_lines <- sf::st_transform(transect_lines, start_crs2)
     }
-    
+
     return(transect_lines)
   }
-  
+
   message("Fixing braid transects...")
-  
+
   # not braided flowlines
   not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
   # not_braids <- braids[!braids$comid %in% only_braids$comid, ]
-  
+
   # trim down network to just the braided parts, and add a comid count to separate out multibraids
-  braids <-  
-    braids %>% 
-    dplyr::filter(braid_id != "no_braid") %>% 
-    dplyr::group_by(braid_id) %>% 
+  braids <-
+    braids %>%
+    dplyr::filter(braid_id != "no_braid") %>%
+    dplyr::group_by(braid_id) %>%
     dplyr::ungroup()
-  
-  
+
+
   # temporary braid_threshold variable of "drop_max" will use all of the braids EXCEPT the max length braid (minus 1 meter)
   if(!is.null(braid_threshold) && braid_threshold == "drop_max") {
-    
+
     braid_threshold <- max(braid_lengths(braids)$braid_length) - 1
-    
+
   }
-  
+
   if (!is.null(braid_threshold)) {
-    
+
     # remove braids that have a total flowline length greater than braid_threshold
     braids <- braid_thresholder(
-      x         = braids, 
-      originals = not_braids, 
+      x         = braids,
+      originals = not_braids,
       threshold = braid_threshold,
       verbose   = TRUE
     )
-    
+
     # reassign braids and not_braids datasets to the updated values in 'braids' list (REASSIGNMENT ORDER MATTERS HERE)
     not_braids <- braids$not_braids
     braids     <- braids$braids
-    
+
   }
-  
+
   # add connected component "component_id" column
   braids <- find_connected_components(braids)
-  
+
   # join cross sections w/ braid flowlines
-  xs <- 
+  xs <-
     transect_lines %>%
     dplyr::filter(hy_id %in% braids$comid) %>%
     dplyr::left_join(
@@ -2642,83 +2623,83 @@ plot_braid_geoms_to_cut <- function(
         )
       ),
       by = c("hy_id" = "comid")
-    ) %>% 
+    ) %>%
     # dplyr::filter(divergence == 0)
-    dplyr::group_by(braid_id) %>% 
-    dplyr::mutate(has_mainstem = any(divergence == 0)) %>% 
-    dplyr::ungroup() %>% 
+    dplyr::group_by(braid_id) %>%
+    dplyr::mutate(has_mainstem = any(divergence == 0)) %>%
+    dplyr::ungroup() %>%
     dplyr::arrange(-totdasqkm)
-  
+
   # keep track of all original crossections
   all_xs <- paste0(xs$hy_id, "_", xs$cs_id)
-  
-  # column to store the relative position within the braid of the flowline we're on 
+
+  # column to store the relative position within the braid of the flowline we're on
   xs$relative_position <- NA
-  
+
   # flag determining whether transect should/has been replaced
   xs$changed <- FALSE
-  
+
   # flag determining whether transect is to be processed in a future step after middle flowlines are processed
   xs$pending <- TRUE
-  
+
   # flag determining whether transect is to be processed in a future step after middle flowlines are processed
   xs$pending <- TRUE
-  
+
   # empty columns to store number of head/tail intersections
   xs$head_cuts     <- NA
   xs$tail_cuts     <- NA
-  
+
   # empty columns to store distance needed to extend from head/tail of line
   xs$head_distance <- NA
   xs$tail_distance <- NA
-  
+
   # data.table::data.table(xs)[1, ]
-  
+
   # check if any transects exist, if not, just return the original transects
   if (nrow(xs) == 0) {
-    
+
     # message("===== NO 'xs' transect lines =====")
     # message("===== returning original data =====")
     message("No transect lines intersect with braided flowlines, returning original transect lines")
     return(transect_lines)
-    
+
   } else {
     message( "Fixing ", nrow(xs) , " transect lines intersecting with braided flowlines lines")
   }
-  
+
   # keep track of seen component_ids
   seen <- fastmap::fastmap()
-  
+
   # Loop through every single cross section and determine:
   # 1. its relative position
   # 2. how far to extend the line
-  # 3. in what order should transects be extended, 
+  # 3. in what order should transects be extended,
   # 4. in what direction to extend the transect
-  
+
   # list to store plots
   plot_list <- list()
-  
+
   # system.time({
   for(i in 1:nrow(xs)) {
     # message("i: ", i, "/", nrow(xs))
-    
-    
+
+
     # 1 = braid2_components
     # 2 = braid_components
     # 3 = braid2_comids
     # 4 = braid2_neighs
     # 5 = braid_comids
     # 6 = braid_neighs
-    
+
     # comid of transect line
     com <- xs$hy_id[i]
-    
+
     # braid ID of interest
     bid <- xs$braid_id[i]
-    
+
     # get the component ID of current COMID
     comp_id <- braids$component_id[braids$comid == com]
-    
+
     # make a plot for each unique component ID that comes up
     if(!seen$has(comp_id)) {
       # save_path = "/Users/anguswatters/Desktop/test_geoms_to_cut_plot.png"
@@ -2728,49 +2709,51 @@ plot_braid_geoms_to_cut <- function(
         id           = com,
         braid_id     = bid,
         component    = comp_id,
-        save_path = paste0(save_path, "geoms_to_cut_component_",  
-                           comp_id, 
+        save_path = paste0(save_path, "geoms_to_cut_component_",
+                           comp_id,
                            ".png"
         )
-        # save_path = paste0("/Users/anguswatters/Desktop/transect_figs/geoms_to_cut/geoms_to_cut_component_", 
-        #                    comp_id, 
+        # save_path = paste0("/Users/anguswatters/Desktop/transect_figs/geoms_to_cut/geoms_to_cut_component_",
+        #                    comp_id,
         #                    ".png")
       )
-      
+
       message("--> Adding ", comp_id, " to seen hashmap...")
-      
-      # add component ID to hashmap 
+
+      # add component ID to hashmap
       seen$set(comp_id, TRUE)
-      
+
       message("Length of seen hashmap: ", seen$size())
     }
-    
+
     if(keep_plots) {
-      
+
       plot_list[[i]] <- geoms_to_cut_plot
-      
+
     }
   }
-  
+
   if(keep_plots) {
     plot_list <- Filter(function(x) !is.null(x), plot_list)
-    
+
     return(plot_list)
   }
-  
+
 }
 
 # *********************************************
 # ------------- THRESHOLDING (WIP) ------------
 # *********************************************
 
-#' @title Check if the base line length + extension from head and tail is less than or equal to the threshold distance value
-#' Internal function. Used to check if an extended line has gone past its maximum distance allowed by the threshold input.
-#' @param base_distance numeric, length (meters) of the line
-#' @param head_distance numeric, minimum length (meters) to extend line from HEAD direction to cross all neighboring flowlines
-#' @param tail_distance numeric, minimum length (meters) to extend line from TAIL direction to cross all neighboring flowlines
-#' @param threshold numeric, maximum length of the final, fully extended line. Default is NULL (which will return TRUE)
-#' @return boolean, TRUE if line is within the threshold value, FALSE otherwise
+#Check if the base line length + extension from head and tail is less than or equal to the threshold distance value
+#Internal function. Used to check if an extended line has gone past its maximum distance allowed by the threshold input.
+#@param base_distance numeric, length (meters) of the line
+#@param head_distance numeric, minimum length (meters) to extend line from HEAD direction to cross all neighboring flowlines
+#@param tail_distance numeric, minimum length (meters) to extend line from TAIL direction to cross all neighboring flowlines
+#@param threshold numeric, maximum length of the final, fully extended line. Default is NULL (which will return TRUE)
+#@noRd
+#@keywords internal
+#@return logical, TRUE if line is within the threshold value, FALSE otherwise
 within_threshold <- function(
     base_distance,
     head_distance  = 0,
@@ -2815,12 +2798,13 @@ within_threshold <- function(
   
 }
 
-#' Reset fastmap containing the extension data for a line
-#' Internal function. Used for when the extension is going to be greater than the max transect length threshold
-#' @param line_map fastmap with the following keys: index, distance, total_distance, cut_ids, count, and is_thresholded
-#' @param id numeric or character ID of the original line to set the "cut_ids" key to. Default is NULL which will use the first id in "cut_ids"
-#'
-#' @return 
+#Reset fastmap containing the extension data for a line
+#Internal function. Used for when the extension is going to be greater than the max transect length threshold
+#@param line_map fastmap with the following keys: index, distance, total_distance, cut_ids, count, and is_thresholded
+#@param id numeric or character ID of the original line to set the "cut_ids" key to. Default is NULL which will use the first id in "cut_ids"
+#@noRd
+#@keywords internal
+#@return 
 reset_line_map <- function(line_map, id = NULL) {
   
   # set index to 1
@@ -2845,18 +2829,19 @@ reset_line_map <- function(line_map, id = NULL) {
   # return(line_map)
 }
 
-#' Determine the distances needed to extend a transect linestring geometry across neighboring flowlines v2
-#' Internal Function, version 2 of geos_augment_transect(). WIP.
-#' Function takes in a transect line, and a set of nearby geos_geometries that the transect line should be compared against to see how far the given transect line should be
-#' extended in both directions in order to cross over all the avaliable nearby flowline geos_geometries. Specifically to be used for situations where a river network is braided.
-#' @param cross_section geos_geometry, transect line to try and extend to cover braided river sections. Dataframe row must contain a "cs_width", "bf_width", "hy_id", and a "geometry" column
-#' @param geoms_to_cut geos_geometry, other lingestrings (flowlines) of network that "cross_section" should attempt to extend out to, and to cut across
-#' @param geom_ids character, unique identifier (comid/hy_id) of transect line
-#' @param max_distance numeric, maximum distance (meters) to extend line out by
-#' @param by numeric, distance to incrementelly extend out transect line.
-#' @param keep_geom logical, whether to carry geometries and keep them in the functions return. Default is TRUE, which will return the extended geometries with the function returns.
-#'
-#' @return dataframe or list of fastmap::fastmap() objects with meta data describing how far to extend a given transect line, in which directions and the relative position of the transect line.
+#Determine the distances needed to extend a transect linestring geometry across neighboring flowlines v2
+#Internal Function, version 2 of geos_augment_transect(). WIP.
+#Function takes in a transect line, and a set of nearby geos_geometries that the transect line should be compared against to see how far the given transect line should be
+#extended in both directions in order to cross over all the avaliable nearby flowline geos_geometries. Specifically to be used for situations where a river network is braided.
+#@param cross_section geos_geometry, transect line to try and extend to cover braided river sections. Dataframe row must contain a "cs_width", "bf_width", "hy_id", and a "geometry" column
+#@param geoms_to_cut geos_geometry, other lingestrings (flowlines) of network that "cross_section" should attempt to extend out to, and to cut across
+#@param geom_ids character, unique identifier (comid/hy_id) of transect line
+#@param max_distance numeric, maximum distance (meters) to extend line out by
+#@param by numeric, distance to incrementelly extend out transect line.
+#@param keep_geom logical, whether to carry geometries and keep them in the functions return. Default is TRUE, which will return the extended geometries with the function returns.
+#@noRd
+#@keywords internal
+#@return dataframe or list of fastmap::fastmap() objects with meta data describing how far to extend a given transect line, in which directions and the relative position of the transect line.
 geos_augment_transect2 <- function(cross_section,
                                    geoms_to_cut,
                                    geom_ids,
@@ -3087,21 +3072,22 @@ geos_augment_transect2 <- function(cross_section,
 }
 
 
-#' Extend a linestring outward and return the minimum linestring (or details of minimum linestring) that crosses all possible other linestrings (geoms_to_cut) for a the given direction
-#' Internal Function, version 2 of geos_extend_out(). WIP
-#' @param x start index of distances vector
-#' @param line transect line that should be extended
-#' @param distances numeric vector of distance values (meters) in ascending order (sorted)
-#' @param geoms_to_cut geos_geometry, all other linestrings (all linestrings other than 'line') that should be cut across (typically other linestrings making up a braided section of river)
-#' @param geom_ids character or numeric vector of unique identifers for each linestring in 'geoms_to_cut'
-#' @param ids character or numeric vector of unique identifier of the 'line' argument
-#' @param dir character, either "head" or "tail", indicating which direction to extend 'line' out
-#' @param map logical, whether to return a fastmap::fastmap() containing details about
-#'  the extending line (distance, number of intersections, IDs of intersected geometries, etc.)
-#'  or to just return the extended line. Default is TRUE, which will return a fastmap::fastmap() that can be used
-#'  later on to extend the line the necessary distance.  If FALSE, a geos_geometry of the extended linestring is returned
-#'
-#' @return fastmap::fastmap() with details on line extension, or a geos_geometry of the extended line
+#Extend a linestring outward and return the minimum linestring (or details of minimum linestring) that crosses all possible other linestrings (geoms_to_cut) for a the given direction
+#Internal Function, version 2 of geos_extend_out(). WIP
+#@param x start index of distances vector
+#@param line transect line that should be extended
+#@param distances numeric vector of distance values (meters) in ascending order (sorted)
+#@param geoms_to_cut geos_geometry, all other linestrings (all linestrings other than 'line') that should be cut across (typically other linestrings making up a braided section of river)
+#@param geom_ids character or numeric vector of unique identifers for each linestring in 'geoms_to_cut'
+#@param ids character or numeric vector of unique identifier of the 'line' argument
+#@param dir character, either "head" or "tail", indicating which direction to extend 'line' out
+#@param map logical, whether to return a fastmap::fastmap() containing details about
+# the extending line (distance, number of intersections, IDs of intersected geometries, etc.)
+# or to just return the extended line. Default is TRUE, which will return a fastmap::fastmap() that can be used
+# later on to extend the line the necessary distance.  If FALSE, a geos_geometry of the extended linestring is returned
+#@noRd
+#@keywords internal
+#@return fastmap::fastmap() with details on line extension, or a geos_geometry of the extended line
 geos_extend_out2 <- function(
     x,
     line,
@@ -3277,14 +3263,15 @@ geos_extend_out2 <- function(
   return(line)
 }
 
-#' Extend a transect line outwards by a certain distance from the head and tail directions of the line
-#' Internal Function, version 2 of geos_extend_transects(). WIP.
-#' @param starter_line geos_geometry, original transect line to extend outwards
-#' @param head_distance numeric, distance (meters) to extend from "head" of the line
-#' @param tail_distance numeric, distance (meters) to extend from "tail" of the line
-#' @param extra_distance numeric, any extra distance (meters) the line should be extended after the original head/tail distances (this is typically going to be the cross section width divded by 2)
-#'
-#' @return geos_geometry, extended by specified distance
+#Extend a transect line outwards by a certain distance from the head and tail directions of the line
+#Internal Function, version 2 of geos_extend_transects(). WIP.
+#@param starter_line geos_geometry, original transect line to extend outwards
+#@param head_distance numeric, distance (meters) to extend from "head" of the line
+#@param tail_distance numeric, distance (meters) to extend from "tail" of the line
+#@param extra_distance numeric, any extra distance (meters) the line should be extended after the original head/tail distances (this is typically going to be the cross section width divded by 2)
+#@noRd
+#@keywords internal
+#@return geos_geometry, extended by specified distance
 geos_extend_transects2 <- function(
     starter_line,
     head_distance  = 0,
@@ -3338,14 +3325,15 @@ geos_extend_transects2 <- function(
   
 }
 
-#' Perform Binary search on sorted distance vector to determine minimum extension distance for a line to intersect with another geometry
-#' Internal Function, version 2 of geos_bs_distance(). WIP.
-#' @param distances numeric vector sorted in ascending order
-#' @param line geos_geometry, linestring to extend out to the point that it crosses the first geometry in "geoms_to_cut"
-#' @param geoms_to_cut geos_geometry, geometries to extend "line" out and cut, when line is extending out and intersects with "geoms_to_cut", algo stops and returns the index of the distance array
-#' @param direction character, either "head" or "tail", indicating which end of the line to extend out.
-#'
-#' @return index of 'distance' vector, representing the minimum extension distance for a line to intersect nearby geometries
+#Perform Binary search on sorted distance vector to determine minimum extension distance for a line to intersect with another geometry
+#Internal Function, version 2 of geos_bs_distance(). WIP.
+#@param distances numeric vector sorted in ascending order
+#@param line geos_geometry, linestring to extend out to the point that it crosses the first geometry in "geoms_to_cut"
+#@param geoms_to_cut geos_geometry, geometries to extend "line" out and cut, when line is extending out and intersects with "geoms_to_cut", algo stops and returns the index of the distance array
+#@param direction character, either "head" or "tail", indicating which end of the line to extend out.
+#@noRd
+#@keywords internal
+#@return index of 'distance' vector, representing the minimum extension distance for a line to intersect nearby geometries
 geos_bs_distance2 <- function(
     distances,
     line,
