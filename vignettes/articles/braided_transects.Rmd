@@ -1,0 +1,33 @@
+---
+title: "braided_transects"
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(terrainSliceR)
+# install.packages("devtools")
+# devtools::install_github("anguswg-ucsb/terrain_sliceR")
+```
+
+```{r}
+flood_plain_sections = 5
+
+network <- terrainSliceR::linestring
+
+network <-
+  network %>%
+  # https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2013WR013916
+  mutate(
+    bf_width = exp(0.700	 + 0.365* log(totdasqkm)),
+    cs_width = flood_plain_sections * bf_width
+    )
+
+plot(network$geometry)
+```
+
