@@ -107,11 +107,7 @@ fix_braid_transects <- function(
   not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
   
   # trim down network to just the braided parts, and add a comid count to separate out multibraids
-  braids <-  
-    braids %>% 
-    dplyr::filter(braid_id != "no_braid") %>% 
-    dplyr::group_by(braid_id) %>% 
-    dplyr::ungroup()
+  braids <- dplyr::filter(braids, braid_id != "no_braid") 
   
   # # add connected component "component_id" column
   # braids <- find_connected_components(braids)

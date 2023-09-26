@@ -3113,86 +3113,107 @@ unnpack_braids <- function(braids, into_list = FALSE) {
 # #@param gif_height numeric, height of gif output
 # #@param delay numeric, time delay between animation in seconds
 # #@param legend_pos character, position of legend. Either "bottom", "right", "left", "top", or "none"
+# #@param theme_obj ggplot2 theme object. Default is NULL
 # #@param verbose logical, whether to print messages. Default is TRUE
+# #
+# #@noRd
+# #@keywords internal
 # #@return NULL
-# make_braids_gif <- function(network, 
-#                             save_path  = NULL, 
+# make_braids_gif <- function(network,
+#                             save_path  = NULL,
 #                             title = "",
 #                             height     = 8,
 #                             width      = 10,
-#                             gif_width  = 1800, 
+#                             gif_width  = 1800,
 #                             gif_height = 1500,
 #                             delay      = 0.8,
 #                             legend_pos = "bottom",
+#                             theme_obj  = NULL,
 #                             verbose    = FALSE
 # ) {
-#   
+# 
 #   # if no save path is given
 #   if(is.null(save_path)) {
 #     # save path is current working directory
 #     save_path <- getwd()
 #   }
-#   
-#   
+# 
+# 
 #   ubraids <- unique(network$braid_id)
-#   
+# 
 #   # this will create a temp folder, but tempdir() won't let you name it:
-#   temp_dir <- tempdir() 
-#   
+#   temp_dir <- tempdir()
+# 
 #   # this will create a folder within our temp folder, with a name of our choice:
 #   new_dir <- paste0(temp_dir, "/braid_plots/")
-#   
+# 
 #   # check if new temp dir alrteady exists
 #   if(dir.exists(new_dir)) {
-#     
+# 
 #     warning(new_dir, " already exists")
-#     
+# 
 #   }
-#   
+# 
 #   # create temporary directory
 #   dir.create(path = new_dir)
-#   
+# 
 #   if(verbose) { message("Plotting braids... ")}
-#   
+# 
 #   # make names lowercase
 #   names(network) <- tolower(names(network))
-#   
+# 
 #   # unique braid_ids
 #   ubraids <- unique(network$braid_id)
-#   
+# 
 #   ubraids <- ubraids[!grepl("no_braid", ubraids)]
 #   
+#   # set geometry name of network to "geometry"
+#   network <- nhdplusTools::rename_geometry(network, "geometry")
+#   
 #   for (i in 1:length(ubraids)) {
-#     
+# 
 #     if(verbose) {
 #       message(ubraids[i], " - (", i, "/", length(ubraids), ")")
 #     }
-#     
-#     braid_plot <- 
+# 
+#     braid_plot <-
 #       # b %>%
 #       network %>%
 #       # dplyr::select(comid, braid_id, geometry) %>%
 #       ggplot2::ggplot() +
 #       # ggplot2::geom_sf(ggplot2::aes(fill = braid_id)) +
 #       ggplot2::geom_sf(ggplot2::aes(color = braid_id)) +
-#       gghighlight::gghighlight(braid_id ==  ubraids[i]) + 
+#       gghighlight::gghighlight(braid_id == ubraids[i]) +
 #       ggplot2::labs(
 #         title = title,
 #         caption = paste0(i, " / ", length(ubraids)),
 #         color = "",
 #         # caption = paste0("(", i, " / ", length(ubraids), ")")
-#       ) + 
-#       ggplot2::theme_bw() + 
-#       ggplot2::theme(
-#         plot.caption = ggplot2::element_text(size = 12, face = "bold"),
-#         legend.position = legend_pos
 #       ) 
 #     
-#     temp_file <- tempfile(pattern =  paste0(ifelse(i < 10, paste0("0", i), i), "_braid"), 
+#     if(is.null(theme_obj)) {
+#       braid_plot <- 
+#         braid_plot +
+#         ggplot2::theme_bw() +
+#         ggplot2::theme(
+#           plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+#           legend.position = legend_pos
+#         )
+#     } else {
+#       braid_plot <- 
+#         braid_plot + 
+#         theme_obj +
+#         ggplot2::theme(
+#           plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+#           legend.position = legend_pos
+#         )
+#     }
+# 
+#     temp_file <- tempfile(pattern =  paste0(ifelse(i < 10, paste0("0", i), i), "_braid"),
 #                           tmpdir = new_dir,
 #                           fileext = ".png"
-#     ) 
-#     
+#     )
+# 
 #     # Generate a temporary file path
 #     ggplot2::ggsave(
 #       filename = temp_file,
@@ -3201,27 +3222,27 @@ unnpack_braids <- function(braids, into_list = FALSE) {
 #       width = width,
 #       scale = 1
 #     )
-#     
-#     
+# 
+# 
 #   }
-#   
+# 
 #   # save_path <- "D:/gif/braid_gif.gif"
 #   png_files <- sort(list.files(new_dir, full.names = TRUE))
-#   
-#   gifski::gifski(png_files, 
+# 
+#   gifski::gifski(png_files,
 #                  gif_file = save_path,
-#                  width    = gif_width, 
+#                  width    = gif_width,
 #                  height   = gif_height,
 #                  delay    = delay
 #   )
-#   
+# 
 #   if(verbose) {
 #     message("Saving braid gif:\n --- ", save_path)
 #   }
-#   
+# 
 #   # unlink deletes temporary directory holding PNGs
-#   unlink(new_dir, recursive = TRUE) 
-#   
+#   unlink(new_dir, recursive = TRUE)
+# 
 # }
 
 # ### 
@@ -3300,6 +3321,8 @@ unnpack_braids <- function(braids, into_list = FALSE) {
 #' @param return_as character string of how to return DFS traversal output. Either "list", "dataframe", "vector". Default is "vector", which return a list of 2 vectors, one indicating the BFS order of nodes and the other the respective level of each node.
 #' @param verbose logical print status updates?
 #' 
+#' @noRd
+#' @keywords internal
 #' @return data.frame containing the distance between pairs of network outlets.
 #' @importFrom dplyr select left_join mutate
 #' @importFrom sf st_drop_geometry
@@ -3615,6 +3638,8 @@ bfs_traversal <- function(
 #' @param return_as character string of how to return DFS traversal output. Either "list", "dataframe", "vector". Default is "list".
 #' @param verbose logical print status updates?
 #' 
+#' @noRd
+#' @keywords internal
 #' @return data.frame containing the distance between pairs of network outlets.
 #' @importFrom dplyr select left_join mutate bind_rows
 #' @importFrom sf st_drop_geometry

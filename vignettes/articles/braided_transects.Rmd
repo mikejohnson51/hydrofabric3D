@@ -7,27 +7,281 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+
+network <- sf::read_sf("/Users/anguswatters/Desktop/braid_network.gpkg")
+thm <- ggplot2::theme_void() 
 ```
 
-```{r setup}
+```{r, eval = T, echo=F}
+make_braids_gif <- function(network,
+                            save_path  = NULL,
+                            title = "",
+                            height     = 8,
+                            width      = 10,
+                            gif_width  = 1800,
+                            gif_height = 1500,
+                            delay      = 0.8,
+                            legend_pos = "bottom",
+                            theme_obj  = NULL,
+                            verbose    = FALSE
+) {
+
+  # if no save path is given
+  if(is.null(save_path)) {
+    # save path is current working directory
+    save_path <- getwd()
+  }
+
+
+  ubraids <- unique(network$braid_id)
+
+  # this will create a temp folder, but tempdir() won't let you name it:
+  temp_dir <- tempdir()
+
+  # this will create a folder within our temp folder, with a name of our choice:
+  new_dir <- paste0(temp_dir, "/braid_plots/")
+
+  # check if new temp dir alrteady exists
+  if(dir.exists(new_dir)) {
+
+    warning(new_dir, " already exists")
+
+  }
+
+  # create temporary directory
+  dir.create(path = new_dir)
+
+  if(verbose) { message("Plotting braids... ")}
+
+  # make names lowercase
+  names(network) <- tolower(names(network))
+
+  # unique braid_ids
+  ubraids <- unique(network$braid_id)
+
+  ubraids <- ubraids[!grepl("no_braid", ubraids)]
+  
+  # set geometry name of network to "geometry"
+  network <- nhdplusTools::rename_geometry(network, "geometry")
+  
+  for (i in 1:length(ubraids)) {
+
+    if(verbose) {
+      message(ubraids[i], " - (", i, "/", length(ubraids), ")")
+    }
+
+    braid_plot <-
+      # b %>%
+      network %>%
+      # dplyr::select(comid, braid_id, geometry) %>%
+      ggplot2::ggplot() +
+      # ggplot2::geom_sf(ggplot2::aes(fill = braid_id)) +
+      ggplot2::geom_sf(ggplot2::aes(color = braid_id)) +
+      gghighlight::gghighlight(braid_id == ubraids[i]) +
+      ggplot2::labs(
+        title = title,
+        caption = paste0(i, " / ", length(ubraids)),
+        color = "",
+        # caption = paste0("(", i, " / ", length(ubraids), ")")
+      ) 
+    
+    if(is.null(theme_obj)) {
+      braid_plot <- 
+        braid_plot +
+        ggplot2::theme_bw() +
+        ggplot2::theme(
+          plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+          legend.position = legend_pos
+        )
+    } else {
+      braid_plot <- 
+        braid_plot + 
+        theme_obj +
+        ggplot2::theme(
+          plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+          legend.position = legend_pos
+        )
+    }
+
+    temp_file <- tempfile(pattern =  paste0(ifelse(i < 10, paste0("0", i), i), "_braid"),
+                          tmpdir = new_dir,
+                          fileext = ".png"
+    )
+
+    # Generate a temporary file path
+    ggplot2::ggsave(
+      filename = temp_file,
+      plot = braid_plot,
+      height = height,
+      width = width,
+      scale = 1
+    )
+
+
+  }
+
+  # save_path <- "D:/gif/braid_gif.gif"
+  png_files <- sort(list.files(new_dir, full.names = TRUE))
+
+  gifski::gifski(png_files,
+                 gif_file = save_path,
+                 width    = gif_width,
+                 height   = gif_height,
+                 delay    = delay
+  )
+
+  if(verbose) {
+    message("Saving braid gif:\n --- ", save_path)
+  }
+
+  # unlink deletes temporary directory holding PNGs
+  unlink(new_dir, recursive = TRUE)
+
+}
+```
+
+```{r setup, warning=F, message = F}
 library(terrainSliceR)
-# install.packages("devtools")
-# devtools::install_github("anguswg-ucsb/terrain_sliceR")
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(nhdplusTools)
 ```
 
-```{r}
-flood_plain_sections = 5
+```{r, eval = TRUE, echo= TRUE, warning=F, message = F}
+network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 25)
 
-network <- terrainSliceR::linestring
+flood_plain_sections = 5
 
 network <-
   network %>%
   # https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2013WR013916
-  mutate(
+  dplyr::mutate(
     bf_width = exp(0.700	 + 0.365* log(totdasqkm)),
     cs_width = flood_plain_sections * bf_width
-    )
-
-plot(network$geometry)
+    ) %>% 
+  dplyr::select(comid, divergence, lengthkm, totdasqkm, fromnode, tonode, terminalpa)
 ```
+
+```{r, eval = TRUE, echo = FALSE}
+#  filter out a flowline that makes plotting more difficult
+net <- dplyr::filter(network, !comid %in% c(1078575, 1078577))
+
+plot(net$geometry)
+```
+
+
+Now let's add cross sections using the algorithm described here (INSERT LINK TO HOME VIGNETTE). 
+
+```{r}
+transects <- terrainSliceR::cut_cross_sections(
+  net = net,
+  id = "comid",
+  cs_widths = 200,
+  num = 10,
+  fix_braids = FALSE,
+  add = TRUE
+)
+```
+
+```{r, eval = T, echo = F}
+ggplot2::ggplot() +
+  ggplot2::geom_sf(data = net, color = "black") + 
+  ggplot2::geom_sf(data = transects, color = "red", alpha = 1) +
+  thm
+```
+
+Here we have created our cross sections lines with 10 transect lines per COMID/flowline geometry. The problem here is that this section of river is braided and we want to have cross sections extend across multiple flowlines in some cases such that the cross section line represents that width across the braided river sections, instead of having individual transect lines for each of the parallel braided flowlines. 
+
+This presents a problem as braided systems are inherently complex and irregular. If we want to try and extend cross section lines across all flowlines in a given braid, the first thing we need is a way of uniquely identifying each braid and all of the flowlines within that braid. 
+
+To accomplish this, we made use of the flowline `from/tonode` topology relationships, and common graph traveral algorithms (DFS). 
+
+## Show network as a Directed Acyclic Graph
+
+## Show network represented as an Undirected Graph
+
+## Show what DFS algo produces
+
+The `find_braids()` function can be used to identify and assign a `braid_id` to each flowline in a NHDPlus network dataset that includes a comid, fromnode, tonode, and divergence columns. 
+```{r, eval = T, echo = T}
+# add braid_id column to network
+braids <- terrainSliceR::find_braids(
+    network     = net, 
+    add         = TRUE,
+    nested      = TRUE
+  )
+```
+
+```{r, echo = FALSE, eval = FALSE}
+plot_braids <- terrainSliceR::find_braids(
+              network = net,
+              nested  = FALSE,
+              add     =  TRUE
+            )
+
+# plot_braids %>% 
+#   dplyr::rename(geometry = geom) %>% 
+#   ggplot2::ggplot() +
+#   ggplot2::geom_sf(ggplot2::aes(color = braid_id))+
+#   gghighlight::gghighlight(braid_id == "braid_1")
+make_braids_gif(
+  network    = plot_braids,
+  save_path  = "/Users/anguswatters/Desktop/braid_vignette_gif.gif",
+  title      = "",
+  height     = 8,
+  width      = 10,
+  gif_width  = 1800,
+  gif_height = 1500,
+  delay      = 0.8,
+  legend_pos = "bottom",
+  theme_obj  = NULL,
+  verbose    = FALSE
+  )
+```
+
+![Animation showing braid IDs](/Users/anguswatters/Desktop/braid_vignette_gif.gif)
+
+Now we have a method for identifying *which* flowlines are part of braid. Next, we will find the cross section lines that are on these braided flowlines, and work on extending them to encompass the entire width of the river by crossing across the rest of the braided flowlines. 
+
+
+First we want to join our transect lines with the sections of rivers with a braid_id not equal to "no_braid" (ID for flowlines that are NOT part of a braid)
+
+So we seperate the braided flowlines from the non braided flowlines:
+```{r, eval = T, echo = T}
+# not braided flowlines
+not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
+
+# trim down network to just the braided parts, and add a comid count to separate out multibraids
+braids <- dplyr::filter(braids, braid_id != "no_braid") 
+```
+
+Then join the braided flowlines with the transects 
+```{r, eval = T, echo = T}
+cross_sections <- 
+  transects %>%
+  dplyr::filter(hy_id %in% braids$comid) %>%
+  dplyr::left_join(
+  sf::st_drop_geometry(
+    dplyr::select(
+      braids, comid, braid_id, is_multibraid
+    )
+  ),
+  by = c("hy_id" = "comid")
+  ) %>% 
+  dplyr::arrange(-totdasqkm)
+```
+
+
+That gives us this set of cross sections:
+```{r, eval = T, echo = F}
+ggplot2::ggplot() +
+  ggplot2::geom_sf(data = net, color = "black") + 
+  ggplot2::geom_sf(data = cross_sections, color = "red", alpha = 1) +
+  thm
+```
+
+
+
+
 
