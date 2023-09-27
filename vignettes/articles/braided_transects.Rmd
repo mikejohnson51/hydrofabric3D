@@ -281,7 +281,58 @@ ggplot2::ggplot() +
   thm
 ```
 
+We can now iterate over all of these cross sections and determine which cross sections should be extended, in what order, and by what distance.
+```{r}
+unique(cross_sections$braid_id)
+```
 
+
+```{r}
+# for(i in 1:nrow(cross_sections)) {
+i = 1
+
+# comid of transect line
+com <- cross_sections$hy_id[i]
+
+# braid ID of interest
+braids_of_interest <- cross_sections$braid_id[i]
+
+# # get the component ID of current COMID
+# comp_id <- braids$component_id[braids$comid == com]
+
+# other geometries to cut across with transects
+others <- terrainSliceR:::get_geoms_to_cut(
+            x            = braids,
+            id           = com,
+            braid_id     = braids_of_interest,
+            component    = NULL,
+            method       = "neighbor"
+          )
+others$geom
+  # }
+```
+
+In the image below, the red flowline is the COMID that we will be augmenting the transect lines for and all of the blue flowlines are the flowlines that are eligable to be cut through via the transect extension algorithm.
+```{r, eval = T, echo = F}
+
+# braids %>% 
+dplyr::mutate(braids,
+  grouping = dplyr::case_when(
+    comid == com ~ "origin",
+    TRUE ~ "other"
+  )
+)
+ggplot2::ggplot() +
+  ggplot2::geom_sf(data = net, color = "black") + 
+  ggplot2::geom_sf(data = dplyr::mutate(braids,
+  grouping = dplyr::case_when(
+    comid == com ~ "origin",
+    TRUE ~ "other"
+  )
+), ggplot2::aes(color = grouping)) + 
+  ggplot2::geom_sf(data = cross_sections[i, ], color = "limegreen", alpha = 1) +
+  thm
+```
 
 
 
