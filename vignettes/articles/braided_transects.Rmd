@@ -150,6 +150,7 @@ library(nhdplusTools)
 
 ```{r, eval = TRUE, echo= TRUE, warning=F, message = F}
 network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 25)
+# network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 55)
 
 flood_plain_sections = 5
 
@@ -160,7 +161,10 @@ network <-
     bf_width = exp(0.700	 + 0.365* log(totdasqkm)),
     cs_width = flood_plain_sections * bf_width
     ) %>% 
-  dplyr::select(comid, divergence, lengthkm, totdasqkm, fromnode, tonode, terminalpa)
+  dplyr::select(comid, divergence,bf_width, cs_width, lengthkm, totdasqkm, fromnode, tonode, terminalpa)
+
+# set geometry name of network to "geometry"
+network <- nhdplusTools::rename_geometry(network, "geometry")
 ```
 
 ```{r, eval = TRUE, echo = FALSE}
@@ -254,6 +258,9 @@ not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
 
 # trim down network to just the braided parts, and add a comid count to separate out multibraids
 braids <- dplyr::filter(braids, braid_id != "no_braid") 
+
+# add connected component "component_id" column
+braids <- find_connected_components(braids)
 ```
 
 Then join the braided flowlines with the transects 
@@ -289,26 +296,30 @@ unique(cross_sections$braid_id)
 
 ```{r}
 # for(i in 1:nrow(cross_sections)) {
-i = 1
+i = 60
 
 # comid of transect line
 com <- cross_sections$hy_id[i]
 
 # braid ID of interest
 braids_of_interest <- cross_sections$braid_id[i]
+braids_of_interest
 
 # # get the component ID of current COMID
-# comp_id <- braids$component_id[braids$comid == com]
+comp_id <- braids$component_id[braids$comid == com]
 
 # other geometries to cut across with transects
 others <- terrainSliceR:::get_geoms_to_cut(
             x            = braids,
             id           = com,
             braid_id     = braids_of_interest,
-            component    = NULL,
-            method       = "neighbor"
+            # component    = NULL,
+            component    = comp_id,
+            # method       = "neighbor"
+            method       = "comid"
           )
-others$geom
+others$geometry
+plot(others$geometry)
   # }
 ```
 
@@ -316,12 +327,12 @@ In the image below, the red flowline is the COMID that we will be augmenting the
 ```{r, eval = T, echo = F}
 
 # braids %>% 
-dplyr::mutate(braids,
-  grouping = dplyr::case_when(
-    comid == com ~ "origin",
-    TRUE ~ "other"
-  )
-)
+# dplyr::mutate(braids,
+#   grouping = dplyr::case_when(
+#     comid == com ~ "origin",
+#     TRUE ~ "other"
+#   )
+# )
 ggplot2::ggplot() +
   ggplot2::geom_sf(data = net, color = "black") + 
   ggplot2::geom_sf(data = dplyr::mutate(braids,
@@ -333,6 +344,311 @@ ggplot2::ggplot() +
   ggplot2::geom_sf(data = cross_sections[i, ], color = "limegreen", alpha = 1) +
   thm
 ```
+
+```{r, eval = F, echo = F}
+make_geoms_to_cut_gif(
+  full_network    = net,
+  braid_flowlines = braids,
+  transect_lines = cross_sections,
+  cut_method = "comid",
+  save_path  = "/Users/anguswatters/Desktop/geoms_to_cut_gif.gif",
+  title      = "",
+  height     = 8,
+  width      = 10,
+  gif_width  = 1800,
+  gif_height = 1500,
+  delay      = 0.5,
+  legend_pos = "bottom",
+  theme_obj  = NULL,
+  verbose    = FALSE
+  )
+
+```
+
+![Animation highlight which flowlines to cut across](/Users/anguswatters/Desktop/geoms_to_cut_gif.gif)
+
+```{r, eval = F, echo = F}
+make_geoms_to_cut_gif <- function(
+                            full_network,
+                            braid_flowlines,
+                            transect_lines,
+                            cut_method = "comid",
+                            save_path  = NULL,
+                            title = "",
+                            height     = 8,
+                            width      = 10,
+                            gif_width  = 1800,
+                            gif_height = 1500,
+                            delay      = 0.5,
+                            legend_pos = "bottom",
+                            theme_obj  = NULL,
+                            verbose    = FALSE
+) {
+  
+# full_network <- net
+# braid_flowlines <- braids
+# transect_lines <- cross_sections
+
+  # if no save path is given
+  if(is.null(save_path)) {
+    # save path is current working directory
+    save_path <- getwd()
+  }
+
+
+  # this will create a temp folder, but tempdir() won't let you name it:
+  temp_dir <- tempdir()
+
+  # this will create a folder within our temp folder, with a name of our choice:
+  new_dir <- paste0(temp_dir, "/geoms_to_cut_plots/")
+
+  # check if new temp dir alrteady exists
+  if(dir.exists(new_dir)) {
+
+    warning(new_dir, " already exists")
+
+  }
+
+  # create temporary directory
+  dir.create(path = new_dir)
+
+  if(verbose) { message("Plotting geometries to cut across... ")}
+
+  # make names lowercase
+  names(full_network) <- tolower(names(full_network))
+  
+  # set geometry name of network to "geometry"
+  full_network <- nhdplusTools::rename_geometry(full_network, "geometry")
+
+  # if missing connected component "component_id" column, try to add it
+  if(!"component_id" %in% names(braid_flowlines)) {
+     # add connected component "component_id" column
+    braid_flowlines <- find_connected_components(braid_flowlines)
+  }
+  
+  for (i in 1:nrow(transect_lines)) {
+
+    if(verbose) {
+      message(i, "/", nrow(transect_lines))
+    }
+    
+    # comid of transect line
+    com <- transect_lines$hy_id[i]
+    
+    # braid ID of interest
+    braids_of_interest <- transect_lines$braid_id[i]
+    
+    # # get the component ID of current COMID
+    comp_id <- braid_flowlines$component_id[braid_flowlines$comid == com]
+    
+    # other geometries to cut across with transects
+    others <- terrainSliceR:::get_geoms_to_cut(
+                x            = braid_flowlines,
+                id           = com,
+                braid_id     = braids_of_interest,
+                component    = comp_id,
+                # method       = "neighbor"
+                method       = cut_method
+              )
+    
+     braid_flowlines_plot <-
+        ggplot2::ggplot() +
+        ggplot2::geom_sf(data = full_network, color = "black") + 
+        ggplot2::geom_sf(data = dplyr::mutate(braid_flowlines,
+                                                grouping = dplyr::case_when(
+                                                  comid == com ~ "Origin COMID",
+                                                  TRUE ~ "COMIDs to cut across"
+                                                  )
+                                                ), 
+                                    ggplot2::aes(color = grouping)
+                                                 ) + 
+        ggplot2::geom_sf(
+          data = sf::st_centroid(transect_lines[i, ]),# data = transect_lines$geometry[i],
+          color = "black",
+          size = 2, # size = 3,
+          # shape = 9,# shape = 4,# shape = 8, # shape = 26, # shape = 15, # shape= 13,
+          alpha = 1
+        ) +
+        ggplot2::labs(
+          title = title,
+          color = "",
+          caption = paste0(i, " / ", nrow(transect_lines))
+        ) 
+
+    if(is.null(theme_obj)) {
+      braid_flowlines_plot <- 
+        braid_flowlines_plot +
+        ggplot2::theme_bw() +
+        ggplot2::theme(
+          plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+          # plot.caption = ggplot2::element_text(size = 12, hjust = 0.5, face = "bold"),
+          legend.position = legend_pos,
+          legend.direction = "vertical"
+        )
+    } else {
+      braid_flowlines_plot <- 
+        braid_flowlines_plot + 
+        theme_obj +
+        ggplot2::theme(
+          plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+          # plot.caption = ggplot2::element_text(size = 12, hjust = 0.5, face = "bold"),
+          legend.position = legend_pos,
+          legend.direction = "vertical"
+        )
+    }
+
+    temp_file <- tempfile(pattern =  paste0(ifelse(i < 10, paste0("0", i), i), "_braid_flowlines"),
+                          tmpdir = new_dir,
+                          fileext = ".png"
+    )
+
+    # Generate a temporary file path
+    ggplot2::ggsave(
+      filename = temp_file,
+      plot = braid_flowlines_plot,
+      height = height,
+      width = width,
+      scale = 1
+    )
+
+
+  }
+
+  # save_path <- "D:/gif/braid_gif.gif"
+  png_files <- sort(list.files(new_dir, full.names = TRUE))
+
+  # sort file paths based on the extracted numbers
+  plot_order <- as.numeric(gsub('.*geoms_to_cut_plots//(\\d+)_braid_flowlines.*', '\\1', png_files))
+  # plot_order <- as.numeric(stringr::str_extract(png_files, "(?<=geoms_to_cut_plots//)(\\d+)(?=_braid_flowlines)"))
+  
+  png_files <- png_files[order(plot_order)]
+  
+  gifski::gifski(png_files,
+                 gif_file = save_path,
+                 width    = gif_width,
+                 height   = gif_height,
+                 delay    = delay
+  )
+
+  if(verbose) {
+    message("Saving flowlines to cut gif:\n --- ", save_path)
+  }
+
+  # unlink deletes temporary directory holding PNGs
+  unlink(new_dir, recursive = TRUE)
+
+}
+```
+
+
+If we look at an individual COMID in a given braid, and we decide we want to extend our cross sections for that COMID outward to try and cut across other flowlines within the same braided system, we now have a method for selecting which *other* COMIDs are candidates to cut across. 
+
+If we didn't come up with a way of distinguishing which flowlines our extended transect was allowed to cross over, then our algorithm would ultimately try and extend each transect out indefinitely/attempt to cut across ALL other flowlines in the network. This wouldn't make hydrologic or computational sense.
+
+Determining the middle flowline in a braided system was challenging at first but a simple solution was found. From each transect line, we can count the number of intersections on either side of the transect when we extend the transect line out as far as needed to cross all neighboring flowlines.
+
+## Order of extensions
+When ever we take a transect line and extend it outward in either direction, we run into the possibility that our newly extended transect line will now violate one of the fundemental properties of our cross sections:
+
+1. The extended transect line now intersects with *another flowline outside of the braided area*
+2. The extended transect line now intersects with *another transect line*
+3. The extended transect line now intersects with *its own COMID/flowline*
+
+Moreover, some flowlines in a braided system should be given priority over other flowlines when it comes to the order that their transects are extended.
+Transect lines in the *middle* of a braided system should be extended first as they are likely to produce the most representative transect line. 
+
+Transect lines were classified by their relative position within the braided system and were put into one of the following 5 groups:
+
+1. No intersection - transect line never intersects another flowline after maximum extension in both directions
+
+2. Outer single - Transect line will intersect zero flowlines in one direction, and exactly one other flowline in the other direction, this is the case when a braid has just 2 parts.
+
+3. Outer multiple - Transect line will intersect zero flowlines in one direction, and more than one other flowline in the other direction
+
+4. Inner - Transect line is in the middle of a braid. There are 2 scenarios, either there is an *even* or an *odd* number of parallel flowlines in the braid:
+ 
+ - **Odd case:** same number of intersections in both directions (intersects_count1 == intersects_count2) 
+ 
+ - **Even case:** the maximum number of counted intersections minus one equals the minimum number of counted intersections (max(intersects_count1, intersects_count2) - 1 == min(intersects_count1, intersects_count2))
+
+
+5. In between - Transect line is between the middle and the outer portion of the braid
+
+```{r}
+# column to fill out relative position of cross section
+cross_sections$position <- NA
+
+for(i in 1:nrow(cross_sections)) {
+
+  # comid of transect line
+  com <- cross_sections$hy_id[i]
+  
+  # braid ID of interest
+  braids_of_interest <- cross_sections$braid_id[i]
+  # braids_of_interest
+  
+  # # get the component ID of current COMID
+  comp_id <- braids$component_id[braids$comid == com]
+  
+  # other geometries to cut across with transects
+  others <- terrainSliceR:::get_geoms_to_cut(
+              x            = braids,
+              id           = com,
+              braid_id     = braids_of_interest,
+              # component    = NULL,
+              component    = comp_id,
+              # method       = "neighbor"
+              method       = "comid"
+            )
+  
+    # geoms_to_cut  = others
+  extend_maps <- terrainSliceR:::geos_augment_transect(
+      cross_section = cross_sections[i, ],
+      geoms_to_cut  = geos::as_geos_geometry(others$geometry),
+      geom_ids      = others$comid,
+      max_distance  = NULL, 
+      by            = 1, 
+      as_df         = FALSE,
+      carry_geom    = FALSE
+    )
+    
+    # extend_maps$head$as_list()
+    position <- extend_maps$head$get("position")
+    
+    cross_sections$position[i] <- position
+    
+}
+
+ggplot2::ggplot() +
+  ggplot2::geom_sf(data = net, color = "black") + 
+  ggplot2::geom_sf(data = cross_sections, ggplot2::aes(color = position)) +
+  # ggplot2::geom_sf(data = cross_sections[i, ], color = "limegreen", alpha = 1) +
+  thm +
+  ggplot2::theme(
+      plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+      # plot.caption = ggplot2::element_text(size = 12, hjust = 0.5, face = "bold"),
+      legend.position = "right",
+      legend.direction = "vertical"
+    )
+```
+
+
+In order to get the best set of final transect lines, we prioritize the "inner" transect lines and work on extending these ones first. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
