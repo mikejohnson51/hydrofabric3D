@@ -9,7 +9,16 @@ knitr::opts_chunk$set(
 )
 
 network <- sf::read_sf("/Users/anguswatters/Desktop/braid_network.gpkg")
+
 thm <- ggplot2::theme_void() 
+
+net2 <- nhdplusTools::navigate_network(start = 15175471, mode = "UT",  distance_km = 150)
+net3 <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
+
+plot(net2$geometry)
+plot(net3$geometry)
+
+mapview::mapview(net2)
 ```
 
 ```{r, eval = T, echo=F}
@@ -149,7 +158,9 @@ library(nhdplusTools)
 ```
 
 ```{r, eval = TRUE, echo= TRUE, warning=F, message = F}
-network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 25)
+# network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 25)
+network <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
+# network <- nhdplusTools::navigate_network(start = 15175471, mode = "UT",  distance_km = 150)
 # network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 55)
 
 flood_plain_sections = 5
@@ -179,13 +190,13 @@ Now let's add cross sections using the algorithm described here (INSERT LINK TO 
 
 ```{r}
 transects <- terrainSliceR::cut_cross_sections(
-  net = net,
-  id = "comid",
-  cs_widths = 200,
-  num = 10,
+  net        = net,
+  id         = "comid",
+  cs_widths  = 200,
+  num        = 10,
   fix_braids = FALSE,
-  add = TRUE
-)
+  add        = TRUE
+  )
 ```
 
 ```{r, eval = T, echo = F}
@@ -215,6 +226,8 @@ braids <- terrainSliceR::find_braids(
     add         = TRUE,
     nested      = TRUE
   )
+
+length(unique(braids$braid_id))
 ```
 
 ```{r, echo = FALSE, eval = FALSE}
@@ -223,7 +236,7 @@ plot_braids <- terrainSliceR::find_braids(
               nested  = FALSE,
               add     =  TRUE
             )
-
+# plot_braids$braid_id %>% unique() %>% length()
 # plot_braids %>% 
 #   dplyr::rename(geometry = geom) %>% 
 #   ggplot2::ggplot() +
@@ -263,6 +276,24 @@ braids <- dplyr::filter(braids, braid_id != "no_braid")
 braids <- find_connected_components(braids)
 ```
 
+```{r, eval = T, echo = F}
+terrainSliceR:::braid_lengths(braids)$braid_length
+
+braid_threshold = 100000
+
+# remove braids that have a total flowline length greater than braid_threshold
+braids <- terrainSliceR:::braid_thresholder(
+  x         = braids, 
+  originals = not_braids, 
+  threshold = braid_threshold,
+  verbose   = TRUE
+)
+
+# reassign braids and not_braids datasets to the updated values in 'braids' list (REASSIGNMENT ORDER MATTERS HERE)
+not_braids <- braids$not_braids
+braids     <- braids$braids
+```
+
 Then join the braided flowlines with the transects 
 ```{r, eval = T, echo = T}
 cross_sections <- 
@@ -296,7 +327,7 @@ unique(cross_sections$braid_id)
 
 ```{r}
 # for(i in 1:nrow(cross_sections)) {
-i = 60
+i = 150
 
 # comid of transect line
 com <- cross_sections$hy_id[i]
@@ -318,12 +349,12 @@ others <- terrainSliceR:::get_geoms_to_cut(
             # method       = "neighbor"
             method       = "comid"
           )
-others$geometry
+
 plot(others$geometry)
   # }
 ```
 
-In the image below, the red flowline is the COMID that we will be augmenting the transect lines for and all of the blue flowlines are the flowlines that are eligable to be cut through via the transect extension algorithm.
+In the image below, the red flowline is the COMID that we will be augmenting the transect lines for and all of the blue flowlines are the flowlines that are eligible to be cut through via the transect extension algorithm.
 ```{r, eval = T, echo = F}
 
 # braids %>% 
@@ -351,18 +382,18 @@ make_geoms_to_cut_gif(
   braid_flowlines = braids,
   transect_lines = cross_sections,
   cut_method = "comid",
+  one_transect_per = TRUE,
   save_path  = "/Users/anguswatters/Desktop/geoms_to_cut_gif.gif",
   title      = "",
   height     = 8,
   width      = 10,
   gif_width  = 1800,
   gif_height = 1500,
-  delay      = 0.5,
+  delay      = 0.4,
   legend_pos = "bottom",
   theme_obj  = NULL,
   verbose    = FALSE
   )
-
 ```
 
 ![Animation highlight which flowlines to cut across](/Users/anguswatters/Desktop/geoms_to_cut_gif.gif)
@@ -373,6 +404,7 @@ make_geoms_to_cut_gif <- function(
                             braid_flowlines,
                             transect_lines,
                             cut_method = "comid",
+                            one_transect_per = TRUE,
                             save_path  = NULL,
                             title = "",
                             height     = 8,
@@ -385,10 +417,11 @@ make_geoms_to_cut_gif <- function(
                             verbose    = FALSE
 ) {
   
-# full_network <- net
-# braid_flowlines <- braids
-# transect_lines <- cross_sections
-
+  # full_network <- net
+  # braid_flowlines <- braids
+  # transect_lines <- cross_sections
+  # save_path  = "/Users/anguswatters/Desktop/geoms_to_cut_gif.gif"
+ 
   # if no save path is given
   if(is.null(save_path)) {
     # save path is current working directory
@@ -424,6 +457,15 @@ make_geoms_to_cut_gif <- function(
   if(!"component_id" %in% names(braid_flowlines)) {
      # add connected component "component_id" column
     braid_flowlines <- find_connected_components(braid_flowlines)
+  }
+  
+  # if only one transect plot should be created per COMID
+  if(one_transect_per) {
+    transect_lines <- 
+      transect_lines %>% 
+      dplyr::group_by(hy_id) %>% 
+      dplyr::slice(1) %>% 
+      dplyr::ungroup()
   }
   
   for (i in 1:nrow(transect_lines)) {
@@ -555,7 +597,7 @@ When ever we take a transect line and extend it outward in either direction, we 
 3. The extended transect line now intersects with *its own COMID/flowline*
 
 Moreover, some flowlines in a braided system should be given priority over other flowlines when it comes to the order that their transects are extended.
-Transect lines in the *middle* of a braided system should be extended first as they are likely to produce the most representative transect line. 
+Transect lines in the *middle* of a braided system should be extended first as they are likely to produce the most representative transect line, so we want to prioritize extending these first.
 
 Transect lines were classified by their relative position within the braided system and were put into one of the following 5 groups:
 
