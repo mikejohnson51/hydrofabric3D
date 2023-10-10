@@ -2153,7 +2153,7 @@ braid_thresholder <- function(x,
                               new_braid_ids = "no_braid",
                               verbose   = TRUE
 ) {
-  
+
   # input check for input 'x'
   if(is.null(x)) {
     stop("missing 'x' input argument")
@@ -2269,20 +2269,120 @@ braid_thresholder <- function(x,
   
 }
 
+# 
+# braid_thresholder3 <- function(x, 
+#                               originals,
+#                               threshold = NULL, 
+#                               new_braid_ids = "no_braid",
+#                               verbose   = TRUE
+# ) {
+#   # braid_threshold = 15000
+#   # x         = braids
+#   # originals = not_braids
+#   # threshold = braid_threshold
+#   # new_braid_ids = "no_braid"
+#   # verbose   = TRUE
+#   # x         = braids
+#   # originals = not_braids
+#   # threshold = braid_threshold
+#   # new_braid_ids = "no_braid"
+#   # verbose   = TRUE
+#   
+#   # input check for input 'x'
+#   if(is.null(x)) {
+#     stop("missing 'x' input argument")
+#   }
+#   
+#   # input check for input 'originals'
+#   if(is.null(originals)) {
+#     stop("missing 'originals' input argument")
+#   }
+#   
+#   # input check for input 'threshold'
+#   if(is.null(threshold)) {
+#     stop("missing 'threshold' input argument")
+#   }
+#   
+#   xlengths <- 
+#     x %>% 
+#     dplyr::group_by(braid_id) %>%
+#     dplyr::mutate(
+#       braid_length = as.numeric(
+#         sum(sf::st_length(geometry), na.rm = T))
+#     ) %>%
+#     dplyr::ungroup()
+#   
+#   # # check to make sure some braids are over threshold and can be removed, if NOT then just return original data
+#   if(all(xlengths$braid_length <= threshold)) {
+#     
+#     message("Removing: 0 braids from braided dataset\n",
+#             "Keeping: All braids as all braids have total flowline lengths less than or equal to threshold value: ", threshold)
+#     
+#     return(list(
+#       braids     = x,
+#       not_braids = originals
+#       )
+#     )
+#     
+#   }
+#   
+#   # # comids to keep (total length of braid linestrings is less than or equal to braid_threshold value)
+#   # to_keep <- dplyr::filter(unpacked, braid_length <= threshold)$comid
+#   # # to_keep <- dplyr::filter(unpacked, braid_length <= threshold)$braid_id
+#   # # dplyr::filter(x, grepl(paste0(unique(to_keep), collapse = "|"),braid_id))
+#   # 
+#   # # # Extract the list of "braid_id" that are getting removed from output braids 
+#   # drop_braids <- unique( dplyr::filter(x, !braid_id %in% to_keep)$braid_id)
+#   # drop_braids <- unique(unlist(strsplit(drop_braids, ", ") ))
+#   
+#   # seperate out small and large braid groups
+#   smalls <- dplyr::filter(xlengths, braid_length <= threshold)
+#   bigs <- dplyr::filter(xlengths, braid_length > threshold)
+#   
+#   # add the "too big braid COMIDs" back to original "not_braids" data 
+#   # and set these comids braid_ids to "no_braid" and is_multibraid = FALSE
+#   originals <- dplyr::bind_rows(
+#     originals,
+#     # dplyr::select(
+#     dplyr::mutate(
+#       bigs,
+#       braid_id      = new_braid_ids,
+#       # braid_id      = "no_braid",
+#       # braid_id      = "thresholded",
+#       is_multibraid = FALSE
+#     )
+#   )
+#   
+#   if(verbose) {
+#     message("Removing: ", nrow(bigs), 
+#             " rows of braids from braided dataset\nKeeping: ",   nrow(smalls),
+#             " rows of braids that have total flowline lengths less than or equal to threshold value: ",
+#             threshold)
+#     }
+#   
+#   return(list(
+#     braids     = smalls,
+#     not_braids = originals
+#     )
+#   )
+# }
+
+
 #' Find the total length of all flowlines of each braid in a NHDPlus dataset
 #' 
 #' Internal function that gets the lengths of each braid ID in an NHDPlus dataset (output of find_braids() function)
 #' 
 #' @param x sf object of braided flowlines (output of find_braids()). Requires 'braid_id' and 'comid' column.
 #' @param keep_geom logical, whether to keep geometries or not. Default is FALSE to drop geometries
-#' 
+#' @param multibraid logical, whether to give braid lengths for each braid ID our the braid length of all flowlines in a group of braids (i.e. multibraids). If FALSE (default) the braid length is calculated for each unique braid_id. 
 #' @noRd
 #' @keywords internal
 #' @return dataframe with 3 columns, the braid_id, length (meters) of the total flowline length, and comids within the braid, and optionally a sf geometry
 #' @importFrom dplyr filter group_by summarize ungroup arrange
 #' @importFrom sf st_length st_drop_geometry
 braid_lengths <- function(x, 
-                          keep_geom = FALSE
+                          keep_geom = FALSE, 
+                          multibraid = FALSE
                           ) {
   
   # input check for input 'x'
@@ -2290,28 +2390,44 @@ braid_lengths <- function(x,
     stop("missing 'x' input argument")
   }
   
-  # unpack nested braid_id column0
-  unpacked <- unnpack_braids(x)
-  
-  unpacked <-
-    unpacked %>% 
-    dplyr::group_by(braid_id) %>%
-    dplyr::summarize(
-      braid_length = as.numeric(
-        sum(sf::st_length(geometry), na.rm = T)
-      ),
-      comids = paste0(c(comid), collapse = ", ")
-    ) %>%
-    dplyr::ungroup() %>% 
-    dplyr::arrange(-braid_length)
+  # if multibraid == FALSE, then calculate the length of each unique braid_id
+  if(!multibraid) {
+    # unpack nested braid_id column0
+    xlengths <- unnpack_braids(x)
+    
+    xlengths <-
+      xlengths %>% 
+      dplyr::group_by(braid_id) %>%
+      dplyr::summarize(
+        braid_length = as.numeric(
+          sum(sf::st_length(geometry), na.rm = T)
+        ),
+        comids = paste0(c(comid), collapse = ", ")
+      ) %>%
+      dplyr::ungroup() %>% 
+      dplyr::arrange(-braid_length)
+    
+  } else {
+
+    # lengths of multibraids (groups of braids)
+    xlengths <- 
+      x %>% 
+      dplyr::group_by(braid_id) %>%
+      dplyr::mutate(
+        braid_length = as.numeric(
+          sum(sf::st_length(geometry), na.rm = T))
+      ) %>%
+      dplyr::ungroup() %>% 
+      dplyr::arrange(-braid_length)
+  }
   
   # drop geometries if keep_geom is FALSE
   if(!keep_geom) {
     
-    unpacked <- sf::st_drop_geometry(unpacked)
+    xlengths <- sf::st_drop_geometry(xlengths)
   }
   
-  return(unpacked)
+  return(xlengths)
   
 }
 

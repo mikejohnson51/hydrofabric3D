@@ -8,17 +8,17 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-network <- sf::read_sf("/Users/anguswatters/Desktop/braid_network.gpkg")
+# network <- sf::read_sf("/Users/anguswatters/Desktop/braid_network.gpkg")
 
 thm <- ggplot2::theme_void() 
 
-net2 <- nhdplusTools::navigate_network(start = 15175471, mode = "UT",  distance_km = 150)
-net3 <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
-
-plot(net2$geometry)
-plot(net3$geometry)
-
-mapview::mapview(net2)
+# net2 <- nhdplusTools::navigate_network(start = 15175471, mode = "UT",  distance_km = 150)
+# net3 <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
+# 
+# plot(net2$geometry)
+# plot(net3$geometry)
+# 
+# mapview::mapview(net2)
 ```
 
 ```{r, eval = T, echo=F}
@@ -159,7 +159,10 @@ library(nhdplusTools)
 
 ```{r, eval = TRUE, echo= TRUE, warning=F, message = F}
 # network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 25)
-network <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
+
+network <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 50)
+# network <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
+
 # network <- nhdplusTools::navigate_network(start = 15175471, mode = "UT",  distance_km = 150)
 # network <- nhdplusTools::navigate_network(start = 101, mode = "UT", distance_km = 55)
 
@@ -277,14 +280,25 @@ braids <- find_connected_components(braids)
 ```
 
 ```{r, eval = T, echo = F}
-terrainSliceR:::braid_lengths(braids)$braid_length
-
-braid_threshold = 100000
+# tmp = braid_lengths(braids, multibraid = TRUE)
+# braid_lengths(braids, multibraid = F)$braid_length
+# tmp$braid_length %>%unique() %>% round(2) %>%   sort()
+# braid_threshold = 15000
+braid_threshold = 150000
+# all(tmp$braid_length <= braid_threshold)
 
 # remove braids that have a total flowline length greater than braid_threshold
+# braids <- braid_thresholder3(
+#   x         = braids, 
+#   originals = not_braids, 
+#   threshold = braid_threshold,
+#   verbose   = TRUE
+# )
+
+# # remove braids that have a total flowline length greater than braid_threshold
 braids <- terrainSliceR:::braid_thresholder(
-  x         = braids, 
-  originals = not_braids, 
+  x         = braids,
+  originals = not_braids,
   threshold = braid_threshold,
   verbose   = TRUE
 )
@@ -321,13 +335,13 @@ ggplot2::ggplot() +
 
 We can now iterate over all of these cross sections and determine which cross sections should be extended, in what order, and by what distance.
 ```{r}
-unique(cross_sections$braid_id)
+unique(cross_sections$braid_id)[1:5]
 ```
 
 
 ```{r}
 # for(i in 1:nrow(cross_sections)) {
-i = 150
+i = 1222
 
 # comid of transect line
 com <- cross_sections$hy_id[i]
@@ -351,28 +365,31 @@ others <- terrainSliceR:::get_geoms_to_cut(
           )
 
 plot(others$geometry)
-  # }
 ```
 
 In the image below, the red flowline is the COMID that we will be augmenting the transect lines for and all of the blue flowlines are the flowlines that are eligible to be cut through via the transect extension algorithm.
 ```{r, eval = T, echo = F}
-
-# braids %>% 
-# dplyr::mutate(braids,
-#   grouping = dplyr::case_when(
-#     comid == com ~ "origin",
-#     TRUE ~ "other"
-#   )
-# )
 ggplot2::ggplot() +
-  ggplot2::geom_sf(data = net, color = "black") + 
-  ggplot2::geom_sf(data = dplyr::mutate(braids,
-  grouping = dplyr::case_when(
-    comid == com ~ "origin",
-    TRUE ~ "other"
-  )
-), ggplot2::aes(color = grouping)) + 
-  ggplot2::geom_sf(data = cross_sections[i, ], color = "limegreen", alpha = 1) +
+  # ggplot2::geom_sf(data = net, color = "black") + 
+    ggplot2::geom_sf(data = dplyr::bind_rows(
+                              dplyr::mutate(
+                                others,
+                                grouping = "Geoms to cut"
+                                ),
+                              dplyr::mutate(
+                                dplyr::filter(braids, comid == com),
+                                grouping = "Origin"
+                                )
+                              ), 
+                     ggplot2::aes(color = grouping)) + 
+  # ggplot2::geom_sf(data = dplyr::mutate(braids,
+  #                       grouping = dplyr::case_when(
+  #                         comid == com ~ "origin",
+  #                         comid %in% others$comid ~ "geoms_to_cut",
+  #                         TRUE ~ "other"
+  #                       )), 
+  #                     ggplot2::aes(color = grouping)) + 
+  ggplot2::geom_sf(data = cross_sections[i, ], color = "black", alpha = 1) +
   thm
 ```
 
@@ -389,7 +406,7 @@ make_geoms_to_cut_gif(
   width      = 10,
   gif_width  = 1800,
   gif_height = 1500,
-  delay      = 0.4,
+  delay      = 0.7,
   legend_pos = "bottom",
   theme_obj  = NULL,
   verbose    = FALSE
@@ -496,14 +513,25 @@ make_geoms_to_cut_gif <- function(
      braid_flowlines_plot <-
         ggplot2::ggplot() +
         ggplot2::geom_sf(data = full_network, color = "black") + 
-        ggplot2::geom_sf(data = dplyr::mutate(braid_flowlines,
-                                                grouping = dplyr::case_when(
-                                                  comid == com ~ "Origin COMID",
-                                                  TRUE ~ "COMIDs to cut across"
-                                                  )
-                                                ), 
-                                    ggplot2::aes(color = grouping)
-                                                 ) + 
+        ggplot2::geom_sf(data = dplyr::bind_rows(
+                              dplyr::mutate(
+                                others,
+                                grouping = "Geoms to cut"
+                                ),
+                              dplyr::mutate(
+                                dplyr::filter(braid_flowlines, comid == com),
+                                grouping = "Origin"
+                                )
+                              ), 
+                     ggplot2::aes(color = grouping)) + 
+        # ggplot2::geom_sf(data = dplyr::mutate(braid_flowlines,
+        #                                         grouping = dplyr::case_when(
+        #                                           comid == com ~ "Origin COMID",
+        #                                           TRUE ~ "COMIDs to cut across"
+        #                                           )
+        #                                         ), 
+        #                             ggplot2::aes(color = grouping)
+        #                                          ) + 
         ggplot2::geom_sf(
           data = sf::st_centroid(transect_lines[i, ]),# data = transect_lines$geometry[i],
           color = "black",
@@ -677,6 +705,133 @@ ggplot2::ggplot() +
 
 In order to get the best set of final transect lines, we prioritize the "inner" transect lines and work on extending these ones first. 
 
+
+```{r, eval = F, echo = F}
+xs <- cross_sections
+library(fastmap)
+
+# keep track of all original crossections
+all_xs <- paste0(xs$hy_id, "_", xs$cs_id)
+
+# column to store the relative position within the braid of the flowline we're on 
+xs$relative_position <- NA
+
+# flag determining whether transect should/has been replaced
+xs$changed <- FALSE
+
+# flag determining whether transect is to be processed in a future step after middle flowlines are processed
+xs$pending <- TRUE
+
+# flag determining whether transect is to be processed in a future step after middle flowlines are processed
+xs$pending <- TRUE
+
+# empty columns to store number of head/tail intersections
+xs$head_cuts     <- NA
+xs$tail_cuts     <- NA
+
+# empty columns to store distance needed to extend from head/tail of line
+xs$head_distance <- NA
+xs$tail_distance <- NA
+
+for(i in 1:nrow(xs)) {
+    # message("i: ", i, "/", nrow(xs))
+    # i = 1
+
+    # comid of transect line
+    com <- xs$hy_id[i]
+    
+    # braid ID of interest
+    bid <- xs$braid_id[i]
+    
+    # get the component ID of current COMID
+    comp_id <- braids$component_id[braids$comid == com]
+  
+    # other geometries to cut across with transects
+    others <- terrainSliceR:::get_geoms_to_cut(
+                x            = braids,
+                id           = com,
+                braid_id     = bid,
+                component    = comp_id,
+                method       = "comid"
+              )
+    
+    # aug_time1 <- Sys.time()
+
+    # geoms_to_cut  = others
+    extend_maps <- terrainSliceR:::geos_augment_transect(
+      cross_section = xs[i, ],
+      geoms_to_cut  = geos::as_geos_geometry(others$geometry),
+      geom_ids      = others$comid,
+      max_distance  = NULL, 
+      by            = 1, 
+      as_df         = FALSE,
+      carry_geom    = FALSE
+    )
+    
+    position <- extend_maps$head$get("position")
+    
+    # if a flowline on the inner portion of a braid, make extension and insert
+    if(position == "inner") {
+      
+      # extend line out by total distance key values in head and tail maps
+      res_geom <- terrainSliceR:::geos_extend_transects(
+        starter_line   = geos::as_geos_geometry(xs$geometry[i]),
+        head_distance  = extend_maps$head$get("total_distance"),
+        tail_distance  = extend_maps$tail$get("total_distance"),
+        extra_distance = xs$cs_widths[i]/2
+      )
+      # ONLY UPDATE geometry if it does NOT intersect with any of the other multibraid transects that have been changed so far (AND LEAVE OUT SELF)
+      if(
+        !geos::geos_intersects_any(
+          res_geom,
+          geos::as_geos_geometry(dplyr::filter(xs[-i,], changed))
+        )
+      )  
+        {
+        
+        # updatem geometry with new, extended cross section
+        xs$geometry[i] <- sf::st_geometry(
+          sf::st_as_sf(res_geom)
+        )
+        
+        # flag determining whether transect should be replaced
+        xs$changed[i] <- TRUE
+        
+      }
+      
+    } 
+    
+    # update relative position column
+    xs$relative_position[i] <- extend_maps$head$get("position")
+    
+    # UPDATE "pending" value to reflect that this is a inner flowline and it should be processed at once
+    xs$pending[i] <- extend_maps$head$get("pending")
+    
+    # update head/tail distances values in dataframe w/ values from head/tail hashmaps
+    xs$head_distance[i] <- extend_maps$head$get("total_distance")
+    xs$tail_distance[i] <- extend_maps$tail$get("total_distance")
+    
+    # update head_cuts/tail_cuts counts (intersection counts) values dataframe w/ values from head/tail hashmaps
+    xs$head_cuts[i] <- extend_maps$head$get("count")
+    xs$tail_cuts[i] <- extend_maps$tail$get("count")
+   
+  }
+```
+
+
+```{r}
+ggplot2::ggplot() +
+  ggplot2::geom_sf(data = net, color = "black") + 
+  ggplot2::geom_sf(data = xs, ggplot2::aes(color = position)) +
+  # ggplot2::geom_sf(data = cross_sections[i, ], color = "limegreen", alpha = 1) +
+  thm +
+  ggplot2::theme(
+      plot.caption = ggplot2::element_text(size = 12, face = "bold"),
+      # plot.caption = ggplot2::element_text(size = 12, hjust = 0.5, face = "bold"),
+      legend.position = "right",
+      legend.direction = "vertical"
+    )
+```
 
 
 
