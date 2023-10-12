@@ -1,6 +1,6 @@
 Package: terrainSliceR
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.2
+Title: terrainSliceR
+Version: 0.0.0.3
 Authors@R: 
     c(person("Mike", "Johnson", , "mikecp11@gmail.com", role = c("aut", "cre")),
       person("Angus", "Watters", , "anguswatters@gmail.com", role = c("ctb")))

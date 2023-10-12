@@ -3329,7 +3329,6 @@ unnpack_braids <- function(braids, into_list = FALSE) {
 #' @importFrom fastmap fastmap fastqueue
 #' @importFrom vctrs vec_c
 #' @importFrom stats setNames
-#' @export
 bfs_traversal <- function(
     network, 
     start     = NULL,
@@ -3646,7 +3645,6 @@ bfs_traversal <- function(
 #' @importFrom fastmap fastmap faststack
 #' @importFrom vctrs vec_c
 #' @importFrom stats setNames
-#' @export
 dfs_traversal <- function(
     network,
     start   = NULL,
