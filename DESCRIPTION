@@ -1,9 +1,12 @@
 Package: terrainSliceR
 Title: terrainSliceR
 Version: 0.0.0.3
-Authors@R: 
-    c(person("Mike", "Johnson", , "mikecp11@gmail.com", role = c("aut", "cre")),
-      person("Angus", "Watters", , "anguswatters@gmail.com", role = c("ctb")))
+Authors@R: c(person("Mike", "Johnson", 
+             role = c("aut", "cre"), 
+             email = "mikecp11@gmail.com"),
+             person("Angus", "Watters",  
+             role = "ctb", 
+             email = "anguswatters@gmail.com"))
 Description: Cuts terrain based cross sections for a river network.
 License: MIT + file LICENSE
 Encoding: UTF-8

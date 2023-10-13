@@ -1,5 +1,5 @@
 ---
-title: "braided_cross_sections"
+title: "NOAA OWP Braided Cross Section Reparation"
 author: "Angus Watters"
 date: "2023-10-12"
 output: rmarkdown::html_vignette
@@ -8,6 +8,9 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+## Introduction
+This vignette breaks down the methods used within `terrainSliceR` to cut cross sections across complex braided river networks. The following methods extend from the cross section cutting algorithms explained [here](../articles/cross_section_generator.html). 
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -156,6 +159,9 @@ library(ggplot2)
 library(nhdplusTools)
 ```
 
+We begin with a testing set of braided flowlines located in Baton Rouge, LA. This area has a complex set of braids and highlights the need for rectifying cross section linestrings to better reflect the natural world. 
+
+Starting from the COMID 18717056, we traverse upstream 30km and get a set of 303 flowlines.
 ```{r, eval = TRUE, echo= TRUE, warning=F, message = F}
 # Heavily braided network in Baton Rouge, LA
 net <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
@@ -209,7 +215,7 @@ ggplot2::ggsave(
 
 <br>
 
-Now let's add cross sections using the algorithm described here (INSERT LINK TO HOME VIGNETTE). 
+Now let's add cross sections using the algorithm described [here](cross_section_generator.Rmd)
 
 ```{r, eval = T, echo = T, message=FALSE}
 transects <- terrainSliceR::cut_cross_sections(

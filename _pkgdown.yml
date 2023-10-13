@@ -1,3 +1,12 @@
 url: ~
 template:
   bootstrap: 5
+articles:
+- title: Cross Section Generation
+  navbar: ~
+  contents: 
+  - cross_section_generator
+- title: Braided Cross Section Reparation
+  navbar: ~
+  contents: 
+  - braided_cross_sections

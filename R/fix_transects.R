@@ -166,10 +166,6 @@ fix_braid_transects <- function(
       ),
       by = c("hy_id" = "comid")
     ) %>% 
-    # dplyr::filter(divergence == 0)
-    # dplyr::group_by(braid_id) %>% 
-    # dplyr::mutate(has_mainstem = any(divergence == 0)) %>% 
-    # dplyr::ungroup() %>% 
     dplyr::arrange(-totdasqkm)
   
   # keep track of all original crossections
@@ -220,8 +216,10 @@ fix_braid_transects <- function(
   # 3. in what order should transects be extended, 
   # 4. in what direction to extend the transect
   
-  # system.time({
-  
+  # Loop through all the cross sections and either:
+  # - Extend the inner cross sections 
+  # OR
+  # - Mark them to be processed in a future step
   for(i in 1:nrow(xs)) {
     # message("i: ", i, "/", nrow(xs))
     # i = 1
@@ -321,21 +319,7 @@ fix_braid_transects <- function(
         
       }
       
-      # # update relative position column
-      # xs$relative_position[i] <- extend_maps$head$get("position")
-      # 
-      # # UPDATE "pending" value to reflect that this is a inner flowline and it should be processed at once
-      # xs$pending[i] <- extend_maps$head$get("pending")
-      # 
-      # # update head/tail distances values in dataframe w/ values from head/tail hashmaps
-      # xs$head_distance[i] <- extend_maps$head$get("total_distance")
-      # xs$tail_distance[i] <- extend_maps$tail$get("total_distance")
-      # 
-      # # update head_cuts/tail_cuts counts (intersection counts) values dataframe w/ values from head/tail hashmaps
-      # xs$head_cuts[i] <- extend_maps$head$get("count")
-      # xs$tail_cuts[i] <- extend_maps$tail$get("count")
     } 
-    # else {
     
     # update relative position column
     xs$relative_position[i] <- extend_maps$head$get("position")
@@ -350,14 +334,12 @@ fix_braid_transects <- function(
     # update head_cuts/tail_cuts counts (intersection counts) values dataframe w/ values from head/tail hashmaps
     xs$head_cuts[i] <- extend_maps$head$get("count")
     xs$tail_cuts[i] <- extend_maps$tail$get("count")
-    # }
     
     # ext_time2 <- Sys.time()
     # ext_final_time <- ext_time2 - ext_time1
     # extc <- c(extc, ext_final_time)
     # ext_time = ext_time +  as.numeric(ext_final_time)
   }
-  # })
   
   # mapview::mapview(xs, color = "red") +
   #   mapview::mapview(transect_lines, color = "green") +
@@ -456,21 +438,16 @@ fix_braid_transects <- function(
                         )
     
     # # bind together final updated transect lines
-    # out <- dplyr::select(xs, 
-    #                      -braid_id, 
+    # out <- dplyr::select(xs,  -braid_id, 
     #                      # -is_multibraid, -has_mainstem, -changed, -pending, -head_distance, -tail_distance, 
     #                      -head_cuts, -tail_cuts)  
     
   } else {
     
     # message("===== ", nrow(other_xs)  ," 'other_xs' transect lines =====")
-    
-    # system.time({
-    
+
     # loop through the remaining transects that were NOT "inner" lines, and do extensions
     for (i in 1:nrow(other_xs)) {
-      
-      # message("i: ", i, "/", nrow(other_xs))
       
       # if we get to a transect that does not intersect the rest of the braid even after extension, than set "changed" to TRUE and skip the iteration
       if (other_xs$relative_position[i] == "no_intersects") {
@@ -523,14 +500,12 @@ fix_braid_transects <- function(
       
     }
     
-    # })
-    
-    # # # keep only the transects that were changed/extended
-    # other_drop <- dplyr::filter(other_xs, !changed)
-    
     # keep only the transects that were changed/extended
     other_xs <- dplyr::filter(other_xs, changed)
 
+    # # # keep only the transects that were changed/extended
+    # other_drop <- dplyr::filter(other_xs, !changed)
+    
     # bind together final updated transect lines
     out <- dplyr::bind_rows(
       dplyr::select(xs, 

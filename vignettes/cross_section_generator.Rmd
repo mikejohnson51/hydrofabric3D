@@ -1,5 +1,5 @@
 ---
-title: "cross_section_generator"
+title: "NOAA OWP Cross Section Generator"
 author: "Mike Johnson"
 date: "2023-02-01"
 output: rmarkdown::html_vignette
@@ -27,7 +27,6 @@ library(vctrs)
 library(ggplot2)
 library(nhdplusTools)
 library(terra)
-library(fst)
 ```
 ## Introduction
 
