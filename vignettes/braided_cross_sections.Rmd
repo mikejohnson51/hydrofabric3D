@@ -2435,7 +2435,7 @@ ggplot2::ggsave(
 ```
 
 <center>
-![Animation highlighting the first set of cross section extensions](../man/figures/extension_order_plot.png)
+![Red cross sections indicate cross sections that were processed/extended first, while blue cross sections were processed after the set of red cross sections have been processed](../man/figures/extension_order_plot.png)
 </center>
 
 <br>
