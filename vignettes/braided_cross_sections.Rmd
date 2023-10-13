@@ -1,10 +1,13 @@
 ---
-title: "NOAA OWP Braided Cross Section Reparation"
+title: "braided_cross_sections"
 author: "Angus Watters"
 date: "2023-10-12"
-output: html_document
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{braided_cross_sections}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
@@ -14,6 +17,7 @@ knitr::opts_chunk$set(
 library(bsplus)
 
 thm <- ggplot2::theme_void() 
+# "NOAA OWP Braided Cross Section Reparation"
 ```
 
 ```{r, eval = T, echo=F}
@@ -2523,8 +2527,3 @@ ggplot2::ggsave(
 <center>
 ![](../man/figures/comparing_transects_plot.png)
 </center>
-
-
-
-
-

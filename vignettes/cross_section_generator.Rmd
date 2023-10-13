@@ -1,14 +1,19 @@
 ---
-title: "NOAA OWP Cross Section Generator"
+title: "cross_section_generator"
 author: "Mike Johnson"
 date: "2023-02-01"
-output: html_document
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{cross_section_generator}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       message = FALSE,
                       warning = FALSE)
+# "NOAA OWP Cross Section Generator"
 ```
 
 ```{r, echo = FALSE}
@@ -22,6 +27,7 @@ library(vctrs)
 library(ggplot2)
 library(nhdplusTools)
 library(terra)
+library(fst)
 ```
 ## Introduction
 
@@ -257,7 +263,7 @@ OK, so we have gone from a single edge, to a full flowline. Now - how about a fu
 
 ```{r}
 
-cut_cross_sections = function(net, id = NULL, bwidths = NULL, num = NULL){
+cut_cross_sections = function(net, id = NULL, widths = NULL, num = NULL){
   
   ll = list()
   
@@ -370,7 +376,7 @@ ggplot() +
 
 A key for hydrologic locations is a linear reference that describes the percentage along a reach a location sits. To reference the center of each cross section, we can use the flowline indexing tools in nhdplusTools:
 
-```{r}
+```{r, eval = F, echo = T}
 system.time({
   # Find middle point of each cross section
   tmp = cs_pts %>% 
@@ -379,7 +385,7 @@ system.time({
     slice(ceiling(n()/2))  %>% 
     ungroup() %>% 
     st_transform(5070)
-  
+
   # Add the needed information to our network object, and fine flowline index
   xx = left_join(network, 
                  get_vaa(c("tomeas", "frommeas", 'reachcode'), updated_network = TRUE), 
@@ -400,7 +406,8 @@ head(cs_pts)
 
 OK so now we have cut cross sections along network, sampled them and extracted depths, and addressed them to the hydrologic network! Now, we want to to assign a classification to each point marking it as "right_bank", "in_channel" and "left_bank".
 
-```{r}
+```{r, eval = F, echo = T}
+
 assign_class = function(Z, ratio = 1/5){ 
   
   # The change in elevation across the cross section
@@ -448,9 +455,8 @@ system.time({
 mapview::mapview(network)
 ```
 
-```{r, echo = FALSE}
-data = filter(cs_pts, hy_id == 1078271 
-) %>% 
+```{r, eval = F, echo = FALSE}
+data = filter(cs_pts, hy_id == 1078271)%>% 
   mutate(X = st_coordinates(.)[,1], Y = st_coordinates(.)[,2])
 
 ggplot(data = data) +
@@ -465,7 +471,7 @@ ggplot(data = data) +
 
 Lastly, for a successful routing implementation, we need to ensure that the bottom of each cross section is lower then or equal to that one upstream. Here we will traverse down the network making sure this condition is met, and, in cases where it isn't, we will lower the in channel portion of the cross section to make it so:
 
-```{r}
+```{r, eval = FALSE, echo = FALSE}
 adjust = function(v){
   if(length(v) == 1){ return(v)}
   for(i in 2:length(v)){ v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) }
@@ -487,7 +493,7 @@ cs_pts = left_join(cs_pts, slope, by = c("hy_id", "cs_id")) %>%
   ))
 ```
 
-```{r, echo = FALSE}
+```{r, eval = FALSE, echo = FALSE}
 ggplot() + 
   geom_point(data = cs_pts, aes(x = 1:nrow(cs_pts), y = adjust)) + 
   theme_bw() +  
@@ -499,9 +505,3 @@ ggplot() +
   theme_bw()  + 
   labs(title = "Adjustments Made", color = "meters")
 ```
-
-
-
-
-
-
