@@ -284,12 +284,6 @@ plot_braids <- terrainSliceR::find_braids(
               nested  = FALSE,
               add     =  TRUE
             )
-# plot_braids$braid_id %>% unique() %>% length()
-# plot_braids %>% 
-#   dplyr::rename(geometry = geom) %>% 
-#   ggplot2::ggplot() +
-#   ggplot2::geom_sf(ggplot2::aes(color = braid_id))+
-#   gghighlight::gghighlight(braid_id == "braid_1")
 make_braids_gif(
   network    = plot_braids,
   save_path  = "../man/figures/braid_vignette_gif.gif",
