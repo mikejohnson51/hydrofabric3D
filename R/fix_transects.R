@@ -1191,7 +1191,8 @@ get_geoms_to_cut <- function(x,
 #' Convert SF geometry columns to geos geometrys and return the original dataframe 
 #' Internal function used to switch sf geometry dataframes to geos for processing tasks
 #' @param x sf dataframe
-#'
+#' @noRd
+#' @keywords internal
 #' @return data.frame, tibble with geometry column containing geos_geometries
 sf_to_geos <- function(x) {
   
