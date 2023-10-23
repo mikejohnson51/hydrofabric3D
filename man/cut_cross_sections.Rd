@@ -17,6 +17,7 @@ cut_cross_sections(
   braid_threshold = NULL,
   version = 2,
   braid_method = "comid",
+  precision = 1,
   add = FALSE
 )
 }
@@ -46,6 +47,8 @@ Default is NULL, which will attempt to fix all the braid transects in the data}
 \item{version}{integer, version number of braid algorithm to use, either 1 or 2. Default is 2.}
 
 \item{braid_method}{The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"}
+
+\item{precision}{int, distance in meters. Only applicable when fix_braids = TRUE. This is the number of meters to approximate final cross section linestring length. Increasing this value will decrease runtime of cross section extension algorithm. Value you must be greater than 0. Default is 1}
 
 \item{add}{logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.}
 }

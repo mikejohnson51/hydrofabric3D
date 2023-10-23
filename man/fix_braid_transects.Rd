@@ -11,6 +11,7 @@ fix_braid_transects(
   braid_threshold = NULL,
   version = 2,
   method = "comid",
+  precision = 1,
   rm_intersects = TRUE
 )
 }
@@ -28,6 +29,8 @@ Default is NULL, which will attempt to fix all the braid transects in the data}
 \item{version}{integer, version number of braid algorithm to use, either 1 or 2. Default is 2.}
 
 \item{method}{The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"}
+
+\item{precision}{int, distance in meters to approximate final cross section linestring length. Value you must be greater than 0. Default is 1}
 
 \item{rm_intersects}{logical, whether to remove transect linestrings that intersect with other parts of the network ('net'). Default is TRUE which will remove intersecting linestrings.}
 }
