@@ -256,7 +256,8 @@ fix_braid_transects <- function(
       
       # extend line out by total distance key values in head and tail maps
       res_geom <- geos_extend_transects(
-        starter_line   = geos::as_geos_geometry(xs$geometry[i]),
+        starter_line   = cs_line,
+        # starter_line   = geos::as_geos_geometry(xs$geometry[i]),
         head_distance  = extend_maps$head$get("total_distance"),
         tail_distance  = extend_maps$tail$get("total_distance"),
         extra_distance = xs$cs_widths[i]/2
