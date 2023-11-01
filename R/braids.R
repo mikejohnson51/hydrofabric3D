@@ -54,7 +54,7 @@ find_braids <- function(
     version     = 2,
     verbose     = FALSE
 ) {
-  
+
   # network = net2
   # terminal_id = NULL
   # add         = FALSE

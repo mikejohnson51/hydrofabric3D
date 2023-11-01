@@ -34,6 +34,14 @@ fix_braid_transects <- function(
 ) {
   
   ### TEST DATA INPUTS
+  # net             = net
+  # transect_lines  = ll
+  # terminal_id     = terminal_id
+  # braid_threshold = braid_threshold
+  # version         = version
+  # method          = braid_method
+  # precision       = precision
+  # rm_intersects   = rm_self_intersect
   # net = net2
   # transect_lines = trans
   # terminal_id = NULL
