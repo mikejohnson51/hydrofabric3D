@@ -17,7 +17,7 @@ net_source <- "terrainSliceR"
 # list.files("/Users/anguswatters/Desktop/lynker-spatial/01_flowlines/")
 
 for (i in 1:length(nextgen_paths)) {
-  
+
   # sf::st_layers(nextgen_paths[i])
   logger::log_info("Processing flowlines: {nextgen_files[i]}")
   
@@ -34,7 +34,7 @@ for (i in 1:length(nextgen_paths)) {
     dplyr::mutate(
       bf_width = exp(0.700    + 0.365* log(tot_drainage_areasqkm))
       )
-  
+    
   # create transect lines
   transects <- terrainSliceR::cut_cross_sections(
                       net               = flines,                        # flowlines network
