@@ -19,7 +19,6 @@ net_source <- "terrainSliceR"
 for (i in 1:length(nextgen_paths)) {
   
   # sf::st_layers(nextgen_paths[i])
-  
   logger::log_info("Processing flowlines: {nextgen_files[i]}")
   
   flines <- sf::read_sf(nextgen_paths[i], layer = "flowpaths")

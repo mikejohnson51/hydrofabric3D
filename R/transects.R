@@ -338,15 +338,14 @@ cut_cross_sections <- function(
   
   # iterate through each linestring in "net" and generate transect lines along each line 
   for (j in 1:nrow(net)) {
-    
+
     # cut transect lines at each 'edge' generated along our line of interest
     ll[[j]] <- get_transects(
                           line     = geos::as_geos_geometry(net$geometry[j]),
-                          bf_width = net$cs_width[j],
+                          bf_width = cs_widths[j],
                           n        = num[j]
                         )
     # ll[[j]] = get_transects2(edges, line, cs_widths[j])
-    
   }
 
   # geos::geos_intersects_matrix(tlines, line)
