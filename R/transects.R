@@ -180,10 +180,6 @@ get_cs_sinuosity <- function(
     add = TRUE
 ) {
   
-  # lines <- net
-  # cross_sections <- ll
-  # id = "hy_id"
-  
   # convert cross section linestrings into points at the centroid of each cross section
   pts <- 
     cross_sections %>% 
@@ -277,7 +273,7 @@ get_cs_sinuosity <- function(
 #' @param add logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.
 #'
 #' @return sf object
-#' @importFrom dplyr group_by mutate ungroup n left_join
+#' @importFrom dplyr group_by mutate ungroup n left_join all_of
 #' @importFrom sf st_crs st_transform st_intersects st_length st_drop_geometry st_as_sf
 #' @importFrom smoothr smooth densify
 #' @importFrom geos as_geos_geometry
@@ -299,7 +295,7 @@ cut_cross_sections <- function(
     precision         = 1,
     add               = FALSE
 ) {
-  
+
   # keep track of the CRS of the input to retransform return 
   start_crs <- sf::st_crs(net, parameters = T)$epsg
   
@@ -423,6 +419,11 @@ cut_cross_sections <- function(
     
   }
   
+  # rename "id" column to hy_id if "hy_id" is not already present
+  if(!"hy_id" %in% names(net)) {
+    net <- dplyr::rename(net, hy_id = dplyr::all_of(id))
+  }
+
   # calculate sinuosity and add it as a column to the cross sections
   ll <- get_cs_sinuosity(
             lines          = net, 

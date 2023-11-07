@@ -4,17 +4,17 @@
 \alias{get_transects}
 \title{Generate Multiple cross section along a linestring}
 \usage{
-get_transects(edges, line, bf_width)
+get_transects(line, bf_width, n)
 }
 \arguments{
-\item{edges}{data.frame of LINESTRINGs (pieces of line)}
-
-\item{line}{original line element}
+\item{line}{sf linestring or geos_geometry, original line element}
 
 \item{bf_width}{Bankfull Width (length of cross section)}
+
+\item{n}{number of cross sections}
 }
 \value{
-GEOS object
+sf dataframe with 'n' evenly spaced transect lines with cs_measures for each cross section geometry
 }
 \description{
 Generate Multiple cross section along a linestring

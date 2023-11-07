@@ -12,7 +12,7 @@ cut_cross_sections(
   smooth = TRUE,
   densify = 2,
   rm_self_intersect = TRUE,
-  fix_braids = TRUE,
+  fix_braids = FALSE,
   terminal_id = NULL,
   braid_threshold = NULL,
   version = 2,
@@ -36,7 +36,7 @@ cut_cross_sections(
 
 \item{rm_self_intersect}{logical, whether to remove self intersecting transect linestrings}
 
-\item{fix_braids}{logical, whether to fix braided transect lines or not. If TRUE (default), linestrings that are part of a braided network are augmented}
+\item{fix_braids}{logical, whether to fix braided transect lines or not. If TRUE, linestrings that are part of a braided network are augmented. Default is FALSE.}
 
 \item{terminal_id}{character, column name containing a unique identifier, delineating separate networks in the 'net' dataset. Default is NULL which will best effort determine the connected components in the network to try and create a 'component_id' column in 'net'}
 
