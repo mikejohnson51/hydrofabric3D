@@ -44,7 +44,7 @@ cut_transect = function(edge, width){
 #' @importFrom sf st_as_sf
 #' @export
 get_transects <- function(line, bf_width, n) {
-  
+
   # if NOT a geos_geometry class, coerce
   if(!inherits(line, "geos_geometry")) {
     # convert to geos geometry
@@ -319,7 +319,7 @@ cut_cross_sections <- function(
   # Densify network flowlines, adds more points to each linestring
   if(!is.null(densify)){ 
     message("Densifying")
-    net = smoothr::densify(net, 2) 
+    net = smoothr::densify(net, densify) 
   }
   
   # list to store transect outputs
@@ -338,7 +338,7 @@ cut_cross_sections <- function(
   
   # iterate through each linestring in "net" and generate transect lines along each line 
   for (j in 1:nrow(net)) {
-
+    
     # cut transect lines at each 'edge' generated along our line of interest
     ll[[j]] <- get_transects(
                           line     = geos::as_geos_geometry(net$geometry[j]),
@@ -352,6 +352,7 @@ cut_cross_sections <- function(
   ids_length <- sapply(ll, nrow)
   # ids_length <- lengths(ll)
   
+  # bind list of sf dataframes of transects back together
   ll <- dplyr::bind_rows(ll)
   # ll <- sf::st_as_sf(Reduce(c, ll))]
   
