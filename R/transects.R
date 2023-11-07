@@ -44,7 +44,7 @@ cut_transect = function(edge, width){
 #' @importFrom sf st_as_sf
 #' @export
 get_transects <- function(line, bf_width, n) {
-
+  
   # if NOT a geos_geometry class, coerce
   if(!inherits(line, "geos_geometry")) {
     # convert to geos geometry
@@ -111,10 +111,10 @@ get_transects <- function(line, bf_width, n) {
   measures  <- vctrs::vec_c()
   
   for(i in 1:length(edges)){
-    
+
     # message("TRANSECT: ", i)
     tran = cut_transect(edges[i], bf_width[i])
-    
+
     # # # measure of edge
     meas <- edge_lengths[i]
     
@@ -295,7 +295,7 @@ cut_cross_sections <- function(
     precision         = 1,
     add               = FALSE
 ) {
-
+  
   # keep track of the CRS of the input to retransform return 
   start_crs <- sf::st_crs(net, parameters = T)$epsg
   
@@ -331,22 +331,43 @@ cut_cross_sections <- function(
   }
   
   message("Cutting")
-  
+
   # iterate through each linestring in "net" and generate transect lines along each line 
   for (j in 1:nrow(net)) {
-    
+    # logger::log_info("{j} / {nrow(net)}")
     # cut transect lines at each 'edge' generated along our line of interest
-    ll[[j]] <- get_transects(
-                          line     = geos::as_geos_geometry(net$geometry[j]),
-                          bf_width = cs_widths[j],
-                          n        = num[j]
-                        )
-    # ll[[j]] = get_transects2(edges, line, cs_widths[j])
+    trans <- get_transects(
+                  line     = geos::as_geos_geometry(net$geometry[j]),
+                  bf_width = cs_widths[j],
+                  n        = num[j]
+                )
+    
+    # if 0 transects can be formed, skip the iteration
+    if(nrow(trans) == 0) {
+      # logger::log_info("---> SKIPPING ITERATION {j}")
+      next
+    }
+    
+    # assign hy_id from net
+    trans$hy_id <- net[[id]][j]
+    trans$cs_widths <- cs_widths[j]
+    
+    # insert 'trans' sf dataframe into list
+    ll[[j]] <- trans
+    
+    # # cut transect lines at each 'edge' generated along our line of interest
+    # ll[[j]] <- get_transects(
+    #                       line     = geos::as_geos_geometry(net$geometry[j]),
+    #                       bf_width = cs_widths[j],
+    #                       n        = num[j]
+    #                     )
   }
 
-  # geos::geos_intersects_matrix(tlines, line)
-  ids_length <- sapply(ll, nrow)
-  # ids_length <- lengths(ll)
+  # # get length of each dataframe to assign "hy_id" back with cross sections
+  # ids_length <- sapply(ll, nrow)
+  # # # ids_length <- lengths(ll)
+  
+  # crs_list <- lapply(ll, function(i) { is.na(sf::st_crs(i)$epsg) } )
   
   # bind list of sf dataframes of transects back together
   ll <- dplyr::bind_rows(ll)
@@ -358,15 +379,15 @@ cut_cross_sections <- function(
   
   message("Formating")
   
-  # add id column if provided as an input
-  if (!is.null(id)) {
-    ll$hy_id = rep(net[[id]], times = ids_length)
-  } else {
-    ll$hy_id = rep(1:nrow(net), times = ids_length)
-  }
-  
-  # add back cross sections width column
-  ll$cs_widths = rep(cs_widths, times = ids_length)
+  # # add id column if provided as an input
+  # if (!is.null(id)) {
+  #   ll$hy_id = rep(net[[id]], times = ids_length)
+  # } else {
+  #   ll$hy_id = rep(1:nrow(net), times = ids_length)
+  # }
+  # 
+  # # add back cross sections width column
+  # ll$cs_widths = rep(cs_widths, times = ids_length)
 
   # remove self intersecting transects or not
   if(rm_self_intersect){
@@ -399,12 +420,10 @@ cut_cross_sections <- function(
   # if fix_braids is set to TRUE, then fix the braided transect lines
   if(fix_braids) {
     
-    # message(
-    #   paste0("Applying fixes to braided transects using:\n",
+    # message(paste0("Applying fixes to braided transects using:\n",
     #          "- Braid detection version: ", version, "\n",
     #          "- Braid grouping method: ", braid_method
-    #          )
-    #   )
+    #          ))
     
     ll <- fix_braid_transects(
       net             = net,

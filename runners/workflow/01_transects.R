@@ -32,7 +32,7 @@ path_df <- align_files_by_vpu(
                 )
 
 for(i in 1:nrow(path_df)) {
-  
+  # i = 4
   # nextgen file and full path
   nextgen_file <- path_df$x[i]
   nextgen_path <- glue::glue("{nextgen_dir}{nextgen_file}")
