@@ -15,11 +15,11 @@ transects_prefix <- glue::glue("{s3_bucket}v20/3D/transects/")
 nextgen_files <- list.files(nextgen_dir, full.names = FALSE)
 model_attr_files <- list.files(model_attr_dir, full.names = FALSE)
 
-# Full paths to nextgen datasets
-nextgen_paths <- glue::glue("{nextgen_dir}{nextgen_files}")
-
-# Full paths to nextgen datasets\
-model_attr_paths <- glue::glue("{model_attr_dir}{model_attr_files}")
+# # Full paths to nextgen datasets
+# nextgen_paths <- glue::glue("{nextgen_dir}{nextgen_files}")
+# 
+# # Full paths to nextgen datasets\
+# model_attr_paths <- glue::glue("{model_attr_dir}{model_attr_files}")
 
 # string to fill in "cs_source" column in output datasets
 net_source <- "terrainSliceR"
@@ -31,8 +31,9 @@ path_df <- align_files_by_vpu(
                 base = base_dir
                 )
 
+# loop over each VPU and generate cross sections, then save locally and upload to S3 bucket
 for(i in 1:nrow(path_df)) {
-  # i = 4
+
   # nextgen file and full path
   nextgen_file <- path_df$x[i]
   nextgen_path <- glue::glue("{nextgen_dir}{nextgen_file}")
@@ -135,18 +136,6 @@ for(i in 1:nrow(path_df)) {
     out_path
   )
   
-  # sf::write_sf(
-  #   dplyr::select(
-  #     dplyr::mutate(transects,
-  #                   cs_source = net_source
-  #     ),
-  #     hy_id, cs_source, cs_id, cs_measure,
-  #     cs_lengthm = cs_widths,
-  #     geometry
-  #   ),
-  #   out_path
-  # )
-  
   # command to copy transects geopackage to S3
   if (!is.null(aws_profile)) {
     copy_to_s3 <- glue::glue("aws s3 cp {out_path} {transects_prefix}{out_file} --profile {aws_profile}")
@@ -158,9 +147,6 @@ for(i in 1:nrow(path_df)) {
   system(copy_to_s3, intern = TRUE)
 }
 
-
-# list.files("/Users/anguswatters/Desktop/lynker-spatial/01_flowlines/")
-# 
 # for (i in 1:length(nextgen_paths)) {
 #   i = 8
 #   # sf::st_layers(nextgen_paths[i])
