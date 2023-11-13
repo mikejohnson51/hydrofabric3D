@@ -107,7 +107,7 @@ for(i in 1:nrow(path_df)) {
   time2 <- Sys.time()
   time_diff <- round(as.numeric(time2 - time1 ), 2)
   
-  logger::log_info("\n\n -> Transects processed in {time_diff}")
+  logger::log_info("\n\n ---> Transects processed in {time_diff}")
   
   # name of file and path to save transects gpkg too
   out_file <- glue::glue("nextgen_{path_df$vpu[i]}_transects.gpkg")

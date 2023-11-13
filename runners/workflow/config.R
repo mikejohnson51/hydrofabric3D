@@ -11,7 +11,7 @@ pacman::p_load(
 
 # load root directory 
 source("runners/workflow/root_dir.R")
-# source("runners/workflow/download_nextgen.R")
+source("runners/workflow/download_nextgen.R")
 
 sf_use_s2(FALSE)
 

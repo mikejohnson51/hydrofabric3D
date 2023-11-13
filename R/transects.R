@@ -476,33 +476,53 @@ cross_section_pts = function(cs,
                              min_pts_per_cs = 10,
                              dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){
   
-  if(is.null(cs)){ return(NULL) }
+  # check if a cross section is given, and return NULL if missing
+  if (is.null(cs)) {
+    return(NULL)
+    }
   
-  if(is.null(points_per_cs)){
-    if(terra::linearUnits(terra::rast(dem)) == 0){
-      points_per_cs = ceiling((cs$lengthm / 111139) / min(terra::res(terra::rast(dem))))
+  # IF NULL value is given to points_per_cs argument, calculate points_per_cs values
+  # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
+    # -- then divide the cross section length by 111139 and divide that resulting value by the minimum resolution value from the DEM (then round the result up)
+  # - ELSE: 
+    # -- just divide the cross section length by the minimum resolution value from the DEM (then round the result up)
+  if (is.null(points_per_cs)) {
+    if (terra::linearUnits(terra::rast(dem)) == 0) {
+      points_per_cs = ceiling(
+                        (cs$lengthm / 111139) / min(terra::res(terra::rast(dem)))
+                        )
     } else {
-      points_per_cs = ceiling((cs$lengthm) / min(terra::res(terra::rast(dem))))
+      points_per_cs = ceiling(
+                        (cs$lengthm) / min(terra::res(terra::rast(dem)))
+                        )
     }
   }
   
+  # take the max between the given minimum points per cross section and the derived points per cross section
   cs$points_per_cs = pmax(min_pts_per_cs, points_per_cs)
   
-  extract_pt_val = function(rast, pts){ terra::extract(rast, terra::project(terra::vect(pts), terra::crs(rast)))[, 2] }
-  
+  # function to extract Z/elevation values at a point from DEM
+  extract_pt_val = function(rast, pts){ 
+    terra::extract(rast, 
+                   terra::project(terra::vect(pts), 
+                                  terra::crs(rast))
+                   )[, 2] 
+    }
+    
   suppressWarnings({
     
-    # TODO: use a 'return()' statement here instead of returning the object, just preference...
-    sf::st_set_geometry(cs, sf::st_line_sample(cs, cs$points_per_cs)) %>% 
-      sf::st_cast("POINT") %>%
-      dplyr::mutate(Z   = extract_pt_val(terra::rast(dem), .)) %>% 
-      dplyr::group_by(hy_id, cs_id) %>% 
-      dplyr::mutate(
-        pt_id             = 1:dplyr::n(),
-        relative_distance = seq(from = 0, to = lengthm[1], length.out = dplyr::n())
-        ) %>% 
-      dplyr::ungroup() %>% 
-      dplyr::select(hy_id, cs_id, pt_id, Z, lengthm, relative_distance, dplyr::everything())
+    return(
+      sf::st_set_geometry(cs, sf::st_line_sample(cs, cs$points_per_cs)) %>% 
+        sf::st_cast("POINT") %>%
+        dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .)) %>% 
+        dplyr::group_by(hy_id, cs_id) %>% 
+        dplyr::mutate(
+          pt_id             = 1:dplyr::n(),
+          relative_distance = seq(from = 0, to = lengthm[1], length.out = dplyr::n())
+          ) %>% 
+        dplyr::ungroup() %>% 
+        dplyr::select(hy_id, cs_id, pt_id, Z, lengthm, relative_distance, dplyr::everything())
+      )
     
   })
   
@@ -555,7 +575,7 @@ classify_points = function(cs_pts){
   
   . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_widths  <- count_left <- 
     count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
-  
+
   filter(cs_pts) %>% 
     group_by(hy_id, cs_id) %>% 
     mutate(third = ceiling(n() / 3),
