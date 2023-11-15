@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 [![R CMD Check](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of terrainSliceR is to generate DEM-based cross sections for hydrograhic networks.
+The goal of terrainSliceR is to generate DEM-based cross sections for hydrographic networks.
 
 ## Installation
 
