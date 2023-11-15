@@ -32,14 +32,6 @@ network.
 ``` r
 library(hydrofabric3D)
 library(dplyr)
-#> 
-#> Attaching package: 'dplyr'
-#> The following objects are masked from 'package:stats':
-#> 
-#>     filter, lag
-#> The following objects are masked from 'package:base':
-#> 
-#>     intersect, setdiff, setequal, union
 
 (net = linestring %>% 
   mutate(bf_width = exp(0.700    + 0.365* log(totdasqkm))))
@@ -76,11 +68,6 @@ plot(net$geometry)
                          id = "comid", 
                          cs_widths = pmax(50, net$bf_width * 7),
                          num = 10) )
-#> Smoothing
-#> Densifying
-#> Cutting
-#> Formating
-#> Warning: st_centroid assumes attributes are constant over geometries
 #> Simple feature collection with 2275 features and 7 fields
 #> Geometry type: LINESTRING
 #> Dimension:     XY
@@ -187,11 +174,6 @@ system.time({
   cross_section_pts(dem = '/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt') %>% 
   classify_points()
 })
-#> Smoothing
-#> Densifying
-#> Cutting
-#> Formating
-#> Warning: st_centroid assumes attributes are constant over geometries
 #>    user  system elapsed 
-#>  19.885   0.513  23.549
+#>  19.972   0.491  24.026
 ```
