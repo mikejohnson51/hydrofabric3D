@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# terrainSliceR
+# hydrofabric3D
 
 <!-- badges: start -->
 
@@ -9,17 +9,17 @@
 Check](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of terrainSliceR is to generate DEM-based cross sections for
-hydrograhic networks.
+The goal of hydrofabric3D is to generate DEM-based cross sections for
+hydrographic networks.
 
 ## Installation
 
-You can install the development version of terrainSliceR from
+You can install the development version of hydrofabric3D from
 [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("mikejohnson51/terrain_sliceR")
+devtools::install_github("mikejohnson51/hydrofabric3D")
 ```
 
 # Example
@@ -30,8 +30,7 @@ network.
 ## Define Network
 
 ``` r
-library(terrainSliceR)
-#> Using GDAL version 3.6.0 which was retracted because it cannot write large GPKG files
+library(hydrofabric3D)
 library(dplyr)
 #> 
 #> Attaching package: 'dplyr'
@@ -50,19 +49,19 @@ library(dplyr)
 #> Bounding box:  xmin: 77487.09 ymin: 890726.5 xmax: 130307.4 ymax: 939129.8
 #> Projected CRS: NAD83 / Conus Albers
 #> # A tibble: 325 × 6
-#>    nhdplus_comid                          geometry  comid totda…¹ dist_m bf_wi…²
-#>  * <chr>                          <LINESTRING [m]>  <dbl>   <dbl>  <dbl>   <dbl>
-#>  1 101           (128525.6 892408.3, 128565.7 892… 1.01e2 7.25e+3 3.25e3  51.7  
-#>  2 24599575      (128084.7 892952.4, 128525.6 892… 2.46e7 7.25e+3 7.00e2  51.6  
-#>  3 1078635       (127687.6 893270.4, 127799.7 893… 1.08e6 7.25e+3 5.22e2  51.6  
-#>  4 1078637       (124942.8 893959.6, 124948.2 893… 1.08e6 6.82e+1 4.17e3   9.41 
-#>  5 1078639       (125523.1 892528, 125657.3 89270… 1.08e6 7.18e+3 2.76e3  51.5  
-#>  6 1078577       (123219.9 902292.8, 123233.5 902… 1.08e6 1.98e+1 9.91e3   5.99 
-#>  7 1078575       (121975.5 909050.8, 122028.9 909… 1.08e6 4.13e+1 1.87e4   7.83 
-#>  8 1078657       (124263.8 892410.4, 124420.6 892… 1.08e6 7.18e+3 1.66e3  51.5  
-#>  9 1078663       (125628.9 892216, 125555.7 89220… 1.08e6 9.9 e-2 7.54e2   0.866
-#> 10 1078643       (124248.1 892440.7, 124263.8 892… 1.08e6 7.18e+3 3.41e1  51.5  
-#> # … with 315 more rows, and abbreviated variable names ¹​totdasqkm, ²​bf_width
+#>    nhdplus_comid                       geometry  comid totdasqkm dist_m bf_width
+#>  * <chr>                       <LINESTRING [m]>  <dbl>     <dbl>  <dbl>    <dbl>
+#>  1 101           (128525.6 892408.3, 128565.7 … 1.01e2  7254.    3.25e3   51.7  
+#>  2 24599575      (128084.7 892952.4, 128525.6 … 2.46e7  7249.    7.00e2   51.6  
+#>  3 1078635       (127687.6 893270.4, 127799.7 … 1.08e6  7248.    5.22e2   51.6  
+#>  4 1078637       (124942.8 893959.6, 124948.2 … 1.08e6    68.2   4.17e3    9.41 
+#>  5 1078639       (125523.1 892528, 125657.3 89… 1.08e6  7180.    2.76e3   51.5  
+#>  6 1078577       (123219.9 902292.8, 123233.5 … 1.08e6    19.8   9.91e3    5.99 
+#>  7 1078575       (121975.5 909050.8, 122028.9 … 1.08e6    41.3   1.87e4    7.83 
+#>  8 1078657       (124263.8 892410.4, 124420.6 … 1.08e6  7179.    1.66e3   51.5  
+#>  9 1078663       (125628.9 892216, 125555.7 89… 1.08e6     0.099 7.54e2    0.866
+#> 10 1078643       (124248.1 892440.7, 124263.8 … 1.08e6  7178.    3.41e1   51.5  
+#> # ℹ 315 more rows
 
 
 plot(net$geometry)
@@ -75,27 +74,33 @@ plot(net$geometry)
 ``` r
 (transects = cut_cross_sections(net = net,
                          id = "comid", 
-                         bf_widths = pmax(50, net$bf_width * 7),
+                         cs_widths = pmax(50, net$bf_width * 7),
                          num = 10) )
-#> Simple feature collection with 2250 features and 4 fields
+#> Smoothing
+#> Densifying
+#> Cutting
+#> Formating
+#> Warning: st_centroid assumes attributes are constant over geometries
+#> Simple feature collection with 2275 features and 7 fields
 #> Geometry type: LINESTRING
 #> Dimension:     XY
-#> Bounding box:  xmin: 77510.14 ymin: 890557.3 xmax: 130371.3 ymax: 939089
+#> Bounding box:  xmin: 77473.82 ymin: 890553.2 xmax: 130336.7 ymax: 939136.7
 #> Projected CRS: NAD83 / Conus Albers
-#> # A tibble: 2,250 × 5
-#>                                  geometry    hy_id bf_width cs_id lengthm
-#>  *                       <LINESTRING [m]>    <dbl>    <dbl> <int>   <dbl>
-#>  1   (128426.4 892244.6, 128705 892475.1)      101     362.     1    362.
-#>  2 (128409.2 892093.2, 128767.5 892044.3)      101     362.     2    362.
-#>  3 (128557.6 891564.6, 128896.1 891691.9)      101     362.     3    362.
-#>  4   (128851.5 891197.9, 129153 891397.4)      101     362.     4    362.
-#>  5     (129225.4 890883, 129345.8 891224)      101     362.     5    362.
-#>  6 (129625.9 891067.1, 129390.2 891341.3)      101     362.     6    362.
-#>  7 (129792.9 891147.7, 129656.7 891482.7)      101     362.     7    362.
-#>  8 (129904.4 891131.2, 130211.5 890940.4)      101     362.     8    362.
-#>  9 (130243.6 890557.3, 130371.3 890895.6)      101     362.     9    362.
-#> 10 (128385.2 892294.5, 128666.1 892522.1) 24599575     362.     1    362.
-#> # … with 2,240 more rows
+#> # A tibble: 2,275 × 8
+#>    ds_distance cs_measure    hy_id cs_widths                      geometry cs_id
+#>          <dbl>      <dbl>    <dbl>     <dbl>              <LINESTRING [m]> <int>
+#>  1       367.        11.2      101      362. (128409.2 892046.4, 128768.1…     1
+#>  2       818.        25.0      101      362. (128553.4 891572.7, 128890.1…     2
+#>  3      1242.        38.0      101      362. (128838.4 891220.8, 129145.3…     3
+#>  4      1629.        49.8      101      362. (129198.3 890891.1, 129319.4…     4
+#>  5      1962.        60.0      101      362. (129590.7 891044.8, 129463.9…     5
+#>  6      2241.        68.5      101      362. (129732.4 891134.4, 129742 8…     6
+#>  7      2487.        76.0      101      362. (129719.7 891083.8, 130016.4…     7
+#>  8      2813.        86.0      101      362. (129907.8 891136.4, 130208.7…     8
+#>  9      3260.        99.6      101      362. (130254.3 890553.2, 130336.7…     9
+#> 10        77.8       11.1 24599575      362. (127993.3 892778.2, 128274.1…     1
+#> # ℹ 2,265 more rows
+#> # ℹ 2 more variables: lengthm <dbl>, sinuosity <dbl>
 
 plot(transects$geometry)
 ```
@@ -106,52 +111,54 @@ plot(transects$geometry)
 
 ``` r
 (pts = cross_section_pts(transects, 
-                        dem = '/Volumes/Transcend/ngen/DEM-products/dem.vrt'))
-#> Simple feature collection with 23234 features and 8 fields
+                        dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt"))
+#> Simple feature collection with 23416 features and 11 fields
 #> Geometry type: POINT
 #> Dimension:     XY
-#> Bounding box:  xmin: 77510.36 ymin: 890570.3 xmax: 130366.4 ymax: 939087.3
+#> Bounding box:  xmin: 77475.72 ymin: 890567.9 xmax: 130333.3 ymax: 939134.7
 #> Projected CRS: NAD83 / Conus Albers
-#> # A tibble: 23,234 × 9
-#>    hy_id cs_id pt_id     Z lengthm relative_distance bf_width points_per_cs
-#>    <dbl> <int> <int> <int>   <dbl>             <dbl>    <dbl>         <dbl>
-#>  1   101     1     1  4396    362.               0       362.            13
-#>  2   101     1     2  4422    362.              30.1     362.            13
-#>  3   101     1     3  4318    362.              60.3     362.            13
-#>  4   101     1     4  4209    362.              90.4     362.            13
-#>  5   101     1     5  4086    362.             121.      362.            13
-#>  6   101     1     6  3754    362.             151.      362.            13
-#>  7   101     1     7  3717    362.             181.      362.            13
-#>  8   101     1     8  3760    362.             211.      362.            13
-#>  9   101     1     9  4268    362.             241.      362.            13
-#> 10   101     1    10  4427    362.             271.      362.            13
-#> # … with 23,224 more rows, and 1 more variable: geometry <POINT [m]>
+#> # A tibble: 23,416 × 12
+#>    hy_id cs_id pt_id     Z lengthm relative_distance ds_distance cs_measure
+#>    <dbl> <int> <int> <dbl>   <dbl>             <dbl>       <dbl>      <dbl>
+#>  1   101     1     1  42.2    362.               0          367.       11.2
+#>  2   101     1     2  42.1    362.              32.9        367.       11.2
+#>  3   101     1     3  42.5    362.              65.7        367.       11.2
+#>  4   101     1     4  42.4    362.              98.6        367.       11.2
+#>  5   101     1     5  40.2    362.             131.         367.       11.2
+#>  6   101     1     6  40.2    362.             164.         367.       11.2
+#>  7   101     1     7  36.2    362.             197.         367.       11.2
+#>  8   101     1     8  39.9    362.             230.         367.       11.2
+#>  9   101     1     9  39.7    362.             263.         367.       11.2
+#> 10   101     1    10  40.5    362.             296.         367.       11.2
+#> # ℹ 23,406 more rows
+#> # ℹ 4 more variables: cs_widths <dbl>, sinuosity <dbl>, points_per_cs <dbl>,
+#> #   geometry <POINT [m]>
 ```
 
 ## Classify Cross section points
 
 ``` r
 (classified_pts = classify_points(pts))
-#> Simple feature collection with 23234 features and 7 fields
+#> Simple feature collection with 23416 features and 7 fields
 #> Geometry type: POINT
 #> Dimension:     XY
-#> Bounding box:  xmin: 77510.36 ymin: 890570.3 xmax: 130366.4 ymax: 939087.3
+#> Bounding box:  xmin: 77475.72 ymin: 890567.9 xmax: 130333.3 ymax: 939134.7
 #> Projected CRS: NAD83 / Conus Albers
-#> # A tibble: 23,234 × 8
-#>    hy_id cs_id pt_id     Z relative_di…¹ bf_wi…² class            geometry
-#>    <dbl> <int> <int> <dbl>         <dbl>   <dbl> <chr>         <POINT [m]>
-#>  1   101     1     1 4396            0      362. left… (128437.2 892253.4)
-#>  2   101     1     2 4379.          30.1    362. left… (128458.6 892271.2)
-#>  3   101     1     3 4316.          60.3    362. left…   (128480 892288.9)
-#>  4   101     1     4 4204.          90.4    362. left… (128501.4 892306.6)
-#>  5   101     1     5 4016.         121.     362. chan… (128522.9 892324.3)
-#>  6   101     1     6 3852.         151.     362. chan… (128544.3 892342.1)
-#>  7   101     1     7 3717          181.     362. bott… (128565.7 892359.8)
-#>  8   101     1     8 3915          211.     362. chan… (128587.2 892377.5)
-#>  9   101     1     9 4152.         241.     362. chan… (128608.6 892395.3)
-#> 10   101     1    10 4376          271.     362. chan…     (128630 892413)
-#> # … with 23,224 more rows, and abbreviated variable names ¹​relative_distance,
-#> #   ²​bf_width
+#> # A tibble: 23,416 × 8
+#>    hy_id cs_id pt_id     Z relative_distance cs_widths class     
+#>    <dbl> <int> <int> <dbl>             <dbl>     <dbl> <chr>     
+#>  1   101     1     1  42.2               0        362. left_bank 
+#>  2   101     1     2  42.2              32.9      362. left_bank 
+#>  3   101     1     3  42.3              65.7      362. left_bank 
+#>  4   101     1     4  41.7              98.6      362. channel   
+#>  5   101     1     5  40.9             131.       362. channel   
+#>  6   101     1     6  38.9             164.       362. channel   
+#>  7   101     1     7  36.2             197.       362. bottom    
+#>  8   101     1     8  38.6             230.       362. channel   
+#>  9   101     1     9  40.0             263.       362. right_bank
+#> 10   101     1    10  41.2             296.       362. right_bank
+#> # ℹ 23,406 more rows
+#> # ℹ 1 more variable: geometry <POINT [m]>
 ```
 
 ## Explore!
@@ -160,6 +167,7 @@ plot(transects$geometry)
 library(ggplot2)
 
 ggplot(data = filter(classified_pts, hy_id == 101) ) + 
+  geom_line(aes(x = relative_distance, y = Z)) + 
   geom_point(aes(x = relative_distance, y = Z, color = class)) + 
   facet_wrap(~cs_id, scales = "free") + 
   theme_minimal() + 
@@ -168,17 +176,22 @@ ggplot(data = filter(classified_pts, hy_id == 101) ) +
 
 <img src="man/figures/README-unnamed-chunk-5-1.png" width="100%" />
 
-## Time to get 2250 transects and 23234 classified points …
+## Time to get 2275 transects and 23416 classified points …
 
 ``` r
 system.time({
   cs = net %>% 
   cut_cross_sections(id = "comid", 
-                     bf_widths = pmax(50, net$bf_width * 7),
+                     cs_widths = pmax(50, net$bf_width * 7),
                      num = 10) %>% 
-  cross_section_pts(dem = '/Volumes/Transcend/ngen/DEM-products/dem.vrt') %>% 
+  cross_section_pts(dem = '/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt') %>% 
   classify_points()
 })
+#> Smoothing
+#> Densifying
+#> Cutting
+#> Formating
+#> Warning: st_centroid assumes attributes are constant over geometries
 #>    user  system elapsed 
-#>  10.455   0.235  10.985
+#>  19.885   0.513  23.549
 ```

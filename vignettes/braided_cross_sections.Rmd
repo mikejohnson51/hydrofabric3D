@@ -8,19 +8,21 @@ vignette: >
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
 ## Introduction
-This vignette breaks down the methods used within `terrainSliceR` to cut cross sections across complex braided river networks. The following methods extend from the cross section cutting algorithms explained [here](../articles/cross_section_generator.html). 
+
+This vignette breaks down the methods used within `hydrofabric3D` to cut cross sections across complex braided river networks. The following methods extend from the cross section cutting algorithms explained [here](../articles/cross_section_generator.html). 
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  out.width = "100%"
 )
 
 library(bsplus)
 
 thm <- ggplot2::theme_void() 
-# "NOAA OWP Braided Cross Section Reparation"
 ```
 
 ```{r, eval = T, echo=F}
@@ -152,7 +154,7 @@ make_braids_gif <- function(network,
 ```
 
 ```{r setup, warning=F, message = F}
-library(terrainSliceR)
+library(hydrofabric3D)
 library(dplyr)
 library(sf)
 library(ggplot2)
@@ -162,6 +164,7 @@ library(nhdplusTools)
 We begin with a testing set of braided flowlines located in Baton Rouge, LA. This area has a complex set of braids and highlights the need for rectifying cross section linestrings to better reflect the natural world. 
 
 Starting from the COMID 18717056, we traverse upstream 30km and get a set of 303 flowlines.
+
 ```{r, eval = TRUE, echo= TRUE, warning=F, message = F}
 # Heavily braided network in Baton Rouge, LA
 net <- nhdplusTools::navigate_network(start = 18717056, mode = "UT",  distance_km = 30)
@@ -209,16 +212,17 @@ ggplot2::ggsave(
 )
 ```
 
-<center>
-![NHDPlus flowlines network](../man/figures/network_plot.png)
-</center>
+
+```{r, echo = F}
+knitr::include_graphics('../man/figures/network_plot.png')
+```
 
 <br>
 
 Now let's add cross sections using the algorithm described [here](cross_section_generator.Rmd)
 
 ```{r, eval = T, echo = T, message=FALSE}
-transects <- terrainSliceR::cut_cross_sections(
+transects <- hydrofabric3D::cut_cross_sections(
   net        = net,
   id         = "comid",
   cs_widths  = 200,
@@ -249,9 +253,10 @@ ggplot2::ggsave(
 )
 ```
 
-<center>
-![Set of all cross section lines (red) generated for the network](../man/figures/all_transects_plot.png)
-</center>
+
+```{r, echo = F}
+knitr::include_graphics('../man/figures/all_transects_plot.png')
+```
 
 <br>
 
@@ -266,7 +271,7 @@ To accomplish this, we made use of the flowline `from/tonode` topology relations
 The `find_braids()` function can be used to identify and assign a `braid_id` to each flowline in a NHDPlus network dataset. The input network data must include a `comid`, `fromnode`, `tonode`, and `divergence` attributes. 
 ```{r, eval = T, echo = T}
 # add braid_id column to network
-braids <- terrainSliceR::find_braids(
+braids <- hydrofabric3D::find_braids(
     network     = net, 
     add         = TRUE,
     nested      = TRUE
@@ -279,7 +284,7 @@ length(unique(braids$braid_id))
 ```
 
 ```{r, echo = FALSE, eval = FALSE}
-plot_braids <- terrainSliceR::find_braids(
+plot_braids <- hydrofabric3D::find_braids(
               network = net,
               nested  = FALSE,
               add     =  TRUE
@@ -304,6 +309,8 @@ make_braids_gif(
 ![Animation showing braid IDs](../man/figures/braid_vignette_gif.gif)
 </center>
 
+
+
 <br>
 
 Now we have a method for identifying *which* flowlines are part of a braid and unique ID for each of the braids in the network. Next, we will find the cross section lines that are on these braided flowlines, and work on extending them to encompass the entire width of the river by crossing across the rest of the braided flowlines. 
@@ -326,7 +333,7 @@ braids <- find_connected_components(braids)
 ```{r, eval = T, echo = F, message = F}
 ##### Code to threshold out largest braids
 
-# terrainSliceR:::braid_lengths(braids)$braid_length
+# hydrofabric3D:::braid_lengths(braids)$braid_length
 # tmp = braid_lengths(braids, multibraid = TRUE)
 # braid_lengths(braids, multibraid = F)$braid_length
 
@@ -336,7 +343,7 @@ braid_threshold = 80000
 # braid_threshold = 40000
 
 # # # remove braids that have a total flowline length greater than braid_threshold
-braids <- terrainSliceR:::braid_thresholder(
+braids <- hydrofabric3D:::braid_thresholder(
   x         = braids,
   originals = not_braids,
   threshold = braid_threshold,
@@ -394,11 +401,10 @@ ggplot2::ggsave(
 )
 ```
 
-<center>
-![Set of all cross section lines (red) on all braided flowlines in the network](../man/figures/braid_xs_plot.png)
-</center>
 
-<br>
+```{r, echo = F}
+knitr::include_graphics('../man/figures/braid_xs_plot.png')
+```
 
 We can now iterate over all of these cross sections and determine which cross sections should be extended, in what order, and by what distance.
 
@@ -425,7 +431,7 @@ braids_of_interest
 comp_id <- braids$component_id[braids$comid == com]
 
 # other geometries to cut across with transects
-others <- terrainSliceR:::get_geoms_to_cut(
+others <- hydrofabric3D:::get_geoms_to_cut(
             x            = braids,
             id           = com,
             braid_id     = braids_of_interest,
@@ -482,11 +488,11 @@ ggplot2::ggsave(
 
 ```
 
-<center>
-![The red flowlines are the set of all neighboring braided flowlines of the "origin" COMID (blue). transect extension algorithm takes transect linestrings on the blue COMID and tries to extend these cross sections to cut across all of the neighboring flowlines (red)](../man/figures/geoms_to_cut_plot.png)
-</center>
+The red flowlines are the set of all neighboring braided flowlines of the "origin" COMID (blue). transect extension algorithm takes transect linestrings on the blue COMID and tries to extend these cross sections to cut across all of the neighboring flowlines (red)
 
-<br>
+```{r, echo = FALSE}
+knitr::include_graphics('../man/figures/geoms_to_cut_plot.png')
+```
 
 ```{r, eval = F, echo = F}
 make_geoms_to_cut_gif <- function(
@@ -574,7 +580,7 @@ make_geoms_to_cut_gif <- function(
     comp_id <- braid_flowlines$component_id[braid_flowlines$comid == com]
     
     # other geometries to cut across with transects
-    others <- terrainSliceR:::get_geoms_to_cut(
+    others <- hydrofabric3D:::get_geoms_to_cut(
                 x            = braid_flowlines,
                 id           = com,
                 braid_id     = braids_of_interest,
@@ -704,11 +710,10 @@ make_geoms_to_cut_gif(
 
 To see this for all braided flowlines in the network, the animation below walks through each COMID of the braided flowlines (blue), and shows which of the remaining other braided flowlines are eligible to be cut across from the any of the cross sections lines on the "origin" COMID (blue).
 
-<center>
-![Animation highlight which flowlines to cut across](../man/figures/geoms_to_cut_gif.gif)
-</center>
 
-<br>
+```{r, echo = FALSE}
+knitr::include_graphics('../man/figures/geoms_to_cut_gif.gif')
+```
 
 If we look at an individual COMID in a given braid, and we decide we want to extend our cross sections for that COMID outward to try and cut across other flowlines within the same braided system, we now have a method for selecting which **other** COMIDs are candidates for the extended line to cut across. 
 
@@ -1140,7 +1145,7 @@ for(i in 1:nrow(tmp_xs)) {
   comp_id <- braids$component_id[braids$comid == com]
   
   # other geometries to cut across with transects
-  others <- terrainSliceR:::get_geoms_to_cut(
+  others <- hydrofabric3D:::get_geoms_to_cut(
               x            = braids,
               id           = com,
               braid_id     = braids_of_interest,
@@ -1151,7 +1156,7 @@ for(i in 1:nrow(tmp_xs)) {
             )
   
     # geoms_to_cut  = others
-  extend_maps <- terrainSliceR:::geos_augment_transect(
+  extend_maps <- hydrofabric3D:::geos_augment_transect(
       cross_section = tmp_xs[i, ],
       geoms_to_cut  = geos::as_geos_geometry(others$geometry),
       geom_ids      = others$comid,
@@ -1206,9 +1211,11 @@ ggplot2::ggsave(
 
 In order to get the best set of final transect lines, we prioritize the "inner" transect lines and work on extending these ones first. 
 
-<center>
-![This plot highlights how cross sections are seperated into groups such that some cross sections (red) are in line to be extended first, and the other group (blue) being extended after the first set of cross sections is extended and processed](../man/figures/pre_extension_order_plot.png)
-</center>
+This plot highlights how cross sections are separated into groups such that some cross sections (red) are in line to be extended first, and the other group (blue) being extended after the first set of cross sections is extended and processed
+
+```{r, echo = FALSE}
+knitr::include_graphics('../man/figures/pre_extension_order_plot.png')
+```
 
 <br>
 
@@ -1253,7 +1260,7 @@ for(i in 1:nrow(xs)) {
     comp_id <- braids$component_id[braids$comid == com]
   
     # other geometries to cut across with transects
-    others <- terrainSliceR:::get_geoms_to_cut(
+    others <- hydrofabric3D:::get_geoms_to_cut(
                 x            = braids,
                 id           = com,
                 braid_id     = bid,
@@ -1264,7 +1271,7 @@ for(i in 1:nrow(xs)) {
     # aug_time1 <- Sys.time()
 
     # geoms_to_cut  = others
-    extend_maps <- terrainSliceR:::geos_augment_transect(
+    extend_maps <- hydrofabric3D:::geos_augment_transect(
       cross_section = xs[i, ],
       geoms_to_cut  = geos::as_geos_geometry(others$geometry),
       geom_ids      = others$comid,
@@ -1280,7 +1287,7 @@ for(i in 1:nrow(xs)) {
     if(position == "inner") {
       
       # extend line out by total distance key values in head and tail maps
-      res_geom <- terrainSliceR:::geos_extend_transects(
+      res_geom <- hydrofabric3D:::geos_extend_transects(
         starter_line   = geos::as_geos_geometry(xs$geometry[i]),
         head_distance  = extend_maps$head$get("total_distance"),
         tail_distance  = extend_maps$tail$get("total_distance"),
@@ -1363,7 +1370,7 @@ process_inner_xs <- function(xs, b) {
     comp_id <- b$component_id[b$comid == com]
   
     # other geometries to cut across with transects
-    others <- terrainSliceR:::get_geoms_to_cut(
+    others <- hydrofabric3D:::get_geoms_to_cut(
                 x            = b,
                 id           = com,
                 braid_id     = bid,
@@ -1374,7 +1381,7 @@ process_inner_xs <- function(xs, b) {
     # aug_time1 <- Sys.time()
 
     # geoms_to_cut  = others
-    extend_maps <- terrainSliceR:::geos_augment_transect(
+    extend_maps <- hydrofabric3D:::geos_augment_transect(
       cross_section = xs[i, ],
       geoms_to_cut  = geos::as_geos_geometry(others$geometry),
       geom_ids      = others$comid,
@@ -1390,7 +1397,7 @@ process_inner_xs <- function(xs, b) {
     if(position == "inner") {
       
       # extend line out by total distance key values in head and tail maps
-      res_geom <- terrainSliceR:::geos_extend_transects(
+      res_geom <- hydrofabric3D:::geos_extend_transects(
         starter_line   = geos::as_geos_geometry(xs$geometry[i]),
         head_distance  = extend_maps$head$get("total_distance"),
         tail_distance  = extend_maps$tail$get("total_distance"),
@@ -1990,7 +1997,7 @@ process_xs <- function(xs, b, nb) {
     comp_id <- b$component_id[b$comid == com]
   
     # other geometries to cut across with transects
-    others <- terrainSliceR:::get_geoms_to_cut(
+    others <- hydrofabric3D:::get_geoms_to_cut(
                 x            = b,
                 id           = com,
                 braid_id     = bid,
@@ -2001,7 +2008,7 @@ process_xs <- function(xs, b, nb) {
     # aug_time1 <- Sys.time()
 
     # geoms_to_cut  = others
-    extend_maps <- terrainSliceR:::geos_augment_transect(
+    extend_maps <- hydrofabric3D:::geos_augment_transect(
       cross_section = xs[i, ],
       geoms_to_cut  = geos::as_geos_geometry(others$geometry),
       geom_ids      = others$comid,
@@ -2017,7 +2024,7 @@ process_xs <- function(xs, b, nb) {
     if(position == "inner") {
       
       # extend line out by total distance key values in head and tail maps
-      res_geom <- terrainSliceR:::geos_extend_transects(
+      res_geom <- hydrofabric3D:::geos_extend_transects(
         starter_line   = geos::as_geos_geometry(xs$geometry[i]),
         head_distance  = extend_maps$head$get("total_distance"),
         tail_distance  = extend_maps$tail$get("total_distance"),
@@ -2154,7 +2161,7 @@ process_other_xs <- function(xs, b, nb) {
     comp_id <- b$component_id[b$comid == com]
   
     # other geometries to cut across with transects
-    others <- terrainSliceR:::get_geoms_to_cut(
+    others <- hydrofabric3D:::get_geoms_to_cut(
                 x            = b,
                 id           = com,
                 braid_id     = bid,
@@ -2165,7 +2172,7 @@ process_other_xs <- function(xs, b, nb) {
     # aug_time1 <- Sys.time()
 
     # geoms_to_cut  = others
-    extend_maps <- terrainSliceR:::geos_augment_transect(
+    extend_maps <- hydrofabric3D:::geos_augment_transect(
       cross_section = xs[i, ],
       geoms_to_cut  = geos::as_geos_geometry(others$geometry),
       geom_ids      = others$comid,
@@ -2181,7 +2188,7 @@ process_other_xs <- function(xs, b, nb) {
     if(position == "inner") {
       
       # extend line out by total distance key values in head and tail maps
-      res_geom <- terrainSliceR:::geos_extend_transects(
+      res_geom <- hydrofabric3D:::geos_extend_transects(
         starter_line   = geos::as_geos_geometry(xs$geometry[i]),
         head_distance  = extend_maps$head$get("total_distance"),
         tail_distance  = extend_maps$tail$get("total_distance"),
@@ -2342,7 +2349,7 @@ process_other_xs <- function(xs, b, nb) {
       }
       
       # extend line other_xs[i, ] line out by head_distance/tail_distance and provide the extra_distance of cs_width/2
-      res_geom <- terrainSliceR:::geos_extend_transects(
+      res_geom <- hydrofabric3D:::geos_extend_transects(
         starter_line   = geos::as_geos_geometry(other_xs$geometry[i]),
         head_distance  = other_xs$head_distance[i],
         tail_distance  = other_xs$tail_distance[i],
@@ -2439,7 +2446,7 @@ ggplot2::ggsave(
 Now that we have gone through and fixed cross section on braided flowlines, we can merge our updated/extended cross section linestrings *back* with the rest of our original set of cross section lines
 
 ```{r, eval = F, echo = F, message=FALSE}
-transects_final <- terrainSliceR::cut_cross_sections(
+transects_final <- hydrofabric3D::cut_cross_sections(
   net        = net,
   id         = "comid",
   cs_widths  = 200,
@@ -2524,6 +2531,7 @@ ggplot2::ggsave(
 )
 ```
 
-<center>
-![](../man/figures/comparing_transects_plot.png)
-</center>
+
+```{r, echo = FALSE}
+knitr::include_graphics('../man/figures/comparing_transects_plot.png')
+```
