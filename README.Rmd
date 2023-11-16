@@ -8,7 +8,7 @@ options(width=100)
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = 'man/figures/'
+  fig.path = 'man/figures/',
   out.width = "100%",
   #warning = FALSE,
   message = TRUE
@@ -20,16 +20,6 @@ knitr::opts_chunk$set(
 <!-- badges: start -->
 [![R CMD Check](https://github.com/mikejohnson51/hydrofabric3D/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/hydrofabric3D/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
-
-- [Repo](#Repository)
-  * [Installation](#Installation)
-- [Overview](#Overview)
-- [Data Model](#Data-Model)
-- [Cross Sections](#Cross-Section )
-- [Getting involved](#Getting-involved)
-- [Open source licensing info](#Open-source-licensing-info)
-
-## Repository
 
 The goal of hydrofabric3D is to generate DEM-based cross sections for hydrographic networks.
 
@@ -52,7 +42,9 @@ This project develops a high resolution river channel/corridor data product base
 
 Schematic representation of the data model structure and how it is integrated into different products is shown bellow.
 
-![DataModel1](man/figures/data_model.png)
+```{r, echo = FALSE}
+knitr::include_graphics('man/figures/data_model.png')
+```
 
 This data model  data is provided through an R package that cuts cross-sections along rivers using 10m DEM and is informed with satellite, other products, and machine learning estimates of channel geometry (see [channel-shape-ML repo](https://github.com/NOAA-OWP/3d-hydrofabric/)).
 
@@ -64,7 +56,9 @@ The structure of the data model is based on the reference Hydrofabric Data Model
 * Index knows and synthetic cross sections to a reference network
 * Can be supplemented by HEC RAS, eHydro, Lidar
 
-![DataModel2](man/figures/data_model2.png)
+```{r, echo = FALSE}
+knitr::include_graphics('man/figures/data_model2.png')
+```
 
 visit this [website](https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html) for more updates.
 
@@ -80,37 +74,31 @@ An example of how these cross-sections look is shown below and a full descriptio
 
 OWP requires cross sections across the complete CONUS network to support hydrologic modeling and requisite flood mapping. We have automated this process and dealt with issues such as braided systems.
 
-![cs2](man/figures/cs2.png)
+```{r, echo = FALSE}
+knitr::include_graphics('man/figures/cs2.png')
+```
+
 
 Then we define and classify the cross section into left, right banks and in-channel as shown below. The problem is the flat line on the bottom of these plots, which represents the water level when this data was collected and nothing about the conditions at the time of collection (flood, dry year, etc.)
 
-<div style="display: flex; justify-content: center;">
-  <img src="man/figures/cs3.png" width="50%">
-</div>
-.
+```{r, echo = FALSE}
+knitr::include_graphics('man/figures/cs3.png')
+```
 
 More details about the proposed data model that follows Hyfeatures referencing and how tabular and spatial data are represented can be found [here](https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html)
 
 ## Getting involved
 
-NOAA's National Water Center welcomes anyone to contribute to the Hydrofabric3D  repository to enhance OWP's FIM and NextGen capabilities. List of contact information is outlined below:
+List of contact information is outlined below:
 
-J. Michael Johnson (jmichael@noaa.gov) for questions regarding hydrofabrics.
-
-Dami Eyelade (dami.eyelade@noaa.gov) for questions regarding satellite derived products.
+J. Michael Johnson (mike.johnson@noaa.gov) for questions regarding hydrofabrics.
 
 Angus Watters (angus.watters@noaa.gov) for questions regarding cross sections.
 
+Dami Eyelade (dami.eyelade@noaa.gov) for questions regarding satellite derived products.
+
 Arash Modaresi Rad (arash.rad@noaa.gov) for questions regarding machine learning models.
 
-
-----
-
-## Open source licensing info
-1. [TERMS](TERMS.md)
-2. [LICENSE](LICENSE)
-
-----
 
 
 
