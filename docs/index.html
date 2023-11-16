@@ -11,7 +11,7 @@
 <link href="deps/bootstrap-5.2.2/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.2.2/bootstrap.bundle.min.js"></script><!-- Font Awesome icons --><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/all.min.css" integrity="sha256-mmgLkCYLUQbXn0B1SRqzHar6dCnv9oZFPEC1g1cwlkk=" crossorigin="anonymous">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.12.1/css/v4-shims.min.css" integrity="sha256-wZjR52fzng1pJHwx4aV2AO3yyTOXrcDW7jBpJtTwVxw=" crossorigin="anonymous">
-<!-- bootstrap-toc --><script src="https://cdn.rawgit.com/afeld/bootstrap-toc/v1.0.1/dist/bootstrap-toc.min.js"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="3D Hydrofabric Generation">
+<!-- bootstrap-toc --><script src="https://cdn.jsdelivr.net/gh/afeld/bootstrap-toc@v1.0.1/dist/bootstrap-toc.min.js" integrity="sha256-4veVQbu7//Lk5TSmc7YV48MxtMy98e26cf5MrgZYnwo=" crossorigin="anonymous"></script><!-- headroom.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/headroom.min.js" integrity="sha256-AsUX4SJE1+yuDu5+mAVzJbuYNPHj/WroHuZ8Ir/CkE0=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/headroom/0.11.0/jQuery.headroom.min.js" integrity="sha256-ZX/yNShbjqsohH1k95liqY9Gd8uOiE1S4vZc+9KQ1K4=" crossorigin="anonymous"></script><!-- clipboard.js --><script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.6/clipboard.min.js" integrity="sha256-inc5kl9MA1hkeYUt+EC3BhlIgyp/2jDIyBLS6k3UxPI=" crossorigin="anonymous"></script><!-- search --><script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/6.4.6/fuse.js" integrity="sha512-zv6Ywkjyktsohkbp9bb45V6tEMoWhzFzXis+LrMehmJZZSys19Yxf1dopHx7WzIKxr5tK2dVcYmaCk2uqdjF4A==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/autocomplete.js/0.38.0/autocomplete.jquery.min.js" integrity="sha512-GU9ayf+66Xx2TmpxqJpliWbT5PiGYxpaG8rfnBEk1LL8l1KGkRShhngwdXK1UgqhAzWpZHSiYPc09/NwDQIGyg==" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mark.js/8.11.1/mark.min.js" integrity="sha512-5CYOlHXGh6QpOFA/TeTylKLWfB3ftPsde7AnmhuitiTX4K5SqCLBeKro6sPS8ilsz1Q4NRx3v8Ko2IBiszzdww==" crossorigin="anonymous"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="3D Hydrofabric Generation">
 <meta property="og:description" content="Cuts terrain based cross sections for a river network.">
 <!-- mathjax --><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/MathJax.js" integrity="sha256-nvJJv9wWKEm88qvoQl9ekL2J+k/RWIsaSScxxlsrv8k=" crossorigin="anonymous"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/config/TeX-AMS-MML_HTMLorMML.js" integrity="sha256-84DKXVJXs0/F8OTMzX4UR909+jtl4G7SPypPavF+GfA=" crossorigin="anonymous"></script><!--[if lt IE 9]>
 <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
@@ -58,14 +58,95 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>The goal of hydrofabric3D is to generate DEM-based cross sections for hydrographic networks.</p>
+<ul>
+<li>
+<a href="#Repository">Repo</a>
+<ul>
+<li><a href="#Installation">Installation</a></li>
+</ul>
+</li>
+<li><a href="#Overview">Overview</a></li>
+<li><a href="#Data-Model">Data Model</a></li>
+<li><a href="#Cross-Section">Cross Sections</a></li>
+<li><a href="#Getting-involved">Getting involved</a></li>
+<li><a href="#Open-source-licensing-info">Open source licensing info</a></li>
+</ul>
 <div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+<h2 id="repository">Repository<a class="anchor" aria-label="anchor" href="#repository"></a>
 </h2>
+<p>The goal of hydrofabric3D is to generate DEM-based cross sections for hydrographic networks.</p>
+<div class="section level3">
+<h3 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
+</h3>
 <p>You can install the development version of hydrofabric3D from <a href="https://github.com/" class="external-link">GitHub</a> with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("devtools")</span></span>
 <span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://remotes.r-lib.org/reference/install_github.html" class="external-link">install_github</a></span><span class="op">(</span><span class="st">"mikejohnson51/hydrofabric3D"</span><span class="op">)</span></span></code></pre></div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
+<p>This project develops a high resolution river channel/corridor data product based of <a href="https://noaa-owp.github.io/hydrofabric/articles/02-design-deep-dive.html" class="external-link">Reference Hydrofabric</a> that support the modeling needs of NOAA and USGS. It is comprised of multiple modules that together form a clear picture of hydrofabric3D data model. This includes:</p>
+<ul>
+<li>Development of an automated tools to generate cross sections from a DEM</li>
+<li>Develop machine learning algorithms to predict river channel depth, width, and shape using ground observation 3.</li>
+<li>Estimate channel width using multi-source data and methods (e.g., remote sensing)</li>
+</ul>
+<p>Schematic representation of the data model structure and how it is integrated into different products is shown bellow.</p>
+<figure><img src="assets/images/data_model.png" alt="DataModel1"><figcaption aria-hidden="true">
+DataModel1
+</figcaption></figure><p>This data model data is provided through an R package that cuts cross-sections along rivers using 10m DEM and is informed with satellite, other products, and machine learning estimates of channel geometry (see <a href="https://github.com/NOAA-OWP/3d-hydrofabric/" class="external-link">channel-shape-ML repo</a>).</p>
+</div>
+<div class="section level2">
+<h2 id="data-model">Data Model<a class="anchor" aria-label="anchor" href="#data-model"></a>
+</h2>
+<p>The structure of the data model is based on the reference Hydrofabric Data Model and</p>
+<ul>
+<li>Has the ability to represent a cross section transect and elevation</li>
+<li>Index knows and synthetic cross sections to a reference network</li>
+<li>Can be supplemented by HEC RAS, eHydro, Lidar</li>
+</ul>
+<figure><img src="assets/images/data_model2.png" alt="DataModel2"><figcaption aria-hidden="true">
+DataModel2
+</figcaption></figure><p>visit this <a href="https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html" class="external-link">website</a> for more updates.</p>
+</div>
+<div class="section level2">
+<h2 id="cross-section">Cross Section<a class="anchor" aria-label="anchor" href="#cross-section"></a>
+</h2>
+<p>The cross-section tool purpose is to generate DEM-based cross-sections (flood plains) for hydrographic networks and contains the estimates of bankfull channel cross section geometry and wherever there is HEC-RAS or Lidar data it incorporates them as well.</p>
+<p>An example of how these cross-sections look is shown below and a full description is available at <a href="https://github.com/mikejohnson51/terrain_sliceR" class="external-link">terrain_sliceR</a></p>
+<div style="display: flex; justify-content: center;">
+<p><img src="assets/images/cross-sec1.png" width="50%"></p>
+</div>
+<p>OWP requires cross sections across the complete CONUS network to support hydrologic modeling and requisite flood mapping. We have automated this process and dealt with issues such as braided systems.</p>
+<figure><img src="assets/images/cs2.png" alt="cs2"><figcaption aria-hidden="true">
+cs2
+</figcaption></figure><p>Then we define and classify the cross section into left, right banks and in-channel as shown below. The problem is the flat line on the bottom of these plots, which represents the water level when this data was collected and nothing about the conditions at the time of collection (flood, dry year, etc.)</p>
+<div style="display: flex; justify-content: center;">
+<p><img src="assets/images/cs3.png" width="50%"></p>
+</div>
+<p>.</p>
+<p>More details about the proposed data model that follows Hyfeatures referencing and how tabular and spatial data are represented can be found <a href="https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html" class="external-link">here</a></p>
+</div>
+<div class="section level2">
+<h2 id="getting-involved">Getting involved<a class="anchor" aria-label="anchor" href="#getting-involved"></a>
+</h2>
+<p>NOAA’s National Water Center welcomes anyone to contribute to the Hydrofabric3D repository to enhance OWP’s FIM and NextGen capabilities. List of contact information is outlined below:</p>
+<p>J. Michael Johnson (<a href="mailto:jmichael@noaa.gov" class="email">jmichael@noaa.gov</a>) for questions regarding hydrofabrics.</p>
+<p>Dami Eyelade (<a href="mailto:dami.eyelade@noaa.gov" class="email">dami.eyelade@noaa.gov</a>) for questions regarding satellite derived products.</p>
+<p>Angus Watters (<a href="mailto:angus.watters@noaa.gov" class="email">angus.watters@noaa.gov</a>) for questions regarding cross sections.</p>
+<p>Arash Modaresi Rad (<a href="mailto:arash.rad@noaa.gov" class="email">arash.rad@noaa.gov</a>) for questions regarding machine learning models.</p>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="open-source-licensing-info">Open source licensing info<a class="anchor" aria-label="anchor" href="#open-source-licensing-info"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li><a href="TERMS.html">TERMS</a></li>
+<li><a href="LICENSE">LICENSE</a></li>
+</ol>
+<hr>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
@@ -105,7 +186,7 @@
 
 <div class="pkgdown-footer-right">
   <p></p>
-<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.6.</p>
+<p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.0.7.</p>
 </div>
 
     </footer>
