@@ -22,29 +22,6 @@ knitr::opts_chunk$set(
 library(hydrofabric3D)
 ```
 
----
-output: github_document
----
-
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
-```{r, include = FALSE}
-knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "#>",
-  fig.path = "man/figures/README-",
-  out.width = "100%",
-  warning = FALSE,
-  message = FALSE
-)
-```
-
-# hydrofabric3D
-
-<!-- badges: start -->
-[![R CMD Check](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml)
-<!-- badges: end -->
-
 The goal of hydrofabric3D is to generate DEM-based cross sections for hydrographic networks.
 
 ## Installation

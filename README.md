@@ -6,7 +6,7 @@
 <!-- badges: start -->
 
 [![R CMD
-Check](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml)
+Check](https://github.com/mikejohnson51/hydrofabric3D/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/hydrofabric3D/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 The goal of hydrofabric3D is to generate DEM-based cross sections for
@@ -21,3 +21,5 @@ You can install the development version of hydrofabric3D from
 # install.packages("devtools")
 devtools::install_github("mikejohnson51/hydrofabric3D")
 ```
+
+## …
