@@ -3,15 +3,15 @@ output: github_document
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
 ```{r, include = FALSE}
+options(width=100)
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "man/figures/README-",
+  fig.path = 'man/figures/'
   out.width = "100%",
-  warning = FALSE,
-  message = FALSE
+  #warning = FALSE,
+  message = TRUE
 )
 ```
 
@@ -52,7 +52,7 @@ This project develops a high resolution river channel/corridor data product base
 
 Schematic representation of the data model structure and how it is integrated into different products is shown bellow.
 
-![DataModel1](assets/images/data_model.png)
+![DataModel1](man/figures/data_model.png)
 
 This data model  data is provided through an R package that cuts cross-sections along rivers using 10m DEM and is informed with satellite, other products, and machine learning estimates of channel geometry (see [channel-shape-ML repo](https://github.com/NOAA-OWP/3d-hydrofabric/)).
 
@@ -64,7 +64,7 @@ The structure of the data model is based on the reference Hydrofabric Data Model
 * Index knows and synthetic cross sections to a reference network
 * Can be supplemented by HEC RAS, eHydro, Lidar
 
-![DataModel2](assets/images/data_model2.png)
+![DataModel2](man/figures/data_model2.png)
 
 visit this [website](https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html) for more updates.
 
@@ -75,17 +75,17 @@ The cross-section tool purpose is to generate DEM-based cross-sections (flood pl
 An example of how these cross-sections look is shown below and a full description is available at [terrain_sliceR](https://github.com/mikejohnson51/terrain_sliceR)
 
 <div style="display: flex; justify-content: center;">
-  <img src="assets/images/cross-sec1.png" width="50%">
+  <img src="man/figures/cross-sec1.png" width="50%">
 </div>
 
 OWP requires cross sections across the complete CONUS network to support hydrologic modeling and requisite flood mapping. We have automated this process and dealt with issues such as braided systems.
 
-![cs2](assets/images/cs2.png)
+![cs2](man/figures/cs2.png)
 
 Then we define and classify the cross section into left, right banks and in-channel as shown below. The problem is the flat line on the bottom of these plots, which represents the water level when this data was collected and nothing about the conditions at the time of collection (flood, dry year, etc.)
 
 <div style="display: flex; justify-content: center;">
-  <img src="assets/images/cs3.png" width="50%">
+  <img src="man/figures/cs3.png" width="50%">
 </div>
 .
 
