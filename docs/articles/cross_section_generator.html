@@ -224,7 +224,7 @@ series of cross sections for each edge in the line string:</p>
 <span>  <span class="va">all</span> <span class="op">=</span> <span class="fu">vec_c</span><span class="op">(</span><span class="op">!</span><span class="op">!</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/funprog.html" class="external-link">Map</a></span><span class="op">(</span><span class="va">cut_transect</span>, <span class="va">edges</span>, width <span class="op">=</span> <span class="va">linestring</span><span class="op">$</span><span class="va">cs_width</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   0.111   0.005   0.152</span></span></code></pre>
+<span><span class="co">##   0.049   0.001   0.050</span></span></code></pre>
 <p><img src="cross_section_generator_files/figure-html/unnamed-chunk-13-1.png" width="700"></p>
 <p>OK that’s pretty good! But there are a few things I don’t like. From
 here on out we must enforce the following two conditions:</p>
@@ -267,7 +267,7 @@ to implement some logic to enforce these:</p>
 <span> <span class="va">transects</span> <span class="op">=</span>  <span class="fu"><a href="../reference/get_transects.html">get_transects</a></span><span class="op">(</span><span class="va">edges</span>, <span class="va">line</span>, width <span class="op">=</span> <span class="fl">250</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   0.230   0.013   0.353</span></span></code></pre>
+<span><span class="co">##   0.082   0.001   0.082</span></span></code></pre>
 <p>Awesome! We gained just a fraction of time while ensuring a set of
 valid cross sections are generated.</p>
 <p><img src="cross_section_generator_files/figure-html/unnamed-chunk-15-1.png" width="700"></p>
@@ -341,7 +341,7 @@ intersect with cross section from a different flowline.</li>
 <span>                          num <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##  10.364   0.433  11.889</span></span></code></pre>
+<span><span class="co">##   6.206   0.057   6.330</span></span></code></pre>
 <p><img src="cross_section_generator_files/figure-html/unnamed-chunk-17-1.png" width="700"><img src="cross_section_generator_files/figure-html/unnamed-chunk-17-2.png" width="700"></p>
 </div>
 <div class="section level3">
@@ -370,7 +370,7 @@ support from the 3DEP team.</p>
 <span>      <span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <pre><code><span><span class="co">##    user  system elapsed </span></span>
-<span><span class="co">##   9.671   0.921  34.639</span></span></code></pre>
+<span><span class="co">##   7.186   0.579  30.226</span></span></code></pre>
 <p><img src="cross_section_generator_files/figure-html/unnamed-chunk-19-1.png" width="700"></p>
 </div>
 </div>
@@ -477,7 +477,7 @@ channel portion of the cross section to make it so:</p>
 
     <footer><div class="pkgdown-footer-left">
   <p></p>
-<p>Developed by Mike Johnson, Angus Watters.</p>
+<p>Developed by <a href="https://github.com/mikejohnson51" class="external-link">Mike Johnson</a>, <a href="https://github.com/anguswg-ucsb" class="external-link">Angus Watters</a>.</p>
 </div>
 
 <div class="pkgdown-footer-right">

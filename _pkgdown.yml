@@ -7,6 +7,21 @@ template:
   bootswatch: litera
 development:
   mode: auto
+authors:
+   Mike Johnson:
+     href: https://github.com/mikejohnson51
+   Angus Watters:
+     href: https://github.com/anguswg-ucsb
+   NOAA: 
+     html: "<img src='man/figures/noaa-logo.png' width='36' alt='NOAA OWP'/>"
+     href: "https://water.noaa.gov/about/nwm"
+   Lynker: 
+     html: "<img src='man/figures/lynker-logo.png' width='100' alt='Lynker'/>"
+     href: "https://lynker-intel.com/"
+   footer:
+    roles: [aut]
+   citation:
+    roles: [aut]
 articles:
 - title: Cross Section Generation
   desc: Quick Start

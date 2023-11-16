@@ -70,66 +70,34 @@
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>This project develops a high resolution river channel/corridor data product based of <a href="https://noaa-owp.github.io/hydrofabric/articles/02-design-deep-dive.html" class="external-link">Reference Hydrofabric</a> that support the modeling needs of NOAA and USGS. It is comprised of multiple modules that together form a clear picture of hydrofabric3D data model. This includes:</p>
+<p>This project provides the general tooling needed to create a flexible river channel data product based for the <a href="https://noaa-owp.github.io/hydrofabric/articles/02-design-deep-dive.html" class="external-link">Reference Hydrofabric</a> that supports the modeling needs of NOAA and USGS. It is comprised of multiple modules that together form a clear picture of hydrofabric:</p>
+<p><img src="reference/figures/data_model.png" width="100%"></p>
+<p>This package focuses on the fourth element, “multiscale cross sections” that can be integrated from a variety of sources:</p>
 <ul>
-<li>Development of an automated tools to generate cross sections from a DEM</li>
-<li>Develop machine learning algorithms to predict river channel depth, width, and shape using ground observation 3.</li>
-<li>Estimate channel width using multi-source data and methods (e.g., remote sensing)</li>
+<li>Development of an automated tools to generate cross sections from a DEM (this package)</li>
+<li>Access to machine learning models that predict river channel depth, width, and shape (see <a href="https://github.com/NOAA-OWP/3d-hydrofabric/" class="external-link">channel-shape-ML repo</a>
+</li>
+<li>Integration of channel cross sections from HEC-RAS (<a href="https://github.com/NOAA-OWP/RRASSLER" class="external-link">RRASSLER</a> and eHydro (<a href="https://github.com/JamesColl-NOAA/eHydRo" class="external-link">eHydRo</a>)</li>
+<li>Estimates of channel width from multi-source data (e.g. remote sensing and OpenStreetMaps)</li>
 </ul>
-<p>Schematic representation of the data model structure and how it is integrated into different products is shown bellow.</p>
-<figure><img src="reference/figures/data_model.png" alt="DataModel1"><figcaption aria-hidden="true">
-DataModel1
-</figcaption></figure><p>This data model data is provided through an R package that cuts cross-sections along rivers using 10m DEM and is informed with satellite, other products, and machine learning estimates of channel geometry (see <a href="https://github.com/NOAA-OWP/3d-hydrofabric/" class="external-link">channel-shape-ML repo</a>).</p>
+<p>The interoprability between these is empowered by a shared data model shown below that is in line with the hydrofabric data model at large.</p>
+<p><img src="reference/figures/data_model2.png" width="100%"></p>
+<p>visit this <a href="https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html" class="external-link">website</a> for more updates.</p>
 </div>
 <div class="section level2">
-<h2 id="data-model">Data Model<a class="anchor" aria-label="anchor" href="#data-model"></a>
+<h2 id="base-line-cross-section-generation">Base line cross section generation<a class="anchor" aria-label="anchor" href="#base-line-cross-section-generation"></a>
 </h2>
-<p>The structure of the data model is based on the reference Hydrofabric Data Model and</p>
-<ul>
-<li>Has the ability to represent a cross section transect and elevation</li>
-<li>Index knows and synthetic cross sections to a reference network</li>
-<li>Can be supplemented by HEC RAS, eHydro, Lidar</li>
-</ul>
-<figure><img src="reference/figures/data_model2.png" alt="DataModel2"><figcaption aria-hidden="true">
-DataModel2
-</figcaption></figure><p>visit this <a href="https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html" class="external-link">website</a> for more updates.</p>
-</div>
-<div class="section level2">
-<h2 id="cross-section">Cross Section<a class="anchor" aria-label="anchor" href="#cross-section"></a>
-</h2>
-<p>The cross-section tool purpose is to generate DEM-based cross-sections (flood plains) for hydrographic networks and contains the estimates of bankfull channel cross section geometry and wherever there is HEC-RAS or Lidar data it incorporates them as well.</p>
-<p>An example of how these cross-sections look is shown below and a full description is available at <a href="https://github.com/mikejohnson51/terrain_sliceR" class="external-link">terrain_sliceR</a></p>
-<div style="display: flex; justify-content: center;">
-<p><img src="reference/figures/cross-sec1.png" width="50%"></p>
-</div>
-<p>OWP requires cross sections across the complete CONUS network to support hydrologic modeling and requisite flood mapping. We have automated this process and dealt with issues such as braided systems.</p>
-<figure><img src="reference/figures/cs2.png" alt="cs2"><figcaption aria-hidden="true">
-cs2
-</figcaption></figure><p>Then we define and classify the cross section into left, right banks and in-channel as shown below. The problem is the flat line on the bottom of these plots, which represents the water level when this data was collected and nothing about the conditions at the time of collection (flood, dry year, etc.)</p>
-<div style="display: flex; justify-content: center;">
-<p><img src="reference/figures/cs3.png" width="50%"></p>
-</div>
-<p>.</p>
-<p>More details about the proposed data model that follows Hyfeatures referencing and how tabular and spatial data are represented can be found <a href="https://noaa-owp.github.io/hydrofabric/articles/cs_dm.html" class="external-link">here</a></p>
+<p>One of the core utilities of this package is to generate DEM-based cross-sections (flood plains) for hydrographic networks. An example of how these cross-sections look is shown below and a full description is available at <a href="https://mikejohnson51.github.io/hydrofabric3D/articles/basic_use.html" class="external-link">hydrofabric3D</a></p>
+<p><img src="reference/figures/cs2.png" width="100%"> In addition to generation, the package can classify the cross section into left, right banks and in-channel as shown below. The problem is the flat line on the bottom of these plots, which represents the water level when this data was collected and nothing about the conditions at the time of collection (flood, dry year, etc.)</p>
+<p><img src="reference/figures/cs3.png" width="100%"></p>
 </div>
 <div class="section level2">
 <h2 id="getting-involved">Getting involved<a class="anchor" aria-label="anchor" href="#getting-involved"></a>
 </h2>
-<p>NOAA’s National Water Center welcomes anyone to contribute to the Hydrofabric3D repository to enhance OWP’s FIM and NextGen capabilities. List of contact information is outlined below:</p>
-<p>J. Michael Johnson (<a href="mailto:jmichael@noaa.gov" class="email">jmichael@noaa.gov</a>) for questions regarding hydrofabrics.</p>
-<p>Dami Eyelade (<a href="mailto:dami.eyelade@noaa.gov" class="email">dami.eyelade@noaa.gov</a>) for questions regarding satellite derived products.</p>
-<p>Angus Watters (<a href="mailto:angus.watters@noaa.gov" class="email">angus.watters@noaa.gov</a>) for questions regarding cross sections.</p>
-<p>Arash Modaresi Rad (<a href="mailto:arash.rad@noaa.gov" class="email">arash.rad@noaa.gov</a>) for questions regarding machine learning models.</p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="open-source-licensing-info">Open source licensing info<a class="anchor" aria-label="anchor" href="#open-source-licensing-info"></a>
-</h2>
-<ol style="list-style-type: decimal">
-<li><a href="TERMS.html">TERMS</a></li>
-<li><a href="LICENSE">LICENSE</a></li>
-</ol>
-<hr>
+<p>This project is in active development and all contributions are welcome. To get started a list of contact information is outlined below loosely by area of focus. Feel free to reach out to any and all: Mike Johnson (<a href="mailto:mike.johnson@noaa.gov" class="email">mike.johnson@noaa.gov</a>) hydrofabric development and data models.</p>
+<p>Angus Watters (<a href="mailto:angus.watters@noaa.gov" class="email">angus.watters@noaa.gov</a>) cross section generation.</p>
+<p>Dami Eyelade (<a href="mailto:dami.eyelade@noaa.gov" class="email">dami.eyelade@noaa.gov</a>) integration of satellite derived products.</p>
+<p>Arash Modaresi Rad (<a href="mailto:arash.rad@noaa.gov" class="email">arash.rad@noaa.gov</a>) development of machine learning models.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
@@ -151,8 +119,15 @@ cs2
 <div class="developers">
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
-<li>Mike Johnson <br><small class="roles"> Author, maintainer </small>  </li>
-<li>Angus Watters <br><small class="roles"> Author </small>  </li>
+<li>
+<a href="https://github.com/mikejohnson51" class="external-link">Mike Johnson</a> <br><small class="roles"> Author, maintainer </small>  </li>
+<li>
+<a href="https://github.com/anguswg-ucsb" class="external-link">Angus Watters</a> <br><small class="roles"> Author </small>  </li>
+<li>
+<a href="https://water.noaa.gov/about/nwm" class="external-link"><img src="reference/figures/noaa-logo.png" width="36" alt="NOAA OWP"></a> <br><small class="roles"> Funder </small>  </li>
+<li>
+<a href="https://lynker-intel.com/" class="external-link"><img src="reference/figures/lynker-logo.png" width="100" alt="Lynker"></a> <br><small class="roles"> Funder </small>  </li>
+<li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>
 
@@ -164,7 +139,7 @@ cs2
 
     <footer><div class="pkgdown-footer-left">
   <p></p>
-<p>Developed by Mike Johnson, Angus Watters.</p>
+<p>Developed by <a href="https://github.com/mikejohnson51" class="external-link">Mike Johnson</a>, <a href="https://github.com/anguswg-ucsb" class="external-link">Angus Watters</a>.</p>
 </div>
 
 <div class="pkgdown-footer-right">

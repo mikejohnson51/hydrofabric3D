@@ -1,12 +1,11 @@
 Package: hydrofabric3D
 Title: hydrofabric3D
 Version: 0.0.1
-Authors@R: c(person("Mike", "Johnson", 
-             role = c("aut", "cre"), 
-             email = "mikecp11@gmail.com"),
-             person("Angus", "Watters",  
-             role = "aut", 
-             email = "anguswatters@gmail.com"))
+Authors@R: c(person("Mike", "Johnson", role = c("aut", "cre"), email = "mikecp11@gmail.com"),
+             person("Angus", "Watters",  role = "aut"),
+             person("Arash", "Modaresi",  role = "ctb"),
+             person("NOAA", role = "fnd"),
+             person("Lynker", role = "fnd"))
 Description: Cuts terrain based cross sections for a river network.
 License: MIT + file LICENSE
 Encoding: UTF-8
@@ -17,6 +16,7 @@ Imports:
   wk,
   terra,
   dplyr,
+  terra,
   tidyr,
   vctrs,
   sf,
