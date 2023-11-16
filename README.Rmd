@@ -32,70 +32,13 @@ You can install the development version of hydrofabric3D from [GitHub](https://g
 devtools::install_github("mikejohnson51/hydrofabric3D")
 ```
 
-# Example
-
-This is a basic example which shows you how to cut cross sections for a network.
-
-## Define Network
-
-```{r example}
-library(hydrofabric3D)
-library(dplyr)
-
-(net = linestring %>% 
-  mutate(bf_width = exp(0.700	 + 0.365* log(totdasqkm))))
 
 
-plot(net$geometry)
-```
 
-## Cut cross sections
 
-```{r}
-(transects = cut_cross_sections(net = net,
-                         id = "comid", 
-                         cs_widths = pmax(50, net$bf_width * 7),
-                         num = 10) )
 
-plot(transects$geometry)
-```
 
-## Define Cross section points
 
-```{r}
-(pts = cross_section_pts(transects, 
-                        dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt"))
-```
 
-## Classify Cross section points
 
-```{r}
-(classified_pts = classify_points(pts))
-```
-
-## Explore!
-
-```{r}
-library(ggplot2)
-
-ggplot(data = filter(classified_pts, hy_id == 101) ) + 
-  geom_line(aes(x = relative_distance, y = Z)) + 
-  geom_point(aes(x = relative_distance, y = Z, color = class)) + 
-  facet_wrap(~cs_id, scales = "free") + 
-  theme_minimal() + 
-  theme(legend.position = "bottom")
-```
-
-## Time to get `r nrow(transects)` transects and `r nrow(classified_pts)` classified points ...
-
-```{r}
-system.time({
-  cs = net %>% 
-  cut_cross_sections(id = "comid", 
-                     cs_widths = pmax(50, net$bf_width * 7),
-                     num = 10) %>% 
-  cross_section_pts(dem = '/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt') %>% 
-  classify_points()
-})
-```
 

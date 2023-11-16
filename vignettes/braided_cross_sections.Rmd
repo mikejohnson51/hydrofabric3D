@@ -1,13 +1,15 @@
 ---
 title: "NOAA OWP Braided Cross Section Reparation"
-author: "Angus Watters"
-date: "2023-10-12"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{braided_cross_sections}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+description: |
+  "Adding braided Cross Sections to Hydrofabric Datasets"
+author:
+  - name: "Angus Watters"
+    url: https://github.com/anguswg-ucsb
+    affiliation: Lynker, NOAA-Affiliate
+    affiliation_url: https://lynker.com
+output: distill::distill_article
 ---
+
 
 ## Introduction
 

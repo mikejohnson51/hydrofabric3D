@@ -1,13 +1,15 @@
 ---
 title: "NOAA OWP Cross Section Generator"
-author: "Mike Johnson"
-date: "2023-02-01"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{cross_section_generator}
-  %\VignetteEngine{knitr::rmarkdown}
-  %\VignetteEncoding{UTF-8}
+description: |
+  "Adding Cross Sections to Hydrofabric Datasets"
+author:
+  - name: "Mike Johnson"
+    url: https://github.com/mikejohnson51
+    affiliation: Lynker, NOAA-Affiliate
+    affiliation_url: https://lynker.com
+output: distill::distill_article
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,

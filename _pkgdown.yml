@@ -9,6 +9,8 @@ development:
   mode: auto
 articles:
 - title: Cross Section Generation
-  contents: 
+  desc: Quick Start
+  contents:
+  - basic_use
   - cross_section_generator
   - braided_cross_sections

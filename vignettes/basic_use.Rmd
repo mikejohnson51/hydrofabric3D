@@ -1,0 +1,125 @@
+---
+title: "Basic Use"
+description: |
+  "Adding Cross Sections to Hydrofabric Datasets"
+author:
+  - name: "Mike Johnson"
+    url: https://github.com/mikejohnson51
+    affiliation: Lynker, NOAA-Affiliate
+    affiliation_url: https://lynker.com
+output: distill::distill_article
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  out.width = "100%"
+)
+```
+
+```{r setup}
+library(hydrofabric3D)
+```
+
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  warning = FALSE,
+  message = FALSE
+)
+```
+
+# hydrofabric3D
+
+<!-- badges: start -->
+[![R CMD Check](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/terrain_sliceR/actions/workflows/R-CMD-check.yaml)
+<!-- badges: end -->
+
+The goal of hydrofabric3D is to generate DEM-based cross sections for hydrographic networks.
+
+## Installation
+
+You can install the development version of hydrofabric3D from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("mikejohnson51/hydrofabric3D")
+```
+
+# Example
+
+This is a basic example which shows you how to cut cross sections for a network.
+
+## Define Network
+
+```{r example}
+library(hydrofabric3D)
+library(dplyr)
+
+(net = linestring %>% 
+  mutate(bf_width = exp(0.700	 + 0.365* log(totdasqkm))))
+
+
+plot(net$geometry)
+```
+
+## Cut cross sections
+
+```{r}
+(transects = cut_cross_sections(net = net,
+                         id = "comid", 
+                         cs_widths = pmax(50, net$bf_width * 7),
+                         num = 10) )
+
+plot(transects$geometry)
+```
+
+## Define Cross section points
+
+```{r}
+(pts = cross_section_pts(transects, 
+                        dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt"))
+```
+
+## Classify Cross section points
+
+```{r}
+(classified_pts = classify_points(pts))
+```
+
+## Explore!
+
+```{r}
+library(ggplot2)
+
+ggplot(data = filter(classified_pts, hy_id == 101) ) + 
+  geom_line(aes(x = relative_distance, y = Z)) + 
+  geom_point(aes(x = relative_distance, y = Z, color = class)) + 
+  facet_wrap(~cs_id, scales = "free") + 
+  theme_minimal() + 
+  theme(legend.position = "bottom")
+```
+
+## Time to get `r nrow(transects)` transects and `r nrow(classified_pts)` classified points ...
+
+```{r}
+system.time({
+  cs = net %>% 
+  cut_cross_sections(id = "comid", 
+                     cs_widths = pmax(50, net$bf_width * 7),
+                     num = 10) %>% 
+  cross_section_pts(dem = '/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt') %>% 
+  classify_points()
+})
+```
+
