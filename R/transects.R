@@ -435,7 +435,6 @@ cut_cross_sections <- function(
       precision       = precision,
       rm_intersects   = rm_self_intersect
     )
-    
   }
   
   # remove any transect lines that intersect with any flowlines more than 1 time
