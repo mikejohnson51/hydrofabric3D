@@ -319,7 +319,7 @@ cut_cross_sections <- function(
   }
   
   # list to store transect outputs
-  ll <- list()
+  transects <- list()
   
   # if there is a missing number of cross section widths given relative to the number of rows in net, fill in the missing values
   if (length(cs_widths) != nrow(net)) {
@@ -353,10 +353,10 @@ cut_cross_sections <- function(
     trans$cs_widths <- cs_widths[j]
     
     # insert 'trans' sf dataframe into list
-    ll[[j]] <- trans
+    transects[[j]] <- trans
     
     # # cut transect lines at each 'edge' generated along our line of interest
-    # ll[[j]] <- get_transects(
+    # transects[[j]] <- get_transects(
     #                       line     = geos::as_geos_geometry(net$geometry[j]),
     #                       bf_width = cs_widths[j],
     #                       n        = num[j]
@@ -364,16 +364,16 @@ cut_cross_sections <- function(
   }
 
   # # get length of each dataframe to assign "hy_id" back with cross sections
-  # ids_length <- sapply(ll, nrow)
-  # # # ids_length <- lengths(ll)
+  # ids_length <- sapply(transects, nrow)
+  # # # ids_length <- lengths(transects)
   
-  # crs_list <- lapply(ll, function(i) { is.na(sf::st_crs(i)$epsg) } )
+  # crs_list <- lapply(transects, function(i) { is.na(sf::st_crs(i)$epsg) } )
   
   # bind list of sf dataframes of transects back together
-  ll <- dplyr::bind_rows(ll)
-  # ll <- sf::st_as_sf(Reduce(c, ll))]
+  transects <- dplyr::bind_rows(transects)
+  # transects <- sf::st_as_sf(Reduce(c, transects))]
   
-  if(nrow(ll) == 0){
+  if(nrow(transects) == 0){
     return(NULL)
   }
   
@@ -381,25 +381,25 @@ cut_cross_sections <- function(
   
   # # add id column if provided as an input
   # if (!is.null(id)) {
-  #   ll$hy_id = rep(net[[id]], times = ids_length)
+  #   transects$hy_id = rep(net[[id]], times = ids_length)
   # } else {
-  #   ll$hy_id = rep(1:nrow(net), times = ids_length)
+  #   transects$hy_id = rep(1:nrow(net), times = ids_length)
   # }
   # 
   # # add back cross sections width column
-  # ll$cs_widths = rep(cs_widths, times = ids_length)
+  # transects$cs_widths = rep(cs_widths, times = ids_length)
 
   # remove self intersecting transects or not
   if(rm_self_intersect){
-    ll <- 
-      ll[lengths(sf::st_intersects(ll)) == 1, ] %>% 
+    transects <- 
+      transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
       dplyr::group_by(hy_id) %>% 
       dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
       dplyr::ungroup() %>% 
       dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
   } else {
-    ll <- 
-      ll %>% 
+    transects <- 
+      transects %>% 
       dplyr::group_by(hy_id) %>% 
       dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
       dplyr::ungroup() %>% 
@@ -408,9 +408,9 @@ cut_cross_sections <- function(
   
   # if original columns of data should be added to transects dataset
   if(add) {
-    ll <-
+    transects <-
       dplyr::left_join(
-        ll,
+        transects,
         sf::st_drop_geometry(net),
         by = c("hy_id" = id)
         # by = c("hy_id" = "comid")
@@ -425,9 +425,9 @@ cut_cross_sections <- function(
     #          "- Braid grouping method: ", braid_method
     #          ))
     
-    ll <- fix_braid_transects(
+    transects <- fix_braid_transects(
       net             = net,
-      transect_lines  = ll,
+      transect_lines  = transects,
       terminal_id     = terminal_id,
       braid_threshold = braid_threshold,
       version         = version,
@@ -438,15 +438,18 @@ cut_cross_sections <- function(
     
   }
   
+  # remove any transect lines that intersect with any flowlines more than 1 time
+  transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
+  
   # rename "id" column to hy_id if "hy_id" is not already present
   if(!"hy_id" %in% names(net)) {
     net <- dplyr::rename(net, hy_id = dplyr::all_of(id))
   }
 
   # calculate sinuosity and add it as a column to the cross sections
-  ll <- get_cs_sinuosity(
+  transects <- get_cs_sinuosity(
             lines          = net, 
-            cross_sections = ll, 
+            cross_sections = transects, 
             add            = TRUE
             )
   
@@ -454,10 +457,10 @@ cut_cross_sections <- function(
   # transform CRS back to input CRS
   if(start_crs != 5070) {
     # message("Transforming CRS back to EPSG: ", start_crs)
-    ll <- sf::st_transform(ll, start_crs)
+    transects <- sf::st_transform(transects, start_crs)
   }
   
-  return(ll)
+  return(transects)
   
 }
 
