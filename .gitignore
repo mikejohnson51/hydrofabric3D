@@ -3,3 +3,6 @@
 .RData
 .Ruserdata
 R/scraps.R
+runners/cs_runner/
+
+.DS_Store

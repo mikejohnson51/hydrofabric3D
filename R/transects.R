@@ -319,7 +319,7 @@ cut_cross_sections <- function(
   }
   
   # list to store transect outputs
-  ll <- list()
+  transects <- list()
   
   # if there is a missing number of cross section widths given relative to the number of rows in net, fill in the missing values
   if (length(cs_widths) != nrow(net)) {
@@ -353,10 +353,10 @@ cut_cross_sections <- function(
     trans$cs_widths <- cs_widths[j]
     
     # insert 'trans' sf dataframe into list
-    ll[[j]] <- trans
+    transects[[j]] <- trans
     
     # # cut transect lines at each 'edge' generated along our line of interest
-    # ll[[j]] <- get_transects(
+    # transects[[j]] <- get_transects(
     #                       line     = geos::as_geos_geometry(net$geometry[j]),
     #                       bf_width = cs_widths[j],
     #                       n        = num[j]
@@ -364,16 +364,16 @@ cut_cross_sections <- function(
   }
 
   # # get length of each dataframe to assign "hy_id" back with cross sections
-  # ids_length <- sapply(ll, nrow)
-  # # # ids_length <- lengths(ll)
+  # ids_length <- sapply(transects, nrow)
+  # # # ids_length <- lengths(transects)
   
-  # crs_list <- lapply(ll, function(i) { is.na(sf::st_crs(i)$epsg) } )
+  # crs_list <- lapply(transects, function(i) { is.na(sf::st_crs(i)$epsg) } )
   
   # bind list of sf dataframes of transects back together
-  ll <- dplyr::bind_rows(ll)
-  # ll <- sf::st_as_sf(Reduce(c, ll))]
+  transects <- dplyr::bind_rows(transects)
+  # transects <- sf::st_as_sf(Reduce(c, transects))]
   
-  if(nrow(ll) == 0){
+  if(nrow(transects) == 0){
     return(NULL)
   }
   
@@ -381,25 +381,25 @@ cut_cross_sections <- function(
   
   # # add id column if provided as an input
   # if (!is.null(id)) {
-  #   ll$hy_id = rep(net[[id]], times = ids_length)
+  #   transects$hy_id = rep(net[[id]], times = ids_length)
   # } else {
-  #   ll$hy_id = rep(1:nrow(net), times = ids_length)
+  #   transects$hy_id = rep(1:nrow(net), times = ids_length)
   # }
   # 
   # # add back cross sections width column
-  # ll$cs_widths = rep(cs_widths, times = ids_length)
+  # transects$cs_widths = rep(cs_widths, times = ids_length)
 
   # remove self intersecting transects or not
   if(rm_self_intersect){
-    ll <- 
-      ll[lengths(sf::st_intersects(ll)) == 1, ] %>% 
+    transects <- 
+      transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
       dplyr::group_by(hy_id) %>% 
       dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
       dplyr::ungroup() %>% 
       dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
   } else {
-    ll <- 
-      ll %>% 
+    transects <- 
+      transects %>% 
       dplyr::group_by(hy_id) %>% 
       dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
       dplyr::ungroup() %>% 
@@ -408,9 +408,9 @@ cut_cross_sections <- function(
   
   # if original columns of data should be added to transects dataset
   if(add) {
-    ll <-
+    transects <-
       dplyr::left_join(
-        ll,
+        transects,
         sf::st_drop_geometry(net),
         by = c("hy_id" = id)
         # by = c("hy_id" = "comid")
@@ -425,9 +425,9 @@ cut_cross_sections <- function(
     #          "- Braid grouping method: ", braid_method
     #          ))
     
-    ll <- fix_braid_transects(
+    transects <- fix_braid_transects(
       net             = net,
-      transect_lines  = ll,
+      transect_lines  = transects,
       terminal_id     = terminal_id,
       braid_threshold = braid_threshold,
       version         = version,
@@ -435,8 +435,10 @@ cut_cross_sections <- function(
       precision       = precision,
       rm_intersects   = rm_self_intersect
     )
-    
   }
+  
+  # remove any transect lines that intersect with any flowlines more than 1 time
+  transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
   
   # rename "id" column to hy_id if "hy_id" is not already present
   if(!"hy_id" %in% names(net)) {
@@ -444,9 +446,9 @@ cut_cross_sections <- function(
   }
 
   # calculate sinuosity and add it as a column to the cross sections
-  ll <- get_cs_sinuosity(
+  transects <- get_cs_sinuosity(
             lines          = net, 
-            cross_sections = ll, 
+            cross_sections = transects, 
             add            = TRUE
             )
   
@@ -454,12 +456,397 @@ cut_cross_sections <- function(
   # transform CRS back to input CRS
   if(start_crs != 5070) {
     # message("Transforming CRS back to EPSG: ", start_crs)
-    ll <- sf::st_transform(ll, start_crs)
+    transects <- sf::st_transform(transects, start_crs)
   }
   
-  return(ll)
+  return(transects)
   
 }
+
+#' Get Points across transects with elevation values
+#' @param cs character, Hydrographic LINESTRING Network file path
+#' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
+#' @param min_pts_per_cs Minimun number of points per cross section required.
+#' @param dem the DEM to extract data from
+#' @param scale numeric, If a transect line DEM extraction results in all equal Z values,
+#'  by what percent of the transect lines length (meters) should the transect line be
+#'   extended in both directions to try to capture representative Z values ? Default is 0.5 (50% of the transect length)
+#' @return sf object
+#' @importFrom dplyr mutate group_by ungroup n select everything relocate last_col bind_rows filter
+#' @importFrom terra linearUnits res rast extract project vect crs 
+#' @importFrom sf st_line_sample st_set_geometry st_cast
+#' @export
+cross_section_pts = function(
+    cs             = NULL,
+    points_per_cs  = NULL,
+    min_pts_per_cs = 10,
+    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
+    scale          = 0.5
+){
+  
+  # ###  
+  # #### function is still WORK IN PROGRESS
+
+  # cs             = tmp_trans[lengths(sf::st_intersects(tmp_trans, tmp)) == 1, ]
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = DEM_URL
+  # scale = 0.5
+  # library(dplyr)
+  # library(sf)
+  # library(terra)
+  # base_dir <- "/Users/anguswatters/Desktop/lynker-spatial/"
+  # out_dir <- "/Users/anguswatters/Desktop/rand_tester/"
+  # transects_dir <- glue::glue("{base_dir}/01_transects/")
+  # transect_files <- list.files(transects_dir, full.names = T)
+  # 
+  # test_file <- transect_files[1]
+  # 
+  # test_data <- sf::read_sf(test_file)
+  # aoi_bb <-
+  #   test_data %>%
+  #   dplyr::filter(hy_id == "wb-2959") %>%
+  #   sf::st_buffer(2500) %>%
+  #   sf::st_bbox() %>%
+  #   sf::st_as_sfc() %>%
+  #   sf::st_as_sf()
+  # final_test_data <-
+  #   test_data %>%
+  #   sf::st_filter(aoi_bb)
+  # cs_path <- glue::glue("{out_dir}test_transects_01.gpkg")
+  # sf::write_sf(final_test_data, cs_path)
+  # mapview::mapview(aoi_bb) + dplyr::filter(test_data, hy_id == "wb-2959") + final_test_data
+  # cs = cs_path
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  # scale          = 0.5
+  # ### 
+  
+  # check if a cross section is given, and return NULL if missing
+  if (is.null(cs)) {
+    return(NULL)
+  }
+  
+  # check if a file path or not
+  if(is.character(cs)) {
+    # Read in file
+    cs <- sf::read_sf(cs)
+  }
+  
+  # add points per cross sections 
+  cs <- add_points_per_cs(
+                cs             = cs,
+                points_per_cs  = points_per_cs,
+                min_pts_per_cs = min_pts_per_cs,
+                dem            = dem
+                )
+  
+
+  # Extract DEM "Z" values for each point along cross section linestrings
+  cs_pts <- extract_dem_values(cs = cs, dem = dem)
+  
+  # check for any flat cross sections (All Z values are equal within a given cross section)
+  flat_cs <- check_z_values(pts = cs_pts, threshold = 1)
+  
+  # flat_cs %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z,color = is_same)) +
+  #   ggplot2::facet_wrap(~cs_id)
+  
+  # if there are no flatlines, return the cs_pts object
+  if (nrow(flat_cs) == 0) {
+    
+    cs_pts <- 
+      cs_pts %>% 
+      dplyr::mutate(
+      is_extended = FALSE
+      ) %>% 
+      dplyr::relocate(geom, .after = dplyr::last_col())
+    
+    return(cs_pts)
+    
+  }
+  
+  # subset transects (cs) to the flat cross sections in flat_cs
+  to_extend <- 
+    cs %>% 
+    dplyr::mutate(
+      tmp_id = paste0(hy_id, "_", cs_id)
+    ) %>% 
+    dplyr::filter(tmp_id %in% unique(
+                                dplyr::mutate(flat_cs,
+                                              tmp_id = paste0(hy_id, "_", cs_id))$tmp_id
+                                )
+                  ) %>% 
+    dplyr::select(-tmp_id)
+  
+  # dplyr::mutate(extend_by = scale * cs_lengthm)
+  
+  # extend linestring geometries by a percent of linestring length
+  extended <- extend_by_percent(x = to_extend, pct = scale, length_col = "cs_lengthm")
+  
+  # mapview::mapview(extended, color = "red") +   mapview::mapview(to_extend, color = "green")
+  
+  # add cross section points to extended cross sections
+  extended <- add_points_per_cs(
+                        cs             = extended,
+                        points_per_cs  = points_per_cs,
+                        min_pts_per_cs = min_pts_per_cs,
+                        dem            = dem
+                      )
+  
+  # extended <- add_points_per_cs(cs = extended, dem = dem,  points_per_cs = NULL, min_pts_per_cs = 10)
+  
+  # extract DEM values for newly extended cross sections
+  extended_pts <- extract_dem_values(cs = extended, dem = dem)
+  
+  # take the below points, and put them back into "cs_pts" object
+  # then go back to the input "transects" ("cs") object and update the transect geometries based on the extensions done above^^
+  # then resave the input transects dataset back to its original location....
+  extended_pts <- 
+    extended_pts %>% 
+    # sf::st_drop_geometry() %>% 
+    # dplyr::select(hy_id, cs_id, Z) %>%
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      is_same_Z = max(Z) - min(Z) <= 1
+      # is_same_Z = dplyr::n_distinct(Z) == 1,
+    ) %>% 
+    dplyr::ungroup() %>%    
+    dplyr::mutate(
+      tmp_id = paste0(hy_id, "_", cs_id)
+    )
+  
+  # separate newly extended cross sections with new Z values into groups (those that show "good" DEM values after extension are kept) 
+  to_keep <- dplyr::filter(extended_pts, !is_same_Z)
+  to_drop <- dplyr::filter(extended_pts, is_same_Z)
+
+  # filter out cross section points that have "same Z" values (remove flat Z values)
+  final_pts <-
+    cs_pts %>%  
+    dplyr::mutate(
+      tmp_id = paste0(hy_id, "_", cs_id)
+      ) %>% 
+    dplyr::filter(
+      !tmp_id %in% unique(to_drop$tmp_id)
+      # !tmp_id %in% unique(paste0(to_drop$hy_id, "_", to_drop$cs_id))
+    ) 
+
+  # remove the old versions of the "to_keep" cross section points and 
+  # replace them with the updated cross section points with the extended "cs_lengthm" and "Z" values
+  final_pts <-
+    final_pts %>%
+    dplyr::filter(
+      !tmp_id %in% unique(to_keep$tmp_id)
+    ) %>% 
+    dplyr::mutate(
+      is_extended = FALSE
+    ) %>% 
+    dplyr::bind_rows(
+      dplyr::select(
+        dplyr::mutate(
+          to_keep,
+          is_extended = TRUE
+        ), 
+        -is_same_Z)
+      ) %>% 
+    dplyr::select(-tmp_id) %>% 
+    dplyr::relocate(geom, .after = dplyr::last_col())
+  
+  return(final_pts)
+  
+  # tmp %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z,color = is_same_Z)) +
+  #   ggplot2::facet_wrap(~cs_id)
+  
+}
+
+#' Given a set of linestrings, extract DEM values at points along the linestring
+#'
+#' @param cs cross section sf object
+#' @param dem SpatRaster DEM or character pointing to remote DEM resource
+#'
+#' @return sf dataframe with Z values extracted from DEM
+extract_dem_values <- function(cs, dem) {
+  
+  extract_pt_val <- function(rast, pts) {
+    terra::extract(
+      rast,
+      terra::project(terra::vect(pts), terra::crs(rast))
+    )[, 2]
+  }
+  
+  suppressWarnings({
+    cs_pts <- 
+      sf::st_set_geometry(cs, sf::st_line_sample(cs, cs$points_per_cs)) %>% 
+      sf::st_cast("POINT") %>%
+      dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .)) %>% 
+      dplyr::group_by(hy_id, cs_id) %>% 
+      dplyr::mutate(
+        pt_id = 1:dplyr::n(),
+        relative_distance = seq(from = 0, to = cs_lengthm[1], length.out = dplyr::n())
+      ) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::select(hy_id, cs_id, pt_id, Z, cs_lengthm, relative_distance, dplyr::everything())
+  })
+    
+  return(cs_pts)
+  
+}
+
+#' Check for any Z values that are all equal or within a given threshold value
+#'
+#' @param pts sf points dataframe
+#' @param threshold numeric, default is 1 meter
+#' @return dataframe with hy_id, cs_id, Z, and is_same_Z value columns
+check_z_values <- function(pts, threshold = 1) {
+  
+  # check for any flat cross sections (All Z values are equal within a given cross section)
+  flat_pts <-
+    pts %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::select(hy_id, cs_id, Z) %>%
+    # dplyr::filter(hy_id != "wb-2959") %>%
+    # dplyr::filter(!hy_id %in% c("wb-2959", "wb-2960", "wb-4131", "wb-4364", "wb-4365", "wb-4770")) %>%
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      is_same_Z = max(Z) - min(Z) <= threshold
+    ) %>%
+    dplyr::filter(is_same_Z) %>%
+    dplyr::slice(1) %>%
+    dplyr::ungroup() 
+  
+  return(flat_pts)
+}
+
+#' Extend an sf linestring dataframe by a percent of the lines length
+#'
+#' @param x linestring sf dataframe
+#' @param pct numeric, percent of line to extend linestring by in both directions
+#' @param length_col character, name of the column in "x" that has the length of the linestring (meters)
+#'
+#' @return sf dataframe with extended linestring geometries
+extend_by_percent <- function(
+    x, 
+    pct        = 0.5, 
+    length_col = NULL
+) {
+  
+  # x = to_extend
+  # pct = scale
+  # length_col = "cs_lengthm"
+  # length_col = NULL
+  
+  # rename the geometry to "geom"
+  x <- nhdplusTools::rename_geometry(x, "geom")
+  
+  # length_col is NULL then set it to "cs_lengthm"
+  if(is.null(length_col)) {
+    length_col = "cs_lengthm"
+  }
+  
+  #  if the length_col string is not a column in the x,
+  # then create a column based on the length of the linestring using "length_col" as name of column 
+  if (!length_col %in% names(x)) {
+    
+    # add a "length_col" column of the length of each linestring in meters
+    x[length_col] <- as.numeric(sf::st_length(sf::st_geometry(x)))
+    # x <- dplyr::mutate(x,  length_col = as.numeric(sf::st_length(.)))
+  }
+  
+  # extend linestrings by pct * length of line
+  extended_df <-
+    x %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      extended_geom = geos_extend_line(
+                          geom, 
+                          distance = (pct)*(!!sym(length_col)),
+                          dir      = "both"
+                        ) 
+    ) %>% 
+    dplyr::ungroup()
+  
+  # drop original geometry column
+  extended_df <-  sf::st_drop_geometry(extended_df)
+  
+  # set the extended geometry as the new geometry
+  extended_df$extended_geom <- sf::st_geometry(sf::st_as_sf(extended_df$extended_geom))
+  
+  # make extended_df an sf object
+  extended_df <- sf::st_as_sf(
+                        extended_df, 
+                        crs = sf::st_crs(x)
+                      )
+  
+  # rename "extended_geom" col to "geom"
+  extended_df <- dplyr::rename(extended_df, "geom" = "extended_geom")
+  
+  # recalculate length of linestring and update length_col value
+  extended_df[[length_col]] <- as.numeric(sf::st_length(extended_df$geom))
+  
+  # extended_df$extended_geom %>%
+  #   plot()
+  # plot(x$geom, add = T, col = "red")
+  # plot(out_geom$geometry)
+  # plot(x$geom[1], add = T, col = "red")
+  
+  return(extended_df)
+  
+}
+
+# 
+#' Add a points per cross section column to an sf dataframe of linestrings given a DEM and min points value
+#' 
+#' This function calculates and adds a column called 'points_per_cs' to an sf dataframe
+#' representing cross-sections (linestrings) based on a provided DEM and a minimum points
+#' value per cross section.
+#'
+#' @param cs An sf dataframe representing cross-sections (linestrings).
+#' @param points_per_cs numeric, number of points per cross section. Default is NULL
+#' @param min_pts_per_cs An optional minimum points value per cross section. If not provided, 
+#' @param dem A SpatRaster object representing the Digital Elevation Model (DEM) or a character string referencing a remote resource.
+#' the function calculates it based on the length of cross-sections and the resolution of the DEM.
+#'
+#' @return An updated sf dataframe with the 'points_per_cs' column added.
+add_points_per_cs <- function(cs,
+                              points_per_cs  = NULL,
+                              min_pts_per_cs = 10,
+                              dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+                              ) {
+  cs             = cs
+  points_per_cs  = points_per_cs
+  min_pts_per_cs = min_pts_per_cs
+  dem            = dem
+  # If NULL value is given to points_per_cs argument, calculate points_per_cs values
+  # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
+  # -- then divide the cross section length by 111139 and divide that resulting value by the minimum resolution value from the DEM (then round the result up)
+  # - ELSE:
+  # -- just divide the cross section length by the minimum resolution value from the DEM (then round the result up)
+  if (is.null(points_per_cs)) {
+    if (terra::linearUnits(terra::rast(dem)) == 0) {
+      points_per_cs = ceiling(
+        (cs$cs_lengthm / 111139) / min(terra::res(terra::rast(dem)))
+      )
+    } else {
+      points_per_cs = ceiling(
+        (cs$cs_lengthm) / min(terra::res(terra::rast(dem)))
+      )
+    }
+    
+  }
+  # else {
+  #   points_per_cs = min_pts_per_cs
+  # }
+  
+  # Take the max between the given minimum points per cross section and the derived points per cross section
+  cs$points_per_cs = pmax(min_pts_per_cs, points_per_cs)
+  
+  return(cs)
+}
+
 
 #' Get Points across transects with elevation values
 #' @param cs Hydrographic LINESTRING Network
@@ -471,7 +858,7 @@ cut_cross_sections <- function(
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 #' @export
-cross_section_pts = function(cs,
+cross_section_pts_v1 = function(cs,
                              points_per_cs = NULL,
                              min_pts_per_cs = 10,
                              dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){
