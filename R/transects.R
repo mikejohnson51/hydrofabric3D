@@ -475,7 +475,8 @@ cut_cross_sections <- function(
 #' @importFrom dplyr mutate group_by ungroup n select everything relocate last_col bind_rows filter
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
-cross_section_pts_latest = function(
+#' @export
+cross_section_pts = function(
     cs             = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -483,10 +484,14 @@ cross_section_pts_latest = function(
     scale          = 0.5
 ){
   
+  # ###  
   # #### function is still WORK IN PROGRESS
-  # # #################################################
-  # # #################################################
-  # 
+
+  # cs             = tmp_trans[lengths(sf::st_intersects(tmp_trans, tmp)) == 1, ]
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = DEM_URL
+  # scale = 0.5
   # library(dplyr)
   # library(sf)
   # library(terra)
@@ -516,9 +521,7 @@ cross_section_pts_latest = function(
   # min_pts_per_cs = 10
   # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
   # scale          = 0.5
-  # 
-  # # #################################################
-  # # #################################################
+  # ### 
   
   # check if a cross section is given, and return NULL if missing
   if (is.null(cs)) {
@@ -813,7 +816,10 @@ add_points_per_cs <- function(cs,
                               min_pts_per_cs = 10,
                               dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
                               ) {
-  
+  cs             = cs
+  points_per_cs  = points_per_cs
+  min_pts_per_cs = min_pts_per_cs
+  dem            = dem
   # If NULL value is given to points_per_cs argument, calculate points_per_cs values
   # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
   # -- then divide the cross section length by 111139 and divide that resulting value by the minimum resolution value from the DEM (then round the result up)
@@ -852,7 +858,7 @@ add_points_per_cs <- function(cs,
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 #' @export
-cross_section_pts = function(cs,
+cross_section_pts_v1 = function(cs,
                              points_per_cs = NULL,
                              min_pts_per_cs = 10,
                              dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){
