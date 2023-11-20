@@ -472,7 +472,7 @@ cut_cross_sections <- function(
 #'  by what percent of the transect lines length (meters) should the transect line be
 #'   extended in both directions to try to capture representative Z values ? Default is 0.5 (50% of the transect length)
 #' @return sf object
-#' @importFrom dplyr mutate group_by ungroup n select everything
+#' @importFrom dplyr mutate group_by ungroup n select everything relocate last_col bind_rows filter
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 cross_section_pts_latest = function(
@@ -629,7 +629,7 @@ cross_section_pts_latest = function(
       !tmp_id %in% unique(to_drop$tmp_id)
       # !tmp_id %in% unique(paste0(to_drop$hy_id, "_", to_drop$cs_id))
     ) 
-  
+
   # remove the old versions of the "to_keep" cross section points and 
   # replace them with the updated cross section points with the extended "cs_lengthm" and "Z" values
   final_pts <-
