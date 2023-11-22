@@ -9,4 +9,4 @@
 library(testthat)
 library(hydrofabric3D)
 
-test_check("hydrofabric3D")
+testthat::test_check("hydrofabric3D")

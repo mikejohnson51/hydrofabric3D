@@ -18,8 +18,3 @@ testthat::test_that("cut_transect creates perpendicular line of given width", {
   testthat::expect_equal(sf::st_crs(transect)$epsg, as.character(NA))
   
 })
-
-
-
-
-
