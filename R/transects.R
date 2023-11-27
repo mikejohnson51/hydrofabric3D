@@ -483,7 +483,8 @@ cross_section_pts = function(
     dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
     scale          = 0.5
 ){
-  
+
+  ####################
   # ###  
   # #### function is still WORK IN PROGRESS
 
@@ -545,14 +546,9 @@ cross_section_pts = function(
 
   # Extract DEM "Z" values for each point along cross section linestrings
   cs_pts <- extract_dem_values(cs = cs, dem = dem)
-  
+
   # check for any flat cross sections (All Z values are equal within a given cross section)
-  flat_cs <- check_z_values(pts = cs_pts, threshold = 1)
-  
-  # flat_cs %>% 
-  #   ggplot2::ggplot() +
-  #   ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z,color = is_same)) +
-  #   ggplot2::facet_wrap(~cs_id)
+  flat_cs <- check_z_values(pts = cs_pts, threshold = 0)
   
   # if there are no flatlines, return the cs_pts object
   if (nrow(flat_cs) == 0) {
@@ -610,7 +606,7 @@ cross_section_pts = function(
     # dplyr::select(hy_id, cs_id, Z) %>%
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
-      is_same_Z = max(Z) - min(Z) <= 1
+      is_same_Z = max(Z) - min(Z) <= 0
       # is_same_Z = dplyr::n_distinct(Z) == 1,
     ) %>% 
     dplyr::ungroup() %>%    
@@ -632,7 +628,7 @@ cross_section_pts = function(
       !tmp_id %in% unique(to_drop$tmp_id)
       # !tmp_id %in% unique(paste0(to_drop$hy_id, "_", to_drop$cs_id))
     ) 
-
+ 
   # remove the old versions of the "to_keep" cross section points and 
   # replace them with the updated cross section points with the extended "cs_lengthm" and "Z" values
   final_pts <-
@@ -653,7 +649,7 @@ cross_section_pts = function(
       ) %>% 
     dplyr::select(-tmp_id) %>% 
     dplyr::relocate(geom, .after = dplyr::last_col())
-  
+ 
   return(final_pts)
   
   # tmp %>% 
@@ -713,8 +709,10 @@ check_z_values <- function(pts, threshold = 1) {
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       is_same_Z = max(Z) - min(Z) <= threshold
+      # is_same_Z = as.integer(dplyr::n_distinct(Z) == 1)
     ) %>%
     dplyr::filter(is_same_Z) %>%
+    # dplyr::filter(is_same_Z == 1) %>%
     dplyr::slice(1) %>%
     dplyr::ungroup() 
   
