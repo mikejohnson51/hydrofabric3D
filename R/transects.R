@@ -547,6 +547,15 @@ rectify_flat_cs = function(
   ### ### ## ## ### ## ### ##
   ## ### ### ### ### #### ##
   
+  # net = sf::read_sf("/Users/anguswatters/Desktop/test_net.gpkg")
+  # cs = sf::read_sf("/Users/anguswatters/Desktop/test_cs.gpkg")
+  # cs_pts = sf::read_sf("/Users/anguswatters/Desktop/test_cs_pts.gpkg")
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  # scale          = 0.5
+  # threshold      = 0
+  
   # cs_pts <- cross_section_pts_latest(
   #   cs             = tmp_trans,
   #   points_per_cs  = NULL,
@@ -605,7 +614,7 @@ rectify_flat_cs = function(
   # loop through geometries that might need to be extended, try to extend, and then update 
   # the 'to_extend' values IF the extended transectr does NOT violate any intersection rules
   for(i in 1:nrow(to_extend)) {
-
+    # message("i: ", i)
     # extend transect out by "scale" % of lines length
     extended_tran <- extend_by_percent(x = to_extend[i, ], pct = scale, length_col = "cs_lengthm")
     
@@ -626,39 +635,45 @@ rectify_flat_cs = function(
     
     # Make sure that newly extended line only interesects its origin flowline at MOST 1 time
     # AND that the newly extended transect does NOT intersect with any previously computed transect lines
+    # mapview::mapview(       extended_tran) +
+    #                         net[net$id == to_extend[i, ]$hy_id, ]
     
-    # Check that newly extended cross section only interesects its origin flowline at MOST 1 time (This value will be a "MULTIPOINT" if it intersects more than once)
-    if (
-      sf::st_is(
-        sf::st_intersection(
-          extended_tran,
-          net[net$id == to_extend[i, ]$hy_id, ]
-          # dplyr::filter(net, id == to_extend[i, ]$hy_id)
-          ),
-        "POINT"
-        ) &&
-        # Check that extended transect doesn't intersect with any of the NEWLY EXTENDED cross sections
-        !any(sf::st_intersects(
-          extended_tran,
-          to_extend[-i, ],
-          sparse = FALSE
-        )) &&
-        # Check that extended transect doesn't intersect with any of the original cross sections on this "hy_id"
-        !any(sf::st_intersects(
-          extended_tran,
-          neighbor_transects,
-          sparse = FALSE
-        ))
-        ) {
+    fline_intersect <- sf::st_intersection(
+        extended_tran,
+        net[net$id == to_extend[i, ]$hy_id, ]
+        # dplyr::filter(net, id == to_extend[i, ]$hy_id)
+      )
+
+    if(nrow(fline_intersect) > 0) {
       
-      # # set is_extended to TRUE
-      # extended_tran$is_extended <- TRUE
+      # Check that newly extended cross section only interesects its origin flowline at MOST 1 time (This value will be a "MULTIPOINT" if it intersects more than once)
+      if (
+        sf::st_is(
+          fline_intersect, "POINT"
+          ) &&
+          # Check that extended transect doesn't intersect with any of the NEWLY EXTENDED cross sections
+          !any(sf::st_intersects(
+            extended_tran,
+            to_extend[-i, ],
+            sparse = FALSE
+          )) &&
+          # Check that extended transect doesn't intersect with any of the original cross sections on this "hy_id"
+          !any(sf::st_intersects(
+            extended_tran,
+            neighbor_transects,
+            sparse = FALSE
+          ))
+          ) {
+        
+        # # set is_extended to TRUE
+        # extended_tran$is_extended <- TRUE
+        
+        # replace old transect with extended geometry and updated lengths, etc.
+        to_extend[i, ] <- extended_tran
       
-      # replace old transect with extended geometry and updated lengths, etc.
-      to_extend[i, ] <- extended_tran
-    
       }
-  
+    }
+    # message("=========")
   }
   
   # # extend linestring geometries by a percent of linestring length
@@ -831,7 +846,7 @@ extend_by_percent <- function(
     dplyr::mutate(
       extended_geom = geos_extend_line(
                           geom, 
-                          distance = (pct)*(!!sym(length_col)),
+                          distance = (pct)*(!!dplyr::sym(length_col)),
                           dir      = "both"
                         ) 
     ) %>% 
