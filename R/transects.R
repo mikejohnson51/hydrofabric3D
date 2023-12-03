@@ -480,15 +480,13 @@ cross_section_pts = function(
 ){
   
   ### ### ## ## ### ## ### ##
-  ## ### ### ### ### #### ##
   
   # cs             = tmp_trans
   # points_per_cs  = NULL
   # min_pts_per_cs = 10
   # dem            = DEM_URL
   # scale          = 5
-  
-  ### ### ## ## ### ## ### ##
+
   ## ### ### ### ### #### ##
 
   # check if a cross section is given, and return NULL if missing
@@ -543,35 +541,6 @@ rectify_flat_cs = function(
     scale          = 0.5,
     threshold      = 0
     ) {
-  
-  ### ### ## ## ### ## ### ##
-  ## ### ### ### ### #### ##
-  
-  # net = sf::read_sf("/Users/anguswatters/Desktop/test_net.gpkg")
-  # cs = sf::read_sf("/Users/anguswatters/Desktop/test_cs.gpkg")
-  # cs_pts = sf::read_sf("/Users/anguswatters/Desktop/test_cs_pts.gpkg")
-  # points_per_cs  = NULL
-  # min_pts_per_cs = 10
-  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
-  # scale          = 0.5
-  # threshold      = 0
-  
-  # cs_pts <- cross_section_pts_latest(
-  #   cs             = tmp_trans,
-  #   points_per_cs  = NULL,
-  #   min_pts_per_cs = 10,
-  #   dem            = DEM_URL
-  # )
-  # 
-  # net = flines
-  # cs             = tmp_trans
-  # points_per_cs  = NULL
-  # min_pts_per_cs = 10
-  # dem            = DEM_URL
-  # scale          = 0.5
-  # threshold      = 0.25
-  # mapview::mapview(net, color = "dodgerblue") + 
-  #   mapview::mapview(cs, color = "red") 
   
   ### ### ## ## ### ## ### ##
   ## ### ### ### ### #### ##
