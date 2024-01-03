@@ -2,7 +2,15 @@
 .Rhistory
 .RData
 .Ruserdata
-R/scraps.R
-runners/cs_runner/
 
 .DS_Store
+*.DS_Store
+**/.DS_Store
+
+.urs_cookies
+*.urs_cookies
+**/.urs_cookies
+
+R/ahg_estimates.R
+R/scraps.R
+runners/cs_runner/

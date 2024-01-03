@@ -529,6 +529,9 @@ cross_section_pts = function(
 #' @param threshold numeric, threshold Z value (meters) that determines if a cross section is flat. 
 #' A threshold = 0 means if all Z values are the same, then the cross section is considered flat. 
 #' A threshold value of 1 means that any cross section with Z values all within 1 meter of eachother, is considered flat. Default is 0.
+#' @importFrom dplyr mutate relocate last_col group_by ungroup n select everything relocate last_col bind_rows filter
+#' @importFrom sf st_intersection st_is st_intersects
+#' @importFrom nhdplusTools rename_geometry
 #' @return sf object of cs_pts with "flat" cross sections removed/updated with longer transects to capture more Z data
 #' @export
 rectify_flat_cs = function(
@@ -579,13 +582,17 @@ rectify_flat_cs = function(
     )) %>%
     dplyr::select(-tmp_id) 
     # dplyr::relocate(geom, .after = dplyr::last_col())
-  
+
   # loop through geometries that might need to be extended, try to extend, and then update 
   # the 'to_extend' values IF the extended transectr does NOT violate any intersection rules
   for(i in 1:nrow(to_extend)) {
     # message("i: ", i)
     # extend transect out by "scale" % of lines length
-    extended_tran <- extend_by_percent(x = to_extend[i, ], pct = scale, length_col = "cs_lengthm")
+    extended_tran <- extend_by_percent(
+                        x          = to_extend[i, ],
+                        pct        = scale, 
+                        length_col = "cs_lengthm"
+                        )
     
     # filter down to the rest of the transects on the given "hy_id", EXCLUDING SELF
     neighbor_transects <- dplyr::filter(cs, 
@@ -658,7 +665,7 @@ rectify_flat_cs = function(
   
   # extract DEM values for newly extended cross sections
   extended_pts <- extract_dem_values(cs = extended, dem = dem)
-  
+ 
   # take the below points, and put them back into "cs_pts" object
   # then go back to the input "transects" ("cs") object and update the transect geometries based on the extensions done above^^
   # then resave the input transects dataset back to its original location....
@@ -686,7 +693,7 @@ rectify_flat_cs = function(
     dplyr::filter(
       !tmp_id %in% unique(to_drop$tmp_id)
     ) 
-  
+
   # remove the old versions of the "to_keep" cross section points and 
   # replace them with the updated cross section points with the extended "cs_lengthm" and "Z" values
   final_pts <-
@@ -705,8 +712,13 @@ rectify_flat_cs = function(
         ), 
         -is_same_Z)
     ) %>% 
-    dplyr::select(-tmp_id) %>% 
-    dplyr::relocate(geom, .after = dplyr::last_col())
+    dplyr::select(-tmp_id) 
+  
+  # rename geometry column to "geom" 
+  final_pts <- nhdplusTools::rename_geometry(final_pts, "geom")
+  
+  # move geom column to the last column
+  final_pts <- dplyr::relocate(final_pts, geom, .after = dplyr::last_col())
   
   # final_pts$is_extended %>% table()
   
@@ -717,7 +729,9 @@ rectify_flat_cs = function(
 #'
 #' @param cs cross section sf object
 #' @param dem SpatRaster DEM or character pointing to remote DEM resource
-#'
+#' @importFrom dplyr mutate group_by n ungroup select everything
+#' @importFrom sf st_set_geometry st_line_sample st_cast
+#' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
 extract_dem_values <- function(cs, dem) {
   
@@ -750,6 +764,8 @@ extract_dem_values <- function(cs, dem) {
 #'
 #' @param pts sf points dataframe
 #' @param threshold numeric, default is 1 meter
+#' @importFrom dplyr select group_by mutate filter slice ungroup
+#' @importFrom sf st_drop_geometry st_line_sample st_cast
 #' @return dataframe with hy_id, cs_id, Z, and is_same_Z value columns
 check_z_values <- function(pts, threshold = 1) {
   
