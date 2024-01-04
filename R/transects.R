@@ -884,10 +884,7 @@ add_points_per_cs <- function(cs,
                               min_pts_per_cs = 10,
                               dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
                               ) {
-  cs             = cs
-  points_per_cs  = points_per_cs
-  min_pts_per_cs = min_pts_per_cs
-  dem            = dem
+  
   # If NULL value is given to points_per_cs argument, calculate points_per_cs values
   # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
   # -- then divide the cross section length by 111139 and divide that resulting value by the minimum resolution value from the DEM (then round the result up)
@@ -1244,7 +1241,8 @@ classify_points = function(cs_pts){
 
   filter(cs_pts) %>% 
     group_by(hy_id, cs_id) %>% 
-    mutate(third = ceiling(n() / 3),
+    mutate(
+          third = ceiling(n() / 3),
            mean_dist = mean(diff(relative_distance)),
            in_channel_pts = ceiling(cs_widths[1] / mean_dist),
            b1 = ceiling(in_channel_pts / 2),
