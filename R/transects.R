@@ -925,7 +925,7 @@ add_points_per_cs <- function(cs,
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 #' @export
-cross_section_pts_v2 = function(
+cross_section_pts_v3 = function(
     cs             = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -1134,7 +1134,7 @@ cross_section_pts_v2 = function(
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 #' @export
-cross_section_pts_v1 = function(cs,
+cross_section_pts_v2 = function(cs,
                              points_per_cs = NULL,
                              min_pts_per_cs = 10,
                              dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"){

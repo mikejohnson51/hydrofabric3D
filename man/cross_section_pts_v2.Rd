@@ -5,26 +5,21 @@
 \title{Get Points across transects with elevation values}
 \usage{
 cross_section_pts_v2(
-  cs = NULL,
+  cs,
   points_per_cs = NULL,
   min_pts_per_cs = 10,
   dem =
-    "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
-  scale = 0.5
+    "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
 )
 }
 \arguments{
-\item{cs}{character, Hydrographic LINESTRING Network file path}
+\item{cs}{Hydrographic LINESTRING Network}
 
 \item{points_per_cs}{the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.}
 
 \item{min_pts_per_cs}{Minimun number of points per cross section required.}
 
 \item{dem}{the DEM to extract data from}
-
-\item{scale}{numeric, If a transect line DEM extraction results in all equal Z values,
-by what percent of the transect lines length (meters) should the transect line be
-extended in both directions to try to capture representative Z values ? Default is 0.5 (50\% of the transect length)}
 }
 \value{
 sf object

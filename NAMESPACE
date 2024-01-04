@@ -2,8 +2,8 @@
 
 export(classify_points)
 export(cross_section_pts)
-export(cross_section_pts_v1)
 export(cross_section_pts_v2)
+export(cross_section_pts_v3)
 export(cut_cross_sections)
 export(cut_transect)
 export(find_braids)
