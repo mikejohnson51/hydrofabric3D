@@ -912,6 +912,52 @@ add_points_per_cs <- function(cs,
   return(cs)
 }
 
+#' Classify Cross Section Points 
+#' @param cs_pts CS points
+#' @return sf object
+#' @export
+classify_points = function(cs_pts){
+  
+  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
+    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
+
+  dplyr::filter(cs_pts) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+          third = ceiling(n() / 3),
+           mean_dist = mean(diff(relative_distance)),
+           in_channel_pts = ceiling(cs_lengthm[1] / mean_dist),
+           b1 = ceiling(in_channel_pts / 2),
+           b2 = in_channel_pts - b1,
+           low_pt  = min(Z[third[1]:(2*third[1] - 1)]),
+           class = ifelse(Z <= low_pt & between(pt_id, third[1], (2*third[1] - 1)), 
+                          "bottom", 
+                          "bank"),
+           Z2 = c(Z[1], zoo::rollmean(Z, 3), Z[n()]),
+           Z = ifelse(class == "bottom", Z, Z2),
+           min_bottom = which(class == "bottom")[1],
+           mid_bottom = which(class == "bottom")[ceiling(length(which(class == "bottom"))/2)],
+           max_bottom = which(class == "bottom")[length(which(class == "bottom"))],
+           L1 = pmax(1, mid_bottom - b1),
+           L2 = pmax(1, mid_bottom - b2),
+           R1 = pmin(mid_bottom + b2, n()),
+           R2 = pmin(mid_bottom + b1, n()),
+           anchor = ifelse(Z[R2] < Z[L1], 2, 1),
+           L = pmax(third, ifelse(anchor == 1, L1, L2)),
+           R = pmin(2*third[1], ifelse(anchor == 1, R1, R2)),
+           count_left = min_bottom - L,
+           count_right = R - max_bottom,
+           L = ifelse(count_left == 0, L - count_right, L),
+           R = ifelse(count_right == 0, R + count_left, R),
+           class = ifelse(between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+           class = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+           class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
+    dplyr::ungroup() %>% 
+    dplyr::mutate(point_type = class) %>% 
+    dplyr::select(hy_id, cs_id, pt_id, Z, relative_distance, cs_lengthm, class, point_type)
+  
+}
+
 #' Get Points across transects with elevation values
 #' @param cs character, Hydrographic LINESTRING Network file path
 #' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
@@ -1229,52 +1275,6 @@ cross_section_pts_v2 = function(cs,
 #   })
 #   
 # }
-
-#' Classify Cross Section Points 
-#' @param cs_pts CS points
-#' @return sf object
-#' @export
-classify_points = function(cs_pts){
-  
-  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_widths  <- count_left <- 
-    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
-
-  filter(cs_pts) %>% 
-    group_by(hy_id, cs_id) %>% 
-    mutate(
-          third = ceiling(n() / 3),
-           mean_dist = mean(diff(relative_distance)),
-           in_channel_pts = ceiling(cs_widths[1] / mean_dist),
-           b1 = ceiling(in_channel_pts / 2),
-           b2 = in_channel_pts - b1,
-           low_pt  = min(Z[third[1]:(2*third[1] - 1)]),
-           class = ifelse(Z <= low_pt & between(pt_id, third[1], (2*third[1] - 1)), 
-                          "bottom", 
-                          "bank"),
-           Z2 = c(Z[1], zoo::rollmean(Z, 3), Z[n()]),
-           Z = ifelse(class == "bottom", Z, Z2),
-           min_bottom = which(class == "bottom")[1],
-           mid_bottom = which(class == "bottom")[ceiling(length(which(class == "bottom"))/2)],
-           max_bottom = which(class == "bottom")[length(which(class == "bottom"))],
-           L1 = pmax(1, mid_bottom - b1),
-           L2 = pmax(1, mid_bottom - b2),
-           R1 = pmin(mid_bottom + b2, n()),
-           R2 = pmin(mid_bottom + b1, n()),
-           anchor = ifelse(Z[R2] < Z[L1], 2, 1),
-           L = pmax(third, ifelse(anchor == 1, L1, L2)),
-           R = pmin(2*third[1], ifelse(anchor == 1, R1, R2)),
-           count_left = min_bottom - L,
-           count_right = R - max_bottom,
-           L = ifelse(count_left == 0, L - count_right, L),
-           R = ifelse(count_right == 0, R + count_left, R),
-           class = ifelse(between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
-           class = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
-           class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
-    ungroup() %>% 
-    select(hy_id, cs_id, pt_id, Z, relative_distance, cs_widths, class)
-  
-}
-
 
 # #Generate Multiple cross section along a linestring
 # #@param edges data.frame of LINESTRINGs (pieces of line)
