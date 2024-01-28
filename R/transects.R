@@ -516,6 +516,165 @@ cross_section_pts = function(
   
 }
 
+# Classify the points in cs_pts and then add columns that:
+# is_near_bottom: state whether a point is near the bottom of the cross section (within a specified distance threshold of the bottom), 
+# pts_near_bottom: count of points near the bottom of the cross section
+# pct_near_bottom: percent of points near the bottom of the cross section
+# takes in the output of the cross_section_pts() function
+# Arguments:
+# cs_pts - sf dataframe of cross section points (output of cross_section_pts() function)
+# distance_from_bottom - numeric, distance threshold (in meters) to determine if a point is near the bottom of the cross section
+# look_only_above_bottom - logical, whether to look only at points ABOVE the channel bottom as points that can be classified as "near bottom". 
+# Default is TRUE, meaning only points that are between Z and Z + distance_from_bottom are classified as "near bottom" 
+# If FALSE, then points at Z values BELOW the bottom (Z - distance_from_bottom) AND 
+# points at Z values ABOVE the bottom (Z + distance_from_bottom) are classified as 
+# "near bottom" if they are within the range BELOW OR ABOVE the bottom.
+# Returns the cross section points dataframe with the added columns described above 
+pct_pts_near_bottom = function(cs_pts, 
+                               distance_from_bottom    = 1, 
+                               look_only_above_bottom  = TRUE,
+                               total_from_bottom_up = FALSE
+) {
+  ###########  ###########  ###########
+  # cs_pts = cs_pts
+  # distance_from_bottom = 1
+  # look_only_above_bottom = TRUE
+  # look_only_above_bottom = FALSE
+  # total_from_bottom_up = FALSE
+  ###########  ###########  ###########
+  
+  # Drop geometries to work with tabular data only
+  flat_check <- 
+    cs_pts  %>% 
+    sf::st_drop_geometry()
+  
+  # classify cross section points and add back point count per cross section column
+  flat_check <- 
+    flat_check %>% 
+    # dplyr::rename(cs_widths = cs_lengthm) %>%
+    hydrofabric3D::classify_points()  %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      points_per_cs = dplyr::n()
+    ) %>% 
+    dplyr::ungroup() %>% 
+    sf::st_drop_geometry() 
+  # dplyr::relocate(hy_id, cs_id, pt_id, Z, class, points_per_cs)
+  
+  # # if there is no "class" column, classify the points using classify_points()
+  # if (!"class" %in% colnames(cs_pts)) {
+  
+  # }}
+  
+  # reorder columns
+  flat_check <- dplyr::relocate(flat_check, 
+                                hy_id, cs_id, pt_id, Z, class, points_per_cs)
+  
+  # get the minimum Z value of the bottom points of each cross section and add this as a column to cs_pts
+  bottomZ = 
+    flat_check  %>% 
+    # sf::st_drop_geometry() %>%
+    dplyr::group_by(hy_id, cs_id) %>%
+    dplyr::filter(class == "bottom") %>%
+    dplyr::summarize(
+      Z_at_bottom = min(Z)
+    )  %>% 
+    dplyr::ungroup() 
+  
+  # join the flat_check dataframe with the dataframe containing the Z values of the bottom depths for each cross section
+  bottom_pct =
+    flat_check  %>% 
+    dplyr::left_join(
+      bottomZ,
+      by = c("hy_id", "cs_id")
+    ) 
+  
+  # TODO: This code could be shortened and combined with the ELSE clause, just being lazy right now
+  if(total_from_bottom_up) {
+    # When calculating the percentage, use only points that are GREATER THAN OR EQUAL to the bottom Z as part of percentage calculation.
+    bottom_pct <- 
+      bottom_pct %>%
+      dplyr::group_by(hy_id, cs_id) %>% 
+      dplyr::mutate(
+        lower_bound    = ifelse(look_only_above_bottom, Z_at_bottom, Z_at_bottom - distance_from_bottom),
+        upper_bound    = Z_at_bottom + distance_from_bottom,
+        is_near_bottom = dplyr::between(
+          Z,
+          lower_bound,
+          upper_bound
+        ),
+        ge_bottom   = dplyr::case_when(
+          Z     >= Z_at_bottom ~ TRUE,
+          TRUE                 ~ FALSE
+        ),
+        total_valid_pts = sum(ge_bottom),
+        pts_near_bottom = sum(is_near_bottom),
+        pct_near_bottom = pts_near_bottom/total_valid_pts,
+        tmp_id          = paste0(hy_id, "_", cs_id, "_", pt_id)
+      )  %>% 
+      dplyr::ungroup()  %>% 
+      dplyr::select(tmp_id, class, Z_at_bottom, is_near_bottom, pts_near_bottom, pct_near_bottom, lower_bound, upper_bound, total_valid_pts) 
+  } else {
+    
+    # Given the Z value of each point, and the Z value of the bottom points ("Z_at_bottom"),
+    #  determine if each point is near the bottom 
+    # If the Z value for a given point is between the lower_bound and upper_bound, then the the point is determined to be "is_near_bottom"
+    # If look_only_above_bottom is TRUE, then the lower_bound is the Z value at the bottom points (Z_at_bottom), otherwise 
+    # If look_only_above_bottom is FALSE, then the lower_bound is the Z value at the bottom points (Z_at_bottom) minus distance_from_bottom (Z_at_bottom - distance_from_bottom)
+    bottom_pct <- 
+      bottom_pct %>%
+      # sf::st_drop_geometry() %>%
+      # dplyr::filter(hy_id == "wb-2399072", cs_id == 3)  %>% 
+      dplyr::group_by(hy_id, cs_id) %>%
+      dplyr::mutate(
+        lower_bound    = ifelse(look_only_above_bottom, Z_at_bottom, Z_at_bottom - distance_from_bottom),
+        upper_bound    = Z_at_bottom + distance_from_bottom,
+        is_near_bottom = dplyr::between(
+          Z,
+          lower_bound,
+          upper_bound
+        ),
+        # pts_near_bottom = sum(dplyr::between(Z, Z_at_bottom - distance_from_bottom, Z_at_bottom + distance_from_bottom)),
+        pts_near_bottom = sum(is_near_bottom),
+        pct_near_bottom = pts_near_bottom/points_per_cs,
+        tmp_id          = paste0(hy_id, "_", cs_id, "_", pt_id)
+      )  %>% 
+      dplyr::ungroup()  %>% 
+      dplyr::select(
+        tmp_id, class, Z_at_bottom,
+        is_near_bottom, pts_near_bottom, pct_near_bottom, 
+        lower_bound, upper_bound, 
+        total_valid_pts = points_per_cs
+      ) 
+  }
+  
+  # join bottom points percent table to cs_pts
+  cs_pts <- dplyr::left_join(
+    dplyr::mutate(
+      cs_pts,
+      tmp_id = paste0(hy_id, "_", cs_id, "_", pt_id)
+    ),
+    bottom_pct,
+    by = "tmp_id"
+  )  %>% 
+    dplyr::select(-tmp_id)
+  
+  # get the sf geometryt column name
+  geometry_colname <- names(cs_pts)[sapply(cs_pts, function(col) any( 
+    class(col) %in% c("sfc_POINT", "sfc", 
+                      "sfc_GEOMETRY", "sfc_MULTIPOINT")))
+  ]
+  
+  # move the geometry column to the end of the dataframe
+  cs_pts <- 
+    cs_pts %>% 
+    # dplyr::relocate(hy_id, cs_id, pt_id, Z, class, Z_at_bottom, is_near_bottom, pts_near_bottom, pct_near_bottom)
+    dplyr::relocate(geometry_colname, .after = dplyr::last_col())
+  
+  return(cs_pts)
+  
+}
+
 #' Check for flat cross sections and try to update these values by extending the original cross sections and reextracting DEM values
 #' @param net Hydrographic LINESTRING Network
 #' @param cs character, Hydrographic LINESTRING Network file path
