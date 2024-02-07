@@ -2016,14 +2016,13 @@ geos_linestring_dir <- function(line) {
 #' @param distance numeric value in meters or a vector of length 2 if 'end = "both"' where 
 #       the first value in the vector will extend that tail by that value and the second value extends the head by that value c(tail, head).
 #       If a single value is given when end = "both", the value is recycled and used to extend both ends
-#' @param end character, determines whether to extend the linestring from the 'tail', 'head' or 'both' ends
+#' @param dir character, determines whether to extend the linestring from the 'tail', 'head' or 'both' ends
 #' @param with_crs logical, whether a CRS should be prescribed to extended output geos_geometry linestring
 #' 
-#' @noRd
-#' @keywords internal
 #' @return geos_geometry linestring extended by 'distance' from either the 'head', 'tail' or 'both' ends of the original linestring
 #' @importFrom geos as_geos_geometry geos_make_linestring
 #' @importFrom wk wk_coords wk_crs
+#' @export
 geos_extend_line <- function(line, 
                              distance,
                              dir = "both", 
