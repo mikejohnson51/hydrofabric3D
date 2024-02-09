@@ -746,9 +746,9 @@ pts_to_reevaluate <- function(
 }
 
 #' Check for flat cross sections and try to update these values by extending the original cross sections and reextracting DEM values
+#' @param cs_pts Output from extract_dem_values_first
 #' @param net Hydrographic LINESTRING Network
 #' @param cs character, Hydrographic LINESTRING Network file path
-#' @param cs_pts Output from extract_dem_values_first
 #' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
 #' @param min_pts_per_cs Minimun number of points per cross section required.
 #' @param dem the DEM to extract data from
@@ -764,9 +764,9 @@ pts_to_reevaluate <- function(
 #' @return sf object of cs_pts with "flat" cross sections removed/updated with longer transects to capture more Z data
 #' @export
 rectify_flat_cs = function(
+    cs_pts         = NULL, 
     net            = NULL,
     cs             = NULL,
-    cs_pts         = NULL, 
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
     dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
