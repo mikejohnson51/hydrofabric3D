@@ -14,6 +14,13 @@ pct_pts_near_bottom(
   look_only_above_bottom = TRUE,
   total_from_bottom_up = FALSE
 )
+
+pct_pts_near_bottom(
+  cs_pts,
+  distance_from_bottom = 1,
+  look_only_above_bottom = TRUE,
+  total_from_bottom_up = FALSE
+)
 }
 \arguments{
 \item{cs_pts}{sf dataframe of cross section points (output of cross_section_pts() function)}
@@ -26,8 +33,16 @@ pct_pts_near_bottom(
 }
 \value{
 sf dataframe of cross section points with the added columns described above
+
+sf dataframe of cross section points with the added columns described above
 }
 \description{
+Calculate percentage of points within a set of cross section points that are near the bottom of the cross section
+Adds the following columns:
+is_near_bottom: state whether a point is near the bottom of the cross section (within a specified distance threshold of the bottom),
+pts_near_bottom: count of points near the bottom of the cross section
+pct_near_bottom: percent of points near the bottom of the cross section
+
 Calculate percentage of points within a set of cross section points that are near the bottom of the cross section
 Adds the following columns:
 is_near_bottom: state whether a point is near the bottom of the cross section (within a specified distance threshold of the bottom),

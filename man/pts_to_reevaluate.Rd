@@ -5,6 +5,8 @@
 \title{Get a dataframe of points that should be evaluated due to their proximity (nearness in Z distance) to the bottom}
 \usage{
 pts_to_reevaluate(cs_pts, threshold = 1, pct_threshold = 0.99)
+
+pts_to_reevaluate(cs_pts, threshold = 1, pct_threshold = 0.99)
 }
 \arguments{
 \item{cs_pts}{dataframe/sf dataframe of cross section points (requires hy_id, cs_id, and Z values)}
@@ -17,7 +19,12 @@ determine whether point should be considered for re evaluation. Default is 0.99 
 \value{
 dataframe with the hy_id, cs_id, pts_near_bottom (count of pts_near_bottom), and pct_near_bottom (\% of points in cross section that are near bottom).
 An empty dataframe is returned if ZERO points are classified as "near the bottom"
+
+dataframe with the hy_id, cs_id, pts_near_bottom (count of pts_near_bottom), and pct_near_bottom (\% of points in cross section that are near bottom).
+An empty dataframe is returned if ZERO points are classified as "near the bottom"
 }
 \description{
+Get a dataframe of points that should be evaluated due to their proximity (nearness in Z distance) to the bottom
+
 Get a dataframe of points that should be evaluated due to their proximity (nearness in Z distance) to the bottom
 }
