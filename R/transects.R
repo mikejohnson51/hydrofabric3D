@@ -881,9 +881,9 @@ rectify_flat_cs = function(
   # scale          = 0.5
   # threshold      = 1
   # pct_threshold  = 0.99
-  
+
   # add a "tmp_id" column to easily index transects by hy_id and cs_id 
-  cs <- add_tmp_id(cs)
+  cs <- hydrofabric3D::add_tmp_id(cs)
   # cs <- dplyr::mutate(cs,
   #                     tmp_id = paste0(hy_id, "_", cs_id)
   # ) 
@@ -1343,42 +1343,57 @@ pts_to_reevaluate <- function(
 #'
 #' @return dataframe or sf dataframe
 #' @importFrom sf st_drop_geometry
-#' @importFrom dplyr group_by count ungroup right_join summarize filter n_distinct select slice left_join relocate all_of last_col
-#' @importFrom tidyr pivot_wider
+#' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
+#' @importFrom tidyr pivot_wider pivot_longer
 #' @export
 get_point_type_counts <- function(classified_points, add = TRUE) {
   
   # classified_points <- cs_pts %>% hydrofabric3D::classify_points()
   # add = F
-
+  # classified_points = output_pts
+  
   # create a copy of the input dataset, add a tmp_id column
   stage_df <- 
     classified_points %>% 
     sf::st_drop_geometry() %>% 
     hydrofabric3D::add_tmp_id() 
   
-  # create a reference dataframe with all possible combinations of tmp_id and point_type
-  reference_df <- expand.grid(
-    tmp_id     = unique(stage_df$tmp_id),
-    point_type = unique(stage_df$point_type)
-  )
-  
+  # # create a reference dataframe with all possible combinations of tmp_id and point_type
+  # reference_df <- expand.grid(
+  #   tmp_id     = unique(stage_df$tmp_id),
+  #   point_type = unique(stage_df$point_type)
+  # )
+
   # get a count of the point_types in each hy_id/cs_id group (i.e. each cross section)
   point_type_counts <- 
     stage_df %>%
     dplyr::group_by(tmp_id, point_type) %>%
     dplyr::count() %>% 
-    dplyr::ungroup()
+    dplyr::ungroup() 
   
-  # Join the count of point types in each group with the reference_df to 
-  # get rows of NA values for any group that is missing a specific point_type
+  # pivot data wider to get implicit missing groups with NA values
   point_type_counts <- 
     point_type_counts %>% 
-    dplyr::right_join(reference_df, by = c("tmp_id", "point_type"))
-  
-  # For any cross section group that does NOT contain a point type, 
-  # the point type will be NA and here we replace those NAs with 0 
-  point_type_counts$n[is.na(point_type_counts$n)] <- 0
+    tidyr::pivot_wider(
+      names_from = point_type,
+      values_from = n
+    ) %>% 
+    tidyr::pivot_longer(
+      cols      = c(bottom, channel, right_bank, left_bank),
+      names_to  = "point_type",
+      values_to = "n"
+      ) %>% 
+    dplyr::mutate(n = ifelse(is.na(n), 0, n))
+
+  # # Join the count of point types in each group with the reference_df to 
+  # # get rows of NA values for any group that is missing a specific point_type
+  # point_type_counts <- 
+  #   point_type_counts %>% 
+  #   dplyr::right_join(reference_df, by = c("tmp_id", "point_type"))
+
+  # # For any cross section group that does NOT contain a point type, 
+  # # the point type will be NA and here we replace those NAs with 0 
+  # point_type_counts$n[is.na(point_type_counts$n)] <- 0
   
   # # make sure that all tmp_id groups have all 4 point types
   check_counts <-
@@ -1388,7 +1403,7 @@ get_point_type_counts <- function(classified_points, add = TRUE) {
     dplyr::filter(unique_count == 4) 
   
   # if the number of distinct points types in each cross section is not 4, raise an error
-  if(length(unique(stage_df$tmp_id)) != nrow(check_counts)) {
+  if (length(unique(stage_df$tmp_id)) != nrow(check_counts)) {
     stop("Error validating each hy_id/cs_id cross section contains exactly 4 distinct values in the 'point_type' column")  
   }
   
@@ -1413,6 +1428,8 @@ get_point_type_counts <- function(classified_points, add = TRUE) {
     ) %>% 
     dplyr::select(hy_id, cs_id, left_bank_count, right_bank_count, channel_count, bottom_count)
   
+  # point_type_counts %>% 
+  #   dplyr::arrange(-right_bank_count)
   # if add is TRUE, add the new point type columns to the original dataframe
   if(add) {
     
@@ -1966,7 +1983,6 @@ check_z_values <- function(pts, threshold = 1) {
 #' @importFrom dplyr filter group_by mutate ungroup select between
 #' @importFrom zoo rollmean
 #' @export
-#' 
 classify_points = function(cs_pts){
   
   . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
