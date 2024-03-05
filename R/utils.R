@@ -1,3 +1,35 @@
+utils::globalVariables(
+  c(".", "hy_id", "cs_id", "pt_id", "Z", "middle_index", "point_type", "minZ", 
+    "maxZ", "minZ_bottom", "maxZ_left_bank", "maxZ_right_bank", "valid_left_bank", 
+    "valid_right_bank", "bottom", "left_bank", "right_bank", "valid_banks", 
+    "relative_distance", "cs_lengthm", "default_middle", "has_relief", 
+    "max_relief", "braid_id", "geometry",
+    
+    "comid", "fromnode", "tonode", 
+    "tocomid", "divergence", "cycle_id", "node", "braid_vector", "totdasqkm", 
+    "changed", "relative_position", "head_distance", "tail_distance", 
+    "component_id", "cs_measure", "ds_distance", "along_channel", "euclid_dist", 
+    "sinuosity", "points_per_cs", "Z_at_bottom", "lower_bound", "upper_bound", 
+    "ge_bottom", "is_near_bottom", "pts_near_bottom", "total_valid_pts", 
+    "pct_near_bottom", 
+    "member_braids",  "braid_members", "diff_pts", "is_extended", 
+    "new_cs_id", "split_braid_ids",
+    
+    "braid_length", 
+    "id", 
+    "lengthm", 
+    "check_z_values", 
+    "geom", 
+    "is_same_Z", 
+    "is_multibraid", 
+    "channel", "unique_count",
+    "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
+    "terminalID",
+    "tmp_id",
+    "make_geoms_to_cut_plot"
+  )
+)
+
 #' Function to add a new "tmp_id" column to a dataframe from 2 other columns
 #' Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. Default is to use hy_id and cs_id columns to create a tmp_id = <hy_id>_<cs_id>.
 #' 
@@ -26,16 +58,18 @@ add_tmp_id <- function(df, x = hy_id, y = cs_id) {
 #' @return Returns the input dataframe with the geometry column moved to the last position if it exists. Otherwise, returns the input dataframe as is.
 #' @importFrom dplyr relocate all_of last_col
 #' @examples
+#' \dontrun{
 #' # Create a dataframe
 #' df <- data.frame(x = c(1, 2, 3), y = c(4, 5, 6))
 #' # Add a geometry column (sf dataframe)
-#' df_sf <- st_sf(df, geometry = st_sfc(st_point(c(1, 2, 3))))
+#' df_sf <- sf::st_sf(df, geometry = sf::st_sfc(sf::st_point(c(1, 2, 3))))
 #' # move column 
 #' df_sf <- dplyr::relocate(df_sf, x, geometry, y)
 #' df_sf # geometry column should be move to the middle column
 #' # Move geometry column to last position
 #' df_sf_moved <- move_geometry_to_last(df_sf)
 #' df_sf_moved # geometry column should be move the end column
+#' }
 move_geometry_to_last <- function(df) {
   # Check if any of the columns in the dataframe are geometry types
   check_for_geom <- sapply(df, function(col) {

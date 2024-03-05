@@ -1,3 +1,35 @@
+utils::globalVariables(
+  c(".", "hy_id", "cs_id", "pt_id", "Z", "middle_index", "point_type", "minZ", 
+    "maxZ", "minZ_bottom", "maxZ_left_bank", "maxZ_right_bank", "valid_left_bank", 
+    "valid_right_bank", "bottom", "left_bank", "right_bank", "valid_banks", 
+    "relative_distance", "cs_lengthm", "default_middle", "has_relief", 
+    "max_relief", "braid_id", "geometry",
+    
+    "comid", "fromnode", "tonode", 
+    "tocomid", "divergence", "cycle_id", "node", "braid_vector", "totdasqkm", 
+    "changed", "relative_position", "head_distance", "tail_distance", 
+    "component_id", "cs_measure", "ds_distance", "along_channel", "euclid_dist", 
+    "sinuosity", "points_per_cs", "Z_at_bottom", "lower_bound", "upper_bound", 
+    "ge_bottom", "is_near_bottom", "pts_near_bottom", "total_valid_pts", 
+    "pct_near_bottom", 
+    "member_braids",  "braid_members", "diff_pts", "is_extended", 
+    "new_cs_id", "split_braid_ids",
+    
+    "braid_length", 
+    "id", 
+    "lengthm", 
+    "check_z_values", 
+    "geom", 
+    "is_same_Z", 
+    "is_multibraid", 
+    "channel", "unique_count",
+    "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
+    "terminalID",
+    "tmp_id",
+    "make_geoms_to_cut_plot"
+  )
+)
+
 # *********************************
 # ------------- LATEST ------------
 # *********************************
