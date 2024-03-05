@@ -256,6 +256,10 @@ add_bank_attributes <- function(
   # Add columns with the counts of point types
   classified_pts <- hydrofabric3D::get_point_type_counts(classified_pts, add = TRUE)
   
+  # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
+  # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
+  classified_pts <- sf::st_drop_geometry(classified_pts)
+  
   # Add a valid_count column which is TRUE 
   # if a hy_id/cs_id has a bottom point AND atleast 1 left and right bank
   classified_pts <- 
@@ -374,6 +378,7 @@ get_bank_attributes <- function(
     ) {
   
   # classified_pts <- output_pts
+  # classified_pts
   
   # type checking, throw an error if not "sf", "tbl_df", "tbl", or "data.frame"
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
@@ -384,11 +389,15 @@ get_bank_attributes <- function(
   # Add columns with the counts of point types
   classified_pts <- hydrofabric3D::get_point_type_counts(classified_pts, add = TRUE)
   
+  # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
+  # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
+  classified_pts <- sf::st_drop_geometry(classified_pts)
+  
   # Add a valid_count column which is TRUE 
   # if a hy_id/cs_id has a bottom point AND atleast 1 left and right bank
   classified_pts <- 
     classified_pts %>% 
-    sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
+    # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
     dplyr::mutate(
       valid_count = dplyr::case_when(
         (bottom_count > 0 & 
@@ -402,7 +411,8 @@ get_bank_attributes <- function(
   # flags noting if the left/right banks are "valid" (i.e. max left/right bank values are greater than the bottom Z)
   bank_validity <-
     classified_pts %>% 
-    sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
+    # classified_pts2 %>% 
+    # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
     dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
     # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
     dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
@@ -499,6 +509,10 @@ add_relief <- function(
     stop("Invalid value 'pct_of_length_for_relief' of ", pct_of_length_for_relief, ", 'pct_of_length_for_relief' must be greater than or equal to 0")
   } 
   
+  # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
+  # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
+  classified_pts <- sf::st_drop_geometry(classified_pts)
+  
   # store the cross section lengths and calculate the depth threshold as a percent of the cross sections length
   cs_lengths <- 
     classified_pts %>% 
@@ -591,7 +605,11 @@ get_relief <- function(
     pct_of_length_for_relief = 0.01,
     detailed = FALSE
 ) {
-
+  
+  # classified_pts
+  # pct_of_length_for_relief = pct_of_length_for_relief
+  # detailed                 = FALSE
+  
   # classified_pts = output_pts
   # pct_of_length_for_relief = 0.01
   
@@ -610,9 +628,13 @@ get_relief <- function(
     stop("Invalid argument type, 'detailed' must be of type 'logical', given type was '",   class(detailed), "'")
   }
   
+  # drop geometries as safety precaution
+  classified_pts <- sf::st_drop_geometry(classified_pts)
+  
   # store the cross section lengths and calculate the depth threshold as a percent of the cross sections length
   cs_lengths <- 
-    classified_pts %>% 
+    classified_pts %>%
+    # classified_pts2 %>% 
     dplyr::select(hy_id, cs_id, cs_lengthm) %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::slice(1) %>% 
@@ -623,7 +645,7 @@ get_relief <- function(
   
   # get the minimum bottom point and maximum left and right bank points
   relief <-
-    classified_pts %>% 
+    classified_pts %>%
     # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
     dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
     dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
@@ -641,7 +663,7 @@ get_relief <- function(
                   bottom     = minZ_bottom, 
                   left_bank  = maxZ_left_bank, 
                   right_bank = maxZ_right_bank
-    ) 
+                  ) 
   
   # join lengths and depth threshold back with relief table and
   # calculate if the max difference between left/right bank vs bottom is 
