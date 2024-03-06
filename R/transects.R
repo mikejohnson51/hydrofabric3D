@@ -931,7 +931,7 @@ classify_points <- function(
   cols_to_select <- c(req_cols, starting_cols[!starting_cols %in% req_cols])
 
   # create classifications for points
-  # classified_pts <- 
+  classified_pts <-
     dplyr::filter(cs_pts) %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
@@ -969,7 +969,7 @@ classify_points <- function(
     # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
     # dplyr::select(hy_id, cs_id, pt_id, Z, 
     # relative_distance, cs_lengthm, class, point_type) # Old strict ordering, removed this to keep other columns in the input data and not lose any data for the user.
-    # classified_pts[output_cols]                       # Another method for selecting columns....
+    # classified_pts[cols_to_select]                       # Another method for selecting columns....
   
   # get bank validity attributes for each hy_id/cs_id
   # - Uses the count of point types per cross section and checks Z to make sure that a "bottom" point is
