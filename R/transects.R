@@ -921,8 +921,17 @@ classify_points <- function(
     stop("Invalid value 'pct_of_length_for_relief' of ", pct_of_length_for_relief, ", 'pct_of_length_for_relief' must be greater than or equal to 0")
   } 
   
+  # required cols that will be selected from the classified_pts object and in this order
+  req_cols       <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type")
+  
+  # any starting columns in the original data 
+  starting_cols  <- names(cs_pts)
+  
+  # name and order of columns to select with
+  cols_to_select <- c(req_cols, starting_cols[!starting_cols %in% req_cols])
+
   # create classifications for points
-  classified_pts <- 
+  # classified_pts <- 
     dplyr::filter(cs_pts) %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
@@ -956,12 +965,17 @@ classify_points <- function(
       class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
     dplyr::ungroup() %>% 
     dplyr::mutate(point_type = class) %>% 
-    dplyr::select(hy_id, cs_id, pt_id, Z, relative_distance, cs_lengthm, class, point_type)
+    dplyr::select(dplyr::any_of(cols_to_select))
+    # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
+    # dplyr::select(hy_id, cs_id, pt_id, Z, 
+    # relative_distance, cs_lengthm, class, point_type) # Old strict ordering, removed this to keep other columns in the input data and not lose any data for the user.
+    # classified_pts[output_cols]                       # Another method for selecting columns....
   
   # get bank validity attributes for each hy_id/cs_id
   # - Uses the count of point types per cross section and checks Z to make sure that a "bottom" point is
   #   in each cross section and each "bottom" point has a valid left and right bank)
   bank_validity_df <- get_bank_attributes(classified_pts)
+  
   # # Or add bank attributes 
   # banked_pts <- add_bank_attributes(output_pts)
   
