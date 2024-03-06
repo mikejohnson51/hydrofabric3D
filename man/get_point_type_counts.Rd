@@ -2,8 +2,7 @@
 % Please edit documentation in R/utils.R
 \name{get_point_type_counts}
 \alias{get_point_type_counts}
-\title{Get the count of each point type in a set of cross section points
-classify_points() will add the required "point_type" column to a set of cross section points}
+\title{Get the count of each point type in a set of cross section points}
 \usage{
 get_point_type_counts(classified_pts, add = TRUE)
 }
@@ -16,6 +15,5 @@ get_point_type_counts(classified_pts, add = TRUE)
 dataframe or sf dataframe
 }
 \description{
-Get the count of each point type in a set of cross section points
 classify_points() will add the required "point_type" column to a set of cross section points
 }

@@ -30,30 +30,72 @@ utils::globalVariables(
   )
 )
 
-#' Function to add a new "tmp_id" column to a dataframe from 2 other columns
-#' Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. Default is to use hy_id and cs_id columns to create a tmp_id = <hy_id>_<cs_id>.
-#' 
+#' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
+#' @description
+#' Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. 
+#' Default is to use hy_id and cs_id columns to create a tmp_id = <hy_id>_<cs_id>.
 #' @param df dataframe with x and y as columns
-#' @param x The name of the column in df to make up the first part of the added tmp_id column (tmp_id = <x>_<y>). Default is hy_id.
-#' @param y The name of the column in df to make up the second part of the added tmp_id column (tmp_id = <x>_<y>). Default is cs_id.
+#' @param x The name of the column in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is hy_id.
+#' @param y The name of the column in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is cs_id.
 #' 
 #' @return The input dataframe with the "tmp_id" column added.
 #' 
 #' @importFrom dplyr mutate
 #' @export
 add_tmp_id <- function(df, x = hy_id, y = cs_id) {
+  # # Create the "tmp_id" column by concatenating values from "x" and "y"
+  # df <- dplyr::mutate(df, tmp_id = paste0({{x}}, "_", {{y}}))
   
-  # Create the "tmp_id" column by concatenating values from "x" and "y"
-  df <- dplyr::mutate(df, tmp_id = paste0({{x}}, "_", {{y}}))
+  # first try to add the tmp_id as if 'x' and 'y' are characters
+  # if that fails, then use 'x' and 'y' as tidyselectors in dplyr::mutate()
+  tryCatch({
+    
+    tmp_ids = paste0(df[[x]], "_", df[[y]])
+    df$tmp_id = tmp_ids
+    
+    return(df)
+    
+  }, error = function(e) { })
+  
+  # if columns are NOT characters, then try with tidyselectors...
+  df <- dplyr::mutate(df, 
+                      tmp_id = paste0({{x}}, "_", {{y}})) # Create the "tmp_id" column by concatenating values from "x" and "y"
   
   return(df)
 }
 
-#' Move Geometry Column to the last column position
+#' @title Get a list of unique tmp_ids in a dataframe 
+#' @description
+#' Dataframe can have "tmp_id" column already or the columns can be specified with 'x' and 'y' arguments
 #' 
+#' @param df dataframe with x and y as columns, with an optional "tmp_id" column, otherwise a tmp_id will be created from x_y
+#' @param x The name of the column in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is hy_id.
+#' @param y The name of the column in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is cs_id.
+#' 
+#' @return character vector of unique "tmp_id" values in the given dataframe 
+#' 
+#' @export
+get_unique_tmp_ids <- function(df, x = hy_id, y = cs_id) {
+  
+  # if no tmp_id exists, add one
+  if (!"tmp_id" %in% names(df)) {
+    # message("No 'tmp_id' found, adding 'tmp_id' from 'x' and 'y' columns")
+    df <- 
+      df %>% 
+      hydrofabric3D::add_tmp_id(x = {{x}}, y = {{y}}) 
+  }
+  
+  # get the unique tmp_ids
+  unique_tmp_ids <- unique(df$tmp_id)
+  
+  return(unique_tmp_ids)
+  
+}
+
+#' @title Move Geometry Column to the last column position
+#' @description 
 #' Internal utility function for taking a dataframe or an sf dataframe, checks for the existence of a geometry type column, and 
 #' if it exists, moves it to the last column. If no geometry column exists, it returns the input dataframe as is.
-#' 
 #' @param df A dataframe or an sf dataframe.
 #' @return Returns the input dataframe with the geometry column moved to the last position if it exists. Otherwise, returns the input dataframe as is.
 #' @importFrom dplyr relocate all_of last_col
@@ -89,8 +131,8 @@ move_geometry_to_last <- function(df) {
   return(df)
 }
 
-#' Get the count of each point type in a set of cross section points
-#' classify_points() will add the required "point_type" column to a set of cross section points
+#' @title Get the count of each point type in a set of cross section points
+#' @description classify_points() will add the required "point_type" column to a set of cross section points
 #' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well asa 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
 #' @param add logical, whether to add the point type columns to the original data or not. Default is TRUE. If FALSE, a dataframe with "hy_id", "cs_id", "left_bank_count", "right_bank_count", "channel_count", and ""bottom_count" is returned
 #'
@@ -232,7 +274,7 @@ get_point_type_counts <- function(classified_pts, add = TRUE) {
   
 }
 
-#' Adds attributes about the banks of each cross section in a dataframe of cross section points
+#' @title Adds attributes about the banks of each cross section in a dataframe of cross section points
 #' Function adds "bottom", "left_bank", "right_bank" columns that are 
 #' the Z values of the "lowest" bottom point, and the "highest" left and right bank Z values, respectively. If there are
 #' And also a "valid_banks" column is added that is TRUE if the hy_id/cs_id set of cross section point has at least 1 bottom point with 
@@ -364,7 +406,7 @@ add_bank_attributes <- function(
   
 }
 
-#' Get attributes about the banks of each cross section in a dataframe of cross section points 
+#' @title Get attributes about the banks of each cross section in a dataframe of cross section points 
 #' Given a set of cross section points with point_type column, return a dataframe of the unique hy_id/cs_ids with the following calculated columns:
 #' "bottom", "left_bank", "right_bank" columns which are the Z values of the "lowest" bottom point, and the "highest" left and right bank Z values, respectively. 
 #' And a "valid_banks" column indicating whether the hy_id/cs_id set of cross section point has at least a signle bottom point with 
@@ -470,7 +512,7 @@ get_bank_attributes <- function(
   
 }
 
-#' Add relief attributes to a dataframe of cross sections points
+#' @title Add relief attributes to a dataframe of cross sections points
 #' Given a set of cross section points (derived from hydrofabric3D::cross_section_pts() and hydrofabric3D::classify_points()) add a "has_relief" logical
 #' value to data. The "has_relief" value is indicating whether a cross section "has relief".
 #' Relief is determined by checking each set of cross section points have a left OR right bank that
@@ -588,7 +630,7 @@ add_relief <- function(
 
 }
 
-#' Get relief attributes from a dataframe of cross sections points
+#' @title Get relief attributes from a dataframe of cross sections points
 #' Generate a dataframe from a set of classified cross section points indicating whether a cross section "has relief". 
 #' Relief is determined by checking each set of cross section points have a left OR right bank that has a depth difference from the bottom that is
 #'  greater than or equal to a percentage of the cross section length (e.g. Assuming a 'pct_of_length_for_relief' of 0.01 (1%) of a 100m cross section would have a relief depth threshold of 1m)

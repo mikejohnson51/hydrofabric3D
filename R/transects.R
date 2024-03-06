@@ -629,7 +629,7 @@ extract_dem_values <- function(cs, dem) {
   
 }
 
-#' Extend an sf linestring dataframe by a percent of the lines length
+#' @title Extend an sf linestring dataframe by a percent of the lines length
 #'
 #' @param x linestring sf dataframe
 #' @param pct numeric, percent of line to extend linestring by in both directions
@@ -710,13 +710,13 @@ extend_by_percent <- function(
   
 }
 
-#' Extend a set of transects by a percentage
+#' @title Extend a set of transects by a percentage
 #'
 #' @param transects_to_extend sf linestrings, set of transects that should be extended (subset of 'transects'). Requires the following columns:  "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters) 
 #' @param transects sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters)
 #' @param net sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_extend' and 'transects' )
 #' @param scale numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50% of the transect length)
-#'
+#' @param verbose logical, whether to print messages or not. Default is TRUE
 #' @return sf linestring dataframe containing the updates transects_to_extend (with a flag denoting if the geometry was extended by "scale" % or not)
 #' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
 #' @importFrom sf st_geometry st_as_sf
@@ -725,7 +725,8 @@ extend_transects <- function(
     transects_to_extend, 
     transects, 
     net, 
-    scale = 0.5
+    scale = 0.5,
+    verbose = TRUE
 ) {
 
   # # to_extend2 <- dplyr::slice(to_extend, 1:55000)
@@ -738,7 +739,7 @@ extend_transects <- function(
   # Create an "is_extended" flag to identify which transects were extended and updated 
   transects_to_extend$is_extended <- FALSE
   
-  message(paste0("Extending ", nrow(transects_to_extend), " transects by ",     scale * 100, "%..."))
+  if(verbose) { message(paste0("Extending ", nrow(transects_to_extend), " transects by ",     scale * 100, "%...")) }
   
   # Extend the transects by a scale % value
   extended_trans <- extend_by_percent(transects_to_extend, scale, "cs_lengthm")
@@ -752,7 +753,7 @@ extend_transects <- function(
   # extended_trans2 <- extend_by_percent(to_extend2, scale, "cs_lengthm")
   # geos_trans <- geos::as_geos_geometry(extended_trans2)
   
-  message(paste0("Converting sf geometries to geos geometries..."))
+  # if(verbose) { message(paste0("Converting sf geometries to geos geometries...")) }
 
   # Convert extended transects to geos
   extended_trans  <- geos::as_geos_geometry(extended_trans)
@@ -760,7 +761,7 @@ extend_transects <- function(
   # Convert the net object into a geos_geometry
   geos_net <- geos::as_geos_geometry(net)
   
-  message(paste0("Iterating through extended geometries and checking validity..."))
+  # if(verbose) { message(paste0("Iterating through extended geometries and checking validity...")) }
   
   # Convert the original transect lines to geos_geometries and when 
   # a valid extension comes up in the below for loop, replace the old geometry with the newly extended one
@@ -787,11 +788,10 @@ extend_transects <- function(
   
   # output a message every ~10% intervals
   message_interval <- total %/% 10
-  
+
   # loop through geometries that might need to be extended, try to extend, and then update 
   # the 'to_extend' values IF the extended transectr does NOT violate any intersection rules
   for (i in 1:length(extended_trans)) {
-    # i = 1
     
     # Check if the iteration is a multiple of 100
     if (i %% message_interval == 0) {
@@ -800,7 +800,7 @@ extend_transects <- function(
       percent_done <- round(i/total, 2) * 100
       
       # Print the message every "message_interval"
-      message(" - (", percent_done, "%) ")
+      if(verbose) { message(" > ", percent_done, "% ") }
       # message("Iteration ", i, " / ", length(extended_trans), 
       #         " - (", percent_done, "%) ")
       
@@ -870,7 +870,8 @@ extend_transects <- function(
       
     } 
   }
-  message(paste0("Complete!"))
+
+  if(verbose) { message(paste0("Complete!")) }
   
   # # index for only valid transects
   # is_valid <- !geos::geos_is_empty(geos_list)
@@ -985,6 +986,9 @@ classify_points <- function(
       validity_checks,
       by = c("hy_id", "cs_id")
     ) 
+  
+  # move the geometry column to the last column (if one exists)
+  classified_pts <- move_geometry_to_last(classified_pts)
   
   return(classified_pts)
 

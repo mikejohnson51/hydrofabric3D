@@ -30,6 +30,412 @@ utils::globalVariables(
   )
 )
 
+#' @title Check and fix cross section points with limited variation in Z values (version 2 latest)
+#' @description 
+#' This function takes in a set of cross section points (cs_pts), a flowline network (net) and a set of transects lines for that flowline network (transects).
+#' This function assumes the cross section points have been classified via "classify_points()" and have "has_relief" and "valid_banks" logical columns.
+#' This function will look for cross section points that either have no relief or don't have valid banks, then the transect lines that generated these cross section points
+#' are extended and new points are extracted along the newly extended, longer transect line. The newly extracted points are checked for relief AND valid banks and 
+#' are removed if they still have no relief or don't have valid banks. Any new points that became valid as a result of the extension process are added to the original dataset 
+#' and the rectified set of cross section points will be returned with an "is_extended" logical flag, indicating if the transect line that generated the cross section points was extended.
+#' Improved function for rectifying cross section points with flat Z values by extending transect lines and reevaluating the new DEM values.
+#' @param cs_pts sf dataframe or dataframe of cross section points from cross_section_pts() followed by classify_points()
+#' @param net Hydrographic LINESTRING Network
+#' @param transects character, Hydrographic LINESTRING of transects along hydrographic (net) network
+#' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
+#' @param min_pts_per_cs Minimun number of points per cross section required.
+#' @param dem the DEM to extract data from
+#' @param scale numeric, If a transect line DEM extraction results in all equal Z values,
+#'  by what percent of the transect lines length (meters) should the transect line be
+#'   extended in both directions to try to capture representative Z values ? Default is 0.5 (50% of the transect length)
+#' @param pct_of_length_for_relief numeric, percent of cs_lengthm to use as the threshold depth for classifying whether a cross section has "relief". Default is 0.01 (1% of the cross sections length).
+#' @param fix_ids logical, whether to reenumerate the "cs_id" column to 
+#' make sure cross sections are number 1 - number of total cross sections on flowline.  Default is FALSE, cs_id will be kept as 
+#' they were in the input data and may contain gaps between cs_ids within a flowline (hy_id). 
+#' WARNING: Setting fix_ids = TRUE may result in input cross section points (cs_pts) having DIFFERENT cs_id values as the input transects (cs) 
+#' and the inconsistency can cause problems when trying to cross walk between the datasets in the future.
+#' @param verbose logical, whether to print messages or not. Default is TRUE
+#' @importFrom dplyr mutate relocate last_col select rename left_join group_by ungroup slice n bind_rows filter
+#' @importFrom sf st_drop_geometry
+#' @importFrom nhdplusTools rename_geometry
+#' @return sf object of cs_pts with only cross sections points that have relief and have valid banks, other points that don't meet this condition are removed
+#' @export
+rectify_cs = function(
+    cs_pts         = NULL,   
+    net            = NULL,
+    transects      = NULL,
+    points_per_cs  = NULL,
+    min_pts_per_cs = 10,
+    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
+    scale          = 0.5,
+    pct_of_length_for_relief = 0.01,
+    fix_ids        = FALSE,
+    verbose        = TRUE
+) {
+  
+  ###  ###  ###  ### ###  ###  ###  ###
+  ###  ###  ###  ### ###  ###  ###  ###
+  # cs_pts = classified_pts
+  # net = flines
+  # transects = transects
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  # scale          = 0.5
+  # pct_of_length_for_relief = 0.01
+  # fix_ids        = FALSE
+  # verbose        = TRUE
+  ###  ###  ###  ### ###  ###  ###  ###
+  ###  ###  ###  ### ###  ###  ###  ###
+  
+  # # starting column names
+  # start_cols <- names(cs_pts)
+  
+  # add a "tmp_id" column to easily index transects by hy_id and cs_id 
+  transects <- hydrofabric3D::add_tmp_id(transects)
+  
+  ### ### ## ## ### ## ### ##  ### ### ## ## ### ## ### ##
+
+  if (verbose) { message("Determining points to reevaluate...") }
+  # # Check if any cross sections are "flat" within a threshold (All Z values are the same or the difference is within the threshold)
+  # pts_to_inspect <- pts_to_reevaluate(cs_pts        = cs_pts, 
+  #                              threshold     = threshold,
+  #                              pct_threshold = pct_threshold)
+  
+  # filter down to cross sections that DON'T have valid banks OR DON'T have any relief
+  pts_to_inspect <-
+    cs_pts %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::filter(!valid_banks | !has_relief)
+  
+  # # Check if any cross sections are "flat" within a threshold (All Z values are the same or the difference is within the threshold)
+  # pts_to_inspect <- pts_to_reevaluate(cs_pts = cs_pts, threshold = threshold, pct_threshold = pct_threshold)
+  
+  # if there are no flatlines, return the cs_pts object
+  if (nrow(pts_to_inspect) == 0) {
+    
+    cs_pts <- 
+      cs_pts %>% 
+      dplyr::mutate(
+        is_extended = FALSE
+      ) %>% 
+      dplyr::relocate(geom, .after = dplyr::last_col())
+    
+    return(cs_pts)
+  }
+  
+  # subset transects (transects) to the flat cross sections in pts_to_inspect
+  trans_to_extend <- 
+    transects %>% 
+    dplyr::filter(tmp_id %in% unique(hydrofabric3D::add_tmp_id(pts_to_inspect)$tmp_id)) %>%
+    dplyr::select(-tmp_id) 
+  
+  
+  # 1. Loop through geometries that might need to be extended, 
+  # 2. Try to EXTEND, 
+  # 3. and then UPDATE --> (only IF the extended transect does NOT violate any of the intersection rules)
+  # If ALL of the below intersection conditions are TRUE then a given extended transect line will get replace the old transect geometry 
+  # Intersection rules: 
+  # - Newly extended transect intersects with its flowlines AT MOST 1 time
+  # - Newly extended transect does NOT intersect with any of the other NEWLY EXTENDED transect lines
+  # - Newly extended transect does NOT intersect with any of the ORIGINAL transect lines
+  # extend_transects() returns the "trans_to_extend" object with updated attributes for any extensions that were made (geometries, cs_lengthm, "is_extended" flag) 
+  extended_geoms <- extend_transects(
+    transects_to_extend = trans_to_extend,
+    transects           = transects, 
+    net                 = net, 
+    scale               = scale,
+    verbose             = verbose
+  )
+  
+  # Store unextendable transects for filtering out later on 
+  # (these are transects that were flat AND could NOT be extended without violating an intersection rule)
+  unextendable   <- dplyr::filter(extended_geoms, !is_extended)
+  
+  # Remove unextendable transects from extended_geoms 
+  extended_geoms <- dplyr::filter(extended_geoms, is_extended)
+  
+  # system.time({
+    
+  # add cross section points to extended cross sections
+  extended_geoms <- add_points_per_cs(
+    cs             = extended_geoms,
+    # cs             = trans_to_extend,
+    # cs             = dplyr::slice(extended_geoms , 1:100),
+    points_per_cs  = points_per_cs,
+    min_pts_per_cs = min_pts_per_cs,
+    dem            = dem
+  )
+  
+  # })
+  
+  if (verbose) { message("Extracting new DEM values..")}
+  # system.time({
+  
+  # extract DEM values for newly extended cross sections
+  extended_pts <- extract_dem_values(cs = extended_geoms, dem = dem)
+  
+  # })
+  
+  # add a tmp_id for joining and filtering 
+  extended_pts <- add_tmp_id(extended_pts)
+  
+  if (verbose) { message("Double checking new extended cross section DEM values for flatness") }
+  
+  classify_pts_again <- hydrofabric3D::classify_points(
+    extended_pts, 
+    pct_of_length_for_relief = pct_of_length_for_relief
+  )
+  
+  # add tmp id for convenience
+  classify_pts_again <- hydrofabric3D::add_tmp_id(classify_pts_again)
+
+  # List of unique hy_id/cs_ids (tmp_id) that are STILL bad after attempting to extend and 
+  # re-extract new cross section points from the extended transect line 
+  # ---> ("Bad" = No relief OR not valid banks)
+  still_bad_ids <- 
+    classify_pts_again %>% 
+    dplyr::filter(!has_relief | !valid_banks) %>% 
+    get_unique_tmp_ids()
+  
+  # TODO: Left off here to add back and remove old data 03/05/2024
+  pts_to_keep <- dplyr::filter(extended_pts, !tmp_id %in% still_bad_ids)
+  pts_to_drop <- dplyr::filter(extended_pts, tmp_id %in% still_bad_ids)
+  # pts_to_keep <- dplyr::filter(extended_pts, !tmp_id %in% unique(dplyr::filter(classify_pts_again, 
+                                                              # !has_relief | !valid_banks)$tmp_id))
+  # pts_to_drop <- dplyr::filter(extended_pts, tmp_id %in% unique(dplyr::filter(classify_pts_again, 
+                                                          # !has_relief | !valid_banks)$tmp_id))
+  
+  # classify the pts_to_keep so they can be added back to the remaining "good" cross section points from the input
+  pts_to_keep <- hydrofabric3D::classify_points(pts_to_keep, pct_of_length_for_relief = pct_of_length_for_relief)
+  
+  # add is_extended logical if does not exist
+  if (!"is_extended" %in% names(pts_to_keep)) {
+    pts_to_keep$is_extended = TRUE
+  }
+
+  # get list of unique tmp_ids for the "unextendable" dataframe, and for the "keep" and "drop" dataframes
+  unextendable_ids <- get_unique_tmp_ids(unextendable, x = hy_id, y = cs_id)
+  drop_ids         <- get_unique_tmp_ids(pts_to_drop)
+  keep_ids         <- get_unique_tmp_ids(pts_to_keep)
+  
+  # filter out cross section points that have "same Z" values (remove flat Z values)
+  final_pts <-
+    cs_pts %>%  
+    hydrofabric3D::add_tmp_id() %>% 
+    dplyr::filter(
+      !tmp_id %in% unextendable_ids
+      # !tmp_id %in% unique(hydrofabric3D::add_tmp_id(unextendable)$tmp_id)
+      # !tmp_id %in% unique(pts_to_drop$tmp_id)
+    ) %>% 
+    dplyr::filter(
+      !tmp_id %in% drop_ids
+      # !tmp_id %in% unique(pts_to_drop$tmp_id)
+    ) 
+  
+  # remove the old versions of the "pts_to_keep" cross section points and 
+  # replace them with the updated cross section points with the extended "cs_lengthm" and "Z" values
+  final_pts <-
+    final_pts %>%
+    dplyr::filter(
+      !tmp_id %in% keep_ids
+      # !tmp_id %in% unique(pts_to_keep$tmp_id)
+      # !tmp_id %in% unique(extended_pts$tmp_id)
+    ) %>% 
+    dplyr::mutate(
+      is_extended = FALSE
+    ) %>% 
+    dplyr::bind_rows(
+      # pts_to_keep
+      hydrofabric3D::add_tmp_id(pts_to_keep)
+    ) %>% 
+    dplyr::select(-tmp_id) 
+
+  # rectify_summary(cs_pts, final_pts)
+
+  # rename geometry column to "geom" 
+  final_pts <- nhdplusTools::rename_geometry(final_pts, "geom")
+  
+  # TODO: this should probably be removed and just kept as its own separete function and use outside of this function
+  # If TRUE then the cs_ids are renumbered to make sure each hy_id has cross sections
+  # that are numbered (1 - number of cross sections) on the hy_id
+  if (fix_ids) {
+    if (verbose) { message("Renumbering cross section IDs...") }
+    final_pts <- renumber_cs_ids(final_pts)
+  }
+  
+  # then move the geometry column to the last column
+  final_pts <- move_geometry_to_last(final_pts)
+  # final_pts <- dplyr::relocate(final_pts, geom, .after = dplyr::last_col())
+  
+  return(final_pts)
+}
+
+#' @title Fix IDs in a dataframe
+#'
+#' @description 
+#' This function renumbers cross section IDs in a dataframe to ensure each hy_id has cross sections
+#' numbered from 1 to the total number of cross sections on the hy_id.
+#'
+#' @param df A dataframe containing hy_id and cs_id columns.
+#' @return The input dataframe with renumbered cs_id values.
+#' @importFrom dplyr select group_by slice ungroup mutate n left_join rename relocate
+#' @importFrom sf st_drop_geometry
+renumber_cs_ids <- function(df) {
+  
+  if (!"hy_id" %in% colnames(df) || !"cs_id" %in% colnames(df)) {
+    stop("The dataframe must contain 'hy_id' and 'cs_id' columns.")
+  }
+  
+  if (length(unique(df$hy_id)) == 0 || length(unique(df$cs_id)) == 0) {
+    stop("The dataframe must have non-empty 'hy_id' and 'cs_id' columns.")
+  }
+  
+  if (any(is.na(df$hy_id)) || any(is.na(df$cs_id))) {
+    stop("The 'hy_id' and 'cs_id' columns cannot have NA values.")
+  }
+  
+  # make a dataframe that has a new_cs_id column that has 
+  # the cs_id renumbered to fill in any missing IDs,
+  # so each hy_id has cs_ids that go from 1 - number of cross sections on hy_id
+  # The dataframe below will be used to join the "new_cs_id" with 
+  # the original "cs_ids" in the final_pts output data
+  renumbered_ids <- 
+    df %>%
+    sf::st_drop_geometry() %>%
+    dplyr::select(hy_id, cs_id, pt_id, cs_measure) %>%
+    dplyr::group_by(hy_id, cs_id) %>%
+    dplyr::slice(1) %>%
+    dplyr::ungroup() %>%
+    dplyr::group_by(hy_id) %>%
+    dplyr::mutate(
+      new_cs_id = 1:dplyr::n(),
+      tmp_id = paste0(hy_id, "_", cs_id)
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(new_cs_id, tmp_id)
+  
+  # Join the new cs_ids back with the final output data to replace the old cs_ids
+  df <- dplyr::left_join(
+    dplyr::mutate(
+      df,
+      tmp_id = paste0(hy_id, "_", cs_id)
+    ),
+    renumbered_ids,
+    by = "tmp_id"
+  ) %>%
+    dplyr::select(-cs_id, -tmp_id) %>%
+    dplyr::rename("cs_id" = "new_cs_id") %>%
+    dplyr::relocate(hy_id, cs_id)
+  
+  return(df)
+}
+
+
+#' @title Makes a summaru dataframe and print out of differences between 2 cross section points dataframes
+#' @description
+#' Convenience function for printing out the difference between a cross section point dataframe and 
+#' the resulting output of putting that dataframe through the rectify_cs() function
+#' 
+#' @param input_points sf dataframe or dataframe of cross section points
+#' @param output_points sf dataframe or dataframe of cross section points, with "is_extended" logical column
+#' @param verbose logical, whether to print out summary message/ Default is TRUE
+#'
+#' @return dataframe
+#' @importFrom dplyr select group_by arrange slice ungroup summarize count
+#' @importFrom sf st_drop_geometry
+#' @export
+rectify_summary <- function(input_points, output_points, verbose = TRUE) {
+  
+  # drop geometries
+  input_points  <- sf::st_drop_geometry(input_points)  
+  output_points <- sf::st_drop_geometry(output_points)  
+  
+  # change in number of hy_ids
+  input_number_of_hyids  <- length(unique(input_points$hy_id))
+  output_number_of_hyids <- length(unique(output_points$hy_id))
+  number_removed_hyids   <- input_number_of_hyids - output_number_of_hyids
+  
+  # number of rows 
+  number_input_rows      <- nrow(input_points)
+  number_output_rows     <- nrow(output_points)
+  diff_in_row_number     <- number_input_rows - number_output_rows
+  
+  change_in_rows_string  <- ifelse(diff_in_row_number >= 0, 
+                                   paste0(abs(diff_in_row_number), " rows were removed"), 
+                                   paste0(abs(diff_in_row_number), " rows were added")
+  )
+
+  # Average points per cross section
+  input_pts_per_cs <- 
+    input_points %>% 
+    dplyr::select(hy_id, cs_id, pt_id) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::arrange(-pt_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarize(avg_pts_per_cs = round(mean(pt_id), 2)) %>% 
+    .$avg_pts_per_cs
+  
+  output_pts_per_cs <- 
+    output_points %>% 
+    dplyr::select(hy_id, cs_id, pt_id) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::arrange(-pt_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::summarize(avg_pts_per_cs = round(mean(pt_id), 2)) %>% 
+    .$avg_pts_per_cs
+  
+  # Extensions counts
+  output_extended_counts <-  
+    output_points %>%
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::count(is_extended)
+  # output_extended_counts <- 
+  #   output_points %>%
+  #   dplyr::count(is_extended) 
+
+  is_extended_count      <- output_extended_counts$n[output_extended_counts$is_extended == TRUE]
+  is_not_extended_count  <- output_extended_counts$n[output_extended_counts$is_extended == FALSE]
+  
+  if(verbose) {
+    message("------ Rectification summary stats ------")
+    message("Change in number of 'hy_ids':")
+    message(paste0("  - Start number of 'hy_ids': ", input_number_of_hyids))
+    message(paste0("  - End number of 'hy_ids': ", output_number_of_hyids))
+    message(paste0("  - Number removed 'hy_ids': ", number_removed_hyids))
+    message("Change in number of rows:")
+    message(paste0("  - Starting number of rows: ", number_input_rows))
+    message(paste0("  - Ending number of rows: ", number_output_rows))
+    message(paste0("     > ", change_in_rows_string))
+    message("Average points per cross section:")
+    message(paste0("  - Starting average points per cross section: ", input_pts_per_cs))
+    message(paste0("  - Ending average points per cross section: ", output_pts_per_cs))
+    message("Extensions counts:")
+    message(paste0("  - Number of extended cross sections: ", is_extended_count, " / ", is_extended_count + is_not_extended_count))
+    message(paste0("  - Number of non-extended cross sections: ", is_not_extended_count, " / ", is_extended_count + is_not_extended_count))
+    message("-----------------------------------------")
+  }
+  
+  # Create dataframe
+  summary_df <- data.frame(
+    metric = c("Input number of hy_ids", "Output number of hy_ids", "Number removed hy_ids",
+               "Number of input rows", "Number of output rows", "Change in row number",
+               "Average input points per cross section", "Average output points per cross section",
+               "Count of extended points", "Count of non-extended points"),
+    value = c(input_number_of_hyids, output_number_of_hyids, number_removed_hyids,
+              number_input_rows, number_output_rows, change_in_rows_string,
+              input_pts_per_cs, output_pts_per_cs,
+              is_extended_count, is_not_extended_count)
+  )
+  
+  return(summary_df)
+}
+
+
 #' Calculate percentage of points within a set of cross section points that are near the bottom of the cross section 
 #' Adds the following columns: 
 #' is_near_bottom: state whether a point is near the bottom of the cross section (within a specified distance threshold of the bottom), 
@@ -257,342 +663,6 @@ pts_to_reevaluate <- function(
   
   return(near_bottom)
   
-}
-
-#' Check and fix cross section points with limited variation in Z values (version 2 latest)
-#' This function takes in a set of cross section points (cs_pts), a flowline network (net) and a set of transects lines for that flowline network (cs).
-#' The function that looks at the cross section points and identifies cross sections that are "flat" 
-#' (have a percent of all points in the cross section within a threshold distance from the bottom of the cross section).
-#' The transect lines that generated the "flat" cross section points are then extended and new points are extracted
-#' along this new longer transect line. The newly extracted points are checked for "flatness" and are removed if they are still "flat", otherwise the original dataset 
-#' of points is updated with the new set of point derived from an extended transect line.
-#' Improved function for rectifying cross section points with flat Z values by extending transect lines and reevaluating the new DEM values.
-#' @param cs_pts Output from extract_dem_values_first
-#' @param net Hydrographic LINESTRING Network
-#' @param cs character, Hydrographic LINESTRING Network file path
-#' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
-#' @param min_pts_per_cs Minimun number of points per cross section required.
-#' @param dem the DEM to extract data from
-#' @param scale numeric, If a transect line DEM extraction results in all equal Z values,
-#'  by what percent of the transect lines length (meters) should the transect line be
-#'   extended in both directions to try to capture representative Z values ? Default is 0.5 (50% of the transect length)
-#' @param pct_of_length_for_relief numeric, percent of cs_lengthm to use as the threshold depth for classifying whether a cross section has "relief". Default is 0.01 (1% of the cross sections length).
-#' @param fix_ids logical, whether to reenumerate the "cs_id" column to 
-#' make sure cross sections are number 1 - number of total cross sections on flowline.  Default is FALSE, cs_id will be kept as 
-#' they were in the input data and may contain gaps between cs_ids within a flowline (hy_id). 
-#' WARNING: Setting fix_ids = TRUE may result in input cross section points (cs_pts) having DIFFERENT cs_id values as the input transects (cs) 
-#' and the inconsistency can cause problems when trying to cross walk between the datasets in the future.
-#' @importFrom dplyr mutate relocate last_col select rename left_join group_by ungroup slice n bind_rows filter
-#' @importFrom sf st_drop_geometry
-#' @importFrom nhdplusTools rename_geometry
-#' @return sf object of cs_pts with "flat" cross sections removed/updated with longer transects to capture more Z data
-#' @export
-rectify_cs = function(
-    cs_pts         = NULL,   
-    net            = NULL,
-    cs             = NULL,
-    points_per_cs  = NULL,
-    min_pts_per_cs = 10,
-    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
-    scale          = 0.5,
-    pct_of_length_for_relief = 0.01,
-    fix_ids        = FALSE
-) {
-  
-  # #
-  # cs_pts = classified_pts
-  # net = flines
-  # cs = transects
-  # points_per_cs  = NULL
-  # min_pts_per_cs = 10
-  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
-  # scale          = 0.5
-  # pct_of_length_for_relief = 0.01
-  # fix_ids        = FALSE
-  # #
-  # net            = flines2
-  # cs             = transects2
-  # cs_pts         = cs_pts2
-  # points_per_cs  = NULL
-  # min_pts_per_cs = 10
-  # dem            = DEM_URL
-  # scale          = 0.5
-  # threshold      = 1
-  # pct_threshold  = 0.99
-  
-  # # starting column names
-  # start_cols <- names(cs_pts)
-  
-  # add a "tmp_id" column to easily index transects by hy_id and cs_id 
-  cs <- hydrofabric3D::add_tmp_id(cs)
-  # cs <- dplyr::mutate(cs,
-  #                     tmp_id = paste0(hy_id, "_", cs_id)
-  # ) 
-  
-  ### ### ## ## ### ## ### ##  ### ### ## ## ### ## ### ##
-  message("Determining points to reevaluate...")
-  # logger::log_info("Determining points to reevaluate...")
-  
-  # # Check if any cross sections are "flat" within a threshold (All Z values are the same or the difference is within the threshold)
-  # flat_cs <- pts_to_reevaluate(cs_pts        = cs_pts, 
-  #                              threshold     = threshold,
-  #                              pct_threshold = pct_threshold
-  # )
-  
-  # filter down to cross sections that DON'T have valid banks OR DON'T have any relief
-  flat_cs <-
-    cs_pts %>% 
-    sf::st_drop_geometry() %>% 
-    dplyr::filter(!valid_banks | !has_relief)
-  
-  # order_cs <- 
-  #   flat_cs %>% 
-  #   dplyr::group_by(hy_id) %>% 
-  #   dplyr::slice(1) %>% 
-  #   dplyr::ungroup() %>% 
-  #   dplyr::select(hy_id, valid_banks, has_relief)
-  # check_flines <- 
-  #   flines %>% 
-  #   dplyr::left_join(order_cs, by = c("id" = "hy_id")) %>% 
-  #   dplyr::filter(!is.na(has_relief) | !is.na(valid_banks))
-  # check_flines %>% 
-  #   dplyr::select(id, order, valid_banks, has_relief) %>% 
-  #   sf::st_drop_geometry() %>% 
-  #   dplyr::group_by(order) %>% 
-  #   dplyr::count(valid_banks, has_relief)
-  #   
-  # 
-  # check_flines$has_relief %>% 
-  #   dplyr::filter()
-  
-  # if there are no flatlines, return the cs_pts object
-  if (nrow(flat_cs) == 0) {
-    
-    cs_pts <- 
-      cs_pts %>% 
-      dplyr::mutate(
-        is_extended = FALSE
-      ) %>% 
-      dplyr::relocate(geom, .after = dplyr::last_col())
-    
-    return(cs_pts)
-  }
-  
-  # subset transects (cs) to the flat cross sections in flat_cs
-  to_extend <- 
-    cs %>% 
-    # dplyr::mutate(# tmp_id = paste0(hy_id, "_", cs_id)is_extended = FALSE) %>%
-    dplyr::filter(tmp_id %in% unique(dplyr::mutate(flat_cs, # Filter the cross sections ("cs") for any cross sections that were decided to be flat/needing reevaluation
-                                                   tmp_id = paste0(hy_id, "_", cs_id))$tmp_id) 
-    ) %>%
-    dplyr::select(-tmp_id) 
-  
-  # 1. Loop through geometries that might need to be extended, 
-  # 2. Try to EXTEND, 
-  # 3. and then UPDATE --> (only IF the extended transect does NOT violate any of the intersection rules)
-  # If ALL of the below intersection conditions are TRUE then a given extended transect line will get replace the old transect geometry 
-  # Intersection rules: 
-  # - Newly extended transect intersects with its flowlines AT MOST 1 time
-  # - Newly extended transect does NOT intersect with any of the other NEWLY EXTENDED transect lines
-  # - Newly extended transect does NOT intersect with any of the ORIGINAL transect lines
-  # extend_transects() returns the "to_extend" object with updated attributes for any extensions that were made (geometries, cs_lengthm, "is_extended" flag) 
-  extended_geoms <- extend_transects(
-    transects_to_extend = to_extend,
-    transects           = cs, 
-    net                 = net, 
-    scale               = scale
-  )
-  
-  # TODO: 
-  # # Probably can just drop any "is_extended" == FALSE because 
-  # # these were cross sections that yield FLAT points
-  # # AND they CAN'T be extended according to extend_transects()
-  # hopeless <- dplyr::filter(extended_geoms, !is_extended)
-  
-  # Store unextendable transects for filtering out later on 
-  # (these are transects that were flat AND could NOT be extended without violating an intersection rule)
-  unextendable <- dplyr::filter(extended_geoms, !is_extended)
-  
-  # Remove unextendable transects from extended_geoms 
-  extended_geoms <- dplyr::filter(extended_geoms, is_extended)
-  
-  message("Attempted extensions: ", nrow(to_extend))
-  message("- FAILED extensions: ", nrow(unextendable))
-  message("- SUCCESSFUL extensions: ", nrow(extended_geoms))
-  message("Adding points per cross section...")
-  
-  system.time({
-    
-  # add cross section points to extended cross sections
-  extended_geoms <- hydrofabric3D:::add_points_per_cs(
-    cs             = extended_geoms,
-    # cs             = to_extend,
-    # cs             = dplyr::slice(extended_geoms , 1:100),
-    points_per_cs  = points_per_cs,
-    min_pts_per_cs = min_pts_per_cs,
-    dem            = dem
-  )
-  
-  })
-  
-  message("Extracting new DEM values..")
-  
-  system.time({
-  # extract DEM values for newly extended cross sections
-  extended_pts <- hydrofabric3D:::extract_dem_values(cs = extended_geoms, dem = dem)
-  })
-  
-  # add a tmp_id for joining and filtering 
-  extended_pts <- add_tmp_id(extended_pts)
-  # extended_pts <- dplyr::mutate(
-  #                     extended_pts, 
-  #                     tmp_id = paste0(hy_id, "_", cs_id)
-  #                   ) 
-  
-  message("Double checking new extended cross section DEM values for flatness")
-  
-  second_classified_pts <- hydrofabric3D::classify_points(
-    extended_pts, 
-    pct_of_length_for_relief = pct_of_length_for_relief
-  )
-  
-  # # Check the new extended_pts cross section points for any "flat" set of points
-  # second_flat_check <- pts_to_reevaluate(
-  #   cs_pts        = extended_pts, 
-  #   threshold     = threshold,
-  #   pct_threshold = pct_threshold
-  # )
-  
-  
-  # add a tmp_id column to second_flat_check to filter out any set of cross section points 
-  # that are STILL flat after extending the transect lines
-  # second_flat_check <- add_tmp_id(second_flat_check)
-  # second_flat_check <- dplyr::mutate(
-  #                         second_flat_check, 
-  #                         tmp_id = paste0(hy_id, "_", cs_id)
-  #                       ) 
-  
-  
-  second_classified_pts <- add_tmp_id(second_classified_pts)
-  
-  # take the below points, and put them back into "cs_pts" object
-  # then go back to the input "transects" ("cs") object and update the transect geometries based on the extensions done above^^
-  # then resave the input transects dataset back to its original location....
-  
-  # # separate newly extended cross sections with new Z values into groups (those that show "good" DEM values after extension are kept) 
-  # to_keep <- dplyr::filter(extended_pts, !tmp_id %in% unique(second_flat_check$tmp_id))
-  # to_drop <- dplyr::filter(extended_pts, tmp_id %in% unique(second_flat_check$tmp_id))
-  
-  # TODO: Left off here to add back and remove old data 03/05/2024
-  to_keep <- dplyr::filter(extended_pts, 
-                           !tmp_id %in% unique(dplyr::filter(second_classified_pts, 
-                                                                          !has_relief | !valid_banks)$tmp_id))
-  to_drop <- dplyr::filter(extended_pts, 
-                           tmp_id %in% unique(dplyr::filter(second_classified_pts,
-                                                                          !has_relief | !valid_banks)$tmp_id))
-  
-  message("Count of extended cross sections POINTS to KEEP: ", nrow(to_keep))
-  message("Count of extended cross sections POINTS to DROP: ", nrow(to_drop))
-  
-  # filter out cross section points that have "same Z" values (remove flat Z values)
-  final_pts <-
-    cs_pts %>%  
-    # dplyr::mutate(
-    #   tmp_id = paste0(hy_id, "_", cs_id)
-    # ) %>% 
-    add_tmp_id() %>% 
-    dplyr::filter(
-      !tmp_id %in% unique(
-        dplyr::mutate(
-          unextendable,
-          tmp_id = paste0(hy_id, "_", cs_id)
-        )$tmp_id)
-      # !tmp_id %in% unique(to_drop$tmp_id)
-    ) %>% 
-    dplyr::filter(
-      !tmp_id %in% unique(to_drop$tmp_id)
-    ) 
-  
-  # remove the old versions of the "to_keep" cross section points and 
-  # replace them with the updated cross section points with the extended "cs_lengthm" and "Z" values
-  final_pts <-
-    final_pts %>%
-    dplyr::filter(
-      !tmp_id %in% unique(to_keep$tmp_id)
-      # !tmp_id %in% unique(extended_pts$tmp_id)
-    ) %>% 
-    dplyr::mutate(
-      is_extended = FALSE
-    ) %>% 
-    dplyr::bind_rows(
-      to_keep
-    ) %>% 
-    dplyr::select(-tmp_id) 
-  
-  # rename geometry column to "geom" 
-  final_pts <- nhdplusTools::rename_geometry(final_pts, "geom")
-
-  # If TRUE then the cs_ids are renumbered to make sure each hy_id has cross sections
-  # that are numbered (1 - number of cross sections) on the hy_id
-  if (fix_ids) {
-    
-    message("Renumbering cross section IDs...")
-    
-    # make a dataframe that has a new_cs_id column that has 
-    # the cs_id renumbered to fill in any missing IDs,
-    # so each hy_id has cs_ids that go from 1 - number of cross sections on hy_id
-    # The dataframe below will be used to join the "new_cs_id" with 
-    # the original "cs_ids" in the final_pts output data
-    renumbered_ids <-
-      final_pts %>% 
-      sf::st_drop_geometry() %>% 
-      # dplyr::filter(hy_id %in% c("wb-2402800", "wb-2398282", "wb-2400351")) %>%
-      dplyr::select(hy_id, cs_id, pt_id, cs_measure) %>% 
-      dplyr::group_by(hy_id, cs_id) %>% 
-      dplyr::slice(1) %>% 
-      dplyr::ungroup() %>% 
-      dplyr::group_by(hy_id) %>% 
-      dplyr::mutate(
-        new_cs_id = 1:dplyr::n(),
-        tmp_id    = paste0(hy_id, "_", cs_id)
-      ) %>% 
-      dplyr::ungroup() %>% 
-      dplyr::select(new_cs_id, tmp_id)
-    
-    # Join the new cs_ids back with the final output data to replace the old cs_ids
-    final_pts <- dplyr::left_join(
-      dplyr::mutate(
-        final_pts,
-        tmp_id = paste0(hy_id, "_", cs_id)
-      ),
-      renumbered_ids,
-      by = "tmp_id"
-    ) %>% 
-      dplyr::select(-cs_id, -tmp_id) %>% 
-      dplyr::rename("cs_id" = "new_cs_id") %>% 
-      dplyr::relocate(hy_id, cs_id)
-  }
-  
-  # move geom column to the last column
-  final_pts <- dplyr::relocate(final_pts, geom, .after = dplyr::last_col())
-  
-  message("TOTAL # of transects EVALUATED > ",  nrow(to_extend))
-  message("# of transects that are INVALID after extension > ",  nrow(unextendable))
-  message("# of transects KEPT after extension > ",  length(unique(to_keep$tmp_id)))
-  message("# of transects REMOVED after extension >", length(unique(to_drop$tmp_id)))
-  message("INVALID + KEPT + REMOVED = ", 
-          nrow(unextendable), " + ", length(unique(to_keep$tmp_id)), " + ", length(unique(to_drop$tmp_id)), 
-          " = ",
-          nrow(unextendable) +  length(unique(to_keep$tmp_id)) +  length(unique(to_drop$tmp_id))
-  )
-  message("Start # of cross section points > ",  length(unique(dplyr::mutate(cs_pts, tmp_id = paste0(hy_id, '_', cs_id, '_',pt_id))$tmp_id)))
-  message("End # of cross section points > ",   length(unique(dplyr::mutate(final_pts, tmp_id = paste0(hy_id, '_', cs_id, '_',pt_id))$tmp_id)))
-  message("INPUT # of unique hy_id/cs_id cross section points > ",  length(unique(dplyr::mutate(cs_pts, tmp_id = paste0(hy_id, '_', cs_id))$tmp_id)))
-  message("OUTPUT # of unique hy_id/cs_id cross section points > ",  length(unique(dplyr::mutate(final_pts, tmp_id = paste0(hy_id, '_', cs_id))$tmp_id)))
-  
-  # final_pts$is_extended %>% table()
-  
-  return(final_pts)
 }
 
 #' Check and fix cross section points with limited variation in Z values (version 2 latest)

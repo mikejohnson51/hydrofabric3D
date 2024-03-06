@@ -4,7 +4,13 @@
 \alias{extend_transects}
 \title{Extend a set of transects by a percentage}
 \usage{
-extend_transects(transects_to_extend, transects, net, scale = 0.5)
+extend_transects(
+  transects_to_extend,
+  transects,
+  net,
+  scale = 0.5,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{transects_to_extend}{sf linestrings, set of transects that should be extended (subset of 'transects'). Requires the following columns:  "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters)}
@@ -14,6 +20,8 @@ extend_transects(transects_to_extend, transects, net, scale = 0.5)
 \item{net}{sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_extend' and 'transects' )}
 
 \item{scale}{numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50\% of the transect length)}
+
+\item{verbose}{logical, whether to print messages or not. Default is TRUE}
 }
 \value{
 sf linestring dataframe containing the updates transects_to_extend (with a flag denoting if the geometry was extended by "scale" \% or not)
