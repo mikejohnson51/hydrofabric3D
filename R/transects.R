@@ -490,6 +490,21 @@ cut_cross_sections <- function(
     transects <- sf::st_transform(transects, start_crs)
   }
   
+  # select all relevent columns and set output columns order
+  transects <-
+    transects %>%
+    dplyr::select(
+      dplyr::any_of(c("hy_id",
+                      "cs_id",
+                      "cs_widths", 
+                      "cs_measure",
+                      "ds_distance",
+                      "lengthm",
+                      "sinuosity",
+                      "geometry"
+                      ))
+      )
+  
   return(transects)
   
 }
