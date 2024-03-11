@@ -61,10 +61,19 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
   # plot(transects$geometry)
   # plot(flowline, add = T)
     
+  # test that the number of rows is right and all cs IDs are present
   testthat::expect_equal(nrow(transects), 10)
+  testthat::expect_equal(transects$cs_id, c(1:10))
+  # test correct column names 
   testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
-  # testthat::expect_equal(as.integer(sf::st_length( transects$geometry)), rep(50, 10))
   
+  # Expect cs_widths and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
+  testthat::expect_true(dplyr::between(transects$cs_widths[1], 50-2, 50+2))
+  testthat::expect_true(dplyr::between(transects$lengthm[1], 50-2, 50+2))
+  # testthat::expect_equal(as.character(transects$cs_widths)[1], "50")
+  
+  testthat::expect_lte(max(transects$cs_measure), 100)
+  testthat::expect_gte(min(transects$cs_measure), 0)
 })
 
 testthat::test_that("cut 20 transects along single flowline & remove intersects (power law bankful widths, smooth, densify 3)", {
@@ -83,13 +92,147 @@ testthat::test_that("cut 20 transects along single flowline & remove intersects 
   # transects
   # plot(flowline$geometry[1])
   # plot(transects$geometry, add = T)
-  # plot(transects$geometry)
-  # plot(flowline$geometry[1], add = T)
   
+  # test that the number of rows is right and all cs IDs are present
   testthat::expect_equal(nrow(transects), 20)
-  # testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
-  # testthat::expect_equal(as.integer(sf::st_length( transects$geometry)), rep(50, 17))
+  testthat::expect_equal(transects$cs_id, c(1:20))
   
+  # test correct column names 
+  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
+  
+  # Expect cs_widths and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
+  testthat::expect_true(dplyr::between(transects$cs_widths[1], 50-2, 50+2))
+  testthat::expect_true(dplyr::between(transects$lengthm[1], 50-2, 50+2))
+  testthat::expect_true(all(dplyr::between(transects$cs_widths, 50-2, 50+2)))
+  testthat::expect_true(all(dplyr::between(transects$cs_widths, 50-2, 50+2)))
+
+  # expect cs_measure values to be between 0-100
+  testthat::expect_lte(max(transects$cs_measure), 100)
+  testthat::expect_gte(min(transects$cs_measure), 0)
+  
+  
+})
+
+testthat::test_that("cut 100 transects along single flowline & remove intersects (power law bankful widths, smooth, densify 3)", {
+  
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowline,
+    id                = "hy_id",
+    cs_widths         = 100,     # cross section width of each "id" linestring ("hy_id")
+    num               = 100,                            # number of cross sections per "id" linestring ("hy_id")
+    smooth            = TRUE,                          # smooth lines
+    densify           = 3,                             # densify linestring points
+    rm_self_intersect = TRUE,                          # remove self intersecting transects
+    fix_braids        = FALSE
+  )
+  
+  transects
+  plot(flowline$geometry[1])
+  plot(transects$geometry, add = T)
+  
+  # test that the number of rows is right and all cs IDs are present
+  testthat::expect_equal(nrow(transects), 69)
+  testthat::expect_equal(transects$cs_id, c(1:69))
+  
+  # test correct column names 
+  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
+  
+  # Expect cs_widths and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
+  testthat::expect_true(dplyr::between(transects$cs_widths[1], 100-2, 100+2))
+  testthat::expect_true(dplyr::between(transects$lengthm[1], 100-2, 100+2))
+  testthat::expect_true(all(dplyr::between(transects$cs_widths, 100-2, 100+2)))
+  testthat::expect_true(all(dplyr::between(transects$cs_widths, 100-2, 100+2)))
+  # testthat::expect_equal(as.character(transects$cs_widths)[1], "50")
+  
+  # expect cs_measure values to be between 0-100
+  testthat::expect_lte(max(transects$cs_measure), 100)
+  testthat::expect_gte(min(transects$cs_measure), 0)
+  
+  
+})
+
+testthat::test_that("huge cs_widths with remove intersections)", {
+  
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowline,
+    id                = "hy_id",
+    cs_widths         = 2500,     # cross section width of each "id" linestring ("hy_id")
+    num               = 50,                            # number of cross sections per "id" linestring ("hy_id")
+    smooth            = TRUE,                          # smooth lines
+    densify           = 3,                             # densify linestring points
+    rm_self_intersect = TRUE,                          # remove self intersecting transects
+    fix_braids        = FALSE
+  )
+  
+  transects
+  plot(flowline$geometry[1])
+  plot(transects$geometry, add = T)
+  
+  # test that the number of rows is right and all cs IDs are present
+  testthat::expect_equal(nrow(transects), 9)
+  testthat::expect_equal(transects$cs_id, c(1:9))
+  
+  # test correct column names 
+  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
+  
+  # Expect cs_widths and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
+  testthat::expect_true(dplyr::between(transects$cs_widths[1], 2500-2, 2500+2))
+  testthat::expect_true(dplyr::between(transects$lengthm[1], 2500-2, 2500+2))
+  testthat::expect_true(all(dplyr::between(transects$cs_widths, 2500-2, 2500+2)))
+  testthat::expect_true(all(dplyr::between(transects$cs_widths, 2500-2, 2500+2)))
+  
+  # expect cs_measure values to be between 0-100
+  testthat::expect_lte(max(transects$cs_measure), 100)
+  testthat::expect_gte(min(transects$cs_measure), 0)
+  
+  
+})
+
+testthat::test_that("error on invalid num argument)", {
+  
+  testthat::expect_error(
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowline,
+    id                = "hy_id",
+    cs_widths         = 50,    
+    num               = "bad inputs", 
+    smooth            = TRUE,                          # smooth lines
+    densify           = 3,                             # densify linestring points
+    rm_self_intersect = TRUE,                          # remove self intersecting transects
+    fix_braids        = FALSE
+  ))
+})
+
+testthat::test_that("error on invalid net argument)", {
+  
+  testthat::expect_error(
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = data.frame(),
+      id                = "hy_id",
+      cs_widths         = 50,    
+      num               = 10, 
+      smooth            = TRUE,                          # smooth lines
+      densify           = 3,                             # densify linestring points
+      rm_self_intersect = TRUE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+    )
+})
+
+testthat::test_that("error on invalid net argument)", {
+  
+  testthat::expect_error(
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowline,
+      id                = NULL,
+      cs_widths         = 50,    
+      num               = 10, 
+      smooth            = TRUE,                          # smooth lines
+      densify           = 3,                             # densify linestring points
+      rm_self_intersect = TRUE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+  )
 })
 
 # testthat::test_that("cut 20 transects along single flowline & remove intersects (power law bankful widths, smooth, densify 3)", {

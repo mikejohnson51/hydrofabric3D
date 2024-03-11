@@ -790,11 +790,15 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'net' must be an sf object.")
   }
   
-  # Check if 'id' is NULL or a character vector
-  if (!is.null(id) && !is.character(id)) {
-    stop("'id' must be NULL or a character vector.")
-  }
+  # # Check if 'id' is NULL or a character vector
+  # if (!is.null(id) && !is.character(id)) {
+  #   stop("'id' must be a character vector.")
+  # }
   
+  # Check if 'id' is NULL or a character vector
+  if (is.null(id) || !is.character(id)) {
+    stop("'id' must be a character vector.")
+  }
   # Check if 'cs_widths' is numeric or a numeric vector
   if (!is.numeric(cs_widths) && !is.null(cs_widths)) {
     stop("'cs_widths' must be numeric or NULL.")
