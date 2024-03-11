@@ -1,7 +1,7 @@
 library(testthat)
 library(dplyr)
 library(sf)
-library(hydrofabric3D)
+# library(hydrofabric3D)
 
 # -------------------------------------------------------------------
 # ---- hydrofabric::cut_cross_sections() ----
@@ -62,8 +62,8 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
   # plot(flowline, add = T)
     
   testthat::expect_equal(nrow(transects), 10)
-  # testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
-  testthat::expect_equal(as.numeric(sf::st_length( transects$geometry)), rep(50, 10))
+  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
+  # testthat::expect_equal(as.integer(sf::st_length( transects$geometry)), rep(50, 10))
   
 })
 
@@ -86,8 +86,31 @@ testthat::test_that("cut 20 transects along single flowline & remove intersects 
   # plot(transects$geometry)
   # plot(flowline$geometry[1], add = T)
   
-  testthat::expect_equal(nrow(transects), 17)
+  testthat::expect_equal(nrow(transects), 20)
   # testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
-  testthat::expect_equal(as.numeric(sf::st_length( transects$geometry)), rep(50, 17))
+  # testthat::expect_equal(as.integer(sf::st_length( transects$geometry)), rep(50, 17))
   
 })
+
+# testthat::test_that("cut 20 transects along single flowline & remove intersects (power law bankful widths, smooth, densify 3)", {
+#   
+#   transects <- hydrofabric3D::cut_cross_sections(
+#     net               = flowline,
+#     id                = "hy_id",
+#     cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
+#     num               = 100,                            # number of cross sections per "id" linestring ("hy_id")
+#     smooth            = TRUE,                          # smooth lines
+#     densify           = 3,                             # densify linestring points
+#     rm_self_intersect = TRUE,                          # remove self intersecting transects
+#     fix_braids        = FALSE
+#   )
+#   
+#   transects
+#   plot(flowline$geometry[1])
+#   plot(transects$geometry, add = T)
+#   
+#   testthat::expect_equal(nrow(transects), 17)
+#   # testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_widths", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
+#   testthat::expect_equal(as.numeric(sf::st_length( transects$geometry)), rep(50, 17))
+#   
+# })

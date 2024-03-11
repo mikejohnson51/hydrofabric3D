@@ -749,3 +749,102 @@ get_relief <- function(
   return(relief)
 }
 
+#' Validate Inputs for cut_cross_sections Function
+#'
+#' This function validates the inputs for the cut_cross_sections function to ensure they meet the required criteria.
+#'
+#' @param net An sf object representing the hydrographic network.
+#' @param id A unique identifier column in the network data.
+#' @param cs_widths Bankfull widths (length of cross sections) for each network element.
+#' @param num Number of transects per network element.
+#' @param smooth Logical, whether to smooth linestring geometries or not. 
+#' @param densify Numeric, the factor by which to densify the linestrings.
+#' @param rm_self_intersect Logical, whether to remove self-intersecting transect linestrings.
+#' @param fix_braids Logical, whether to fix braided transect lines or not.
+#' @param terminal_id Character, column name containing a unique identifier delineating separate networks in the 'net' dataset.
+#' @param braid_threshold Numeric, the total length of all flowlines in a braid below which fix_braid_transects should operate.
+#' @param version Integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
+#' @param braid_method Character, the method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid".
+#' @param precision Numeric, the number of meters to approximate final cross-section linestring length.
+#' @param add Logical, indicating whether to add original 'net' data to the outputted transect lines.
+#' @return NULL if inputs are valid; otherwise, an error is thrown.
+#' @keywords internal
+validate_cut_cross_section_inputs <- function(net, 
+                                              id,
+                                              cs_widths,
+                                              num, 
+                                              smooth,
+                                              densify, 
+                                              rm_self_intersect, 
+                                              fix_braids, 
+                                              terminal_id, 
+                                              braid_threshold , 
+                                              version, 
+                                              braid_method, 
+                                              precision, 
+                                              add 
+                                              ) {
+  
+  # Check if 'net' is an sf object
+  if (!inherits(net, "sf")) {
+    stop("'net' must be an sf object.")
+  }
+  
+  # Check if 'id' is NULL or a character vector
+  if (!is.null(id) && !is.character(id)) {
+    stop("'id' must be NULL or a character vector.")
+  }
+  
+  # Check if 'cs_widths' is numeric or a numeric vector
+  if (!is.numeric(cs_widths) && !is.null(cs_widths)) {
+    stop("'cs_widths' must be numeric or NULL.")
+  }
+  
+  # Check if 'num' is numeric or a numeric vector
+  if (!is.numeric(num) && !is.null(num)) {
+    stop("'num' must be numeric or NULL.")
+  }
+  
+  # Check if 'densify' is numeric
+  if (!is.numeric(densify)) {
+    stop("'densify' must be numeric.")
+  }
+  
+  # Check if 'rm_self_intersect' is a logical value
+  if (!is.logical(rm_self_intersect)) {
+    stop("'rm_self_intersect' must be a logical value.")
+  }
+  
+  # Check if 'fix_braids' is a logical value
+  if (!is.logical(fix_braids)) {
+    stop("'fix_braids' must be a logical value.")
+  }
+  
+  # Check if 'braid_threshold' is numeric or NULL
+  if (!is.null(braid_threshold) && !is.numeric(braid_threshold)) {
+    stop("'braid_threshold' must be numeric or NULL.")
+  }
+
+  # Check if 'version' is an integer and either 1 or 2
+  if (!is.numeric(version) || !(version %in% c(1, 2))) {
+    stop("'version' must be an integer and either 1 or 2.")
+  }
+  
+  # Check if 'braid_method' is one of the valid options
+  valid_methods <- c("comid", "component", "neighbor")
+  if (!braid_method %in% valid_methods) {
+    stop("'braid_method' must be one of 'comid', 'component', or 'neighbor'.")
+  }
+  
+  # Check if 'precision' is numeric and greater than 0
+  if (!is.numeric(precision) || precision <= 0) {
+    stop("'precision' must be a numeric value greater than 0.")
+  }
+  
+  # Check if 'add' is a logical value
+  if (!is.logical(add)) {
+    stop("'add' must be a logical value.")
+  }
+  
+  return(NULL)
+}

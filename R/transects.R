@@ -328,6 +328,23 @@ cut_cross_sections <- function(
     add               = FALSE
 ) {
   
+  # validate all inputs are valid, throws an error if they are not
+  validate_cut_cross_section_inputs(net = net, 
+                                    id = id, 
+                                    cs_widths = cs_widths, 
+                                    num = num, 
+                                    smooth = smooth, 
+                                    densify = densify, 
+                                    rm_self_intersect = rm_self_intersect, 
+                                    fix_braids = fix_braids,
+                                    terminal_id = terminal_id,
+                                    braid_threshold = braid_threshold,
+                                    version = version, 
+                                    braid_method = braid_method, 
+                                    precision = precision,
+                                    add = add 
+                                    )
+  
   # keep track of the CRS of the input to retransform return 
   start_crs <- sf::st_crs(net, parameters = T)$epsg
   
@@ -337,18 +354,24 @@ cut_cross_sections <- function(
     net <- sf::st_transform(net, 5070) 
   }
   
+  # Densify network flowlines, adds more points to each linestring
+  if(!is.null(densify)){ 
+    message("Densifying")
+    net <- smoothr::densify(net, densify) 
+  }
+  
   # smooth out flowlines
   if(smooth){ 
     message("Smoothing")
     # net = smoothr::smooth(net, "ksmooth")
-    net = smoothr::smooth(net, "spline")
+    net <- smoothr::smooth(net, "spline")
   }
   
-  # Densify network flowlines, adds more points to each linestring
-  if(!is.null(densify)){ 
-    message("Densifying")
-    net = smoothr::densify(net, densify) 
-  }
+  # # Densify network flowlines, adds more points to each linestring
+  # if(!is.null(densify)){ 
+  #   message("Densifying")
+  #   net = smoothr::densify(net, densify) 
+  # }
   
   # list to store transect outputs
   transects <- list()

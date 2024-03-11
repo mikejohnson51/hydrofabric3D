@@ -1,6 +1,6 @@
 library(testthat)
 library(dplyr)
-library(hydrofabric3D)
+# library(hydrofabric3D)
 
 # -------------------------------------------------------------------
 # ---- hydrofabric::add_tmp_id() ----
@@ -77,11 +77,11 @@ classified_pts <- data.frame(hy_id, cs_id, point_type)
 testthat::test_that("Adding point type counts with default arguments", {
   
   # result <- get_point_type_counts(classified_pts)
-  result <- get_point_type_counts(classified_pts, add = FALSE)
+  result <- hydrofabric3D::get_point_type_counts(classified_pts, add = FALSE)
   
   testthat::expect_equal(names(result), c("hy_id", "cs_id", "left_bank_count", "right_bank_count", "channel_count", "bottom_count"))
   testthat::expect_equal(unique(result$hy_id), c("A", "B", "C", "D", "E"))
-
+  
   testthat::expect_equal(result[result$hy_id == "A", ]$left_bank_count, 1)
   testthat::expect_equal(result[result$hy_id == "A", ]$right_bank_count, 1)
   testthat::expect_equal(result[result$hy_id == "A", ]$channel_count, 1)
