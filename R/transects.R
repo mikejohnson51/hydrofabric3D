@@ -289,8 +289,8 @@ get_cs_sinuosity <- function(
 #'
 #' @param net Hydrographic LINESTRING Network
 #' @param id Unique Identifier in net
-#' @param cs_widths Bankfull Widths (length of cross sections for each net element)
-#' @param num Number of transects per Net element
+#' @param cs_widths numeric, Bankfull Widths (length of cross sections for each net element)
+#' @param num numeric, Number of transects per Net element
 #' @param smooth logical, whether to smooth linestring geometries or not. Default is TRUE.
 #' @param densify numeric, how many times more points should be added to linestrings. Default is 2.
 #' @param rm_self_intersect logical, whether to remove self intersecting transect linestrings

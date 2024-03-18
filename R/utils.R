@@ -790,28 +790,40 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'net' must be an sf object.")
   }
   
-  # # Check if 'id' is NULL or a character vector
-  # if (!is.null(id) && !is.character(id)) {
-  #   stop("'id' must be a character vector.")
-  # }
-  
-  # Check if 'id' is NULL or a character vector
-  if (is.null(id) || !is.character(id)) {
-    stop("'id' must be a character vector.")
+  # Check if 'id' is NOT a character or if its NULL 
+  if (!is.character(id) || is.null(id)) {
+  # if (is.null(id) || !is.character(id)) {
+    stop("'id' must be a character vector")
   }
+
   # Check if 'cs_widths' is numeric or a numeric vector
-  if (!is.numeric(cs_widths) && !is.null(cs_widths)) {
-    stop("'cs_widths' must be numeric or NULL.")
+  if (!is.numeric(cs_widths)) {
+    stop("'cs_widths' must be a numeric")
   }
   
+  # # Check if 'cs_widths' is numeric or a numeric vector
+  # if (!is.numeric(cs_widths) && !is.null(cs_widths)) {
+  #   stop("'cs_widths' must be numeric or NULL.")
+  # }
+
   # Check if 'num' is numeric or a numeric vector
-  if (!is.numeric(num) && !is.null(num)) {
-    stop("'num' must be numeric or NULL.")
+  if (!is.numeric(num)) {
+    stop("'num' must be numeric")
   }
   
-  # Check if 'densify' is numeric
-  if (!is.numeric(densify)) {
-    stop("'densify' must be numeric.")
+  # # Check if 'num' is numeric or a numeric vector
+  # if (!is.numeric(num) && !is.null(num)) {
+  #   stop("'num' must be numeric or NULL.")
+  # }
+
+  # Check if 'densify' is numeric or NULL
+  if (!is.numeric(densify) && !is.null(densify)) {
+    stop("'densify' must be numeric or NULL.")
+  }
+  
+  # Check if 'smooth' is a logical value
+  if (!is.logical(smooth)) {
+    stop("'smooth' must be a logical value.")
   }
   
   # Check if 'rm_self_intersect' is a logical value
@@ -824,14 +836,20 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'fix_braids' must be a logical value.")
   }
   
+  # Check if 'terminal_id' is NOT a character and its NOT NULL
+  if (!is.character(terminal_id) && !is.null(terminal_id)) {
+    # if (is.null(id) || !is.character(id)) {
+    stop("'terminal_id' must be a character vector or NULL")
+  }
+  
   # Check if 'braid_threshold' is numeric or NULL
   if (!is.null(braid_threshold) && !is.numeric(braid_threshold)) {
     stop("'braid_threshold' must be numeric or NULL.")
   }
-
+  
   # Check if 'version' is an integer and either 1 or 2
   if (!is.numeric(version) || !(version %in% c(1, 2))) {
-    stop("'version' must be an integer and either 1 or 2.")
+    stop("'version' must be an integer, either 1 or 2.")
   }
   
   # Check if 'braid_method' is one of the valid options
@@ -839,7 +857,7 @@ validate_cut_cross_section_inputs <- function(net,
   if (!braid_method %in% valid_methods) {
     stop("'braid_method' must be one of 'comid', 'component', or 'neighbor'.")
   }
-  
+
   # Check if 'precision' is numeric and greater than 0
   if (!is.numeric(precision) || precision <= 0) {
     stop("'precision' must be a numeric value greater than 0.")

@@ -26,9 +26,9 @@ cut_cross_sections(
 
 \item{id}{Unique Identifier in net}
 
-\item{cs_widths}{Bankfull Widths (length of cross sections for each net element)}
+\item{cs_widths}{numeric, Bankfull Widths (length of cross sections for each net element)}
 
-\item{num}{Number of transects per Net element}
+\item{num}{numeric, Number of transects per Net element}
 
 \item{smooth}{logical, whether to smooth linestring geometries or not. Default is TRUE.}
 
