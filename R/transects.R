@@ -305,7 +305,7 @@ get_cs_sinuosity <- function(
 #' @param add logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.
 #'
 #' @return sf object
-#' @importFrom dplyr group_by mutate ungroup n left_join all_of
+#' @importFrom dplyr group_by mutate ungroup n left_join all_of rename
 #' @importFrom sf st_crs st_transform st_intersects st_length st_drop_geometry st_as_sf
 #' @importFrom smoothr smooth densify
 #' @importFrom geos as_geos_geometry
@@ -513,13 +513,17 @@ cut_cross_sections <- function(
     transects <- sf::st_transform(transects, start_crs)
   }
   
+  # rename the cs_widths column to cs_lengthm
+  transects <- dplyr::rename(transects, "cs_lengthm" = cs_widths)
+  
   # select all relevent columns and set output columns order
   transects <-
     transects %>%
     dplyr::select(
       dplyr::any_of(c("hy_id",
                       "cs_id",
-                      "cs_widths", 
+                      "cs_lengthm", 
+                      # "cs_widths", 
                       "cs_measure",
                       "ds_distance",
                       "lengthm",
@@ -592,7 +596,7 @@ cross_section_pts = function(
 #' representing cross-sections (linestrings) based on a provided DEM and a minimum points
 #' value per cross section.
 #'
-#' @param cs An sf dataframe representing cross-sections (linestrings).
+#' @param cs An sf dataframe representing cross-sections (linestrings). With a required cs_lengthm column (length of cross section in meters)
 #' @param points_per_cs numeric, number of points per cross section. Default is NULL
 #' @param min_pts_per_cs An optional minimum points value per cross section. If not provided, 
 #' @param dem A SpatRaster object representing the Digital Elevation Model (DEM) or a character string referencing a remote resource.

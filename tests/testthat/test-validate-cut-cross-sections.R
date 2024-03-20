@@ -4,7 +4,7 @@ library(sf)
 # library(hydrofabric3D)
 
 # -------------------------------------------------------------------
-# ---- hydrofabric:::validate_cut_cross_section_inputs() ----
+# ---- hydrofabric3D:::validate_cut_cross_section_inputs() ----
 # -------------------------------------------------------------------
 # create test data (hy_id = "wb-1004970" from nextgen flowlines)
 coords <- matrix(c(968520.8, 1381795, 968471.3, 1381851, 968420.6, 1381874, 

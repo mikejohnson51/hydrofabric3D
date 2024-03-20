@@ -13,7 +13,7 @@ add_points_per_cs(
 )
 }
 \arguments{
-\item{cs}{An sf dataframe representing cross-sections (linestrings).}
+\item{cs}{An sf dataframe representing cross-sections (linestrings). With a required cs_lengthm column (length of cross section in meters)}
 
 \item{points_per_cs}{numeric, number of points per cross section. Default is NULL}
 
