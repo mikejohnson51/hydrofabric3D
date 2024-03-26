@@ -870,3 +870,56 @@ validate_cut_cross_section_inputs <- function(net,
   
   return(NULL)
 }
+
+calc_validity_scores <- function(cs_to_validate, validity_col_name = "validity_score") {
+  
+  scores <- 
+    cs_to_validate %>% 
+    sf::st_drop_geometry() %>% 
+    hydrofabric3D::add_tmp_id() %>% 
+    dplyr::group_by(tmp_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      validity_score = valid_banks + has_relief
+    ) %>% 
+    dplyr::select(hy_id, cs_id, valid_banks, has_relief, validity_score)
+  
+  names(scores) <- c("hy_id", "cs_id", "valid_banks", "has_relief", validity_col_name)
+  
+  return(scores)
+  
+}
+
+#' Make a progress bar and return an "make_progress()" function to update the progress bar.
+#' Credit to the exactextractr team: https://github.com/isciences/exactextractr/blob/5fd17dcf02717332b125345aea586304f668cf12/R/exact_extract_helpers.R#L361
+#' @param progress logical, whether to make a progress bar or not (FALSE)
+#' @param n numeric, total number of iterations
+#' @importFrom utils txtProgressBar
+#' @return make_progress function, when called will increment the progress bar text
+#' @export
+#'
+#' @examples
+#' progress=TRUE
+#' x = 1:500000
+#' make_progress <- make_progress_bar(progress, length(x))
+#' for (i in 1:length(x)) {
+#'     make_progress()
+#' }
+make_progress_bar <- function(progress, n) {
+  if (progress && n > 1) {
+    pb <- utils::txtProgressBar(min = 0, max = n, initial=0, style=3)
+    make_progress <- function() {
+      i <- 1 + utils::getTxtProgressBar(pb)
+      utils::setTxtProgressBar(pb, i)
+      if (i == n) {
+        close(pb)
+      }
+    }
+  } else {
+    make_progress <- function() {}
+  }
+  
+  return(make_progress)
+}
+
