@@ -26,9 +26,12 @@ utils::globalVariables(
     "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
     "terminalID",
     "tmp_id",
-    "make_geoms_to_cut_plot"
+    "make_geoms_to_cut_plot",
+    "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
+    "old_validity_score", "transects", "validity_score", "x"
   )
 )
+
 
 #' Plots an X-Y scatter plot of cross section points 
 #' @param cs_pts data.frame of cross section points with columns hy_id, cs_id and columns for X and Y axises (i.e. "pt_id", "Z")

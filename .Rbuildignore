@@ -20,4 +20,5 @@ workspace
 ^.*/[.].*$
 ^general_visuals\.R$
 ^scraps\.R$
+^scraps2\.R$
 

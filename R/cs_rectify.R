@@ -26,12 +26,14 @@ utils::globalVariables(
     "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
     "terminalID",
     "tmp_id",
-    "make_geoms_to_cut_plot"
+    "make_geoms_to_cut_plot",
+    "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
+    "old_validity_score", "transects", "validity_score", "x"
   )
 )
-#' @title Check and fix cross section points with limited variation in Z values (without removing any flowlines)\
-#' @description 
-#' Duplicate process as rectify_cs() but does NOT remove any cross sections, only attempts to extend transects and improve cross sections. This function takes in a set of cross section points (cs_pts), a flowline network (net) and a set of transects lines for that flowline network (transects).
+
+#' @title Check and fix cross section points with limited variation in Z values (without removing any flowlines)
+#' @description Duplicate process as rectify_cs() but does NOT remove any cross sections, only attempts to extend transects and improve cross sections. This function takes in a set of cross section points (cs_pts), a flowline network (net) and a set of transects lines for that flowline network (transects).
 #' This function assumes the cross section points have been classified via "classify_points()" and have "has_relief" and "valid_banks" logical columns.
 #' This function will look for cross section points that either have no relief or don't have valid banks, then the transect lines that generated these cross section points
 #' are extended and new points are extracted along the newly extended, longer transect line. The newly extracted points are checked for relief AND valid banks and 
@@ -78,17 +80,7 @@ improve_invalid_cs = function(
   ### ### ## ## ### ## ### ##  ### ### ## ## ### ## ### ##
   
   if (verbose) { message("Determining points to reevaluate...") }
-  # # Check if any cross sections are "flat" within a threshold (All Z values are the same or the difference is within the threshold)
-  # pts_to_inspect <- pts_to_reevaluate(cs_pts        = cs_pts, 
-  #                              threshold     = threshold,
-  #                              pct_threshold = pct_threshold)
-  
-  # # filter down to cross sections that DON'T have valid banks OR DON'T have any relief
-  # pts_to_inspect <-
-  #   cs_pts %>% 
-  #   sf::st_drop_geometry() %>% 
-  #   dplyr::filter(!valid_banks | !has_relief)
-  
+
   # add valid_banks and has_relief columns to transects data
   transects <- 
     transects %>% 
@@ -103,9 +95,6 @@ improve_invalid_cs = function(
       by = c("hy_id", "cs_id")
     )
   
-  # # Check if any cross sections are "flat" within a threshold (All Z values are the same or the difference is within the threshold)
-  # pts_to_inspect <- pts_to_reevaluate(cs_pts = cs_pts, threshold = threshold, pct_threshold = pct_threshold)
-  
   # if there are no transects that need rectification, return the original cs_pts early with a "is_extended" flag
   if (!needs_rectification(transects)) {
     
@@ -119,24 +108,14 @@ improve_invalid_cs = function(
     return(cs_pts)
   }
   
-  # flag_transects <- 
-  #   transects %>% 
+  # flag_transects <- transects %>% 
   #   dplyr::mutate(
   #     needs_extension = dplyr::case_when(
-  #       tmp_id %in% unique(
-  #         hydrofabric3D::add_tmp_id(
-  #           pts_to_inspect)$tmp_id
-  #       )                          ~ TRUE,
-  #       TRUE                                   ~ FALSE
-  #     ),
+  #       tmp_id %in% unique(hydrofabric3D::add_tmp_id(pts_to_inspect)$tmp_id) ~ TRUE,
+  #       TRUE                                   ~ FALSE),
   #     length_to_extend = dplyr::case_when(
   #       needs_extension ~ (cs_lengthm * scale) / 2,
-  #       TRUE            ~ 0
-  #     )
-  #   ) %>% 
-  #   dplyr::select(-tmp_id) 
-  
-  # flag_transects$needs_extension %>% table()
+  #       TRUE            ~ 0)) 
   
   # 0. Split the data into valid and invalid transects
   # 1. Go through invalid transects
@@ -157,20 +136,15 @@ improve_invalid_cs = function(
     verbose             = verbose
   )
   
-  # # Store unextendable transects for filtering out later on 
-  # # (these are transects that were flat AND could NOT be extended without violating an intersection rule)
-  # unextendable   <- dplyr::filter(extended_geoms, !is_extended)
   # good_to_go_transects <- dplyr::filter(extended_geoms, !is_extended)
   
   # Remove unextendable transects from extended_geoms 
   extended_transects <- dplyr::filter(extended_geoms, is_extended)
   
   # nrow(extended_transects) + nrow(good_to_go_transects) == nrow(transects)
-  
-  # system.time({
-  
+
   # add cross section points to extended cross sections
-  extended_transects <- hydrofabric3D:::add_points_per_cs(
+  extended_transects <- add_points_per_cs(
     cs             = extended_transects,
     # cs             = trans_to_extend,
     # cs             = dplyr::slice(extended_geoms , 1:100),
@@ -179,16 +153,10 @@ improve_invalid_cs = function(
     dem            = dem
   )
   
-  # })
-  
   if (verbose) { message("Extracting new DEM values..")}
   
-  # system.time({
-    
   # extract DEM values for newly extended cross sections
-  extended_pts <- hydrofabric3D:::extract_dem_values(cs = extended_transects, dem = dem)
-  
-  # })
+  extended_pts <- extract_dem_values(cs = extended_transects, dem = dem)
   
   # Drop the old valid_banks and has_relief columns
   extended_pts <- dplyr::select(extended_pts, -valid_banks, -has_relief)
@@ -253,7 +221,7 @@ improve_invalid_cs = function(
   # pts_to_keep <- dplyr::filter(extended_pts2, !tmp_id %in% ids_to_add_to_good_set)
   # pts_to_move_to_good_set <- dplyr::filter(extended_pts2, tmp_id %in% ids_to_add_to_good_set)
   
-  # classify the pts_to_keep so they can be added back to the remaining "good" cross section points from the input
+  # Reclassify the pts_to_keep so they can be added back to the remaining "good" cross section points from the input
   pts_to_keep             <- hydrofabric3D::classify_points(pts_to_keep,
                                                             pct_of_length_for_relief = pct_of_length_for_relief)
   
@@ -294,7 +262,7 @@ improve_invalid_cs = function(
   # that are numbered (1 - number of cross sections) on the hy_id
   if (fix_ids) {
     if (verbose) { message("Renumbering cross section IDs...") }
-    final_pts <- hydrofabric3D:::renumber_cs_ids(final_pts)
+    final_pts <- renumber_cs_ids(final_pts)
   }
   
   # final_pts ==  hydrofabric3D:::renumber_cs_ids(final_pts)
@@ -304,58 +272,6 @@ improve_invalid_cs = function(
   # final_pts <- dplyr::relocate(final_pts, geom, .after = dplyr::last_col())
   
   return(final_pts)
-}
-
-#' Add a "needs_rectification" column to a sf/dataframe
-#'
-#' @param transects sf linestring with "valid_banks" and "has_relief" logical columns
-#'
-#' @return logical, TRUE if there are transects without valid banks or relief
-#' @importFrom dplyr mutate case_when filter select
-#' @importFrom sf st_drop_geometry
-#' @examples
-add_needs_rectification <- function(transects) {
-  
-  transects <-
-    transects %>% 
-    dplyr::mutate(
-      needs_rectification = dplyr::case_when(
-        !valid_banks | !has_relief  ~ TRUE,
-        TRUE                        ~ FALSE
-      )
-    )
-  
-  return(transects)
-  
-}
-#' Check if there transects without valid banks or relief
-#'
-#' @param transects sf linestring with "valid_banks" and "has_relief" logical columns
-#'
-#' @return logical, TRUE if there are transects without valid banks or relief
-#' @importFrom dplyr mutate case_when filter select
-#' @importFrom sf st_drop_geometry
-#' @examples
-needs_rectification <- function(transects) {
-  
-  lines_to_inspect_counts <-
-    transects %>% 
-    sf::st_drop_geometry() %>% 
-    dplyr::mutate(
-      needs_rectification = dplyr::case_when(
-        !valid_banks | !has_relief  ~ TRUE,
-        TRUE                        ~ FALSE
-      )
-    ) %>% 
-    dplyr::select(needs_rectification ) %>% 
-    table() %>% 
-    as.data.frame()  %>% 
-    dplyr::mutate(needs_rectification  = as.logical(needs_rectification)) 
-  
-  has_transects_to_rectify <- ifelse(nrow(dplyr::filter(lines_to_inspect_counts, needs_rectification )) == 0, FALSE, TRUE)
-  
-  return(has_transects_to_rectify)
-  
 }
 
 #' @title Check and fix cross section points with limited variation in Z values (version 2 latest)
@@ -763,6 +679,56 @@ rectify_summary <- function(input_points, output_points, verbose = TRUE) {
   return(summary_df)
 }
 
+#' Check if there transects without valid banks or relief
+#'
+#' @param transects sf linestring with "valid_banks" and "has_relief" logical columns
+#'
+#' @return logical, TRUE if there are transects without valid banks or relief
+#' @importFrom dplyr mutate case_when filter select
+#' @importFrom sf st_drop_geometry
+needs_rectification <- function(transects) {
+  
+  lines_to_inspect_counts <-
+    transects %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::mutate(
+      needs_rectification = dplyr::case_when(
+        !valid_banks | !has_relief  ~ TRUE,
+        TRUE                        ~ FALSE
+      )
+    ) %>% 
+    dplyr::select(needs_rectification ) %>% 
+    table() %>% 
+    as.data.frame()  %>% 
+    dplyr::mutate(needs_rectification  = as.logical(needs_rectification)) 
+  
+  has_transects_to_rectify <- ifelse(nrow(dplyr::filter(lines_to_inspect_counts, needs_rectification )) == 0, FALSE, TRUE)
+  
+  return(has_transects_to_rectify)
+  
+}
+
+#' Add a "needs_rectification" column to a sf/dataframe
+#'
+#' @param transects sf linestring with "valid_banks" and "has_relief" logical columns
+#'
+#' @return logical, TRUE if there are transects without valid banks or relief
+#' @importFrom dplyr mutate case_when filter select
+#' @importFrom sf st_drop_geometry
+add_needs_rectification <- function(transects) {
+  
+  transects <-
+    transects %>% 
+    dplyr::mutate(
+      needs_rectification = dplyr::case_when(
+        !valid_banks | !has_relief  ~ TRUE,
+        TRUE                        ~ FALSE
+      )
+    )
+  
+  return(transects)
+  
+}
 
 #' Calculate percentage of points within a set of cross section points that are near the bottom of the cross section 
 #' Adds the following columns: 

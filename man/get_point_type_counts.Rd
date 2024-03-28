@@ -4,16 +4,14 @@
 \alias{get_point_type_counts}
 \title{Get the count of each point type in a set of cross section points}
 \usage{
-get_point_type_counts(classified_pts, add = TRUE)
+get_point_type_counts(classified_pts)
 }
 \arguments{
 \item{classified_pts}{dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well asa 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"}
-
-\item{add}{logical, whether to add the point type columns to the original data or not. Default is TRUE. If FALSE, a dataframe with "hy_id", "cs_id", "left_bank_count", "right_bank_count", "channel_count", and ""bottom_count" is returned}
 }
 \value{
-dataframe or sf dataframe
+dataframe or sf dataframe with hy_id, cs_id, and <point_type>_count columns for each point_type
 }
 \description{
-classify_points() will add the required "point_type" column to a set of cross section points
+get_point_type_counts() will create a dataframe providing the counts of every point_type for each hy_id/cs_id in a set of classified cross section points (output of classify_pts())
 }

@@ -26,9 +26,12 @@ utils::globalVariables(
     "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
     "terminalID",
     "tmp_id",
-    "make_geoms_to_cut_plot"
+    "make_geoms_to_cut_plot",
+    "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
+    "old_validity_score", "transects", "validity_score", "x"
   )
 )
+
 
 #' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
 #' @description
@@ -131,31 +134,44 @@ move_geometry_to_last <- function(df) {
   return(df)
 }
 
-#' @title Get the count of each point type in a set of cross section points
-#' @description classify_points() will add the required "point_type" column to a set of cross section points
-#' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well asa 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
-#' @param add logical, whether to add the point type columns to the original data or not. Default is TRUE. If FALSE, a dataframe with "hy_id", "cs_id", "left_bank_count", "right_bank_count", "channel_count", and ""bottom_count" is returned
+# TODO: probably delete this function given you can just use dplyr::select()....
+
+#' Remove specified columns from a dataframe if they exist.
 #'
-#' @return dataframe or sf dataframe
+#' @param df A dataframe.
+#' @param columns_to_remove character vector specifying the names of columns to be removed.
+#' @return dataframe with specified columns removed if they exist.
+remove_cols_from_df <- function(df, columns_to_remove) {
+  
+  existing_columns <- intersect(columns_to_remove, colnames(df))
+  
+  # If columns exist, remove them
+  if (length(existing_columns) > 0) {
+    df <- df[, !colnames(df) %in% existing_columns, drop = FALSE]
+  }
+  
+  return(df)
+}
+
+#' @title Get the count of each point type in a set of cross section points
+#' @description get_point_type_counts() will create a dataframe providing the counts of every point_type for each hy_id/cs_id in a set of classified cross section points (output of classify_pts())
+#' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well asa 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
+#' @return dataframe or sf dataframe with hy_id, cs_id, and <point_type>_count columns for each point_type
 #' @importFrom sf st_drop_geometry
 #' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
 #' @importFrom tidyr pivot_wider pivot_longer
 #' @export
-get_point_type_counts <- function(classified_pts, add = TRUE) {
+get_point_type_counts <- function(classified_pts) {
   
   # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
   # add = F
-  # classified_pts = output_pts
+  # classified_pts = classified_pts2
+  # add = TRUE
   
   # type checking
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
     stop("Invalid argument type, 'classified_pts' must be of type 'sf', 'tbl_df', 'tbl' or 'data.frame', given type was '",  
          class(classified_pts), "'")
-  }
-  
-  # type checking
-  if (!is.logical(add)) {
-    stop("Invalid argument type, 'add' must be of type 'logical', given type was '",   class(add), "'")
   }
   
   # create a copy of the input dataset, add a tmp_id column
@@ -175,15 +191,24 @@ get_point_type_counts <- function(classified_pts, add = TRUE) {
     stage_df %>%
     dplyr::group_by(tmp_id, point_type) %>%
     dplyr::count() %>% 
-    dplyr::ungroup() 
-  
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      # add levels to the point_type column so if a given point_type
+      # is NOT in the cross seciton points, then it will be added with NAs in the subsequent pivot_wider
+      point_type = factor(point_type, levels = c("left_bank", "bottom", "right_bank", "channel"))
+    ) 
+
   # pivot data wider to get implicit missing groups with NA values
   point_type_counts <- 
     point_type_counts %>% 
     tidyr::pivot_wider(
-      names_from = point_type,
-      values_from = n
-    ) %>% 
+      names_from   = point_type,
+      values_from  = n,
+      names_expand = TRUE
+    ) 
+  
+  point_type_counts <- 
+    point_type_counts %>% 
     tidyr::pivot_longer(
       cols      = c(bottom, channel, right_bank, left_bank),
       names_to  = "point_type",
@@ -236,42 +261,129 @@ get_point_type_counts <- function(classified_pts, add = TRUE) {
   
   # point_type_counts %>% 
   #   dplyr::arrange(-right_bank_count)
-  # if add is TRUE, add the new point type columns to the original dataframe
-  if(add) {
-    
-    # Join the point type counts to the original dataframe
-    classified_pts <- 
-      classified_pts %>% 
-      dplyr::left_join(
-        point_type_counts,
-        by = c("hy_id", "cs_id")
-      )
-    
-    # # check if any of the columns in 'classified_pts' are geometry types 
-    # check_for_geom <- sapply(classified_pts, function(col) {
-    #   any(class(col) %in% c("sfc_POINT", "sfc", "sfc_GEOMETRY", "sfc_MULTIPOINT"))
-    # })
-    # 
-    # # if there is a geometry type column in any of the classified_pts columns,
-    # # then move it to the end of the dataframe, otherwise just return the classified_pts
-    # if (any(check_for_geom)) {
-    #   
-    #   geometry_colname <- names(classified_pts)[check_for_geom]
-    #   
-    #   # move the geometry column to the end of the dataframe
-    #   classified_pts <- 
-    #     classified_pts %>% 
-    #     dplyr::relocate(dplyr::all_of(geometry_colname), .after = dplyr::last_col())
-    # }
-    
-    # check if any of the columns in 'classified_pts' are geometry types  and move them to the end column if they do exist
-    classified_pts <- move_geometry_to_last(classified_pts)
-    
-    return(classified_pts)
-  }
   
   return(point_type_counts)
   
+}
+
+#' @title Add the count of each point type as a column to a dataframe of section points
+#' @description add_point_type_counts() will add columns to the input dataframe with the counts of every point_type for each hy_id/cs_id in the input dataframe of classified cross section points (output of classify_pts())
+#' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well as a 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
+#' @return dataframe or sf dataframe with "<point_type>_count" columns added
+#' @importFrom sf st_drop_geometry
+#' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
+#' @importFrom tidyr pivot_wider pivot_longer
+#' @export
+add_point_type_counts <- function(classified_pts) {
+  
+  # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
+  # add = F
+  # classified_pts = classified_pts2
+  # add = TRUE
+  
+  # type checking
+  if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
+    stop("Invalid argument type, 'classified_pts' must be of type 'sf', 'tbl_df', 'tbl' or 'data.frame', given type was '",  
+         class(classified_pts), "'")
+  }
+  
+  # create a copy of the input dataset, add a tmp_id column
+  stage_df <- 
+    classified_pts %>% 
+    sf::st_drop_geometry() %>% 
+    hydrofabric3D::add_tmp_id() 
+  
+  # # create a reference dataframe with all possible combinations of tmp_id and point_type
+  # reference_df <- expand.grid(
+  #   tmp_id     = unique(stage_df$tmp_id),
+  #   point_type = unique(stage_df$point_type)
+  # )
+  
+  # get a count of the point_types in each hy_id/cs_id group (i.e. each cross section)
+  point_type_counts <- 
+    stage_df %>%
+    dplyr::group_by(tmp_id, point_type) %>%
+    dplyr::count() %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      # add levels to the point_type column so if a given point_type
+      # is NOT in the cross seciton points, then it will be added with NAs in the subsequent pivot_wider
+      point_type = factor(point_type, levels = c("left_bank", "bottom", "right_bank", "channel"))
+    ) 
+  
+  # pivot data wider to get implicit missing groups with NA values
+  point_type_counts <- 
+    point_type_counts %>% 
+    tidyr::pivot_wider(
+      names_from   = point_type,
+      values_from  = n,
+      names_expand = TRUE
+    ) 
+  
+  point_type_counts <- 
+    point_type_counts %>% 
+    tidyr::pivot_longer(
+      cols      = c(bottom, channel, right_bank, left_bank),
+      names_to  = "point_type",
+      values_to = "n"
+    ) %>% 
+    dplyr::mutate(n = ifelse(is.na(n), 0, n))
+  
+  # # Join the count of point types in each group with the reference_df to 
+  # # get rows of NA values for any group that is missing a specific point_type
+  # point_type_counts <- 
+  #   point_type_counts %>% 
+  #   dplyr::right_join(reference_df, by = c("tmp_id", "point_type"))
+  
+  # # For any cross section group that does NOT contain a point type, 
+  # # the point type will be NA and here we replace those NAs with 0 
+  # point_type_counts$n[is.na(point_type_counts$n)] <- 0
+  
+  # # make sure that all tmp_id groups have all 4 point types
+  check_counts <-
+    point_type_counts %>%
+    dplyr::group_by(tmp_id) %>%
+    dplyr::summarize(unique_count = dplyr::n_distinct(point_type)) %>%
+    dplyr::filter(unique_count == 4) 
+  
+  # if the number of distinct points types in each cross section is not 4, raise an error
+  if (length(unique(stage_df$tmp_id)) != nrow(check_counts)) {
+    stop("Error validating each hy_id/cs_id cross section contains exactly 4 distinct values in the 'point_type' column")  
+  }
+  
+  # get the hy_id, cs_id for each tmp_id to cross walk back to just using hy_id/cs_id
+  stage_df <- 
+    stage_df %>% 
+    dplyr::select(tmp_id, hy_id, cs_id) %>% 
+    dplyr::group_by(tmp_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup()
+  
+  # convert the column of point types to be a column for each point type that 
+  # has the point type count for each hy_id/cs_id (cross section)
+  point_type_counts <- 
+    point_type_counts %>% 
+    tidyr::pivot_wider(names_from = point_type,  
+                       names_glue = "{point_type}_count", 
+                       values_from = n) %>% 
+    dplyr::left_join(
+      stage_df,
+      by = "tmp_id"
+    ) %>% 
+    dplyr::select(hy_id, cs_id, left_bank_count, right_bank_count, channel_count, bottom_count)
+  
+  # Join the point type counts to the original dataframe
+  classified_pts <- 
+    classified_pts %>% 
+    dplyr::left_join(
+      point_type_counts,
+      by = c("hy_id", "cs_id")
+    )
+  
+  # check if any of the columns in 'classified_pts' are geometry types  and move them to the end column if they do exist
+  classified_pts <- move_geometry_to_last(classified_pts)
+  
+  return(classified_pts)
 }
 
 #' @title Adds attributes about the banks of each cross section in a dataframe of cross section points
@@ -296,7 +408,7 @@ add_bank_attributes <- function(
   }
   
   # Add columns with the counts of point types
-  classified_pts <- hydrofabric3D::get_point_type_counts(classified_pts, add = TRUE)
+  classified_pts <- hydrofabric3D::add_point_type_counts(classified_pts)
   
   # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
   # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
@@ -421,6 +533,7 @@ get_bank_attributes <- function(
   
   # classified_pts <- output_pts
   # classified_pts
+  # classified_pts <- classified_pts2 
   
   # type checking, throw an error if not "sf", "tbl_df", "tbl", or "data.frame"
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
@@ -429,7 +542,7 @@ get_bank_attributes <- function(
   }
   
   # Add columns with the counts of point types
-  classified_pts <- hydrofabric3D::get_point_type_counts(classified_pts, add = TRUE)
+  classified_pts <- hydrofabric3D::add_point_type_counts(classified_pts)
   
   # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
   # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
