@@ -198,8 +198,9 @@ classify_points <- function(
   } 
   
   # # remove any columns that already exist
-  cs_pts <- dplyr::select(cs_pts,
-                          -class, -point_type, -bottom, -left_bank, -right_bank, -valid_banks, -has_relief)
+  cs_pts <- dplyr::select(cs_pts, 
+                          !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", "right_bank", "valid_banks", "has_relief"))
+                          )
   
   # required cols that will be selected from the classified_pts object and in this order
   req_cols       <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type")
