@@ -1,3 +1,37 @@
+utils::globalVariables(
+  c(".", "hy_id", "cs_id", "pt_id", "Z", "middle_index", "point_type", "minZ", 
+    "maxZ", "minZ_bottom", "maxZ_left_bank", "maxZ_right_bank", "valid_left_bank", 
+    "valid_right_bank", "bottom", "left_bank", "right_bank", "valid_banks", 
+    "relative_distance", "cs_lengthm", "default_middle", "has_relief", 
+    "max_relief", "braid_id", "geometry",
+    
+    "comid", "fromnode", "tonode", 
+    "tocomid", "divergence", "cycle_id", "node", "braid_vector", "totdasqkm", 
+    "changed", "relative_position", "head_distance", "tail_distance", 
+    "component_id", "cs_measure", "ds_distance", "along_channel", "euclid_dist", 
+    "sinuosity", "points_per_cs", "Z_at_bottom", "lower_bound", "upper_bound", 
+    "ge_bottom", "is_near_bottom", "pts_near_bottom", "total_valid_pts", 
+    "pct_near_bottom", 
+    "member_braids",  "braid_members", "diff_pts", "is_extended", 
+    "new_cs_id", "split_braid_ids",
+    
+    "braid_length", 
+    "id", 
+    "lengthm", 
+    "check_z_values", 
+    "geom", 
+    "is_same_Z", 
+    "is_multibraid", 
+    "channel", "unique_count",
+    "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
+    "terminalID",
+    "tmp_id",
+    "make_geoms_to_cut_plot",
+    "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
+    "old_validity_score", "transects", "validity_score", "x"
+  )
+)
+
 # *********************************
 # ------------- LATEST ------------
 # *********************************
@@ -2016,14 +2050,13 @@ geos_linestring_dir <- function(line) {
 #' @param distance numeric value in meters or a vector of length 2 if 'end = "both"' where 
 #       the first value in the vector will extend that tail by that value and the second value extends the head by that value c(tail, head).
 #       If a single value is given when end = "both", the value is recycled and used to extend both ends
-#' @param end character, determines whether to extend the linestring from the 'tail', 'head' or 'both' ends
+#' @param dir character, determines whether to extend the linestring from the 'tail', 'head' or 'both' ends
 #' @param with_crs logical, whether a CRS should be prescribed to extended output geos_geometry linestring
 #' 
-#' @noRd
-#' @keywords internal
 #' @return geos_geometry linestring extended by 'distance' from either the 'head', 'tail' or 'both' ends of the original linestring
 #' @importFrom geos as_geos_geometry geos_make_linestring
 #' @importFrom wk wk_coords wk_crs
+#' @export
 geos_extend_line <- function(line, 
                              distance,
                              dir = "both", 
