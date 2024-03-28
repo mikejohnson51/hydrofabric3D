@@ -2,8 +2,7 @@
 % Please edit documentation in R/ahg_estimates.R
 \name{cs_inchannel_estimate}
 \alias{cs_inchannel_estimate}
-\title{Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
-Still in early development phases}
+\title{Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes}
 \usage{
 cs_inchannel_estimate(
   cross_section_pts,
@@ -28,6 +27,5 @@ cs_inchannel_estimate(
 dataframe or sf dataframe with AHG estimated points injected into the input cross section points
 }
 \description{
-Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
 Still in early development phases
 }
