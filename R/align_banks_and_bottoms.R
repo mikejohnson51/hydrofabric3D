@@ -46,7 +46,8 @@ align_banks_and_bottoms <- function(cs_pts) {
   
   adjust <- function(v){
     if(length(v) == 1){ return(v)}
-    for(i in 2:length(v)){ v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) }
+    for(i in 2:length(v)){ 
+      v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) }
     v
   }
   
@@ -54,7 +55,7 @@ align_banks_and_bottoms <- function(cs_pts) {
     cs_pts %>% 
     sf::st_drop_geometry() %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
-    dplyr::summarise(min_ch = min(Z[class == "channel"])) %>% 
+    dplyr::summarise(min_ch = min(Z[point_type == "channel"])) %>% 
     dplyr::mutate(adjust = adjust(min_ch) - min_ch) %>% 
     dplyr::ungroup() %>% 
     dplyr::select(hy_id, cs_id, adjust)
@@ -67,12 +68,16 @@ align_banks_and_bottoms <- function(cs_pts) {
     ) %>% 
     dplyr::mutate(
       Z = dplyr::case_when(
-        class  == "channel" ~ Z + adjust, 
+        point_type  == "channel" ~ Z + adjust, 
         TRUE ~ Z
       )
     ) %>% 
     dplyr::select(-adjust)
+  
+  return(cs_pts)
+  
 }
+
 # 
 # #################################################################################### 
 # ############################ Dev testing below ##############################
