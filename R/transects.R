@@ -1088,25 +1088,20 @@ extend_invalid_transects <- function(
   verbose = TRUE
 ) {
   
-    # transects_to_check  = transects
-    # net                 = net
-    # scale               = scale
-    # verbose             = verbose
-    # 
-    # ######## ##  ######## #### #### #   ######## #### #### #   ######## #### #### # ## #### # 
-    # ######## ##  ######## #### #### #    SUBSET TO 100 IDS  ######## #### #### # ## #### # 
-    # ######## ##  ######## #### #### #   ######## #### #### #   ######## #### #### # ## #### # 
-    # 
-    # filter_ids <- unique(net$id)[1:100]
-    # 
+    # transects_to_check  = transects2
+    # net                 = flines
+    # scale               = 0.5
+    # verbose             = TRUE
+    # # "wb-639133" "2"
+    # # "wb-639144", "8"
     # transects_to_check <- 
-    #   transects_to_check %>% 
-    #   dplyr::filter(hy_id %in% filter_ids)
-    # 
-    # net <-
-    #   net %>% 
-    #   dplyr::filter(id %in% filter_ids)
-    # 
+    #   transects2 %>% 
+    #   dplyr::filter(hy_id %in% c("wb-639133", "wb-639144", "wb-648639"), cs_id %in% c("2", "8", "9")) 
+    #   # dplyr::filter(!valid_banks | !has_relief)
+    #   # dplyr::filter(valid_banks & has_relief)
+    # net = flines %>%  dplyr::filter(id %in% transects_to_check$hy_id)
+    
+    # ######## ##  ######## #### #### #   ######## #### #### #   ######## #### #### # ## #### # 
     ######## ##  ######## #### #### #   ######## #### #### #   ######## #### #### # ## #### # 
     ######## ##  ######## #### #### #   ######## #### #### #   ######## #### #### # ## #### # 
     
@@ -1117,10 +1112,20 @@ extend_invalid_transects <- function(
    invalid_transects  <- dplyr::filter(transects_to_check, !valid_banks | !has_relief)
    valid_transects    <- dplyr::filter(transects_to_check, valid_banks & has_relief)
    
+   # keep track of any transects that having missing values in either valid_banks/has_relief columns, 
+   # these get added back to the updated data at the end
+   missing_bank_or_relief_data <- 
+     transects_to_check %>% 
+     dplyr::filter(is.na(valid_banks) | is.na(has_relief))
+
+   # TODO: Probably remove this
    count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check)
+   # count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check) - nrow(missing_bank_or_relief_data)
    
    if(!count_check) {
-     stop("Mismatch in number of points after splitting data by the 'valid_banks' and 'has_relief' columns, likely a missing value in either 'valid_banks' or 'has_relief' columns")
+     warning(paste0(nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
+     # warning(paste0("Different number of transects after splitting data by 'valid_banks' and 'has_relief' columns, ", nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
+     # stop("Mismatch in number of points after splitting data by the 'valid_banks' and 'has_relief' columns, likely a missing value in either 'valid_banks' or 'has_relief' columns")
    }
    
    if(verbose) { message(paste0("Extending ", nrow(invalid_transects), " transects without valid banks or relief by ",     scale * 100, "%...")) }
@@ -1274,7 +1279,15 @@ extend_invalid_transects <- function(
                                invalid_transects
                                )
    
-   # check to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT, and raise an error if they're are missing hy_id/cs_ids
+   # add back any transects that were missing banks/relief values 
+   extended_transects <- dplyr::bind_rows(
+                             extended_transects,
+                             dplyr::select(missing_bank_or_relief_data, 
+                                           dplyr::any_of(names(extended_transects)))
+                             )
+
+   # check to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT, 
+   # and raise an error if they're are missing hy_id/cs_ids
    input_uids  <- unique(hydrofabric3D::add_tmp_id(transects_to_check)$tmp_id)
    output_uids <- unique(hydrofabric3D::add_tmp_id(extended_transects)$tmp_id)
    
@@ -1284,7 +1297,7 @@ extend_invalid_transects <- function(
    if(!has_all_uids) {
      stop("Missing unique hy_id/cs_id from input transects in the output transects")
    }
-  
+   
     # dplyr::filter(invalid_transects, is_extended)
     # dplyr::filter(invalid_transects, !is_extended)
    # invalid_transects$geom[1]  %>% sf::st_length()
