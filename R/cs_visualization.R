@@ -72,7 +72,7 @@ plot_cs_pts <- function(cs_pts,
         y = !!dplyr::sym(y),
         color = !!ifelse(is.character(color), dplyr::sym(color), TRUE)
       )
-    )
+    ) 
   # tidyselect::all_of("pt_id")
   
   # if grid == TRUE, then use facet_grid, otherwise use facet wrap
