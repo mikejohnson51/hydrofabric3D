@@ -28,61 +28,68 @@ utils::globalVariables(
     "tmp_id",
     "make_geoms_to_cut_plot",
     "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
-    "old_validity_score", "transects", "validity_score", "x"
+    "old_validity_score", "transects", "validity_score", "x",
+    "A", "DEPTH", "DINGMAN_R", "TW", "X", "X_end", "X_start", "Y_end", "Y_start",
+    "ahg_a", "ahg_index", "ahg_x", "ahg_y", 
+    "bottom_end", "bottom_length", "bottom_midpoint", 
+    "bottom_start", "cs_partition", "distance_interval", "fixed_TW", 
+    "has_new_DEPTH", "has_new_TW", "ind", "is_dem_point", "left_max", 
+    "left_start", "max_right_position", "new_DEPTH", "new_TW", "next_X_is_missing", "next_Y_is_missing",
+    "parabola", "partition", "prev_X_is_missing", 
+    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id"
   )
 )
 
-# test_colnames <- function(
-#     cross_section_pts,
-#     top_width = owp_tw_inchan,
-#     depth = owp_y_inchan
-# ) {
-#   
-#   top_width_str <- rlang::as_name(rlang::enquo(top_width))
-#   depth_str     <- rlang::as_name(rlang::enquo(depth))
-#   
-#   message("top_width_str: ", top_width_str)
-#   message("depth_str: ", depth_str)
-#   message("class top_width_str: ", class(top_width_str))
-#   message("class depth_str: ", class(depth_str))
-#   
-#   if (!top_width_str %in% names(cross_section_pts)) {
-#     stop(paste0("'top_width' column '", top_width_str, "' does not exist in cross_section_pts dataframe"))
-#   }
-#   
-#   if (!depth_str %in% names(cross_section_pts)) {
-#     stop(paste0("'depth' column '", depth_str, "' does not exist in cross_section_pts dataframe"))
-#   }
-#   
-#   tmp <- 
-#     cross_section_pts %>% 
-#     dplyr::select(hy_id, cs_id, {{top_width}}, {{depth}})
-#   return(tmp)
-# }
-# 
-# test_colnames(cs_ml, top_width = "owp_tw_inchan")
+###############################################################################
+##### ---- VERSION 2 ------
+###############################################################################
 
 #' Get the AHG estimated parabolas for each hy_id/cs_id cross section given a set of cross section points
 #'
 #' @param cross_section_pts dataframe or sf dataframe with "hy_id", "cs_id", "bottom" columns and 
 #'  specififed "top_width", "depth", "dingman_r" columns  (see top_width, depth, and dingman_r arguments)
-#' @param top_width character or tidy selector column name of top width value column. Default is "owp_tw_inchan"
-#' @param depth character or tidy selector column name of Y depth value column. Default is "owp_y_inchan"
-#' @param dingman_r numeric, Dingman's R coeffiecient.  Default is "owp_dingman_r".
-#'
+#' @importFrom dplyr bind_rows rowwise select group_by slice ungroup filter mutate
+#' @importFrom AHGestimation cross_section
+#' @importFrom tidyr unnest
+#' @importFrom rlang as_name enquo
 #' @return dataframe with a set of AHG points for each hy_id/cs_id in the input data, with AHG estimated X, Y, A point values that form a parabola
 get_ahg_parabolas <- function(
-    cross_section_pts,
-    top_width = "owp_tw_inchan",
-    depth     = "owp_y_inchan",
-    dingman_r = "owp_dingman_r"
+    cross_section_pts = NULL
 ) {
   
   # cross_section_pts <-
   #   cs_ml %>%
   #   dplyr::slice(1:20)
-  # cross_section_pts %>% names()
+  # cross_section_pts = cross_section_pts
+  # # top_width         = {{top_width}},
+  # # depth             = {{depth}},
+  # top_width         = "owp_tw_inchan"
+  # depth             = "owp_y_inchan"
+  # length_col        = "cs_lengthm"
+  # cross_section_pts = dplyr::slice(inchannel_cs, 1:10)
+  # top_width         = "owp_tw_inchan"
+  # depth             = "owp_y_inchan"
+  # dingman_r         = "owp_dingman_r"
   
+  req_cols <- c("hy_id", "cs_id", "bottom", 
+                "TW", "DEPTH", "DINGMAN_R")
+  
+  if (is.null(cross_section_pts)) {
+    stop(
+      paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n > ",
+             paste0(req_cols, collapse = "\n > "))
+    )
+  }
+  
+  if (!all(req_cols %in% names(cross_section_pts))) {
+    stop(paste0('"cross_section_pts" is missing columns, must include all of:\n > ', paste0(req_cols, collapse = "\n > ") ))
+  }
+  
+  # this function will take in one of the AHG estimated parabolas, a bottom depth, and the estimated inchannel depth 
+  # and if there are infinite/NaN/NA values in the AHG estimated parabolas depth ("Y"),
+  # we pin the the left and right side of the parabola to the input bottomZ and set 
+  # the bottom depth to the input bottom minus the given inchannel depth estimate
+  # TODO: Probably won't be a permanent solution if the AHG estimation package ends up never returning NaN/Infinite values
   make_rectangle_if_needed <- function(parabola_df,  bottomZ, inchannel_depth) {
     contains_nan_or_inf_y_values <- any(is.nan(parabola_df$Y)) || any(is.na(parabola_df$Y)) || any(is.infinite(parabola_df$Y))
     
@@ -126,34 +133,20 @@ get_ahg_parabolas <- function(
     return(parabola)
   } 
   
-  top_width_str  <- rlang::as_name(rlang::enquo(top_width))
-  depth_str      <- rlang::as_name(rlang::enquo(depth))
-  dingman_r_str  <- rlang::as_name(rlang::enquo(dingman_r))
-  
-  # message("top_width_str: ", top_width_str)
-  # message("depth_str: ", depth_str)
-  # message("dingman_r_str: ", dingman_r_str)
-  # message("class top_width_str: ", class(top_width_str))
-  # message("class depth_str: ", class(depth_str))
-  # message("class dingman_r_str: ", class(dingman_r_str))
-  
-  # check that the top_width, depth, and dingman_r values are columns in the input dataframe
-  if (!top_width_str %in% names(cross_section_pts)) {
-    stop(paste0("'top_width' column '", top_width_str, "' does not exist in cross_section_pts dataframe"))
-  }
-  
-  if (!depth_str %in% names(cross_section_pts)) {
-    stop(paste0("'depth' column '", depth_str, "' does not exist in cross_section_pts dataframe"))
-  }
-  
-  if (!dingman_r_str %in% names(cross_section_pts)) {
-    stop(paste0("'dingman_r' column '", dingman_r_str, "' does not exist in cross_section_pts dataframe"))
-  }
-  
+  # keep only a single row for each cross section
   ahg_parameters <- 
     cross_section_pts %>% 
     dplyr::select(hy_id, cs_id, bottom, 
-                  {{top_width}}, {{depth}}, {{dingman_r}}) %>% 
+                  TW, DEPTH, DINGMAN_R
+                  # dplyr::any_of(c(top_width, depth, dingman_r))
+                  # .data[[top_width]],
+                  # .data[[depth]],
+                  # .data[[dingman_r]]
+                  # !!dplyr::sym(top_width),
+                  # !!dplyr::sym(depth),
+                  # !!dplyr::sym(dingman_r),
+                  # {{top_width}}, {{depth}}, {{dingman_r}}
+    ) %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup()
@@ -161,7 +154,10 @@ get_ahg_parabolas <- function(
   # remove any cross sections that are missing top_width, depth, or dingman_r
   set_aside <- 
     ahg_parameters %>% 
-    dplyr::filter(is.na({{top_width}}) | is.na({{depth}}) | is.na({{dingman_r}}) )
+    dplyr::filter(is.na(TW) | is.na(DEPTH) | is.na(DINGMAN_R))
+    # dplyr::filter(is.na(.data[[top_width]]) | is.na(.data[[depth]]) | is.na(.data[[dingman_r]]) )
+  # dplyr::filter(is.na(get(top_width)) | is.na(get(depth)) | is.na(get(dingman_r)) )
+  # dplyr::filter(is.na({{top_width}}) | is.na({{depth}}) | is.na({{dingman_r}}) )
   
   ahg_parameters <- 
     ahg_parameters %>%
@@ -172,9 +168,18 @@ get_ahg_parabolas <- function(
     dplyr::mutate(
       parabola = list(
         AHGestimation::cross_section(
-          r    = {{dingman_r}},
-          TW   = {{top_width}},
-          Ymax = {{depth}}
+          r    = DINGMAN_R,
+          TW   = TW,
+          Ymax = DEPTH
+          # r    = get(dingman_r),
+          # TW   = get(top_width),
+          # Ymax = get(depth)
+          # r    = .data[[dingman_r]],
+          # TW   = .data[[top_width]],
+          # Ymax = .data[[depth]]
+          # r    = {{dingman_r}},
+          # TW   = {{top_width}},
+          # Ymax = {{depth}}
         ) 
         # dplyr::mutate(
         #   Y = dplyr::case_when(
@@ -192,8 +197,14 @@ get_ahg_parabolas <- function(
       parabola = list(
         make_rectangle_if_needed(
           parabola,
-          {{top_width}},
-          {{depth}}
+          bottom,
+          # NOTE: Not sure why i had this like this, should use the bottom as the anchor...? 
+          # {{top_width}},
+          # {{depth}}
+          # get(top_width),
+          # get(depth)
+          # .data[[depth]]
+          DEPTH
         )
         # parabola = purrr::map2(parabola, bottom, {{depth}}, make_rectangle_if_needed)
       )
@@ -229,29 +240,444 @@ get_ahg_parabolas <- function(
                   partition
     ) 
   
+  # plot(ahg_parameters$ahg_y)
   
   return(ahg_parameters)
 }
+
+
+#' Generate X/Y coordinates between a set of known points within a cross section
+#' Used after inserting AHG estimated parabolas in between DEM cross sections points 
+#'
+#' @param cross_section_pts cross section points dataframe with missing X/Y coordinates between sets of known X/Y coordinates
+#' @importFrom dplyr filter group_by summarize ungroup left_join select ends_with mutate n bind_rows
+#' @importFrom tidyr unnest
+#' @return dataframe, input dataframe with X/Y coordinates filled in for missing hy_id/cs_id X/Y values
+#' @export
+fill_missing_ahg_coords <- function(cross_section_pts) {
+  
+  # cross_section_pts <-
+  #   cs_bathy_inchannel %>% 
+  #   # dplyr::slice(1:159)
+  #   dplyr::slice(1:171375)
+  
+  # cross_section_pts <- cs_bathy_inchannel
+  
+  #Fix the missing X/Y coordinates (NAs) from the inserted AHG Parabola points in a set of cross section points
+  seq_between_start_and_end <- function(start, end, n) {
+    # df = fix_coords
+    
+    if (n == 0) {
+      return(NULL)
+    }
+    
+    # Generate new X / Y coordinates
+    # coords <- seq(start, end, length.out = n )
+    coords <- seq(start, end, length.out = n + 2)
+    
+    # return(coords)
+    return(coords[2:(length(coords) - 1)])
+  }
+  
+  
+  # get the first and last coordinates beforee the missing NA X/Y points
+  start_and_end_coords <- get_coords_around_parabola(cross_section_pts)
+  
+  # 
+  start_and_end_pts_ids <- 
+    cross_section_pts %>% 
+    dplyr::filter(!is_dem_point) %>%  
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::summarize(
+      start_pt_id = min(pt_id, na.rm = TRUE)
+    ) %>% 
+    dplyr::ungroup()
+  
+  # get only the rows with the parabola w/ missing X/Y coords
+  parabola_pts <- 
+    cross_section_pts %>% 
+    dplyr::filter(!is_dem_point) %>%  
+    dplyr::left_join(
+      start_and_end_coords,
+      by = c("hy_id", "cs_id")
+    ) %>% 
+    dplyr::select(hy_id, cs_id, pt_id, X, Y, 
+                  dplyr::ends_with("_start"), dplyr::ends_with("end")) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      n = dplyr::n()
+    ) %>% 
+    dplyr::ungroup()
+  
+  # generate coordinates for each parabola
+  parabola_coords <- 
+    parabola_pts %>% 
+    dplyr::left_join(
+      start_and_end_pts_ids, 
+      by = c("hy_id", "cs_id")
+    ) %>% 
+    dplyr::select(hy_id, cs_id, start_pt_id, dplyr::ends_with("_start"), dplyr::ends_with("end"), n) %>% 
+    dplyr::group_by(hy_id, cs_id)  %>% 
+    dplyr::slice(1)  %>% 
+    dplyr::mutate(
+      X = list(seq_between_start_and_end(X_start, X_end, n)),
+      Y = list(seq_between_start_and_end(Y_start, Y_end, n))
+    ) %>% 
+    tidyr::unnest(c(X, Y)) %>% 
+    dplyr::group_by(hy_id, cs_id)  %>%
+    dplyr::mutate(
+      pt_id = (start_pt_id - 1) + (1:dplyr::n())
+      # pt_id = start_pt_id + (0:(dplyr::n()-1))
+    ) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(hy_id, cs_id, pt_id, X, Y) 
+  # dplyr::select(hy_id, cs_id, X, Y)
+  
+  # join the new parabola X/Y points with the rest of the original data, dropping the old NA X/Y coordinates
+  parabolas_with_coords <- 
+    cross_section_pts %>% 
+    dplyr::filter(!is_dem_point) %>% 
+    dplyr::select(-X, -Y) %>% 
+    dplyr::left_join(
+      parabola_coords,
+      by = c("hy_id", "cs_id", "pt_id")
+    )
+  
+  pts_with_fixed_coords <- 
+    dplyr::bind_rows(
+      dplyr::filter(cross_section_pts, is_dem_point),
+      parabolas_with_coords
+    ) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::arrange(relative_distance, .by_group = TRUE) %>%
+    # dplyr::arrange(pt_id, .by_group = TRUE) %>%
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      pt_id = 1:dplyr::n()
+    ) %>%
+    dplyr::ungroup()
+  
+  # pts_with_fixed_coords %>% 
+  # dplyr::group_by(hy_id, cs_id) 
+  # 
+  # pts_with_fixed_coords %>% 
+  #   dplyr::slice(1:15000) %>% 
+  #   sf::st_as_sf(coords = c("X", "Y"), crs = 5070) %>% 
+  #   mapview::mapview()
+  return(pts_with_fixed_coords)
+}
+
+#' Get the coordinates surrounding a set of missing AHG X/Y coordinates.
+#' 
+#' @param cross_section_pts dataframe with cross section points, (required cols, "hy_id", "cs_id", "X", "Y", "is_dem_point")
+#' @importFrom tidyr pivot_wider
+#' @importFrom dplyr select group_by mutate lag lead case_when filter ungroup left_join
+#' @return dataframe with each hy_id/cs_id cross section containing a value for X_start, X_end, Y_start, Y_end, representing the points surrounding the AHG inserted points
+#' @export
+get_coords_around_parabola <- function(cross_section_pts) {
+  
+  fill_value <- -999999999
+  
+  X_coords <-
+    cross_section_pts %>% 
+    dplyr::select(hy_id, cs_id, X, is_dem_point) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      X = ifelse(is.na(X), fill_value, X)
+    ) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      next_X_is_missing  = dplyr::case_when(
+        dplyr::lead(X) == fill_value       ~ TRUE,
+        # is_dem_point & is.na(dplyr::lead(X))  ~ TRUE,
+        TRUE                                  ~ FALSE
+      ),
+      prev_X_is_missing  = dplyr::case_when(
+        dplyr::lag(X) == fill_value          ~ TRUE,
+        # is_dem_point & is.na(dplyr::lead(X))  ~ TRUE,
+        TRUE                                 ~ FALSE
+      )
+    ) %>% 
+    dplyr::filter((is_dem_point & next_X_is_missing) | (is_dem_point & prev_X_is_missing)) %>% 
+    dplyr::mutate(
+      start_or_end  = dplyr::case_when(
+        # is_dem_point & is.na(dplyr::lead(X))  ~ TRUE,
+        (is_dem_point & next_X_is_missing)   ~ "X_start",
+        (is_dem_point & prev_X_is_missing)   ~ "X_end"
+      )
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(hy_id, cs_id, X, is_dem_point, start_or_end)
+  
+  # X_coords %>% 
+  #   dplyr::group_by(hy_id, cs_id)
+  
+  # pivot so each cross sections is a single row with a "X_start" and "X_end" point 
+  X_coords <- 
+    X_coords %>% 
+    # dplyr::select(-is_dem_point) %>% 
+    tidyr::pivot_wider(
+      id_cols = c(hy_id, cs_id),
+      names_from = start_or_end,
+      values_from = X
+    )
+  
+  Y_coords <-
+    cross_section_pts %>% 
+    dplyr::select(hy_id, cs_id, Y, is_dem_point) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      Y = ifelse(is.na(Y), fill_value, Y)
+    ) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      next_Y_is_missing  = dplyr::case_when(
+        dplyr::lead(Y) == fill_value       ~ TRUE,
+        TRUE                               ~ FALSE
+      ),
+      prev_Y_is_missing  = dplyr::case_when(
+        dplyr::lag(Y) == fill_value        ~ TRUE,
+        TRUE                               ~ FALSE
+      )
+    ) %>% 
+    dplyr::filter((is_dem_point & next_Y_is_missing) | (is_dem_point & prev_Y_is_missing)) %>% 
+    dplyr::mutate(
+      start_or_end  = dplyr::case_when(
+        (is_dem_point & next_Y_is_missing)   ~ "Y_start",
+        (is_dem_point & prev_Y_is_missing)   ~ "Y_end"
+      )
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(hy_id, cs_id, Y, is_dem_point, start_or_end)
+  
+  # pivot so each cross sections is a single row with a "X_start" and "X_end" point 
+  Y_coords <-
+    Y_coords %>% 
+    tidyr::pivot_wider(
+      id_cols = c(hy_id, cs_id),
+      names_from = start_or_end,
+      values_from = Y
+    )
+  
+  coords_around_parabola <- dplyr::left_join(
+    X_coords,
+    Y_coords,
+    by = c("hy_id", "cs_id")
+  )
+  
+  return(coords_around_parabola)
+}
+
+#' Check that all cross sections points have a prescribed top width less than the total cross section length
+#' @description
+#' If a set of cross section points has a top width length that is longer than the cross sections length, then a new top width and Y max (depth) value
+#' are given so that the estimated shape is able to properly fit into the cross sections. 
+#' The cross sections length (meters) minus 1 meter is used as the new top width and 
+#' the new Y max (depth) value is derived from the original ratio between the prescribed top width and Y max
+#' @param cross_section_pts dataframe or sf dataframe with "hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R"
+#' @importFrom rlang as_name enquo
+#' @importFrom dplyr group_by mutate case_when sym ungroup select filter slice
+#' @return cross_section_pts dataframe with updated "top_width" and "depth" column values
+fix_oversized_topwidths <- function(
+    cross_section_pts = NULL
+) {
+  # cross_section_pts = cross_section_pts
+  # top_width         = top_width
+  # depth             = depth
+  # length_col        = "cs_lengthm"
+  
+  # cross_section_pts = dplyr::slice(inchannel_cs, 1:100000)
+  # top_width         = cross_section_pts$owp_y_inchan
+  # depth             = cross_section_pts$owp_y_inchan
+  # dingman_r         = cross_section_pts$owp_dingman_r
+  
+  # use this to get a new scaled Ymax value given a known Top width, Ymax (ML generated in this case)
+  # and an expected new Top width (new_TW), this function is used to handle 
+  # the case when the ML estimated top width is GREATER than the DEM cross section length
+  scale_DEPTH_to_TW <- function(TW, Ymax, new_TW) {
+    
+    new_DEPTH <- Ymax * (new_TW / TW)
+    
+    return(new_DEPTH)
+    
+  }
+  
+  req_cols <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R")
+  
+  if (is.null(cross_section_pts)) {
+    stop(
+      paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n > ",
+             paste0(req_cols, collapse = "\n > "))
+    )
+  }
+  
+  if (!all(req_cols %in% names(cross_section_pts))) {
+    stop(paste0('"cross_section_pts" is missing columns, must include all of:\n > ', paste0(req_cols, collapse = "\n > ") ))
+  }
+
+  # original_cs %>% 
+  #   hydrofabric3D::plot_cs_pts(x = "relative_distance")
+  
+  
+  ##############################################
+  ##############################################
+  # cross_section_pts <-
+  #   inchannel_cs %>%
+  #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+  #   # dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("3"))
+  #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+  # #
+  # top_width     = "owp_tw_inchan"
+  # depth         = "owp_y_inchan"
+  # length_col    = "cs_lengthm"
+  
+  # # cross_section_pts %>%
+  #   # hydrofabric3D::plot_cs_pts(x = "relative_distance")
+  
+  ##############################################
+  ##############################################
+  
+  # keep track of the original column order for reordering at the end
+  starting_col_order  <- names(cross_section_pts)
+  
+  # Determine the distance interval for each cross section
+  # we're going to use this value to 
+  # derive a new Top width for each cross section if 
+  # the cross section length is less than the prescribed top width, 
+  # we round the distance interval UP sure we are not underestimating the interval
+  distance_between_pts <- 
+    cross_section_pts %>% 
+    dplyr::select(hy_id, cs_id, relative_distance) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      distance_interval = relative_distance - dplyr::lag(relative_distance)
+    ) %>% 
+    dplyr::summarise(
+      distance_interval = ceiling(mean(distance_interval, na.rm = TRUE)) # TODO: round up to make sure we are not underestimating 
+      # the interval, we're going to use this value to 
+      # derive a new Top width for each cross section if 
+      # the cross section length is less than the prescribed top width
+    ) %>% 
+    dplyr::ungroup()
+  
+  # add the distance interval values to the cross section points
+  cross_section_pts <- 
+    cross_section_pts %>% 
+    dplyr::left_join(
+      distance_between_pts, 
+      by = c("hy_id", "cs_id")
+    )
+  
+  # message("Ending col order:\n> ", paste0(names(cross_section_pts), collapse = "\n> "))
+  # cross_section_pts$tmp_top_width <- top_width
+  # cross_section_pts$tmp_depth     <- depth
+  
+  updated_TW_and_Ymax <- 
+    cross_section_pts %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      new_DEPTH = dplyr::case_when(
+        TW >= cs_lengthm ~ scale_DEPTH_to_TW(TW, 
+                                            DEPTH, 
+                                            cs_lengthm - distance_interval
+                                             # !!dplyr::sym(length_colname) - 1 # TODO: arbitrarily remove 1 meter from the length to 
+                                             # TODO: make sure topwidth/depth is SMALLER than cross section length 
+                                             # TODO: so the AHG parabola points can fit within cross section 
+                                             # !!dplyr::sym(length_colname) 
+                                             # TODO: Original method ^^^ (no subtraction)
+        ), 
+        TRUE                        ~ DEPTH
+        # owp_tw_inchan >= cs_lengthm ~ scale_DEPTH_to_TW(owp_tw_inchan, owp_y_inchan, cs_lengthm),
+        # TRUE                        ~ owp_y_inchan
+      ),
+      new_TW = dplyr::case_when(
+        TW >= cs_lengthm ~ cs_lengthm - distance_interval, # TODO: Same arbitrary subtraction of 1 meter as above note ^^^
+        # get(top_width) >= get(length_colname) ~ !!dplyr::sym(length_colname) - 1, # TODO: Same arbitrary subtraction of 1 meter as above note ^^^
+        # get(top_width) >= get(length_colname) ~ !!dplyr::sym(length_colname),   # TODO: Original method (no subtraction)
+        TRUE                          ~ TW
+        # owp_tw_inchan >= cs_lengthm ~ cs_lengthm,
+        # TRUE                        ~ owp_tw_inchan
+      ),
+      has_new_DEPTH = new_DEPTH != DEPTH,
+      has_new_TW    = new_TW != TW,
+      fixed_TW      = has_new_DEPTH | has_new_TW
+    ) %>% 
+    dplyr::ungroup() %>% 
+    # dplyr::relocate(hy_id, cs_id, cs_lengthm, owp_tw_inchan, 
+    #                 new_TW, new_TW2, owp_y_inchan, new_DEPTH, new_DEPTH2, fixed_TW)
+    dplyr::select(
+      -has_new_DEPTH,
+      -has_new_TW,
+      -TW,
+      -DEPTH
+    )
+  
+  # number of cross sections that had their TW/Depths changed to fit into the cross section properly
+  number_fixed_TWs <- 
+    updated_TW_and_Ymax %>% 
+    dplyr::filter(fixed_TW) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup() %>% 
+    nrow()
+  
+  if (number_fixed_TWs > 0) {
+    warning(
+      "Had to fix ", number_fixed_TWs, " cross section(s) top width/depth values to make sure", 
+      "\nthe prescribed topwidth is not greater than or equal to the length of",
+      "\nthe entire cross section (meters), the cross section(s) total length is", 
+      "\nused as the new TW and the ratio of the prescribed TW to the prescribed depth", 
+      "\nis used to calculate a new depth (Y) value."
+    )
+  }
+  
+  # Drop the flag column that says if the top width had to be fixed
+  updated_TW_and_Ymax <- dplyr::select(updated_TW_and_Ymax, 
+                                       -distance_interval,
+                                       -fixed_TW
+                                       )
+  
+  # # any starting columns in the original data
+  ending_col_order  <- names(updated_TW_and_Ymax)
+  
+  # message("Ending col order:\n> ", paste0(names(updated_TW_and_Ymax), collapse = "\n> "))
+  
+  # # change the new_TW and new_DEPTH columns to match the original input TW/Depth column names
+  ending_col_order[ending_col_order == "new_TW"] <- "TW"
+  ending_col_order[ending_col_order == "new_DEPTH"] <- "DEPTH"
+
+  # # update the names
+  names(updated_TW_and_Ymax) <- ending_col_order
+  
+  # # reorder columns to original order
+  # updated_TW_and_Ymax <- updated_TW_and_Ymax[starting_col_order]
+  
+  return(updated_TW_and_Ymax)
+}
+
+# cross_section_pts <- 
+#   inchannel_cs %>% 
+#   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+#   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+# top_width = "owp_tw_inchan"
+# depth     = "owp_y_inchan"
+# dingman_r = "owp_dingman_r"
+# cross_section_pts$owp_tw_bf
 
 #' Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
 #' @description
 #' Still in early development phases
 #' @param cross_section_pts dataframe or sf dataframe. Default is NULL
-#' @param top_width character or tidy selector column name of top width value column. Default is "owp_tw_inchan"
-#' @param depth character or tidy selector column name of Y depth value column. Default is "owp_y_inchan"
-#' @param dingman_r numeric, Dingman's R coeffiecient.  Default is "owp_dingman_r".
-#' @importFrom dplyr bind_rows select mutate n case_when
+#' @importFrom dplyr bind_rows select mutate n case_when summarise ungroup group_by filter relocate left_join slice slice_max rename arrange
 #' @importFrom AHGestimation cross_section
 #' @importFrom stats median
+#' @importFrom rlang as_name enquo
 #' @return dataframe or sf dataframe with AHG estimated points injected into the input cross section points
 #' @export
 add_cs_bathymetry <- function(
-    cross_section_pts = NULL,
-    top_width = "owp_tw_inchan",
-    depth     = "owp_y_inchan",
-    dingman_r = "owp_dingman_r"
+    cross_section_pts = NULL
 ) {
-
+  
   if (is.null(cross_section_pts)) {
     stop(
       paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n> ",
@@ -262,34 +688,65 @@ add_cs_bathymetry <- function(
                       'dingman_r - (specify via "dingman_r" argument)'
              ), 
              collapse = "\n> "))
-      )
+    )
   }
   
-  top_width_str  <- rlang::as_name(rlang::enquo(top_width))
-  depth_str      <- rlang::as_name(rlang::enquo(depth))
-  dingman_r_str  <- rlang::as_name(rlang::enquo(dingman_r))
+  ########################################################## 
+  ##########################################################
+  # cross_section_pts <-
+  #   inchannel_cs %>%
+  #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+  #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+  # top_width = "owp_tw_inchan"
+  # depth     = "owp_y_inchan"
+  # dingman_r = "owp_dingman_r"
+  # cross_section_pts <- 
+  #   inchannel_cs %>% 
+  #   dplyr::slice(1:100000) %>% 
+  #   dplyr::select(-owp_y_bf, -owp_tw_bf) %>% 
+  #   dplyr::rename(
+  #     TW        = owp_tw_inchan, 
+  #     DEPTH     = owp_y_inchan,
+  #     DINGMAN_R = owp_dingman_r
+  #     )
+  # # cross_section_pts = dplyr::slice(inchannel_cs, 1:100000) 
+  # top_width         = cross_section_pts$TW
+  # depth             = cross_section_pts$DEPTH
+  # dingman_r         = cross_section_pts$DINGMAN_R
   
-  # check that the top_width, depth, and dingman_r values are columns in the input dataframe
-  if (!top_width_str %in% names(cross_section_pts)) {
-    stop(paste0("'top_width' column '", top_width_str, "' does not exist in cross_section_pts dataframe"))
+  # cross_section_pts = NULL
+  # top_width = NULL
+  # depth     = NULL
+  # dingman_r = NULL
+  # 
+  ########################################################## 
+  
+
+  req_cols <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R")
+  
+  if (!all(req_cols %in% names(cross_section_pts))) {
+    stop(paste0('"cross_section_pts" is missing columns, must include all of:\n > ', paste0(req_cols, collapse = "\n > ") ))
   }
   
-  if (!depth_str %in% names(cross_section_pts)) {
-    stop(paste0("'depth' column '", depth_str, "' does not exist in cross_section_pts dataframe"))
-  }
   
-  if (!dingman_r_str %in% names(cross_section_pts)) {
-    stop(paste0("'dingman_r' column '", dingman_r_str, "' does not exist in cross_section_pts dataframe"))
-  }
   
+  
+  ##########################################################
+
+  # Replace any topwidth values that are GREATER than the actual cross section length (meters)
+  cross_section_pts <- fix_oversized_topwidths(
+    cross_section_pts = cross_section_pts
+  )
+
   # generate AHG parabolas for each hy_id/cs_id in the cross section points 
   # using the provided top_widths, depths, and dingman's R
   ahg_parabolas <- get_ahg_parabolas(
-                      cross_section_pts = cross_section_pts,
-                      top_width         = {{top_width}},
-                      depth             = {{depth}},
-                      dingman_r         = {{dingman_r}}
-                      )
+    cross_section_pts = cross_section_pts
+  )
+
+  # ##############################################
+
+  # plot(ahg_parabolas$ahg_y)
   
   # store the maximum X on the left side of the parabola for later use
   ahg_left_max <- 
@@ -317,7 +774,7 @@ add_cs_bathymetry <- function(
       ),
       bottom_midpoint = stats::median(bottom_midpoint, na.rm = TRUE)
     ) %>% 
-    dplyr::relocate(bottom_midpoint) %>% 
+    # dplyr::relocate(bottom_midpoint) %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       # relative_distance_of_bottom = point_type == "bottom" 
@@ -331,7 +788,7 @@ add_cs_bathymetry <- function(
       ahg_left_max,
       by = c("hy_id", "cs_id")
     ) %>% 
-    dplyr::relocate(left_max, bottom_midpoint, cs_partition) %>% 
+    # dplyr::relocate(left_max, bottom_midpoint, cs_partition) %>% 
     dplyr::ungroup()
   
   #  get the midpoint value for each hy_id/cs_id so we can use them during the shifting process 
@@ -345,14 +802,56 @@ add_cs_bathymetry <- function(
   # ------------------------------------------------------------------------------------------------
   # ---- Process LEFT side of cross section and parabola ----
   # ------------------------------------------------------------------------------------------------
+  # # lefty <- 
+  #   partioned_cs %>% 
+  #   # dplyr::filter(cs_partition == "left_cs") %>%  
+  #   dplyr::group_by(hy_id, cs_id) %>% 
+  #   # dplyr::mutate(
+  #   #   res = bottom_midpoint - max(left_max),
+  #   #   mark = relative_distance < bottom_midpoint - max(left_max) | relative_distance == 0
+  #   # ) %>% 
+  #   # dplyr::relocate(res, mark, relative_distance)
+  #   dplyr::filter(
+  #     relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0
+  #     # relative_distance < 0
+  #     )
+  # left_new <- partioned_cs %>% 
+  #   dplyr::filter(cs_partition == "left_cs") %>%  
+  #   dplyr::group_by(hy_id, cs_id) %>% 
+  #   dplyr::filter(
+  #     # relative_distance < (bottom_midpoint - max(left_max))
+  #     relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0 # TODO: testing this new condition out
+  #   ) 
   
-  # grab just the left cross secctions and remove any points that will be swallowed by the newly inserted AHG estimates 
+  # # TODO: look back at this tomorrow
+  # left_side_pt_counts <- 
+  #   partioned_cs %>% 
+  #   dplyr::filter(cs_partition == "left_cs") %>%  
+  #   dplyr::group_by(hy_id, cs_id) %>% 
+  #   dplyr::mutate(
+  #     marked = relative_distance < (bottom_midpoint - max(left_max))
+  #   ) %>% 
+  #   dplyr::select(hy_id, cs_id, marked) %>% 
+  #   dplyr::summarise(total_left_side_pts = sum(marked, na.rm = TRUE)) %>% 
+  #   dplyr::ungroup()
+  # partioned_cs %>% 
+  #   dplyr::filter(cs_partition == "left_cs") %>% 
+  #   dplyr::left_join(
+  #     left_side_pt_counts,
+  #     by = c("hy_id", "cs_id")
+  #   ) 
+  
+  # grab just the left cross sections and remove any points that will be swallowed by the newly inserted AHG estimates 
   # And also determine the offset of the left parabolas X points, the left_start will be joined back onto the AHG parabolas
   left_cs <- 
     partioned_cs %>% 
     dplyr::filter(cs_partition == "left_cs") %>%  
     dplyr::group_by(hy_id, cs_id) %>% 
-    dplyr::filter(relative_distance < (bottom_midpoint - max(left_max))) %>% 
+    dplyr::filter(
+      # relative_distance < (bottom_midpoint - max(left_max))
+      relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0 # TODO: testing this new condition out
+      # relative_distance < (bottom_midpoint - max(left_max)) | (relative_distance == 0 & total_left_side_pts == 0)  # TODO: testing this new condition out
+    ) %>% 
     dplyr::mutate(
       left_start = bottom_midpoint - max(left_max)
     ) %>% 
@@ -412,6 +911,41 @@ add_cs_bathymetry <- function(
     ) %>% 
     dplyr::ungroup()
   
+  # ----------------------------------------------------------------------------------------------------------------
+  # ------- Still reviewing this additon ---------
+  # --- This ties back to the fix_oversized_topwidths() function applied at the beginning -----
+  # ----------------------------------------------------------------------------------------------------------------
+  # TODO: Newly added to deal with situations where the right side of the parabola is TOO LONG,
+  # TODO: and will go past the outside of the predefined cross section length 
+  # TODO: This all needs to evaluated and double checked to make sure it makes 
+  # TODO: sense hydrologically and won't break the standard "good" case
+  # for each cross section, we isolate the total length of the cross section 
+  # to make sure that the parabola is not going past the edge of the cross section
+  total_cross_section_length <-
+    right_cs %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    # dplyr::filter(relative_distance == max(relative_distance)) %>% 
+    dplyr::slice_max(relative_distance, n = 1) %>% 
+    dplyr::select(hy_id, cs_id, 
+                  max_right_position = relative_distance) %>% 
+    dplyr::ungroup() 
+  
+  # from the right side of the parabola, 
+  # we remove any parabola points that would be past
+  # the last right side cross section points
+  right_parabolas <- 
+    right_parabolas %>% 
+    dplyr::left_join(
+      total_cross_section_length,
+      by = c("hy_id", "cs_id")
+    )  %>% 
+    # dplyr::relocate(hy_id, cs_id, right_start, max_right_position) %>% 
+    dplyr::filter(right_start < max_right_position) 
+  
+  # ----------------------------------------------------------------------------------------------------------------
+  # TODO: Above still needs review ^^^ 
+  # ----------------------------------------------------------------------------------------------------------------
+  
   # getting the starting X value for the RIGHT side of the parabola
   max_right_starting_pts <- 
     right_parabolas %>% 
@@ -428,7 +962,7 @@ add_cs_bathymetry <- function(
       max_right_starting_pts, 
       by = c("hy_id", "cs_id")
     ) %>% 
-    dplyr::relocate(right_start_max) %>% 
+    # dplyr::relocate(right_start_max) %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(
       relative_distance > right_start_max
@@ -468,9 +1002,9 @@ add_cs_bathymetry <- function(
   
   # select relevant columns and adjust the names so 
   # the AHG parabola can be inserted nicely with the original cross sections
-    # NOTE: 
-      # AHG X values == "relative_distance" in cross_section_pts
-      # AHG Y values == "Z" in cross_section_pts
+  # NOTE: 
+  # AHG X values == "relative_distance" in cross_section_pts
+  # AHG Y values == "Z" in cross_section_pts
   parabolas <- 
     parabolas %>% 
     dplyr::select(
@@ -485,7 +1019,7 @@ add_cs_bathymetry <- function(
   
   # drop unneeded columns
   left_cs <- dplyr::select(left_cs, 
-                           -left_max, -bottom_midpoint, -cs_partition)
+                           -left_start, -left_max, -bottom_midpoint, -cs_partition)
   right_cs <- dplyr::select(right_cs, 
                             -right_start_max, -left_max, -bottom_midpoint, -cs_partition)
   
@@ -494,11 +1028,15 @@ add_cs_bathymetry <- function(
   # so all the points are in correct order
   out_cs <-
     dplyr::bind_rows(
-      left_cs,
-      parabolas,
-      right_cs
+      # left_cs,
+      # parabolas,
+      # right_cs
+      dplyr::mutate(left_cs, is_dem_point = TRUE),
+      dplyr::mutate(parabolas, is_dem_point = FALSE),
+      dplyr::mutate(right_cs, is_dem_point = TRUE),
     ) %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::filter(relative_distance >= 0) %>% # TODO: testing out this condition as well
     dplyr::arrange(relative_distance, .by_group = TRUE) %>% 
     dplyr::ungroup()
   
@@ -520,208 +1058,1374 @@ add_cs_bathymetry <- function(
     ) %>% 
     dplyr::ungroup()
   
-  # parabolas %>% 
-  #   hydrofabric3D::add_tmp_id() %>% 
-  #   ggplot2::ggplot() + 
-  #   ggplot2::geom_point(ggplot2::aes(x = ahg_x, y = ahg_y, color = partition)) + 
+  # parabolas %>%
+  #   hydrofabric3D::add_tmp_id() %>%
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z)) +
   #   ggplot2::facet_wrap(~tmp_id)
-  
-  return(out_cs)
-  
-}
-
-# TODO: DELETE DEPRECATED
-
-#' Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
-#' @description
-#' Still in early development phases
-#' @param cross_section_pts dataframe or sf dataframe
-#' @param r numeric, R coefficient
-#' @param inchannel_width numeric
-#' @param inchannel_depth numeric
-#' @param drop_negative_depths logical, whether to remove any depths that are negative, default is FALSE (probably Deprecated at this point)
-#' @importFrom dplyr bind_rows select mutate n case_when
-#' @importFrom AHGestimation cross_section
-#' @importFrom stats median
-#' @return dataframe or sf dataframe with AHG estimated points injected into the input cross section points
-#' @export
-cs_inchannel_estimate <- function(
-    cross_section_pts,
-    r = 3,
-    inchannel_width,
-    inchannel_depth,
-    drop_negative_depths = FALSE
-) {
-
-  #####################################
-
-  #####################################
-
-  primary_z     <- cross_section_pts$Z
-  rel_distance  <- cross_section_pts$relative_distance
-  channel_point_type <- cross_section_pts$point_type
-
-  # hydrofabric3D::plot_cs_pts(cross_section_pts, color = "point_type")
-  # plot(primary_z)
-
-  # cross_section_pts %>%
-  #   ggplot2::ggplot() +
-  #   ggplot2::scale_y_continuous(limits = c(0, max(cross_section_pts$Z)),
-  #                               breaks = seq(0, max(cross_section_pts$Z),
-  #                               by = (max(cross_section_pts$Z) - min(cross_section_pts$Z)) / 4)) +
-  #   # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = point_type) )+
-  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = point_type) )+
-  #   ggplot2::facet_grid(hy_id~cross_section_pts_id, scale = "free_y")
-
-  # # relative distance of the bottoms
-  bottom   <- rel_distance[channel_point_type == "bottom"]
-  bottomZ  <- primary_z[channel_point_type == "bottom"]
-
-  # # find the middle of the bottom
-  midpoint <- stats::median(bottom)
-
-  # generate AHG estimates
-  ahg_est <- AHGestimation::cross_section(
-    r    = r,
-    TW   = inchannel_width,
-    Ymax = inchannel_depth
-  )
-
-  # plot(ahg_est$Y)
-
-  # indices of the left and right parabola halves
-  left_half  = 1:(nrow(ahg_est) / 2)
-  right_half = (1 + (nrow(ahg_est) / 2)):nrow(ahg_est)
-
-  # get the left and right side of the parabolas
-  left_parabola = ahg_est[left_half, ]
-  right_parabola = ahg_est[right_half, ]
-
-  # shift the Z values to have there max points be at the "bottom" of the "cross_section_pts" points
-  left_parabola$Y <- left_parabola$Y + (bottomZ[1] - max(left_parabola$Y))
-  right_parabola$Y <- right_parabola$Y + (bottomZ[1] - max(right_parabola$Y))
-
-  #  set any negative values in parabola to 0
-  if (drop_negative_depths) {
-    left_parabola$Y [left_parabola$Y  < 0] = 0
-    right_parabola$Y[right_parabola$Y < 0] = 0
-  }
-
-  # Offset LEFT parabola (X values)
-
-  # original maximum left X value (to use for offsetting right_parabola in a future step)
-  left_max <- max(left_parabola$x)
-
-  # subset cross section to the LEFT of the midpoint
-  left_cs <- cross_section_pts[rel_distance < midpoint, ]
-
-  # removing cross section point that will be replaced by left_parabola points
-  left_cs <- left_cs[left_cs$relative_distance < (midpoint - max(left_parabola$x)), ]
-
-  # getting the starting X value for the LEFT side of the parabola
-  left_start <- midpoint - max(left_parabola$x)
-
-  # offset X values to fit within cross_section_pts points
-  left_parabola$x <- left_start + left_parabola$x
-
-
-  # Offset RIGHT parabola (X values)
-
-  # subset cross section to the RIGHT of the midpoint
-  right_cs <- cross_section_pts[rel_distance > midpoint, ]
-
-  # getting the starting X value for the RIGHT side of the parabola
-  right_start <- midpoint + ((right_parabola$x) - left_max)
-
-  # removing cross section point that will be replaced by right_parabola points
-  right_cs <- right_cs[right_cs$relative_distance > max(right_start), ]
-  # right_cs <- right_cs[right_cs$relative_distance > (midpoint + max(right_parabola$x)), ]
-
-  # offset X values to fit within cs points
-  right_parabola$x <- right_start
-
-  # # get the last point on the LEFT side of parabola
-  # last_left <- dplyr::slice_tail(left_parabola)
-  #
-  # # get the first point on the RIGHT side of parabola
-  # first_right <- dplyr::slice_head(right_parabola)
-  #
-  # # create an additional point in the middle between the left and right parabolas
-  # extra_midpoint <- data.frame(
-  #                     ind = last_left$ind + 1,
-  #                     x   = median(c(last_left$x, first_right$x)),
-  #                     Y   = median(c(last_left$Y, first_right$Y)),
-  #                     A   = median(c(last_left$A, first_right$A))
-  #                   )
-
-  # combine all parts of the parabola back together
-  parabola <- dplyr::bind_rows(left_parabola, right_parabola)
-  # parabola <- dplyr::bind_rows(left_parabola, extra_midpoint, right_parabola)
-
-  # select relevant columns and adjust the names
-  parabola <-
-    parabola %>%
-    dplyr::select(
-      relative_distance = x,
-      Z                 = Y
-    )
-
-  # combine left cross section points, parabola, and right cross section points
-  out_cs <- dplyr::bind_rows(
-    left_cs,
-    parabola,
-    right_cs
-  )
-
-  # Add new pt_id to account for inserted parabola points, and assign all parabola points to have a point_type of "bottom"
-  out_cs <-
-    out_cs %>%
-    dplyr::mutate(
-      pt_id = 1:dplyr::n(),
-      point_type = dplyr::case_when(
-        is.na(point_type) ~ "bottom",
-        TRUE         ~ point_type
-      )
-    )
-
-  # Add back ID data
-  out_cs$hy_id      <- cross_section_pts$hy_id[1]
-  out_cs$cs_id      <- cross_section_pts$cs_id[1]
-  out_cs$cs_lengthm <- cross_section_pts$cs_lengthm[1]
-  # out_cs$Z_source   <- cross_section_pts$Z_source[1]
-
-  # ahg_est
-  # plot(ahg_est$Y)
-  # plot(out_cs$Z)
-
-  # plot_df <- dplyr::bind_rows(
-  #             dplyr::mutate(cs,
-  #                           source = "DEM"
-  #             ),
-  #             dplyr::mutate(out_cs,
-  #                           source = "AHG Estimate (In channel)"
-  #             )
-  #           )
-  # plot_df %>%
-  #   ggplot2::ggplot() +
-  #   ggplot2::scale_y_continuous(limits = c(-1, 2),
-  #                               breaks = seq(-5, 2,
-  #                                            by = 0.5)) +
-  #   # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = point_type) )+
-  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = point_type) )+
-  #   ggplot2::facet_wrap(source~., scale = "free_y")
-  #
   # out_cs %>%
-  #   ggplot2::ggplot() +
-  #   ggplot2::scale_y_continuous(limits = c(-1, 2),
-  #                               breaks = seq(-5, 2,
-  #                                            by = 0.5)) +
-  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = point_type) )+
-  #   ggplot2::facet_grid(hy_id~cs_id, scale = "free_y")
+  #   hydrofabric3D::plot_cs_pts(x = "relative_distance", color = "is_dem_point")
+  
+  tryCatch({
+    message("Generate XY coordinates for AHG estimated points...")
+    out_cs <- fill_missing_ahg_coords(out_cs)
 
+  }, error = function(cond) {
+
+    message("Failed to fix X/Y coordinates for estimated bathymetry points, returning cross section points with inserted bathymetry with missing X/Y values")
+    message(conditionMessage(cond))
+
+    # Choose a return value in case of error
+    return(out_cs)
+
+  })
+  
   return(out_cs)
-
+  
 }
+
+#' ###############################################################################
+#' ##### ---- VERSION 1 ------
+#' ###############################################################################
+#' 
+#' #' Get the AHG estimated parabolas for each hy_id/cs_id cross section given a set of cross section points
+#' #'
+#' #' @param cross_section_pts dataframe or sf dataframe with "hy_id", "cs_id", "bottom" columns and 
+#' #'  specififed "top_width", "depth", "dingman_r" columns  (see top_width, depth, and dingman_r arguments)
+#' #' @param top_width character or tidy selector column name of top width value column. Default is "owp_tw_inchan"
+#' #' @param depth character or tidy selector column name of Y depth value column. Default is "owp_y_inchan"
+#' #' @param dingman_r numeric, Dingman's R coeffiecient.  Default is "owp_dingman_r".
+#' #' @importFrom dplyr bind_rows rowwise select group_by slice ungroup filter mutate
+#' #' @importFrom AHGestimation cross_section
+#' #' @importFrom tidyr unnest
+#' #' @importFrom rlang as_name enquo
+#' #' @return dataframe with a set of AHG points for each hy_id/cs_id in the input data, with AHG estimated X, Y, A point values that form a parabola
+#' get_ahg_parabolas <- function(
+#'     cross_section_pts,
+#'     top_width = "owp_tw_inchan",
+#'     depth     = "owp_y_inchan",
+#'     dingman_r = "owp_dingman_r"
+#' ) {
+#' 
+#'   # cross_section_pts <-
+#'   #   cs_ml %>%
+#'   #   dplyr::slice(1:20)
+#'   # cross_section_pts = cross_section_pts
+#'   # # top_width         = {{top_width}},
+#'   # # depth             = {{depth}},
+#'   # top_width         = "owp_tw_inchan"
+#'   # depth             = "owp_y_inchan"
+#'   # length_col        = "cs_lengthm"
+#'   # cross_section_pts = dplyr::slice(inchannel_cs, 1:10)
+#'   # top_width         = "owp_tw_inchan"
+#'   # depth             = "owp_y_inchan"
+#'   # dingman_r         = "owp_dingman_r"
+#'   
+#'   # this function will take in one of the AHG estimated parabolas, a bottom depth, and the estimated inchannel depth 
+#'   # and if there are infinite/NaN/NA values in the AHG estimated parabolas depth ("Y"),
+#'   # we pin the the left and right side of the parabola to the input bottomZ and set 
+#'   # the bottom depth to the input bottom minus the given inchannel depth estimate
+#'   # TODO: Probably won't be a permanent solution if the AHG estimation package ends up never returning NaN/Infinite values
+#'   make_rectangle_if_needed <- function(parabola_df,  bottomZ, inchannel_depth) {
+#'     contains_nan_or_inf_y_values <- any(is.nan(parabola_df$Y)) || any(is.na(parabola_df$Y)) || any(is.infinite(parabola_df$Y))
+#'     
+#'     if (contains_nan_or_inf_y_values) {
+#'       parabola_df[1, 'Y']                        <- bottomZ
+#'       parabola_df[nrow(parabola_df), 'Y']        <- bottomZ
+#'       parabola_df[2:(nrow(parabola_df)-1), 'Y']  <- bottomZ - inchannel_depth
+#'     }
+#'     
+#'     return(parabola_df)
+#'     
+#'   }
+#'   
+#'   # set the parabola to align with the cross section points bottom most points
+#'   offset_and_partition_parabola <- function(parabola, bottomZ) {
+#'     
+#'     # indices of the left and right parabola halves
+#'     left_half  = 1:(nrow(parabola) / 2)
+#'     right_half = (1 + (nrow(parabola) / 2)):nrow(parabola)
+#'     
+#'     # get the left and right side of the parabolas
+#'     left_parabola = parabola[left_half, ]
+#'     right_parabola = parabola[right_half, ]
+#'     
+#'     # shift the Z values to have there max points be at the "bottom" of the "cross_section_pts" points
+#'     left_parabola$Y <- left_parabola$Y + (bottomZ - max(left_parabola$Y))
+#'     right_parabola$Y <- right_parabola$Y + (bottomZ - max(right_parabola$Y))
+#'     
+#'     left_parabola$partition  <- "left"
+#'     right_parabola$partition <- "right"
+#'     # left_parabola <- 
+#'     #   left_parabola %>% 
+#'     #   dplyr::mutate(
+#'     #     left_max = max(x, na.rm = TRUE)
+#'     #   )
+#'     parabola <- dplyr::bind_rows(
+#'       left_parabola, 
+#'       right_parabola
+#'     )
+#'     
+#'     return(parabola)
+#'   } 
+#'   
+#'   top_width_str  <- rlang::as_name(rlang::enquo(top_width))
+#'   depth_str      <- rlang::as_name(rlang::enquo(depth))
+#'   dingman_r_str  <- rlang::as_name(rlang::enquo(dingman_r))
+#'   
+#'   # message("top_width_str: ", top_width_str)
+#'   # message("depth_str: ", depth_str)
+#'   # message("dingman_r_str: ", dingman_r_str)
+#'   # message("class top_width_str: ", class(top_width_str))
+#'   # message("class depth_str: ", class(depth_str))
+#'   # message("class dingman_r_str: ", class(dingman_r_str))
+#'   
+#'   # check that the top_width, depth, and dingman_r values are columns in the input dataframe
+#'   if (!top_width_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'top_width' column '", top_width_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   if (!depth_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'depth' column '", depth_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   if (!dingman_r_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'dingman_r' column '", dingman_r_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   ahg_parameters <- 
+#'     cross_section_pts %>% 
+#'     dplyr::select(hy_id, cs_id, bottom, 
+#'                   dplyr::any_of(c(top_width, depth, dingman_r))
+#'                   # .data[[top_width]],
+#'                   # .data[[depth]],
+#'                   # .data[[dingman_r]]
+#'                   # !!dplyr::sym(top_width),
+#'                   # !!dplyr::sym(depth),
+#'                   # !!dplyr::sym(dingman_r),
+#'                   # {{top_width}}, {{depth}}, {{dingman_r}}
+#'                   ) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::slice(1) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # remove any cross sections that are missing top_width, depth, or dingman_r
+#'   set_aside <- 
+#'     ahg_parameters %>% 
+#'     dplyr::filter(is.na(.data[[top_width]]) | is.na(.data[[depth]]) | is.na(.data[[dingman_r]]) )
+#'     # dplyr::filter(is.na(get(top_width)) | is.na(get(depth)) | is.na(get(dingman_r)) )
+#'     # dplyr::filter(is.na({{top_width}}) | is.na({{depth}}) | is.na({{dingman_r}}) )
+#'   
+#'   ahg_parameters <- 
+#'     ahg_parameters %>%
+#'     hydrofabric3D::add_tmp_id() %>% 
+#'     dplyr::filter(!tmp_id %in% hydrofabric3D::add_tmp_id(set_aside)$tmp_id) %>% 
+#'     dplyr::select(-tmp_id) %>% 
+#'     dplyr::rowwise() %>%
+#'     dplyr::mutate(
+#'       parabola = list(
+#'         AHGestimation::cross_section(
+#'           # r    = get(dingman_r),
+#'           # TW   = get(top_width),
+#'           # Ymax = get(depth)
+#'           r    = .data[[dingman_r]],
+#'           TW   = .data[[top_width]],
+#'           Ymax = .data[[depth]]
+#'           # r    = {{dingman_r}},
+#'           # TW   = {{top_width}},
+#'           # Ymax = {{depth}}
+#'         ) 
+#'         # dplyr::mutate(
+#'         #   Y = dplyr::case_when(
+#'         #     ind == 2 ~ NaN,
+#'         #     TRUE ~ Y
+#'         #   )
+#'         # )
+#'       )
+#'     )
+#'   
+#'   ahg_parameters <- 
+#'     ahg_parameters  %>% 
+#'     dplyr::rowwise() %>% 
+#'     dplyr::mutate(
+#'       parabola = list(
+#'         make_rectangle_if_needed(
+#'           parabola,
+#'           bottom,
+#'           # NOTE: Not sure why i had this like this, should use the bottom as the anchor...? 
+#'           # {{top_width}},
+#'           # {{depth}}
+#'           # get(top_width),
+#'           # get(depth)
+#'           .data[[depth]]
+#'         )
+#'         # parabola = purrr::map2(parabola, bottom, {{depth}}, make_rectangle_if_needed)
+#'       )
+#'     ) %>% 
+#'     dplyr::rowwise() %>% 
+#'     dplyr::mutate(
+#'       parabola = list(
+#'         offset_and_partition_parabola(
+#'           parabola,
+#'           bottom
+#'         )
+#'         # parabola = purrr::map2(parabola, bottom, {{depth}}, make_rectangle_if_needed)
+#'       )
+#'     )
+#'   
+#'   # unnest the parabola dataframes and rename columns then return
+#'   ahg_parameters <-
+#'     ahg_parameters %>% 
+#'     dplyr::select(hy_id, cs_id, parabola) %>% 
+#'     tidyr::unnest(c(parabola)) %>% 
+#'     # dplyr::group_by(hy_id, cs_id, partition) %>% 
+#'     # dplyr::group_by(hy_id, cs_id) %>% 
+#'     # dplyr::mutate(
+#'     #   left_max = max(x, na.rm = TRUE)
+#'     # ) %>% 
+#'     # dplyr::ungroup() %>% 
+#'     dplyr::select(hy_id, cs_id, 
+#'                   ahg_index = ind, 
+#'                   ahg_x = x, 
+#'                   ahg_y = Y, 
+#'                   ahg_a = A, 
+#'                   # left_max,
+#'                   partition
+#'     ) 
+#'   
+#'   # plot(ahg_parameters$ahg_y)
+#'   
+#'   return(ahg_parameters)
+#' }
+#' 
+#' 
+#' #' Generate X/Y coordinates between a set of known points within a cross section
+#' #' After 
+#' #'
+#' #' @param cross_section_pts cross section points dataframe with missing X/Y coordinates between sets of known X/Y coordinates
+#' #'
+#' #' @return
+#' #' @export
+#' #'
+#' #' @examples
+#' fill_missing_ahg_coords <- function(cross_section_pts) {
+#'   
+#'   # cross_section_pts <-
+#'   #   cs_bathy_inchannel %>% 
+#'   #   # dplyr::slice(1:159)
+#'   #   dplyr::slice(1:171375)
+#'   
+#'   # cross_section_pts <- cs_bathy_inchannel
+#'   
+#'   #Fix the missing X/Y coordinates (NAs) from the inserted AHG Parabola points in a set of cross section points
+#'   seq_between_start_and_end <- function(start, end, n) {
+#'     # df = fix_coords
+#'     
+#'     if (n == 0) {
+#'       return(NULL)
+#'     }
+#'     
+#'     # Generate new X / Y coordinates
+#'     # coords <- seq(start, end, length.out = n )
+#'     coords <- seq(start, end, length.out = n + 2)
+#'     
+#'     # return(coords)
+#'     return(coords[2:(length(coords) - 1)])
+#'   }
+#'   
+#'   
+#'   # get the first and last coordinates beforee the missing NA X/Y points
+#'   start_and_end_coords <- get_coords_around_parabola(cross_section_pts)
+#'   
+#'   # 
+#'   start_and_end_pts_ids <- 
+#'     cross_section_pts %>% 
+#'     dplyr::filter(!is_dem_point) %>%  
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::summarize(
+#'       start_pt_id = min(pt_id, na.rm = TRUE)
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # get only the rows with the parabola w/ missing X/Y coords
+#'   parabola_pts <- 
+#'     cross_section_pts %>% 
+#'     dplyr::filter(!is_dem_point) %>%  
+#'     dplyr::left_join(
+#'       start_and_end_coords,
+#'       by = c("hy_id", "cs_id")
+#'     ) %>% 
+#'     dplyr::select(hy_id, cs_id, pt_id, X, Y, 
+#'                   dplyr::ends_with("_start"), dplyr::ends_with("end")) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       n = dplyr::n()
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'     # generate coordinates for each parabola
+#'     parabola_coords <- 
+#'       parabola_pts %>% 
+#'       dplyr::left_join(
+#'         start_and_end_pts_ids, 
+#'         by = c("hy_id", "cs_id")
+#'       ) %>% 
+#'       dplyr::select(hy_id, cs_id, start_pt_id, dplyr::ends_with("_start"), dplyr::ends_with("end"), n) %>% 
+#'       dplyr::group_by(hy_id, cs_id)  %>% 
+#'       dplyr::slice(1)  %>% 
+#'       dplyr::mutate(
+#'         X = list(seq_between_start_and_end(X_start, X_end, n)),
+#'         Y = list(seq_between_start_and_end(Y_start, Y_end, n))
+#'       ) %>% 
+#'       tidyr::unnest(c(X, Y)) %>% 
+#'       dplyr::group_by(hy_id, cs_id)  %>%
+#'       dplyr::mutate(
+#'           pt_id = (start_pt_id - 1) + (1:dplyr::n())
+#'           # pt_id = start_pt_id + (0:(dplyr::n()-1))
+#'       ) %>%
+#'       dplyr::ungroup() %>%
+#'       dplyr::select(hy_id, cs_id, pt_id, X, Y) 
+#'       # dplyr::select(hy_id, cs_id, X, Y)
+#'     
+#'     # join the new parabola X/Y points with the rest of the original data, dropping the old NA X/Y coordinates
+#'     parabolas_with_coords <- 
+#'       cross_section_pts %>% 
+#'       dplyr::filter(!is_dem_point) %>% 
+#'       dplyr::select(-X, -Y) %>% 
+#'       dplyr::left_join(
+#'         parabola_coords,
+#'         by = c("hy_id", "cs_id", "pt_id")
+#'       )
+#'     
+#'     pts_with_fixed_coords <- 
+#'       dplyr::bind_rows(
+#'       dplyr::filter(cross_section_pts, is_dem_point),
+#'       parabolas_with_coords
+#'       ) %>% 
+#'       dplyr::group_by(hy_id, cs_id) %>% 
+#'       dplyr::arrange(relative_distance, .by_group = TRUE) %>%
+#'       # dplyr::arrange(pt_id, .by_group = TRUE) %>%
+#'       dplyr::group_by(hy_id, cs_id) %>% 
+#'       dplyr::mutate(
+#'         pt_id = 1:dplyr::n()
+#'       ) %>%
+#'       dplyr::ungroup()
+#'     
+#'     # pts_with_fixed_coords %>% 
+#'     # dplyr::group_by(hy_id, cs_id) 
+#'     # 
+#'     # pts_with_fixed_coords %>% 
+#'     #   dplyr::slice(1:15000) %>% 
+#'     #   sf::st_as_sf(coords = c("X", "Y"), crs = 5070) %>% 
+#'     #   mapview::mapview()
+#'     return(pts_with_fixed_coords)
+#' }
+#' 
+#' #' Get the coordinates surrounding a set of missing AHG X/Y coordinates.
+#' #' 
+#' #' @param cross_section_pts dataframe with cross section points, (required cols, "hy_id", "cs_id", "X", "Y", "is_dem_point")
+#' #' @importFrom tidyr pivot_wider
+#' #' @importFrom select group_by mutate lag lead case_when filter ungroup left_join
+#' #' @return dataframe with each hy_id/cs_id cross section containing a value for X_start, X_end, Y_start, Y_end, representing the points surrounding the AHG inserted points
+#' #' @export
+#' get_coords_around_parabola <- function(cross_section_pts) {
+#'   
+#'   fill_value <- -999999999
+#' 
+#'   X_coords <-
+#'     cross_section_pts %>% 
+#'     dplyr::select(hy_id, cs_id, X, is_dem_point) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       X = ifelse(is.na(X), fill_value, X)
+#'     ) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       next_X_is_missing  = dplyr::case_when(
+#'         dplyr::lead(X) == fill_value       ~ TRUE,
+#'         # is_dem_point & is.na(dplyr::lead(X))  ~ TRUE,
+#'         TRUE                                  ~ FALSE
+#'       ),
+#'       prev_X_is_missing  = dplyr::case_when(
+#'         dplyr::lag(X) == fill_value          ~ TRUE,
+#'         # is_dem_point & is.na(dplyr::lead(X))  ~ TRUE,
+#'         TRUE                                 ~ FALSE
+#'       )
+#'     ) %>% 
+#'     dplyr::filter((is_dem_point & next_X_is_missing) | (is_dem_point & prev_X_is_missing)) %>% 
+#'     dplyr::mutate(
+#'       start_or_end  = dplyr::case_when(
+#'         # is_dem_point & is.na(dplyr::lead(X))  ~ TRUE,
+#'         (is_dem_point & next_X_is_missing)   ~ "X_start",
+#'         (is_dem_point & prev_X_is_missing)   ~ "X_end"
+#'       )
+#'     ) %>% 
+#'     dplyr::ungroup() %>% 
+#'     dplyr::select(hy_id, cs_id, X, is_dem_point, start_or_end)
+#'   
+#'   # X_coords %>% 
+#'   #   dplyr::group_by(hy_id, cs_id)
+#'   
+#'   # pivot so each cross sections is a single row with a "X_start" and "X_end" point 
+#'   X_coords <- 
+#'     X_coords %>% 
+#'     # dplyr::select(-is_dem_point) %>% 
+#'     tidyr::pivot_wider(
+#'       id_cols = c(hy_id, cs_id),
+#'       names_from = start_or_end,
+#'       values_from = X
+#'     )
+#'   
+#'   Y_coords <-
+#'     cross_section_pts %>% 
+#'     dplyr::select(hy_id, cs_id, Y, is_dem_point) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       Y = ifelse(is.na(Y), fill_value, Y)
+#'     ) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       next_Y_is_missing  = dplyr::case_when(
+#'         dplyr::lead(Y) == fill_value       ~ TRUE,
+#'         TRUE                               ~ FALSE
+#'       ),
+#'       prev_Y_is_missing  = dplyr::case_when(
+#'         dplyr::lag(Y) == fill_value        ~ TRUE,
+#'         TRUE                               ~ FALSE
+#'       )
+#'     ) %>% 
+#'     dplyr::filter((is_dem_point & next_Y_is_missing) | (is_dem_point & prev_Y_is_missing)) %>% 
+#'     dplyr::mutate(
+#'       start_or_end  = dplyr::case_when(
+#'         (is_dem_point & next_Y_is_missing)   ~ "Y_start",
+#'         (is_dem_point & prev_Y_is_missing)   ~ "Y_end"
+#'       )
+#'     ) %>% 
+#'     dplyr::ungroup() %>% 
+#'     dplyr::select(hy_id, cs_id, Y, is_dem_point, start_or_end)
+#'     
+#'     # pivot so each cross sections is a single row with a "X_start" and "X_end" point 
+#'     Y_coords <-
+#'       Y_coords %>% 
+#'       tidyr::pivot_wider(
+#'         id_cols = c(hy_id, cs_id),
+#'         names_from = start_or_end,
+#'         values_from = Y
+#'       )
+#' 
+#'     coords_around_parabola <- dplyr::left_join(
+#'                                         X_coords,
+#'                                         Y_coords,
+#'                                         by = c("hy_id", "cs_id")
+#'                                         )
+#'     
+#'     return(coords_around_parabola)
+#' }
+#' 
+#' #' Check that all cross sections points have a prescribed top width less than the total cross section length
+#' #' @description
+#' #' If a set of cross section points has a top width length that is longer than the cross sections length, then a new top width and Y max (depth) value
+#' #' are given so that the estimated shape is able to properly fit into the cross sections. 
+#' #' The cross sections length (meters) minus 1 meter is used as the new top width and 
+#' #' the new Y max (depth) value is derived from the original ratio between the prescribed top width and Y max
+#' #' @param cross_section_pts dataframe or sf dataframe with hy_id, cs_id, 
+#' #' @param top_width character or tidy selector column name of top width value column. Default is "owp_tw_inchan"
+#' #' @param depth character or tidy selector column name of Y depth value column. Default is "owp_y_inchan"
+#' #' @param length_col character or tidy selector column name of the numeric total cross section length column (meters). Default is "cs_lengthm"
+#' #' @importFrom rlang as_name enquo
+#' #' @importFrom dplyr group_by mutate case_when sym ungroup select filter slice
+#' #' @return cross_section_pts dataframe with updated "top_width" and "depth" column values
+#' fix_oversized_topwidths <- function(
+#'     cross_section_pts = NULL,
+#'     top_width  = "owp_tw_inchan",
+#'     depth      = "owp_y_inchan",
+#'     length_col = "cs_lengthm"
+#' ) {
+#'   
+#'   # use this to get a new scaled Ymax value given a known Top width, Ymax (ML generated in this case)
+#'   # and an expected new Top width (new_TW), this function is used to handle 
+#'   # the case when the ML estimated top width is GREATER than the DEM cross section length
+#'   scale_Ymax_to_TW <- function(TW, Ymax, new_TW) {
+#'     
+#'     new_Ymax <- Ymax * (new_TW / TW)
+#'     
+#'     return(new_Ymax)
+#'     
+#'   }
+#'   
+#'   if (is.null(cross_section_pts)) {
+#'     stop(
+#'       paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n> ",
+#'              paste0(c('hy_id', 'cs_id', 'Z', 'bottom', 'relative_distance', 
+#'                       'point_type', 'class', 
+#'                       'top_width - (specify via "top_width" argument)',  
+#'                       'depth - (specify via "depth" argument)', 
+#'                       'dingman_r - (specify via "dingman_r" argument)'
+#'              ), 
+#'              collapse = "\n> "))
+#'     )
+#'   }
+#'   
+#'   # original_cs %>% 
+#'   #   hydrofabric3D::plot_cs_pts(x = "relative_distance")
+#' 
+#'   
+#'   ##############################################
+#'   ##############################################
+#'   # cross_section_pts <-
+#'   #   inchannel_cs %>%
+#'   #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+#'   #   # dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("3"))
+#'   #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+#'   # #
+#'   # top_width     = "owp_tw_inchan"
+#'   # depth         = "owp_y_inchan"
+#'   # length_col    = "cs_lengthm"
+#' 
+#'   # # cross_section_pts %>%
+#'   #   # hydrofabric3D::plot_cs_pts(x = "relative_distance")
+#'   
+#'   ##############################################
+#'   ##############################################
+#' 
+#'   top_width_str  <- rlang::as_name(rlang::enquo(top_width))
+#'   depth_str      <- rlang::as_name(rlang::enquo(depth))
+#'   length_col_str <- rlang::as_name(rlang::enquo(length_col))
+#'   
+#'   # check that the top_width, depth, and dingman_r values are columns in the input dataframe
+#'   if (!top_width_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'top_width' column '", top_width_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   if (!depth_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'depth' column '", depth_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   if (!depth_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'depth' column '", depth_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   # keep track of the original column order for reordering at the end
+#'   starting_col_order  <- names(cross_section_pts)
+#'   
+#'   # Determine the distance interval for each cross section
+#'   # we're going to use this value to 
+#'   # derive a new Top width for each cross section if 
+#'   # the cross section length is less than the prescribed top width, 
+#'   # we round the distance interval UP sure we are not underestimating the interval
+#'   distance_between_pts <- 
+#'     cross_section_pts %>% 
+#'     dplyr::select(hy_id, cs_id, relative_distance) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       distance_interval = relative_distance - dplyr::lag(relative_distance)
+#'     ) %>% 
+#'     dplyr::summarise(
+#'       distance_interval = ceiling(mean(distance_interval, na.rm = TRUE)) # TODO: round up to make sure we are not underestimating 
+#'                                                                          # the interval, we're going to use this value to 
+#'                                                                          # derive a new Top width for each cross section if 
+#'                                                                          # the cross section length is less than the prescribed top width
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # add the distance interval values to the cross section points
+#'   cross_section_pts <- 
+#'       cross_section_pts %>% 
+#'       dplyr::left_join(
+#'         distance_between_pts, 
+#'         by = c("hy_id", "cs_id")
+#'       )
+#'   # message("Ending col order:\n> ", paste0(names(cross_section_pts), collapse = "\n> "))
+#' 
+#'   updated_TW_and_Ymax <- 
+#'     cross_section_pts %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       new_Ymax = dplyr::case_when(
+#'         get(top_width) >= get(length_col) ~ scale_Ymax_to_TW(!!dplyr::sym(top_width), 
+#'                                                        !!dplyr::sym(depth), 
+#'                                                        !!dplyr::sym(length_col) - distance_interval
+#'                                                        # !!dplyr::sym(length_col) - 1 # TODO: arbitrarily remove 1 meter from the length to 
+#'                                                                                     # TODO: make sure topwidth/depth is SMALLER than cross section length 
+#'                                                                                     # TODO: so the AHG parabola points can fit within cross section 
+#'                                                        # !!dplyr::sym(length_col) 
+#'                                                        # TODO: Original method ^^^ (no subtraction)
+#'                                                        ), 
+#'         TRUE                        ~ !!dplyr::sym(depth)
+#'         # owp_tw_inchan >= cs_lengthm ~ scale_Ymax_to_TW(owp_tw_inchan, owp_y_inchan, cs_lengthm),
+#'         # TRUE                        ~ owp_y_inchan
+#'       ),
+#'       new_TW = dplyr::case_when(
+#'         get(top_width) >= get(length_col) ~ !!dplyr::sym(length_col) - distance_interval, # TODO: Same arbitrary subtraction of 1 meter as above note ^^^
+#'         # get(top_width) >= get(length_col) ~ !!dplyr::sym(length_col) - 1, # TODO: Same arbitrary subtraction of 1 meter as above note ^^^
+#'         # get(top_width) >= get(length_col) ~ !!dplyr::sym(length_col),   # TODO: Original method (no subtraction)
+#'         TRUE                              ~ !!dplyr::sym(top_width)
+#'         # owp_tw_inchan >= cs_lengthm ~ cs_lengthm,
+#'         # TRUE                        ~ owp_tw_inchan
+#'       ),
+#'       has_new_Ymax = new_Ymax != get(depth),
+#'       has_new_TW = new_TW != get(top_width),
+#'       fixed_TW = has_new_Ymax | has_new_TW
+#'     ) %>% 
+#'     dplyr::ungroup() %>% 
+#'     # dplyr::relocate(hy_id, cs_id, cs_lengthm, owp_tw_inchan, 
+#'     #                 new_TW, new_TW2, owp_y_inchan, new_Ymax, new_Ymax2, fixed_TW)
+#'     dplyr::select(
+#'       -has_new_Ymax,
+#'       -has_new_TW,
+#'       -{{top_width}},
+#'       -{{depth}}
+#'       )
+#'   
+#'   # number of cross sections that had their TW/Depths changed to fit into the cross section properly
+#'   number_fixed_TWs <- 
+#'     updated_TW_and_Ymax %>% 
+#'     dplyr::filter(fixed_TW) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::slice(1) %>% 
+#'     dplyr::ungroup() %>% 
+#'     nrow()
+#'   
+#'   if (number_fixed_TWs > 0) {
+#'     warning(
+#'       "Had to fix ", number_fixed_TWs, " cross section(s) top width/depth values to make sure", 
+#'       "\nthe prescribed topwidth is not greater than or equal to the length of",
+#'       "\nthe entire cross section (meters), the cross section(s) total length is", 
+#'       "\nused as the new TW and the ratio of the prescribed TW to the prescribed depth", 
+#'       "\nis used to calculate a new depth (Y) value."
+#'     )
+#'   }
+#'  
+#'   # Drop the flag column that says if the top width had to be fixed
+#'   updated_TW_and_Ymax <- dplyr::select(updated_TW_and_Ymax, 
+#'                                        -fixed_TW)
+#'   
+#'   # any starting columns in the original data
+#'   ending_col_order  <- names(updated_TW_and_Ymax)
+#' 
+#'   # message("Ending col order:\n> ", paste0(names(updated_TW_and_Ymax), collapse = "\n> "))
+#' 
+#'   # change the new_TW and new_Ymax columns to match the original input TW/Depth column names
+#'   ending_col_order[ending_col_order == "new_TW"] <- top_width_str
+#'   ending_col_order[ending_col_order == "new_Ymax"] <- depth_str
+#' 
+#'   # update the names
+#'   names(updated_TW_and_Ymax) <- ending_col_order
+#' 
+#'   # reorder columns to original order
+#'   updated_TW_and_Ymax <- updated_TW_and_Ymax[starting_col_order]
+#' 
+#'   return(updated_TW_and_Ymax)
+#' }
+#' 
+#' # cross_section_pts <- 
+#' #   inchannel_cs %>% 
+#' #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+#' #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+#' # top_width = "owp_tw_inchan"
+#' # depth     = "owp_y_inchan"
+#' # dingman_r = "owp_dingman_r"
+#' # cross_section_pts$owp_tw_bf
+#' 
+#' #' Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
+#' #' @description
+#' #' Still in early development phases
+#' #' @param cross_section_pts dataframe or sf dataframe. Default is NULL
+#' #' @param top_width character or tidy selector column name of top width value column. Default is "owp_tw_inchan"
+#' #' @param depth character or tidy selector column name of Y depth value column. Default is "owp_y_inchan"
+#' #' @param dingman_r numeric, Dingman's R coeffiecient.  Default is "owp_dingman_r".
+#' #' @importFrom dplyr bind_rows select mutate n case_when summarise ungroup group_by filter relocate left_join slice slice_max rename arrange
+#' #' @importFrom AHGestimation cross_section
+#' #' @importFrom stats median
+#' #' @importFrom rlang as_name enquo
+#' #' @return dataframe or sf dataframe with AHG estimated points injected into the input cross section points
+#' #' @export
+#' add_cs_bathymetry <- function(
+#'     cross_section_pts = NULL,
+#'     top_width = "owp_tw_inchan",
+#'     depth     = "owp_y_inchan",
+#'     dingman_r = "owp_dingman_r"
+#' ) {
+#' 
+#'   if (is.null(cross_section_pts)) {
+#'     stop(
+#'       paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n> ",
+#'              paste0(c('hy_id', 'cs_id', 'Z', 'bottom', 'relative_distance', 
+#'                       'point_type', 'class', 
+#'                       'top_width - (specify via "top_width" argument)',  
+#'                       'depth - (specify via "depth" argument)', 
+#'                       'dingman_r - (specify via "dingman_r" argument)'
+#'              ), 
+#'              collapse = "\n> "))
+#'       )
+#'   }
+#'   
+#'   ########################################################## 
+#'   ##########################################################
+#'   # cross_section_pts <-
+#'   #   inchannel_cs %>%
+#'   #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+#'   #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+#'   # top_width = "owp_tw_inchan"
+#'   # depth     = "owp_y_inchan"
+#'   # dingman_r = "owp_dingman_r"
+#'   
+#'   ########################################################## 
+#'   ##########################################################
+#'   
+#'   top_width_str  <- rlang::as_name(rlang::enquo(top_width))
+#'   depth_str      <- rlang::as_name(rlang::enquo(depth))
+#'   dingman_r_str  <- rlang::as_name(rlang::enquo(dingman_r))
+#'   
+#'   # check that the top_width, depth, and dingman_r values are columns in the input dataframe
+#'   if (!top_width_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'top_width' column '", top_width_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   if (!depth_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'depth' column '", depth_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   if (!dingman_r_str %in% names(cross_section_pts)) {
+#'     stop(paste0("'dingman_r' column '", dingman_r_str, "' does not exist in cross_section_pts dataframe"))
+#'   }
+#'   
+#'   # Replace any topwidth values that are GREATER than the actual cross section length (meters)
+#'   cross_section_pts <- fix_oversized_topwidths(
+#'                         cross_section_pts = cross_section_pts,
+#'                         top_width         = {{top_width}},
+#'                         depth             = {{depth}},
+#'                         length_col        = "cs_lengthm"
+#'                         )
+#'   
+#'   # cross_section_pts <- fix_oversized_topwidths(
+#'   #   cross_section_pts = cross_section_pts,
+#'   #   # top_width         = {{top_width}},
+#'   #   # depth             = {{depth}},
+#'   #   top_width         = "owp_tw_inchan",
+#'   #   depth             = "owp_y_inchan",
+#'   #   length_col        = "cs_lengthm"
+#'   # )
+#'   
+#'   # generate AHG parabolas for each hy_id/cs_id in the cross section points 
+#'   # using the provided top_widths, depths, and dingman's R
+#'   ahg_parabolas <- get_ahg_parabolas(
+#'                         cross_section_pts = cross_section_pts,
+#'                         top_width         = {{top_width}},
+#'                         depth             = {{depth}},
+#'                         dingman_r         = {{dingman_r}}
+#'                         )
+#' 
+#'   # ahg_parabolas %>%
+#'   #   hydrofabric3D::add_tmp_id() %>%
+#'   #   ggplot2::ggplot() +
+#'   #   ggplot2::geom_point(ggplot2::aes(x = ahg_x, y = ahg_y)) +
+#'   #   ggplot2::facet_wrap(hy_id~cs_id)
+#'   
+#'   # bads <- cs_bathy_inchannel %>%  
+#'   #   dplyr::group_by(hy_id, cs_id) %>% 
+#'   #   dplyr::filter(owp_tw_inchan >= cs_lengthm) %>% 
+#'   #   dplyr::mutate( new_Ymax = scale_Ymax_to_TW(owp_tw_inchan, owp_y_inchan, cs_lengthm)) %>% 
+#'   #   dplyr::select(hf_id, hy_id, cs_id, cs_lengthm, owp_tw_inchan, owp_y_inchan, new_Ymax) 
+#'   
+#'   # ##############################################
+#'   # ################# Testing area ###############
+#'   # ##############################################
+#'   # 
+#'   # cross_section_pts <-
+#'   #   inchannel_cs %>%
+#'   #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+#'   #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+#'   # top_width = "owp_tw_inchan"
+#'   # depth     = "owp_y_inchan"
+#'   # dingman_r = "owp_dingman_r"
+#'   
+#'   # cross_section_pts <- bad_inchannels
+#'   # top_width         = "owp_tw_inchan"
+#'   # depth             = "owp_y_inchan" 
+#'   # dingman_r         = "owp_dingman_r"
+#'   
+#'   # cross_section_pts <- fix_oversized_topwidths(
+#'   #   cross_section_pts = cross_section_pts,
+#'   #   top_width     = "owp_tw_inchan",
+#'   #   depth         = "owp_y_inchan",
+#'   #   length_col    = "cs_lengthm"
+#'   # )
+#'   # 
+#'   # ahg_parabolas <- get_ahg_parabolas(
+#'   #                       cross_section_pts = cross_section_pts,
+#'   #                       top_width         = "owp_tw_inchan",
+#'   #                       depth             = "owp_y_inchan",
+#'   #                       dingman_r         = "owp_dingman_r"
+#'   #                     )
+#'   
+#'   # ahg_parabolas[ahg_parabolas$cs_id == 2, ]$ahg_y %>% plot()
+#'   # ahg_parabolas[ahg_parabolas$cs_id == 3, ]$ahg_y %>% plot()
+#'   # 
+#'   # ##############################################
+#'   # ##############################################
+#'   
+#'   # plot(ahg_parabolas$ahg_y)
+#'   
+#'   # store the maximum X on the left side of the parabola for later use
+#'   ahg_left_max <- 
+#'     ahg_parabolas %>% 
+#'     dplyr::filter(partition == "left") %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::summarise(left_max = max(ahg_x, na.rm = TRUE)) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # ------------------------------------------------------------------------------------------------
+#'   # ---- Partition input cross section points (left/right) ----
+#'   # ------------------------------------------------------------------------------------------------
+#'   
+#'   # split the cross section into a left and right half, from the midpoint of the bottom
+#'   # and then join on the maximum X point of the LEFT half of the AHG parabolas 
+#'   # this paritioned set of cross sections will ultimately get the AHG parabolas inserted in between the left and right partitions
+#'   partioned_cs <- 
+#'     cross_section_pts %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       # relative_distance_of_bottom = point_type == "bottom" 
+#'       bottom_midpoint = dplyr::case_when(
+#'         point_type == "bottom" ~ relative_distance,
+#'         TRUE                   ~ NA
+#'       ),
+#'       bottom_midpoint = stats::median(bottom_midpoint, na.rm = TRUE)
+#'     ) %>% 
+#'     # dplyr::relocate(bottom_midpoint) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       # relative_distance_of_bottom = point_type == "bottom" 
+#'       cs_partition = dplyr::case_when(
+#'         relative_distance < bottom_midpoint ~ "left_cs",
+#'         TRUE                                ~ "right_cs"
+#'       )
+#'       # bottom_midpoint = stats::median(bottom_midpoint, na.rm = TRUE)
+#'     )  %>% 
+#'     dplyr::left_join(
+#'       ahg_left_max,
+#'       by = c("hy_id", "cs_id")
+#'     ) %>% 
+#'     # dplyr::relocate(left_max, bottom_midpoint, cs_partition) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   #  get the midpoint value for each hy_id/cs_id so we can use them during the shifting process 
+#'   midpoints <- 
+#'     partioned_cs %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::select(hy_id, cs_id, bottom_midpoint) %>% 
+#'     dplyr::slice(1) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # ------------------------------------------------------------------------------------------------
+#'   # ---- Process LEFT side of cross section and parabola ----
+#'   # ------------------------------------------------------------------------------------------------
+#'   # # lefty <- 
+#'   #   partioned_cs %>% 
+#'   #   # dplyr::filter(cs_partition == "left_cs") %>%  
+#'   #   dplyr::group_by(hy_id, cs_id) %>% 
+#'   #   # dplyr::mutate(
+#'   #   #   res = bottom_midpoint - max(left_max),
+#'   #   #   mark = relative_distance < bottom_midpoint - max(left_max) | relative_distance == 0
+#'   #   # ) %>% 
+#'   #   # dplyr::relocate(res, mark, relative_distance)
+#'   #   dplyr::filter(
+#'   #     relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0
+#'   #     # relative_distance < 0
+#'   #     )
+#'   # left_new <- partioned_cs %>% 
+#'   #   dplyr::filter(cs_partition == "left_cs") %>%  
+#'   #   dplyr::group_by(hy_id, cs_id) %>% 
+#'   #   dplyr::filter(
+#'   #     # relative_distance < (bottom_midpoint - max(left_max))
+#'   #     relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0 # TODO: testing this new condition out
+#'   #   ) 
+#'   
+#'   # # TODO: look back at this tomorrow
+#'   # left_side_pt_counts <- 
+#'   #   partioned_cs %>% 
+#'   #   dplyr::filter(cs_partition == "left_cs") %>%  
+#'   #   dplyr::group_by(hy_id, cs_id) %>% 
+#'   #   dplyr::mutate(
+#'   #     marked = relative_distance < (bottom_midpoint - max(left_max))
+#'   #   ) %>% 
+#'   #   dplyr::select(hy_id, cs_id, marked) %>% 
+#'   #   dplyr::summarise(total_left_side_pts = sum(marked, na.rm = TRUE)) %>% 
+#'   #   dplyr::ungroup()
+#'   # partioned_cs %>% 
+#'   #   dplyr::filter(cs_partition == "left_cs") %>% 
+#'   #   dplyr::left_join(
+#'   #     left_side_pt_counts,
+#'   #     by = c("hy_id", "cs_id")
+#'   #   ) 
+#' 
+#'   # grab just the left cross sections and remove any points that will be swallowed by the newly inserted AHG estimates 
+#'   # And also determine the offset of the left parabolas X points, the left_start will be joined back onto the AHG parabolas
+#'   left_cs <- 
+#'     partioned_cs %>% 
+#'     dplyr::filter(cs_partition == "left_cs") %>%  
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::filter(
+#'       # relative_distance < (bottom_midpoint - max(left_max))
+#'       relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0 # TODO: testing this new condition out
+#'       # relative_distance < (bottom_midpoint - max(left_max)) | (relative_distance == 0 & total_left_side_pts == 0)  # TODO: testing this new condition out
+#'       ) %>% 
+#'     dplyr::mutate(
+#'       left_start = bottom_midpoint - max(left_max)
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   left_starts <- 
+#'     left_cs %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::select(hy_id, cs_id, left_start) %>% 
+#'     dplyr::slice(1) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # offset the left parabolas X points using the left_start value
+#'   left_parabolas <-
+#'     ahg_parabolas %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::filter(partition == "left") %>% 
+#'     dplyr::ungroup() %>% 
+#'     dplyr::left_join(
+#'       left_starts,
+#'       by = c("hy_id", "cs_id")
+#'     ) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       ahg_x = ahg_x + left_start
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # ------------------------------------------------------------------------------------------------
+#'   # ---- Process RIGHT side of cross section and parabola ----
+#'   # ------------------------------------------------------------------------------------------------
+#'   
+#'   # subset cross section to the RIGHT of the midpoint
+#'   right_cs <-
+#'     partioned_cs %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::filter(relative_distance > bottom_midpoint) %>% 
+#'     # dplyr::filter(cs_partition == "right_cs")
+#'     dplyr::ungroup()
+#'   
+#'   right_parabolas <- 
+#'     ahg_parabolas %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::filter(partition == "right") %>% 
+#'     dplyr::ungroup() %>% 
+#'     dplyr::left_join(
+#'       ahg_left_max,
+#'       by = c("hy_id", "cs_id")
+#'     ) %>% 
+#'     dplyr::left_join(
+#'       midpoints,
+#'       by = c("hy_id", "cs_id")
+#'     ) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       right_start = bottom_midpoint + ((ahg_x) - left_max)
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # ----------------------------------------------------------------------------------------------------------------
+#'   # ------- Still reviewing this additon ---------
+#'   # --- This ties back to the fix_oversized_topwidths() function applied at the beginning -----
+#'   # ----------------------------------------------------------------------------------------------------------------
+#'   # TODO: Newly added to deal with situations where the right side of the parabola is TOO LONG,
+#'   # TODO: and will go past the outside of the predefined cross section length 
+#'   # TODO: This all needs to evaluated and double checked to make sure it makes 
+#'   # TODO: sense hydrologically and won't break the standard "good" case
+#'   # for each cross section, we isolate the total length of the cross section 
+#'   # to make sure that the parabola is not going past the edge of the cross section
+#'   total_cross_section_length <-
+#'     right_cs %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     # dplyr::filter(relative_distance == max(relative_distance)) %>% 
+#'     dplyr::slice_max(relative_distance, n = 1) %>% 
+#'     dplyr::select(hy_id, cs_id, 
+#'                   max_right_position = relative_distance) %>% 
+#'     dplyr::ungroup() 
+#'  
+#'   # from the right side of the parabola, 
+#'   # we remove any parabola points that would be past
+#'   # the last right side cross section points
+#'   right_parabolas <- 
+#'     right_parabolas %>% 
+#'     dplyr::left_join(
+#'       total_cross_section_length,
+#'       by = c("hy_id", "cs_id")
+#'     )  %>% 
+#'     # dplyr::relocate(hy_id, cs_id, right_start, max_right_position) %>% 
+#'     dplyr::filter(right_start < max_right_position) 
+#'   
+#'   # ----------------------------------------------------------------------------------------------------------------
+#'   # TODO: Above still needs review ^^^ 
+#'   # ----------------------------------------------------------------------------------------------------------------
+#'   
+#'   # getting the starting X value for the RIGHT side of the parabola
+#'   max_right_starting_pts <- 
+#'     right_parabolas %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::summarise(
+#'       right_start_max = max(right_start, na.rm = TRUE)
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # removing cross section point that will be replaced by right_parabola points
+#'   right_cs <- 
+#'     right_cs %>% 
+#'     dplyr::left_join(
+#'       max_right_starting_pts, 
+#'       by = c("hy_id", "cs_id")
+#'     ) %>% 
+#'     # dplyr::relocate(right_start_max) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::filter(
+#'       relative_distance > right_start_max
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # ---------------------------------------------------------------------------------------------------
+#'   # ---- MERGE the left and right sides of the parabolas -----
+#'   # ---------------------------------------------------------------------------------------------------
+#'   
+#'   right_parabolas <- 
+#'     right_parabolas %>% 
+#'     dplyr::select(-ahg_x) %>% 
+#'     dplyr::rename(ahg_x = right_start) %>% 
+#'     dplyr::select(
+#'       hy_id, cs_id, ahg_index, ahg_x, ahg_y, ahg_a,
+#'       partition
+#'       # left_max, bottom_midpoint
+#'     )
+#'   
+#'   left_parabolas <- 
+#'     left_parabolas %>% 
+#'     dplyr::select(
+#'       hy_id, cs_id, ahg_index, ahg_x, ahg_y, ahg_a,
+#'       partition
+#'     )
+#'   
+#'   # merge
+#'   parabolas <- dplyr::bind_rows(left_parabolas, right_parabolas)
+#'   
+#'   # reorder to parabolas by X values so they are in order from left to right for each hy_id/cs_id
+#'   parabolas <- 
+#'     parabolas %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::arrange(ahg_x, .by_group = TRUE) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # select relevant columns and adjust the names so 
+#'   # the AHG parabola can be inserted nicely with the original cross sections
+#'     # NOTE: 
+#'       # AHG X values == "relative_distance" in cross_section_pts
+#'       # AHG Y values == "Z" in cross_section_pts
+#'   parabolas <- 
+#'     parabolas %>% 
+#'     dplyr::select(
+#'       hy_id, cs_id,
+#'       relative_distance = ahg_x,
+#'       Z                 = ahg_y
+#'     )
+#'   
+#'   # ---------------------------------------------------------------------------------------------------
+#'   # ---- Insert the parabolas in between the LEFT and RIGHT cross section partitions -----
+#'   # ---------------------------------------------------------------------------------------------------
+#'   
+#'   # drop unneeded columns
+#'   left_cs <- dplyr::select(left_cs, 
+#'                            -left_start, -left_max, -bottom_midpoint, -cs_partition)
+#'   right_cs <- dplyr::select(right_cs, 
+#'                             -right_start_max, -left_max, -bottom_midpoint, -cs_partition)
+#'   
+#'   # combine left cross section points, parabola, and right cross section points
+#'   # and then reorder each cross section (hy_id/cs_id) by the relative distance 
+#'   # so all the points are in correct order
+#'   out_cs <-
+#'     dplyr::bind_rows(
+#'       # left_cs,
+#'       # parabolas,
+#'       # right_cs
+#'       dplyr::mutate(left_cs, is_dem_point = TRUE),
+#'       dplyr::mutate(parabolas, is_dem_point = FALSE),
+#'       dplyr::mutate(right_cs, is_dem_point = TRUE),
+#'     ) %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::filter(relative_distance >= 0) %>% # TODO: testing out this condition as well
+#'     dplyr::arrange(relative_distance, .by_group = TRUE) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # Assign / renumber the "pt_ids" and 
+#'   # set the "point_types" of the inserted parabola points to "bottom" type
+#'   out_cs <- 
+#'     out_cs %>% 
+#'     dplyr::group_by(hy_id, cs_id) %>% 
+#'     dplyr::mutate(
+#'       pt_id      = 1:dplyr::n(),
+#'       class = dplyr::case_when(
+#'         is.na(class)      ~ "bottom",
+#'         TRUE              ~ class
+#'       ),
+#'       point_type = dplyr::case_when(
+#'         is.na(point_type) ~ "bottom",
+#'         TRUE              ~ point_type
+#'       )
+#'     ) %>% 
+#'     dplyr::ungroup()
+#'   
+#'   # parabolas %>%
+#'   #   hydrofabric3D::add_tmp_id() %>%
+#'   #   ggplot2::ggplot() +
+#'   #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z)) +
+#'   #   ggplot2::facet_wrap(~tmp_id)
+#'   # out_cs %>%
+#'   #   hydrofabric3D::plot_cs_pts(x = "relative_distance", color = "is_dem_point")
+#'   
+#'   tryCatch({
+#'     message("Generate XY coordinates for AHG estimated points...")
+#'     out_cs <- fill_missing_ahg_coords(out_cs)
+#' 
+#'   }, error = function(cond) {
+#' 
+#'     message("Failed to fix X/Y coordinates for estimated bathymetry points, returning cross section points with inserted bathymetry with missing X/Y values")
+#'     message(conditionMessage(cond))
+#' 
+#'     # Choose a return value in case of error
+#'     return(out_cs)
+#' 
+#'   })
+#'   
+#'   return(out_cs)
+#'   
+#' }
+#' 
+#' 
+#' #Fix the missing X/Y coordinates (NAs) from the inserted AHG Parabola points in a set of cross section points
+#' fix_xy <- function(df) {
+#'   # df = fix_coords
+#'   
+#'   missing_coords_indices <- which(is.na(df$X))
+#'   
+#'   if (length(missing_coords_indices) == 0) {
+#'     return(df)
+#'   }
+#'   
+#'   first_NA         <- missing_coords_indices[1]
+#'   last_NA          <- missing_coords_indices[length(missing_coords_indices)]
+#'   number_of_points <- length(missing_coords_indices)
+#'   
+#'   # Get the start / end X / Y points
+#'   start_X <- df$X[first_NA - 1]
+#'   end_X   <- df$X[last_NA + 1]
+#'   start_Y <- df$Y[first_NA - 1]
+#'   end_Y   <- df$Y[last_NA + 1]
+#'   
+#'   # Generate new X / Y coordinates
+#'   X_coords <- seq(start_X, end_X, length.out = number_of_points + 2)
+#'   Y_coords <- seq(start_Y, end_Y, length.out = number_of_points + 2)
+#'   
+#'   # Insert the new coordinates into the original missing rows
+#'   df[first_NA:last_NA, ]$X <- X_coords[2:(length(X_coords) - 1)]
+#'   df[first_NA:last_NA, ]$Y <- Y_coords[2:(length(Y_coords) - 1)]
+#'   
+#'   return(df)
+#' }
+#' 
+#' # TODO: DELETE DEPRECATED
+#' 
+#' #' Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
+#' #' @description
+#' #' Still in early development phases
+#' #' @param cross_section_pts dataframe or sf dataframe
+#' #' @param r numeric, R coefficient
+#' #' @param inchannel_width numeric
+#' #' @param inchannel_depth numeric
+#' #' @param drop_negative_depths logical, whether to remove any depths that are negative, default is FALSE (probably Deprecated at this point)
+#' #' @importFrom dplyr bind_rows select mutate n case_when
+#' #' @importFrom AHGestimation cross_section
+#' #' @importFrom stats median
+#' #' @return dataframe or sf dataframe with AHG estimated points injected into the input cross section points
+#' #' @export
+#' cs_inchannel_estimate <- function(
+#'     cross_section_pts,
+#'     r = 3,
+#'     inchannel_width,
+#'     inchannel_depth,
+#'     drop_negative_depths = FALSE
+#' ) {
+#' 
+#'   #####################################
+#' 
+#'   #####################################
+#' 
+#'   primary_z     <- cross_section_pts$Z
+#'   rel_distance  <- cross_section_pts$relative_distance
+#'   channel_point_type <- cross_section_pts$point_type
+#' 
+#'   # hydrofabric3D::plot_cs_pts(cross_section_pts, color = "point_type")
+#'   # plot(primary_z)
+#' 
+#'   # cross_section_pts %>%
+#'   #   ggplot2::ggplot() +
+#'   #   ggplot2::scale_y_continuous(limits = c(0, max(cross_section_pts$Z)),
+#'   #                               breaks = seq(0, max(cross_section_pts$Z),
+#'   #                               by = (max(cross_section_pts$Z) - min(cross_section_pts$Z)) / 4)) +
+#'   #   # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = point_type) )+
+#'   #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = point_type) )+
+#'   #   ggplot2::facet_grid(hy_id~cross_section_pts_id, scale = "free_y")
+#' 
+#'   # # relative distance of the bottoms
+#'   bottom   <- rel_distance[channel_point_type == "bottom"]
+#'   bottomZ  <- primary_z[channel_point_type == "bottom"]
+#' 
+#'   # # find the middle of the bottom
+#'   midpoint <- stats::median(bottom)
+#' 
+#'   # generate AHG estimates
+#'   ahg_est <- AHGestimation::cross_section(
+#'     r    = r,
+#'     TW   = inchannel_width,
+#'     Ymax = inchannel_depth
+#'   )
+#' 
+#'   # plot(ahg_est$Y)
+#' 
+#'   # indices of the left and right parabola halves
+#'   left_half  = 1:(nrow(ahg_est) / 2)
+#'   right_half = (1 + (nrow(ahg_est) / 2)):nrow(ahg_est)
+#' 
+#'   # get the left and right side of the parabolas
+#'   left_parabola = ahg_est[left_half, ]
+#'   right_parabola = ahg_est[right_half, ]
+#' 
+#'   # shift the Z values to have there max points be at the "bottom" of the "cross_section_pts" points
+#'   left_parabola$Y <- left_parabola$Y + (bottomZ[1] - max(left_parabola$Y))
+#'   right_parabola$Y <- right_parabola$Y + (bottomZ[1] - max(right_parabola$Y))
+#' 
+#'   #  set any negative values in parabola to 0
+#'   if (drop_negative_depths) {
+#'     left_parabola$Y [left_parabola$Y  < 0] = 0
+#'     right_parabola$Y[right_parabola$Y < 0] = 0
+#'   }
+#' 
+#'   # Offset LEFT parabola (X values)
+#' 
+#'   # original maximum left X value (to use for offsetting right_parabola in a future step)
+#'   left_max <- max(left_parabola$x)
+#' 
+#'   # subset cross section to the LEFT of the midpoint
+#'   left_cs <- cross_section_pts[rel_distance < midpoint, ]
+#' 
+#'   # removing cross section point that will be replaced by left_parabola points
+#'   left_cs <- left_cs[left_cs$relative_distance < (midpoint - max(left_parabola$x)), ]
+#' 
+#'   # getting the starting X value for the LEFT side of the parabola
+#'   left_start <- midpoint - max(left_parabola$x)
+#' 
+#'   # offset X values to fit within cross_section_pts points
+#'   left_parabola$x <- left_start + left_parabola$x
+#' 
+#' 
+#'   # Offset RIGHT parabola (X values)
+#' 
+#'   # subset cross section to the RIGHT of the midpoint
+#'   right_cs <- cross_section_pts[rel_distance > midpoint, ]
+#' 
+#'   # getting the starting X value for the RIGHT side of the parabola
+#'   right_start <- midpoint + ((right_parabola$x) - left_max)
+#' 
+#'   # removing cross section point that will be replaced by right_parabola points
+#'   right_cs <- right_cs[right_cs$relative_distance > max(right_start), ]
+#'   # right_cs <- right_cs[right_cs$relative_distance > (midpoint + max(right_parabola$x)), ]
+#' 
+#'   # offset X values to fit within cs points
+#'   right_parabola$x <- right_start
+#' 
+#'   # # get the last point on the LEFT side of parabola
+#'   # last_left <- dplyr::slice_tail(left_parabola)
+#'   #
+#'   # # get the first point on the RIGHT side of parabola
+#'   # first_right <- dplyr::slice_head(right_parabola)
+#'   #
+#'   # # create an additional point in the middle between the left and right parabolas
+#'   # extra_midpoint <- data.frame(
+#'   #                     ind = last_left$ind + 1,
+#'   #                     x   = median(c(last_left$x, first_right$x)),
+#'   #                     Y   = median(c(last_left$Y, first_right$Y)),
+#'   #                     A   = median(c(last_left$A, first_right$A))
+#'   #                   )
+#' 
+#'   # combine all parts of the parabola back together
+#'   parabola <- dplyr::bind_rows(left_parabola, right_parabola)
+#'   # parabola <- dplyr::bind_rows(left_parabola, extra_midpoint, right_parabola)
+#' 
+#'   # select relevant columns and adjust the names
+#'   parabola <-
+#'     parabola %>%
+#'     dplyr::select(
+#'       relative_distance = x,
+#'       Z                 = Y
+#'     )
+#' 
+#'   # combine left cross section points, parabola, and right cross section points
+#'   out_cs <- dplyr::bind_rows(
+#'     left_cs,
+#'     parabola,
+#'     right_cs
+#'   )
+#' 
+#'   # Add new pt_id to account for inserted parabola points, and assign all parabola points to have a point_type of "bottom"
+#'   out_cs <-
+#'     out_cs %>%
+#'     dplyr::mutate(
+#'       pt_id = 1:dplyr::n(),
+#'       point_type = dplyr::case_when(
+#'         is.na(point_type) ~ "bottom",
+#'         TRUE         ~ point_type
+#'       )
+#'     )
+#' 
+#'   # Add back ID data
+#'   out_cs$hy_id      <- cross_section_pts$hy_id[1]
+#'   out_cs$cs_id      <- cross_section_pts$cs_id[1]
+#'   out_cs$cs_lengthm <- cross_section_pts$cs_lengthm[1]
+#'   # out_cs$Z_source   <- cross_section_pts$Z_source[1]
+#' 
+#'   # ahg_est
+#'   # plot(ahg_est$Y)
+#'   # plot(out_cs$Z)
+#' 
+#'   # plot_df <- dplyr::bind_rows(
+#'   #             dplyr::mutate(cs,
+#'   #                           source = "DEM"
+#'   #             ),
+#'   #             dplyr::mutate(out_cs,
+#'   #                           source = "AHG Estimate (In channel)"
+#'   #             )
+#'   #           )
+#'   # plot_df %>%
+#'   #   ggplot2::ggplot() +
+#'   #   ggplot2::scale_y_continuous(limits = c(-1, 2),
+#'   #                               breaks = seq(-5, 2,
+#'   #                                            by = 0.5)) +
+#'   #   # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = point_type) )+
+#'   #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = point_type) )+
+#'   #   ggplot2::facet_wrap(source~., scale = "free_y")
+#'   #
+#'   # out_cs %>%
+#'   #   ggplot2::ggplot() +
+#'   #   ggplot2::scale_y_continuous(limits = c(-1, 2),
+#'   #                               breaks = seq(-5, 2,
+#'   #                                            by = 0.5)) +
+#'   #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = point_type) )+
+#'   #   ggplot2::facet_grid(hy_id~cs_id, scale = "free_y")
+#' 
+#'   return(out_cs)
+#' 
+#' }
 
 # #########W  #########W  #########W  #########W#########W  #########W  #########W  #########W#########W  #########W  #########W  #########W
 # #########W  #########W  #########W  #########W UNCOMMENT ABOVE #########W  #########W  #########W  #########W#########W  #########W  #########W  #########W

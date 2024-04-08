@@ -1,6 +1,6 @@
 Package: hydrofabric3D
 Title: hydrofabric3D
-Version: 0.0.54
+Version: 0.0.6
 Authors@R: c(person("Mike", "Johnson", role = c("aut", "cre"), email = "mikecp11@gmail.com"),
              person("Angus", "Watters",  role = "aut"),
              person("Arash", "Modaresi",  role = "ctb"),
@@ -23,7 +23,11 @@ Imports:
   zoo,
   nhdplusTools,
   fastmap,
-  ggplot2
+  ggplot2,
+  rlang,
+  AHGestimation
+Remotes:
+  mikejohnson51/AHGestimation
 Depends: 
     R (>= 2.10)
 LazyData: true

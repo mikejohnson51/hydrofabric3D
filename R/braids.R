@@ -28,10 +28,17 @@ utils::globalVariables(
     "tmp_id",
     "make_geoms_to_cut_plot",
     "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
-    "old_validity_score", "transects", "validity_score", "x"
+    "old_validity_score", "transects", "validity_score", "x",
+    "A", "DEPTH", "DINGMAN_R", "TW", "X", "X_end", "X_start", "Y_end", "Y_start",
+    "ahg_a", "ahg_index", "ahg_x", "ahg_y", 
+    "bottom_end", "bottom_length", "bottom_midpoint", 
+    "bottom_start", "cs_partition", "distance_interval", "fixed_TW", 
+    "has_new_DEPTH", "has_new_TW", "ind", "is_dem_point", "left_max", 
+    "left_start", "max_right_position", "new_DEPTH", "new_TW", "next_X_is_missing", "next_Y_is_missing",
+    "parabola", "partition", "prev_X_is_missing", 
+    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id"
   )
 )
-
 
 #' Find braids and add to a dataframe/sf dataframe
 #'

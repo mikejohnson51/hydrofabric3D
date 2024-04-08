@@ -28,7 +28,15 @@ utils::globalVariables(
     "tmp_id",
     "make_geoms_to_cut_plot",
     "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
-    "old_validity_score", "transects", "validity_score", "x"
+    "old_validity_score", "transects", "validity_score", "x",
+    "A", "DEPTH", "DINGMAN_R", "TW", "X", "X_end", "X_start", "Y_end", "Y_start",
+    "ahg_a", "ahg_index", "ahg_x", "ahg_y", 
+    "bottom_end", "bottom_length", "bottom_midpoint", 
+    "bottom_start", "cs_partition", "distance_interval", "fixed_TW", 
+    "has_new_DEPTH", "has_new_TW", "ind", "is_dem_point", "left_max", 
+    "left_start", "max_right_position", "new_DEPTH", "new_TW", "next_X_is_missing", "next_Y_is_missing",
+    "parabola", "partition", "prev_X_is_missing", 
+    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id"
   )
 )
 
@@ -984,6 +992,70 @@ validate_cut_cross_section_inputs <- function(net,
   return(NULL)
 }
 
+#' Calculate the length between the leftmost and rightmost bottom point in each cross section 
+#'
+#' @param cross_section_pts 
+#' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join
+#' @return summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
+#' @export
+get_cs_bottom_length <- function(cross_section_pts) {
+  
+  # get the distance between cross section pts in each cross section,
+  # this will be used as a default for bottom length in case bottom length is 0
+  interval_distances <- 
+    cross_section_pts %>% 
+    dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      distance_interval = relative_distance - dplyr::lag(relative_distance)
+    ) %>% 
+    dplyr::summarise(
+      distance_interval = ceiling(mean(distance_interval, na.rm = TRUE)) # TODO: round up to make sure we are not underestimating 
+      # the interval, we're going to use this value to 
+      # derive a new Top width for each cross section if 
+      # the cross section length is less than the prescribed top width
+    ) %>% 
+    dplyr::ungroup()
+  
+  # get the distance from the first and last bottom points, substittue any bottom lengths == 0 
+  # with the interval between points distance
+  bottom_lengths <-
+    cross_section_pts %>% 
+    dplyr::filter(point_type == "bottom") %>% 
+    dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::summarise(
+      bottom_start = min(relative_distance, na.rm = TRUE),
+      bottom_end   = max(relative_distance, na.rm = TRUE)
+    ) %>% 
+    dplyr::left_join(
+      interval_distances, 
+      by = c("hy_id", "cs_id")
+    ) %>% 
+    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      bottom_length = bottom_end - bottom_start
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      bottom_length = dplyr::case_when(
+        floor(bottom_length) == 0 ~ distance_interval,
+        TRUE                      ~ bottom_length
+      )
+    ) %>%
+    dplyr::select(hy_id, cs_id, bottom_length)
+  
+  return(bottom_lengths)
+  
+}
+
+#' Calculates a validity score column based on valid_banks and has_relief columns in a set of cross section points
+#'
+#' @param cs_to_validate dataframe
+#' @param validity_col_name name of the output validity score column
+#' @importFrom sf st_drop_geometry
+#' @importFrom dplyr group_by slice ungroup mutate select
+#' @return dataframe with added validity_score column
 calc_validity_scores <- function(cs_to_validate, validity_col_name = "validity_score") {
   
   scores <- 
