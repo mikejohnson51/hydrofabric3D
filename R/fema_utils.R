@@ -67,3 +67,76 @@ is_valid_transect_line <- function(transect_to_check, transect_lines, flowlines)
   
   return(use_transect)
 }
+
+
+#' Calculate the minimum distance a line would need to extend to reach the boundary of the polygon/line that the input geometries are entirely within 
+#'
+#' @param geos_geoms list of geos_geometrys
+#' @param ids character vector
+#' @param lines_to_cut geos_linestrings
+#' @param lines_to_cut_indices numeric vector
+#' @param direction character, either "head", "tail" or "both"
+#' @param max_extension_distance numeric
+#'
+#' @return numeric vecotr, distance to extend each geos_geoms
+calc_extension_distances <- function(geos_geoms, ids, lines_to_cut, lines_to_cut_indices, direction = "head", max_extension_distance = 2500) {
+  #####   #####   #####   #####   #####
+  # geos_geoms   <- left_trans_geos
+  # ids          <- left_trans$tmp_id
+  # lines_to_cut <- intersect_lines
+  # lines_to_cut_indices <- left_trans$left_fema_index
+  # direction = "head"
+  # max_extension_distance = 2500
+  # geos_geoms             = left_trans_geos
+  # ids                    = left_trans$tmp_id
+  # lines_to_cut           = intersect_lines
+  # lines_to_cut_indices   = left_trans$left_fema_index
+  # direction              = "head"
+  # max_extension_distance = max_extension_distance
+  # geos_geoms             = left_trans_geos
+  # ids                    = left_trans$tmp_id
+  # lines_to_cut           = intersect_lines
+  # lines_to_cut_indices   = left_trans$left_fema_index
+  # direction              = "head"
+  # max_extension_distance = max_extension_distance
+  #
+  
+  #####   #####   #####   #####   #####
+  
+  if (!direction %in% c("head", "tail")) {
+    stop("Invalid 'direction' value, must be one of 'head' or 'tail'")
+  }
+  
+  # preallocate vector that stores the extension. distances
+  extension_dists <- vctrs::vec_c(rep(0, length(ids)))
+  
+  # extension_dists <- vector(mode = "numeric", length = nrow(trans_data))
+  for (i in seq_along(ids)) {
+    # i = 118
+    curr_id           <- ids[i]
+    is_within_polygon <- any(!is.na(lines_to_cut_indices[[i]]))
+    polygon_index     <- lines_to_cut_indices[[i]]
+    # any(is_within_polygon)
+    message("Transect: '", curr_id, "' - (", i, ")")
+    
+    if (is_within_polygon) {
+      message("- Side of transect intersects with FEMA")
+      message("\t > FEMA index: ", polygon_index)
+      
+      curr_geom  <- geos_geoms[[i]]
+      index_vect <- sort(unlist(polygon_index))
+      
+      distance_to_extend <- hydrofabric3D:::geos_bs_distance(
+        distances    = 1:max_extension_distance,
+        line         = curr_geom,
+        geoms_to_cut = lines_to_cut[index_vect],
+        direction    = direction
+      )
+      
+      extension_dists[i] <- distance_to_extend
+    }
+    
+  }
+  
+  return(extension_dists)
+}
