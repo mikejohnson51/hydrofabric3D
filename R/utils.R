@@ -36,10 +36,13 @@ utils::globalVariables(
     "has_new_DEPTH", "has_new_TW", "ind", "is_dem_point", "left_max", 
     "left_start", "max_right_position", "new_DEPTH", "new_TW", "next_X_is_missing", "next_Y_is_missing",
     "parabola", "partition", "prev_X_is_missing", 
-    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id"
+    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id",
+    "cs_source", 
+    "partition_lengthm", "left_fema_index", "right_fema_index", 
+    "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
+    "new_cs_lengthm"
   )
 )
-
 
 #' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
 #' @description
@@ -994,7 +997,7 @@ validate_cut_cross_section_inputs <- function(net,
 
 #' Calculate the length between the leftmost and rightmost bottom point in each cross section 
 #'
-#' @param cross_section_pts 
+#' @param cross_section_pts dataframe, or sf dataframe of cross section points
 #' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join
 #' @return summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
 #' @export

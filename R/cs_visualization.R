@@ -36,10 +36,13 @@ utils::globalVariables(
     "has_new_DEPTH", "has_new_TW", "ind", "is_dem_point", "left_max", 
     "left_start", "max_right_position", "new_DEPTH", "new_TW", "next_X_is_missing", "next_Y_is_missing",
     "parabola", "partition", "prev_X_is_missing", 
-    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id"
+    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id",
+    "cs_source", 
+    "partition_lengthm", "left_fema_index", "right_fema_index", 
+    "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
+    "new_cs_lengthm"
   )
 )
-
 
 #' Plots an X-Y scatter plot of cross section points 
 #' @param cs_pts data.frame of cross section points with columns hy_id, cs_id and columns for X and Y axises (i.e. "pt_id", "Z")

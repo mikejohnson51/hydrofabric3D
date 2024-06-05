@@ -7,7 +7,7 @@
 get_cs_bottom_length(cross_section_pts)
 }
 \arguments{
-\item{cross_section_pts}{}
+\item{cross_section_pts}{dataframe, or sf dataframe of cross section points}
 }
 \value{
 summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id

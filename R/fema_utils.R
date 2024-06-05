@@ -1,3 +1,49 @@
+utils::globalVariables(
+  c(".", "hy_id", "cs_id", "pt_id", "Z", "middle_index", "point_type", "minZ", 
+    "maxZ", "minZ_bottom", "maxZ_left_bank", "maxZ_right_bank", "valid_left_bank", 
+    "valid_right_bank", "bottom", "left_bank", "right_bank", "valid_banks", 
+    "relative_distance", "cs_lengthm", "default_middle", "has_relief", 
+    "max_relief", "braid_id", "geometry",
+    
+    "comid", "fromnode", "tonode", 
+    "tocomid", "divergence", "cycle_id", "node", "braid_vector", "totdasqkm", 
+    "changed", "relative_position", "head_distance", "tail_distance", 
+    "component_id", "cs_measure", "ds_distance", "along_channel", "euclid_dist", 
+    "sinuosity", "points_per_cs", "Z_at_bottom", "lower_bound", "upper_bound", 
+    "ge_bottom", "is_near_bottom", "pts_near_bottom", "total_valid_pts", 
+    "pct_near_bottom", 
+    "member_braids",  "braid_members", "diff_pts", "is_extended", 
+    "new_cs_id", "split_braid_ids",
+    
+    "braid_length", 
+    "id", 
+    "lengthm", 
+    "check_z_values", 
+    "geom", 
+    "is_same_Z", 
+    "is_multibraid", 
+    "channel", "unique_count",
+    "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
+    "terminalID",
+    "tmp_id",
+    "make_geoms_to_cut_plot",
+    "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
+    "old_validity_score", "transects", "validity_score", "x",
+    "A", "DEPTH", "DINGMAN_R", "TW", "X", "X_end", "X_start", "Y_end", "Y_start",
+    "ahg_a", "ahg_index", "ahg_x", "ahg_y", 
+    "bottom_end", "bottom_length", "bottom_midpoint", 
+    "bottom_start", "cs_partition", "distance_interval", "fixed_TW", 
+    "has_new_DEPTH", "has_new_TW", "ind", "is_dem_point", "left_max", 
+    "left_start", "max_right_position", "new_DEPTH", "new_TW", "next_X_is_missing", "next_Y_is_missing",
+    "parabola", "partition", "prev_X_is_missing", 
+    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id",
+    "cs_source", 
+    "partition_lengthm", "left_fema_index", "right_fema_index", 
+    "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
+    "new_cs_lengthm"
+  )
+)
+
 # Give a set of transecct linestrings and poylgons and get the minimum distance to extend each transect line (from both directions, to try and reach the edge of a "polygons")
 # internal function for extending transect lines out to FEMA 100 year flood plain polygons
 # transect_lines, set of Sf linestrigns to extend (only if the transect lines are ENTIRELLY within a polygons)
@@ -19,6 +65,7 @@
 #' @importFrom lwgeom st_linesubstring
 #' @importFrom wk wk_crs
 #' @importFrom vctrs vec_c
+#' @export
 get_transect_extension_distances_to_polygons <- function(transect_lines,   polygons,  flines, max_extension_distance) {
 
   ###    ###    ###    ###    ###    ###    ###
@@ -722,7 +769,7 @@ calc_extension_distances <- function(geos_geoms, ids, lines_to_cut, lines_to_cut
       curr_geom  <- geos_geoms[[i]]
       index_vect <- sort(unlist(polygon_index))
       
-      distance_to_extend <- hydrofabric3D:::geos_bs_distance(
+      distance_to_extend <- geos_bs_distance(
         distances    = 1:max_extension_distance,
         line         = curr_geom,
         geoms_to_cut = lines_to_cut[index_vect],
