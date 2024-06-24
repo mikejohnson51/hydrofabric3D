@@ -75,7 +75,8 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
   # # max_extension_distance <- 3000
   # max_extension_distance = 3500
   # ###    ###    ###    ###    ###    ###    ###
-
+  
+  # TODO: this should be a function argument OR removed, shouldn't probably forcibly and silently simplify the input polygons without user knowing..
   # keep 10% of the original points for speed
   polygons <- rmapshaper::ms_simplify(polygons, keep_shapes = F, keep = 0.10)
   
@@ -212,6 +213,7 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
   # right_trans[which(left_trans$hy_id == "wb-1003839"), ]$cs_lengthm
   # 
   # which(right_trans$hy_id == "wb-1003839")
+  message("Calculating left side extension distances...")
   
   left_distances <- calc_extension_distances(
     geos_geoms             = left_trans_geos,
@@ -221,6 +223,8 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
     direction              = "head",
     max_extension_distance = max_extension_distance
   )
+  
+  message("Calculating right side extension distances...")
   
   right_distances <- calc_extension_distances(
     geos_geoms             = right_trans_geos,
@@ -721,7 +725,7 @@ is_valid_transect_line <- function(transect_to_check, transect_lines, flowlines)
 #' @param direction character, either "head", "tail" or "both"
 #' @param max_extension_distance numeric
 #'
-#' @return numeric vecotr, distance to extend each geos_geoms
+#' @return numeric vector, distance to extend each geos_geoms
 calc_extension_distances <- function(geos_geoms, ids, lines_to_cut, lines_to_cut_indices, direction = "head", max_extension_distance = 2500) {
   #####   #####   #####   #####   #####
   # geos_geoms   <- left_trans_geos
@@ -753,14 +757,26 @@ calc_extension_distances <- function(geos_geoms, ids, lines_to_cut, lines_to_cut
   # preallocate vector that stores the extension. distances
   extension_dists <- vctrs::vec_c(rep(0, length(ids)))
   
+  # number of geometries that will be iterated over, keeping this variable to reference in message block  
+  total <- length(ids)
+  
+  # output a message every ~10% intervals
+  message_interval <- total %/% 20
+  
   # extension_dists <- vector(mode = "numeric", length = nrow(trans_data))
   for (i in seq_along(ids)) {
-    # i = 118
+    
+    # log percent complete
+    if (i %% message_interval == 0) {
+      # get the percent complete
+      percent_done <- round(i/total, 2) * 100
+      message(i, " > ", percent_done, "% ") 
+    }
+  
     curr_id           <- ids[i]
     is_within_polygon <- any(!is.na(lines_to_cut_indices[[i]]))
     polygon_index     <- lines_to_cut_indices[[i]]
     # any(is_within_polygon)
-    
     # message("Transect: '", curr_id, "' - (", i, ")")
     
     if (is_within_polygon) {

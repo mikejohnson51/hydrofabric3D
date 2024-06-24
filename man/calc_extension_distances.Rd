@@ -27,7 +27,7 @@ calc_extension_distances(
 \item{max_extension_distance}{numeric}
 }
 \value{
-numeric vecotr, distance to extend each geos_geoms
+numeric vector, distance to extend each geos_geoms
 }
 \description{
 Calculate the minimum distance a line would need to extend to reach the boundary of the polygon/line that the input geometries are entirely within
