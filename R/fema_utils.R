@@ -760,11 +760,12 @@ calc_extension_distances <- function(geos_geoms, ids, lines_to_cut, lines_to_cut
     is_within_polygon <- any(!is.na(lines_to_cut_indices[[i]]))
     polygon_index     <- lines_to_cut_indices[[i]]
     # any(is_within_polygon)
-    message("Transect: '", curr_id, "' - (", i, ")")
+    
+    # message("Transect: '", curr_id, "' - (", i, ")")
     
     if (is_within_polygon) {
-      message("- Side of transect intersects with FEMA")
-      message("\t > FEMA index: ", polygon_index)
+      # message("- Side of transect intersects with FEMA")
+      # message("\t > FEMA index: ", polygon_index)
       
       curr_geom  <- geos_geoms[[i]]
       index_vect <- sort(unlist(polygon_index))
