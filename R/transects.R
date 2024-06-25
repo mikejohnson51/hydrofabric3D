@@ -905,7 +905,7 @@ extend_by_length <- function(
  #' @param verbose logical, whether to print messages or not. Default is TRUE
  #' @return sf linestring dataframe containing the updates transects_to_extend (with a flag denoting if the geometry was extended by "scale" % or not)
  #' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
- #' @importFrom sf st_geometry st_as_sf
+ #' @importFrom sf st_geometry st_as_sf st_length
  #' @export
  extend_transects_by_length <- function(
     transects_to_extend,
@@ -927,7 +927,7 @@ extend_by_length <- function(
    # Create an "is_extended" flag to identify which transects were extended and updated 
    transects_to_extend$is_extended <- FALSE
    
-   if(verbose) { message(paste0("Extending ", nrow(transects_to_extend), " transects by ",     scale * 100, "%...")) }
+   if(verbose) { message(paste0("Extending ", nrow(transects_to_extend), " transects...")) }
    
    # Extend the transects by a scale % value
    extended_trans <- extend_by_length(transects_to_extend, length_vector, "cs_lengthm")
@@ -960,7 +960,7 @@ extend_by_length <- function(
    #   set the "is_extended" flag to TRUE and update the cross section length 
    #   to use the new extended length
    extended_flag <- rep(FALSE, length(extended_trans))
-   length_list   <- transects_to_extend$cs_lengthm
+   # length_list   <- transects_to_extend$cs_lengthm
    
    # length(geos_net)
    # length(fline_id_array)
@@ -1035,16 +1035,18 @@ extend_by_length <- function(
        
        # message("Extending transect: ", i)
        
-       # get the current cross section list
-       current_length <- length_list[i]
-       # current_length <- transects_to_extend$cs_lengthm[i]
+       # TODO: we can just recompute the length of each transects at the end
+       # # get the current cross section list
+       # current_length <- length_list[i]
+       # # current_length <- transects_to_extend$cs_lengthm[i]
+       # 
+       # # # Calculate the updated cross section length to align with the newly extended cross section for this row
+       # updated_cs_length <- (current_length * scale) + current_length
+       # # updated_cs_length <- (output_row$cs_lengthm * scale) + output_row$cs_lengthm
+       # 
+       # # copy the current cross section length
+       # length_list[i] <- updated_cs_length
        
-       # # Calculate the updated cross section length to align with the newly extended cross section for this row
-       updated_cs_length <- (current_length * scale) + current_length
-       # updated_cs_length <- (output_row$cs_lengthm * scale) + output_row$cs_lengthm
-       
-       # copy the current cross section length
-       length_list[i] <- updated_cs_length
        # length_list  <- vctrs::vec_c(length_list, updated_cs_length)
        
        # Update the transect geometry with the newly extended transect
@@ -1070,8 +1072,9 @@ extend_by_length <- function(
    # Update the "transects_to_extend" with new geos geometries ("geos_list")
    sf::st_geometry(transects_to_extend) <- sf::st_geometry(sf::st_as_sf(geos_list))
    
-   transects_to_extend$is_extended <- extended_flag
-   transects_to_extend$cs_lengthm  <- length_list
+   transects_to_extend$is_extended  <- extended_flag
+   transects_to_extend$cs_lengthm   <- as.numeric(sf::st_length(transects_to_extend))
+   # transects_to_extend$cs_lengthm   <- length_list
    
    # transects_to_extend$geom[1]  %>% sf::st_length()
    # geos::geos_length(geos_list[1])
