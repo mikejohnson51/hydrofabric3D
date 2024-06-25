@@ -78,7 +78,7 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
   
   # TODO: this should be a function argument OR removed, shouldn't probably forcibly and silently simplify the input polygons without user knowing..
   # keep 10% of the original points for speed
-  polygons <- rmapshaper::ms_simplify(polygons, keep_shapes = F, keep = 0.10)
+  # polygons <- rmapshaper::ms_simplify(polygons, keep_shapes = F, keep = 0.10)
   
   # mapview::npts(fema)
   # mapview::npts(polygons)
