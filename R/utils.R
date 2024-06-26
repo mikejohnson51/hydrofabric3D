@@ -208,7 +208,7 @@ get_point_type_counts <- function(classified_pts) {
       # is NOT in the cross seciton points, then it will be added with NAs in the subsequent pivot_wider
       point_type = factor(point_type, levels = c("left_bank", "bottom", "right_bank", "channel"))
     ) 
-
+  
   # pivot data wider to get implicit missing groups with NA values
   point_type_counts <- 
     point_type_counts %>% 
@@ -499,7 +499,7 @@ add_bank_attributes <- function(
     ) 
   # %>%
   # dplyr::mutate(valid_banks2 = valid_left_bank & valid_right_bank)
-
+  
   # # return simple dataset if add is FALSE
   # if(!add) {
   #   # subset to just hy_id/cs_id and added bank attributes to 
@@ -540,7 +540,7 @@ add_bank_attributes <- function(
 #' @importFrom tidyr pivot_wider
 get_bank_attributes <- function(
     classified_pts
-    ) {
+) {
   
   # classified_pts <- output_pts
   # classified_pts
@@ -615,7 +615,7 @@ get_bank_attributes <- function(
       valid_banks = valid_left_bank & valid_right_bank
     )
   # tidyr::pivot_longer(cols = c(right_bank, left_bank), 
-                        # names_to = "point_type", values_to = "max_Z_at_banks") %>% 
+  # names_to = "point_type", values_to = "max_Z_at_banks") %>% 
   # dplyr::mutate(max_Z_at_banks = ifelse(is.na(max_Z_at_banks), 0, max_Z_at_banks))
   
   # Add the following columns to the final output data:
@@ -631,7 +631,7 @@ get_bank_attributes <- function(
     dplyr::select(hy_id, cs_id, 
                   bottom, left_bank, right_bank, 
                   valid_banks)
-
+  
   return(bank_validity)
   
 }
@@ -726,8 +726,8 @@ add_relief <- function(
       depth_diff = max(c(round(right_bank - bottom, 3), 
                          round(left_bank - bottom, 3)), 
                        na.rm = TRUE)                     # TODO: removing NAs might not be the right call, 
-                                                         # removing them might set has_relief to TRUE and
-                                                         # says "there IS relief but no valid banks"
+      # removing them might set has_relief to TRUE and
+      # says "there IS relief but no valid banks"
     ) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(
@@ -751,7 +751,7 @@ add_relief <- function(
   classified_pts <- move_geometry_to_last(classified_pts)
   
   return(classified_pts)
-
+  
 }
 
 #' @title Get relief attributes from a dataframe of cross sections points
@@ -829,7 +829,7 @@ get_relief <- function(
                   bottom     = minZ_bottom, 
                   left_bank  = maxZ_left_bank, 
                   right_bank = maxZ_right_bank
-                  ) 
+    ) 
   
   # join lengths and depth threshold back with relief table and
   # calculate if the max difference between left/right bank vs bottom is 
@@ -907,7 +907,7 @@ validate_cut_cross_section_inputs <- function(net,
                                               braid_method, 
                                               precision, 
                                               add 
-                                              ) {
+) {
   
   # Check if 'net' is an sf object
   if (!inherits(net, "sf")) {
@@ -916,10 +916,10 @@ validate_cut_cross_section_inputs <- function(net,
   
   # Check if 'id' is NOT a character or if its NULL 
   if (!is.character(id) || is.null(id)) {
-  # if (is.null(id) || !is.character(id)) {
+    # if (is.null(id) || !is.character(id)) {
     stop("'id' must be a character vector")
   }
-
+  
   # Check if 'cs_widths' is numeric or a numeric vector
   if (!is.numeric(cs_widths)) {
     stop("'cs_widths' must be a numeric")
@@ -929,7 +929,7 @@ validate_cut_cross_section_inputs <- function(net,
   # if (!is.numeric(cs_widths) && !is.null(cs_widths)) {
   #   stop("'cs_widths' must be numeric or NULL.")
   # }
-
+  
   # Check if 'num' is numeric or a numeric vector
   if (!is.numeric(num)) {
     stop("'num' must be numeric")
@@ -939,7 +939,7 @@ validate_cut_cross_section_inputs <- function(net,
   # if (!is.numeric(num) && !is.null(num)) {
   #   stop("'num' must be numeric or NULL.")
   # }
-
+  
   # Check if 'densify' is numeric or NULL
   if (!is.numeric(densify) && !is.null(densify)) {
     stop("'densify' must be numeric or NULL.")
@@ -981,7 +981,7 @@ validate_cut_cross_section_inputs <- function(net,
   if (!braid_method %in% valid_methods) {
     stop("'braid_method' must be one of 'comid', 'component', or 'neighbor'.")
   }
-
+  
   # Check if 'precision' is numeric and greater than 0
   if (!is.numeric(precision) || precision <= 0) {
     stop("'precision' must be a numeric value greater than 0.")
