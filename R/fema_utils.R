@@ -406,13 +406,15 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
     use_left_extension  <- is_valid_transect_line(
             left_extended_trans,
-            transects_geos[transect_hy_id_array == current_hy_id], 
+            transects_geos,
+            # transects_geos[transect_hy_id_array == current_hy_id],
             # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
             flowlines_geos[fline_id_array == current_hy_id]
             )
     use_right_extension <- is_valid_transect_line(
             right_extended_trans, 
-            transects_geos[transect_hy_id_array == current_hy_id], 
+            transects_geos,
+            # transects_geos[transect_hy_id_array == current_hy_id], 
             # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
             flowlines_geos[fline_id_array == current_hy_id]
             )
@@ -439,7 +441,8 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       # TODO; version 2
       use_left_extension  <- is_valid_transect_line(
                                 left_extended_trans, 
-                                transects_geos[transect_hy_id_array == current_hy_id], 
+                                transects_geos,
+                                # transects_geos[transect_hy_id_array == current_hy_id], 
                                 # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
                                 flowlines_geos[fline_id_array == current_hy_id]
                                 )
@@ -461,7 +464,8 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       # TODO: version 2 
       use_right_extension <- is_valid_transect_line(
                               right_extended_trans, 
-                              transects_geos[transect_hy_id_array == current_hy_id], 
+                              transects_geos,
+                              # transects_geos[transect_hy_id_array == current_hy_id], 
                               # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
                               flowlines_geos[fline_id_array == current_hy_id]
                               )
