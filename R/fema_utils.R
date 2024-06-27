@@ -409,14 +409,16 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
             transects_geos,
             # transects_geos[transect_hy_id_array == current_hy_id],
             # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-            flowlines_geos[fline_id_array == current_hy_id]
+            # flowlines_geos[fline_id_array == current_hy_id]
+            flowlines_geos
             )
     use_right_extension <- is_valid_transect_line(
             right_extended_trans, 
             transects_geos,
             # transects_geos[transect_hy_id_array == current_hy_id], 
             # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-            flowlines_geos[fline_id_array == current_hy_id]
+            # flowlines_geos[fline_id_array == current_hy_id]
+            flowlines_geos
             )
     
     # use_both_extensions <- use_left_extension && use_right_extension
@@ -444,7 +446,8 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
                                 transects_geos,
                                 # transects_geos[transect_hy_id_array == current_hy_id], 
                                 # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-                                flowlines_geos[fline_id_array == current_hy_id]
+                                # flowlines_geos[fline_id_array == current_hy_id]
+                                flowlines_geos
                                 )
       
     used_half_of_left <- ifelse(use_left_extension, TRUE,  FALSE)
@@ -467,7 +470,8 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
                               transects_geos,
                               # transects_geos[transect_hy_id_array == current_hy_id], 
                               # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-                              flowlines_geos[fline_id_array == current_hy_id]
+                              # flowlines_geos[fline_id_array == current_hy_id]
+                              flowlines_geos
                               )
       
       used_half_of_right  <- ifelse(use_right_extension, TRUE,  FALSE)
