@@ -174,7 +174,9 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     ) %>% 
     hydrofabric3D::add_tmp_id() %>% 
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm, geometry)
+                  cs_lengthm,
+                  # is_extended,
+                  partition, partition_lengthm, geometry)
   
   # Find the distances from the right side of transect lines 
   right_trans <- 
@@ -186,7 +188,9 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     ) %>% 
     hydrofabric3D::add_tmp_id() %>%
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm, geometry)
+                  cs_lengthm,
+                  # is_extended, 
+                  partition, partition_lengthm, geometry)
   
   # convert the transect geometries to geos types
   # get the fema polygon indices for the transect halves that are completely within a fema polygon
@@ -1060,7 +1064,9 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
     ) %>% 
     hydrofabric3D::add_tmp_id() %>% 
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm, geom)
+                  cs_lengthm,
+                  # is_extended,
+                  partition, partition_lengthm, geom)
   
   # Find the distances from the right side of transect lines 
   right_trans <- 
@@ -1072,7 +1078,9 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
     ) %>% 
     hydrofabric3D::add_tmp_id() %>%
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm, geom)
+                  cs_lengthm,
+                  # is_extended,
+                  partition, partition_lengthm, geom)
   
   # convert the transect geometries to geos types
   # get the fema polygon indices for the transect halves that are completely within a fema polygon
@@ -1100,7 +1108,9 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
       )
     ) %>% 
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm,
+                  cs_lengthm,
+                  # is_extended, 
+                  partition, partition_lengthm,
                   left_fema_index, left_is_within_fema, 
                   geom
     )
@@ -1114,7 +1124,9 @@ get_transect_extension_distances_to_polygons <- function(transect_lines,   polyg
       )
     ) %>% 
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm,
+                  cs_lengthm, 
+                  # is_extended, 
+                  partition, partition_lengthm,
                   right_fema_index, right_is_within_fema, 
                   geom
     ) 
