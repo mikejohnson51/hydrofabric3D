@@ -50,25 +50,55 @@ utils::globalVariables(
 #' @param polygons set of sf polygons that transect lines should be exteneded 
 #' @param flowlines set of Sf linestrings
 #' @param max_extension_distance numeric, maximum distance (meters) to extend a transect line in either direction to try and intersect one of the "polygons"
-#'
+#' @param intersect_group_id character, name of a column in flowlines that should be used to check to group the network 
+#' for checking intersections are valid. That is, when transects are checked to make sure they don't intersect 
+#' other transects or other flowlines, this group ID will distinguise which other flowlines and transects should be
+#' compared to a given transect. Value must be a column name in flowlines (and optionally in transect_lines). Default is NULL, which will make each new transect be compared to only the rest of the transect/flowline on the given transect's hy_id. 
 #' @return sf linestring, with extended transect lines
 #' @importFrom rmapshaper ms_simplify
 #' @importFrom geos as_geos_geometry geos_intersects_matrix geos_simplify_preserve_topology geos_within_matrix geos_empty geos_point_start geos_point_end
 #' @importFrom sf st_as_sf st_cast st_segmentize st_length st_drop_geometry st_geometry
 #' @importFrom dplyr mutate case_when select left_join relocate
 #' @importFrom lwgeom st_linesubstring
-#' @importFrom wk wk_crs
+#' @importFrom wk wk_crs 
+#' @importFrom nhdplusTools rename_geometry
 #' @importFrom vctrs vec_c
 #' @export
-extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines, max_extension_distance) {
+extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines, max_extension_distance, 
+                                         intersect_group_id = NULL
+                                         ) {
+  # ---------------------------------------------------------------------------- 
   
-  # bad_ids <- c("wb-1527642")
+    # bad_ids <- c("wb-1527642")
   # transect_lines         = transects %>% dplyr::filter(hy_id %in% bad_ids)
   # polygons               = fema
-  # flowlines              = flines %>% 
-  #   dplyr::filter(id %in% bad_ids)
-  # max_extension_distance = 3000 
+  # flowlines              = flines %>%
+  # #   dplyr::filter(id %in% bad_ids)
+  # max_extension_distance = 3000
+  # intersect_group_id = "mainstem"
+  # ----------------------------------------------------------------------------
+  transect_lines  <- nhdplusTools::rename_geometry(transect_lines, "geometry")
+  flowlines       <- nhdplusTools::rename_geometry(flowlines, "geometry")
   
+  if(!is.null(intersect_group_id)) {
+    
+    if(!intersect_group_id %in% names(flowlines)) {
+      stop("Invalid 'intersect_group_id' value, '", intersect_group_id, "' is not a column in 'flowlines'.\n", 
+      "Provide a valid 'intersect_group_id' value representing a column in 'flowlines' that should be used to ", 
+      "compare neighboring flowlines and transects for proper intersection logic")
+    }
+    
+    # TODO: if the intersect_group_id column is not attached to the transects, then join it on
+    if(!intersect_group_id %in% names(transect_lines)) {
+      
+      transect_lines <- 
+        transect_lines  %>%
+        dplyr::left_join(
+          dplyr::select(sf::st_drop_geometry(flowlines),id, dplyr::any_of(intersect_group_id)),
+          by = c("hy_id" = "id")
+        )
+      }
+    }
   
   # TODO: this should be a function argument OR removed, shouldn't probably forcibly and silently simplify the input polygons without user knowing..
   # keep 10% of the original points for speed
@@ -140,11 +170,11 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     lwgeom::st_linesubstring(0, 0.50) %>% 
     dplyr::mutate(
       partition         = "left",
-      partition_lengthm = as.numeric(sf::st_length(geom))
+      partition_lengthm = as.numeric(sf::st_length(geometry))
     ) %>% 
     hydrofabric3D::add_tmp_id() %>% 
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm, geom)
+                  cs_lengthm, is_extended, partition, partition_lengthm, geometry)
   
   # Find the distances from the right side of transect lines 
   right_trans <- 
@@ -152,11 +182,11 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     lwgeom::st_linesubstring(0.50, 1) %>% 
     dplyr::mutate(
       partition         = "right",
-      partition_lengthm = as.numeric(sf::st_length(geom))
+      partition_lengthm = as.numeric(sf::st_length(geometry))
     ) %>% 
     hydrofabric3D::add_tmp_id() %>%
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm, geom)
+                  cs_lengthm, is_extended, partition, partition_lengthm, geometry)
   
   # convert the transect geometries to geos types
   # get the fema polygon indices for the transect halves that are completely within a fema polygon
@@ -184,10 +214,13 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       )
     ) %>% 
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm,
-                  left_fema_index, left_is_within_fema, 
-                  geom
-    )
+                  cs_lengthm,
+                  partition, 
+                  partition_lengthm,
+                  left_fema_index, 
+                  left_is_within_fema, 
+                  geometry
+                  )
   
   right_trans <- 
     right_trans %>% 
@@ -198,10 +231,13 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       )
     ) %>% 
     dplyr::select(tmp_id, hy_id, cs_source, cs_id, cs_measure,  
-                  cs_lengthm, is_extended, partition, partition_lengthm,
-                  right_fema_index, right_is_within_fema, 
-                  geom
-    ) 
+                  cs_lengthm, 
+                  partition,
+                  partition_lengthm,
+                  right_fema_index, 
+                  right_is_within_fema, 
+                  geometry
+                  ) 
   
  
   message("Generating left side distances....") 
@@ -303,8 +339,14 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   
   # format(object.size(flowlines), 'auto')
   # profvis::profvis({
-    
-  fline_id_array       <- flowlines$id
+  
+  # TODO: if an intersect group id is given, then pull those columns as vectors to use for intersection checks in loop
+  if(!is.null(intersect_group_id)) {
+    fline_group_id_array     <- flowlines[[intersect_group_id]]
+    transect_group_id_array  <- transect_lines[[intersect_group_id]]
+  }  
+  
+  fline_id_array        <- flowlines$id
   
   # TODO: next time, change this function to ONLY process transects that have ANY extension distance, right now we iterate through ALL transects,
   # TODO: and 'next' the ones with the no extension distance so doesn't really matter much but 
@@ -315,10 +357,10 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   # Convert the net object into a geos_geometry
   flowlines_geos       <- geos::as_geos_geometry(flowlines)
   
-  transect_hy_id_array <- transect_lines$hy_id
-  transect_cs_id_array <- transect_lines$cs_id
+  transect_hy_id_array     <- transect_lines$hy_id
+  transect_cs_id_array     <- transect_lines$cs_id
   
-  # transect_geoms       <- geos::as_geos_geometry(transect_lines$geom)
+  # transect_geoms       <- geos::as_geos_geometry(transect_lines$geometry)
   
   left_distances       <- transect_lines$left_distance
   right_distances      <- transect_lines$right_distance
@@ -341,7 +383,7 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   number_of_skips = 0
   
   for (i in seq_along(transect_hy_id_array)) {
-    # i = 2
+    # i =2 
     # Check if the iteration is a multiple of 100
     if (message_interval != 0 && i %% message_interval == 0) {
       
@@ -365,6 +407,8 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     current_hy_id <- transect_hy_id_array[i]
     current_cs_id <- transect_cs_id_array[i]
     
+    # current_intersect_group_id <- transect_group_id_array[i]
+   
     # TODO: might need this in case I do the is_valid_transect() check on just the single flowline
     # current_fline      <- flowlines_geos[fline_id_array == current_hy_id]
     
@@ -396,6 +440,9 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
                                                             right_distance_to_extend, "tail")
     
     # initial check to make sure the extended versions of the transects are valid
+    # mapview::mapview(sf::st_as_sf(flowlines_geos[fline_group_id_array == transect_group_id_array[i]])) + 
+    #     mapview::mapview(sf::st_as_sf(transects_geos[transect_group_id_array == transect_group_id_array[i]]), color = "red") + 
+    # mapview::mapview(sf::st_as_sf(current_trans))
     
     # TODO: version 1 
     # # CHECKS WHOLE NETWORK OF FLOWLINES
@@ -405,21 +452,31 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     # TODO version 2:
     # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
     use_left_extension  <- is_valid_transect_line(
-            left_extended_trans,
-            transects_geos,
-            # transects_geos[transect_hy_id_array == current_hy_id],
-            # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-            # flowlines_geos[fline_id_array == current_hy_id]
-            flowlines_geos
-            )
+                              left_extended_trans,
+                              ifelse(!is.null(intersect_group_id), 
+                                     transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+                                     transects_geos[transect_hy_id_array == current_hy_id]
+                                     ),
+                              ifelse(!is.null(intersect_group_id), 
+                                     flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+                                     flowlines_geos[fline_id_array == current_hy_id]
+                                     )
+                              # transects_geos,
+                              # flowlines_geos
+                              )
     use_right_extension <- is_valid_transect_line(
-            right_extended_trans, 
-            transects_geos,
-            # transects_geos[transect_hy_id_array == current_hy_id], 
-            # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-            # flowlines_geos[fline_id_array == current_hy_id]
-            flowlines_geos
-            )
+                              right_extended_trans, 
+                              ifelse(!is.null(intersect_group_id), 
+                                     transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+                                     transects_geos[transect_hy_id_array == current_hy_id]
+                                     ),
+                              ifelse(!is.null(intersect_group_id), 
+                                     flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+                                     flowlines_geos[fline_id_array == current_hy_id]
+                                     )
+                              # transects_geos,
+                              # flowlines_geos
+                              )
     
     # use_both_extensions <- use_left_extension && use_right_extension
     
@@ -443,11 +500,16 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       # TODO; version 2
       use_left_extension  <- is_valid_transect_line(
                                 left_extended_trans, 
-                                transects_geos,
-                                # transects_geos[transect_hy_id_array == current_hy_id], 
-                                # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-                                # flowlines_geos[fline_id_array == current_hy_id]
-                                flowlines_geos
+                                ifelse(!is.null(intersect_group_id), 
+                                       transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+                                       transects_geos[transect_hy_id_array == current_hy_id]
+                                       ),
+                                ifelse(!is.null(intersect_group_id), 
+                                       flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+                                       flowlines_geos[fline_id_array == current_hy_id]
+                                       )
+                                # transects_geos,
+                                # flowlines_geos
                                 )
       
     used_half_of_left <- ifelse(use_left_extension, TRUE,  FALSE)
@@ -466,13 +528,18 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       
       # TODO: version 2 
       use_right_extension <- is_valid_transect_line(
-                              right_extended_trans, 
-                              transects_geos,
-                              # transects_geos[transect_hy_id_array == current_hy_id], 
-                              # transects_geos[transect_hy_id_array == current_hy_id & transect_cs_id_array != current_cs_id], 
-                              # flowlines_geos[fline_id_array == current_hy_id]
-                              flowlines_geos
-                              )
+                                right_extended_trans, 
+                                ifelse(!is.null(intersect_group_id), 
+                                       transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+                                       transects_geos[transect_hy_id_array == current_hy_id]
+                                       ),
+                                ifelse(!is.null(intersect_group_id), 
+                                       flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+                                       flowlines_geos[fline_id_array == current_hy_id]
+                                       )
+                                # transects_geos,
+                                # flowlines_geos
+                                )
       
       used_half_of_right  <- ifelse(use_right_extension, TRUE,  FALSE)
       
@@ -567,19 +634,29 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   #   new_cs_lengthm = as.numeric(sf::st_length(geom))
   # ) %>% 
   # dplyr::relocate(hy_id, cs_id, cs_lengthm, new_cs_lengthm)
+  # mapview::mapview(sf::st_as_sf(transects_geos), color = "red")
+  # transect_lines[lengths(sf::st_intersects(transect_lines)) == 1, ] %>% 
+  #   dplyr::group_by(hy_id) 
   
   # Update the "transects_to_extend" with new geos geometries ("geos_list")
   sf::st_geometry(transect_lines) <- sf::st_geometry(sf::st_as_sf(transects_geos))
   
+  # remove self intersecting transects or not
+  transect_lines <- 
+    transect_lines[lengths(sf::st_intersects(transect_lines)) == 1, ] %>% 
+    dplyr::group_by(hy_id) %>% 
+    dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+    dplyr::ungroup()
+    
   transect_lines <- 
     transect_lines %>% 
     dplyr::mutate(
-      new_cs_lengthm = as.numeric(sf::st_length(geom))
+      cs_lengthm = as.numeric(sf::st_length(geometry))
     ) %>% 
-    dplyr::relocate(hy_id, cs_id, cs_lengthm, new_cs_lengthm)
+    dplyr::relocate(hy_id, cs_id, cs_lengthm)
   
-  transect_lines$left_is_extended  <- left_extended_flag
-  transect_lines$right_is_extended <- right_extended_flag
+  transect_lines$left_is_extended   <- left_extended_flag
+  transect_lines$right_is_extended  <- right_extended_flag
   
   return(transect_lines)
   
