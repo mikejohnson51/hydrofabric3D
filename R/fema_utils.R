@@ -69,13 +69,16 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
                                          ) {
   # ---------------------------------------------------------------------------- 
   
-    # bad_ids <- c("wb-1527642")
-  # transect_lines         = transects %>% dplyr::filter(hy_id %in% bad_ids)
+  #   # bad_ids <- c("wb-1527642")
+  # # transect_lines         = transects %>% dplyr::filter(hy_id %in% bad_ids)
   # polygons               = fema
-  # flowlines              = flines %>%
-  # #   dplyr::filter(id %in% bad_ids)
+  # # flowlines              = flines %>%
+  # # #   dplyr::filter(id %in% bad_ids)
   # max_extension_distance = 3000
   # intersect_group_id = "mainstem"
+  # flowlines <- flines
+  # transect_lines <- transects
+  # 
   # ----------------------------------------------------------------------------
   transect_lines  <- nhdplusTools::rename_geometry(transect_lines, "geometry")
   flowlines       <- nhdplusTools::rename_geometry(flowlines, "geometry")
@@ -387,7 +390,7 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   number_of_skips = 0
   
   for (i in seq_along(transect_hy_id_array)) {
-    # i =2 
+    
     # Check if the iteration is a multiple of 100
     if (message_interval != 0 && i %% message_interval == 0) {
       
@@ -455,32 +458,65 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     
     # TODO version 2:
     # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
-    use_left_extension  <- is_valid_transect_line(
+    if (!is.null(intersect_group_id)) {
+     use_left_extension  <- is_valid_transect_line(
                               left_extended_trans,
-                              ifelse(!is.null(intersect_group_id), 
-                                     transects_geos[transect_group_id_array == transect_group_id_array[i]], 
-                                     transects_geos[transect_hy_id_array == current_hy_id]
-                                     ),
-                              ifelse(!is.null(intersect_group_id), 
-                                     flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
-                                     flowlines_geos[fline_id_array == current_hy_id]
-                                     )
+                              transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+                              flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
                               # transects_geos,
                               # flowlines_geos
-                              )
-    use_right_extension <- is_valid_transect_line(
-                              right_extended_trans, 
-                              ifelse(!is.null(intersect_group_id), 
-                                     transects_geos[transect_group_id_array == transect_group_id_array[i]], 
-                                     transects_geos[transect_hy_id_array == current_hy_id]
-                                     ),
-                              ifelse(!is.null(intersect_group_id), 
-                                     flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
-                                     flowlines_geos[fline_id_array == current_hy_id]
-                                     )
-                              # transects_geos,
-                              # flowlines_geos
-                              )
+                              ) 
+      
+    } else {
+      use_left_extension  <- is_valid_transect_line(left_extended_trans, 
+                                                    transects_geos[transect_hy_id_array == current_hy_id], 
+                                                    flowlines_geos[fline_id_array == current_hy_id])
+    }
+    
+    if (!is.null(intersect_group_id)) {
+      
+      use_right_extension <- is_valid_transect_line(
+        right_extended_trans, 
+        transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+        flowlines_geos[fline_group_id_array == transect_group_id_array[i]])
+      
+    } else {
+      
+      use_right_extension <- is_valid_transect_line(
+        right_extended_trans, 
+        transects_geos[transect_hy_id_array == current_hy_id],
+        flowlines_geos[fline_id_array == current_hy_id]
+        # transects_geos,
+        # flowlines_geos
+      )
+    }
+    
+    # use_left_extension  <- is_valid_transect_line(
+    #                           left_extended_trans,
+    #                           ifelse(!is.null(intersect_group_id), 
+    #                                  transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+    #                                  transects_geos[transect_hy_id_array == current_hy_id]
+    #                                  ),
+    #                           ifelse(!is.null(intersect_group_id), 
+    #                                  flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+    #                                  flowlines_geos[fline_id_array == current_hy_id]
+    #                                  )
+    #                           # transects_geos,
+    #                           # flowlines_geos
+    #                           )
+    # use_right_extension <- is_valid_transect_line(
+    #                           right_extended_trans, 
+    #                           ifelse(!is.null(intersect_group_id), 
+    #                                  transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+    #                                  transects_geos[transect_hy_id_array == current_hy_id]
+    #                                  ),
+    #                           ifelse(!is.null(intersect_group_id), 
+    #                                  flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+    #                                  flowlines_geos[fline_id_array == current_hy_id]
+    #                                  )
+    #                           # transects_geos,
+    #                           # flowlines_geos
+    #                           )
     
     # use_both_extensions <- use_left_extension && use_right_extension
     
@@ -502,20 +538,35 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       # use_left_extension  <- is_valid_transect_line(left_extended_trans, transects_geos, flowlines_geos)
       
       # TODO; version 2
-      use_left_extension  <- is_valid_transect_line(
-                                left_extended_trans, 
-                                ifelse(!is.null(intersect_group_id), 
-                                       transects_geos[transect_group_id_array == transect_group_id_array[i]], 
-                                       transects_geos[transect_hy_id_array == current_hy_id]
-                                       ),
-                                ifelse(!is.null(intersect_group_id), 
-                                       flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
-                                       flowlines_geos[fline_id_array == current_hy_id]
-                                       )
-                                # transects_geos,
-                                # flowlines_geos
-                                )
-      
+      # use_left_extension  <- is_valid_transect_line(
+      #                           left_extended_trans, 
+      #                           ifelse(!is.null(intersect_group_id), 
+      #                                  transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+      #                                  transects_geos[transect_hy_id_array == current_hy_id]
+      #                                  ),
+      #                           ifelse(!is.null(intersect_group_id), 
+      #                                  flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+      #                                  flowlines_geos[fline_id_array == current_hy_id]
+      #                                  )
+      #                           # transects_geos,
+      #                           # flowlines_geos
+      #                           )
+      # TODO version 2:
+      # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
+      if (!is.null(intersect_group_id)) {
+        use_left_extension  <- is_valid_transect_line(
+          left_extended_trans,
+          transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+          flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
+          # transects_geos,
+          # flowlines_geos
+        ) 
+        
+      } else {
+        use_left_extension  <- is_valid_transect_line(left_extended_trans, 
+                                                      transects_geos[transect_hy_id_array == current_hy_id], 
+                                                      flowlines_geos[fline_id_array == current_hy_id])
+      }
     used_half_of_left <- ifelse(use_left_extension, TRUE,  FALSE)
     }
     
@@ -531,19 +582,37 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       # use_right_extension <- is_valid_transect_line(right_extended_trans, transects_geos, flowlines_geos)
       
       # TODO: version 2 
-      use_right_extension <- is_valid_transect_line(
-                                right_extended_trans, 
-                                ifelse(!is.null(intersect_group_id), 
-                                       transects_geos[transect_group_id_array == transect_group_id_array[i]], 
-                                       transects_geos[transect_hy_id_array == current_hy_id]
-                                       ),
-                                ifelse(!is.null(intersect_group_id), 
-                                       flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
-                                       flowlines_geos[fline_id_array == current_hy_id]
-                                       )
-                                # transects_geos,
-                                # flowlines_geos
-                                )
+      # use_right_extension <- is_valid_transect_line(
+      #                           right_extended_trans, 
+      #                           ifelse(!is.null(intersect_group_id), 
+      #                                  transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+      #                                  transects_geos[transect_hy_id_array == current_hy_id]
+      #                                  ),
+      #                           ifelse(!is.null(intersect_group_id), 
+      #                                  flowlines_geos[fline_group_id_array == transect_group_id_array[i]],
+      #                                  flowlines_geos[fline_id_array == current_hy_id]
+      #                                  )
+      #                           # transects_geos,
+      #                           # flowlines_geos
+      #                           )
+      # TODO version 3
+      if (!is.null(intersect_group_id)) {
+        
+        use_right_extension <- is_valid_transect_line(
+          right_extended_trans, 
+          transects_geos[transect_group_id_array == transect_group_id_array[i]], 
+          flowlines_geos[fline_group_id_array == transect_group_id_array[i]])
+        
+      } else {
+        
+        use_right_extension <- is_valid_transect_line(
+          right_extended_trans, 
+          transects_geos[transect_hy_id_array == current_hy_id],
+          flowlines_geos[fline_id_array == current_hy_id]
+          # transects_geos,
+          # flowlines_geos
+        )
+      }
       
       used_half_of_right  <- ifelse(use_right_extension, TRUE,  FALSE)
       
