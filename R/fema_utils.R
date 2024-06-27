@@ -68,18 +68,17 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
                                          intersect_group_id = NULL
                                          ) {
   # ---------------------------------------------------------------------------- 
-  
-  #   # bad_ids <- c("wb-1527642")
-  # # transect_lines         = transects %>% dplyr::filter(hy_id %in% bad_ids)
+  # #   # bad_ids <- c("wb-1527642")
+  # # # transect_lines         = transects %>% dplyr::filter(hy_id %in% bad_ids)
   # polygons               = fema
-  # # flowlines              = flines %>%
-  # # #   dplyr::filter(id %in% bad_ids)
+  # # # flowlines              = flines %>%
+  # # # #   dplyr::filter(id %in% bad_ids)
   # max_extension_distance = 3000
   # intersect_group_id = "mainstem"
   # flowlines <- flines
   # transect_lines <- transects
-  # 
   # ----------------------------------------------------------------------------
+  
   transect_lines  <- nhdplusTools::rename_geometry(transect_lines, "geometry")
   flowlines       <- nhdplusTools::rename_geometry(flowlines, "geometry")
   
@@ -714,8 +713,11 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   # Update the "transects_to_extend" with new geos geometries ("geos_list")
   sf::st_geometry(transect_lines) <- sf::st_geometry(sf::st_as_sf(transects_geos))
   
+  transect_lines$left_is_extended   <- left_extended_flag
+  transect_lines$right_is_extended  <- right_extended_flag
+  
   # remove self intersecting transects or not
-  transect_lines <- 
+  transect_lines <-
     transect_lines[lengths(sf::st_intersects(transect_lines)) == 1, ] %>% 
     dplyr::group_by(hy_id) %>% 
     dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
@@ -727,9 +729,6 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
       cs_lengthm = as.numeric(sf::st_length(geometry))
     ) %>% 
     dplyr::relocate(hy_id, cs_id, cs_lengthm)
-  
-  transect_lines$left_is_extended   <- left_extended_flag
-  transect_lines$right_is_extended  <- right_extended_flag
   
   return(transect_lines)
   
