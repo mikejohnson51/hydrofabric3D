@@ -67,17 +67,6 @@ utils::globalVariables(
 extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines, max_extension_distance, 
                                          intersect_group_id = NULL
                                          ) {
-  # ---------------------------------------------------------------------------- 
-  # #   # bad_ids <- c("wb-1527642")
-  # # # transect_lines         = transects %>% dplyr::filter(hy_id %in% bad_ids)
-  # polygons               = fema
-  # # # flowlines              = flines %>%
-  # # # #   dplyr::filter(id %in% bad_ids)
-  # max_extension_distance = 3000
-  # intersect_group_id = "mainstem"
-  # flowlines <- flines
-  # transect_lines <- transects
-  # ----------------------------------------------------------------------------
   
   transect_lines  <- nhdplusTools::rename_geometry(transect_lines, "geometry")
   flowlines       <- nhdplusTools::rename_geometry(flowlines, "geometry")
@@ -128,28 +117,10 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     geos::geos_simplify_preserve_topology(250)
     # geos::geos_simplify(250)
   
-  # geos::geos_length(intersect_lines)
-    # geos::geos_num_coordinates(intersect_lines)
-  # geos::geos_num_coordinates(intersect_lines) %>% max()
-  
-  # no_simple_intersect_lines <- 
-  #   intersect_polygons %>% 
-  #   # geos::geos_make_valid() %>% 
-  #   sf::st_as_sf() %>% 
-  #   # sf::st_union() %>% 
-  #   # rmapshaper::ms_explode() %>% 
-  #   # sf::st_as_sf() %>% 
-  #   # dplyr::mutate(fema_id = 1:dplyr::n()) %>% 
-  #   # dplyr::select(fema_id, geom = x) %>% 
-  #   sf::st_cast("MULTILINESTRING") %>% 
-  #   geos::as_geos_geometry() 
-  # 
   # # mapview::mapview(sf::st_as_sf(no_simple_intersect_lines[1]), color="gold") +
   #   mapview::mapview(sf::st_as_sf(no_simple_intersect_lines[2]), color= "green") + 
   #   # mapview::mapview(sf::st_as_sf(no_simple_intersect_lines[3]), color = "gold") + 
   # # mapview::mapview(sf::st_as_sf(intersect_lines[1]), color="green") +
-  # mapview::mapview(sf::st_as_sf(intersect_lines[2]), color= "red") 
-  # mapview::mapview(sf::st_as_sf(intersect_lines[3]), color = "dodgerblue") 
   
   # use half of the shortest transect line as the segmentation length for all transects (ensures all transects will have a midpoint...?)
   # TODO: Double check this logic.
@@ -157,12 +128,6 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   
   # make each transect line have way more segments so we can take a left and right half of each transect line
   segmented_trans  <- sf::st_segmentize(intersect_transects, min_segmentation)
-  
-  # mapview::mapview(left_trans, col.regions = "dodgerblue") +
-  # mapview::mapview(intersect_transects, color = "red") +
-  #   mapview::mapview(intersect_transects[42, ], color = "yellow") +
-  # mapview::mapview(right_trans, color = "dodgerblue") +
-  # mapview::mapview(left_trans, color = "green")
   
   # Seperate the transect lines into LEFT and RIGHT halves
   # We do this so we can check if a side of a transect is ENTIRELY WITHIN a polygon. 
@@ -329,14 +294,6 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
         is.na(right_distance) ~ 0,
         TRUE                  ~ right_distance
       )
-      # left_distance = dplyr::case_when(
-      #   left_distance == 0 ~ NA,
-      #   TRUE               ~ left_distance
-      # ),
-      # right_distance = dplyr::case_when(
-      #   right_distance == 0 ~ NA,
-      #   TRUE                ~ right_distance
-      # )
     ) %>% 
     hydrofabric3D::add_tmp_id()
   
@@ -356,10 +313,7 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
   
   # TODO: next time, change this function to ONLY process transects that have ANY extension distance, right now we iterate through ALL transects,
   # TODO: and 'next' the ones with the no extension distance so doesn't really matter much but 
-  # transect_lines %>%
-    # dplyr::filter(left_distance == 0, right_distance == 0)
-  
- 
+
   # Convert the net object into a geos_geometry
   flowlines_geos       <- geos::as_geos_geometry(flowlines)
   
@@ -392,20 +346,10 @@ extend_transects_to_polygons <- function(transect_lines,   polygons,  flowlines,
     
     # Check if the iteration is a multiple of 100
     if (message_interval != 0 && i %% message_interval == 0) {
-      
-      # get the percent complete
       percent_done <- round(i/total, 2) * 100
-      
-      # Print the message every "message_interval"
-      # if(verbose) { 
       message(i, " > ", percent_done, "% ") 
       message("Number of skips: ", number_of_skips)
-      # }
-      # message("Iteration ", i, " / ", length(extended_trans), 
-      #         " - (", percent_done, "%) ")
-      
     }
-    
     
     # get the current transect, hy_id, cs_id, flowline, and extension distances
     current_trans <- transects_geos[i]
