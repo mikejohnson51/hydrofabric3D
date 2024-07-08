@@ -9,8 +9,9 @@ extend_transects_to_polygons(
   transect_lines,
   polygons,
   flowlines,
-  max_extension_distance,
-  intersect_group_id = NULL
+  crosswalk_id,
+  intersect_group_id = NULL,
+  max_extension_distance = 3000
 )
 }
 \arguments{
@@ -20,12 +21,15 @@ extend_transects_to_polygons(
 
 \item{flowlines}{set of Sf linestrings}
 
-\item{max_extension_distance}{numeric, maximum distance (meters) to extend a transect line in either direction to try and intersect one of the "polygons"}
+\item{crosswalk_id}{character, flowline ID that matches flowlines with transect lines. This crosswalk_id must appear are a column in both flowlines and transect_lines.}
 
-\item{intersect_group_id}{character, name of a column in flowlines that should be used to check to group the network
-for checking intersections are valid. That is, when transects are checked to make sure they don't intersect
-other transects or other flowlines, this group ID will distinguise which other flowlines and transects should be
-compared to a given transect. Value must be a column name in flowlines (and optionally in transect_lines). Default is NULL, which will make each new transect be compared to only the rest of the transect/flowline on the given transect's hy_id.}
+\item{intersect_group_id}{character, name of a column in flowlines that should be used to group each transect with 1 or more flowlines.
+That is, when transects are checked to make sure they don't intersect
+other transects or other flowlines, this group ID will distinguise which flowlines a transect should be checked against.
+The intersect_group_id must appear as a column in both flowlines and transect_lines dataframes}
+
+\item{max_extension_distance}{numeric, maximum distance (meters) to extend a transect line
+in either direction to try and intersect one of the "polygons". Default is 3000m}
 }
 \value{
 sf linestring, with extended transect lines
