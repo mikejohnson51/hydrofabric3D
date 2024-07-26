@@ -314,7 +314,7 @@ extend_transects_to_polygons <- function(transect_lines,
   
   # profvis::profvis({
   
-  left_distances  <- calc_extension_distances(
+  left_distances  <- calc_extension_distances2(
     geos_geoms             = left_trans_geos,
     ids                    = left_trans$tmp_id,
     lines_to_cut           = intersect_polygons,
@@ -327,7 +327,7 @@ extend_transects_to_polygons <- function(transect_lines,
   
   message("Generating right side distances...")
   
-  right_distances <- calc_extension_distances(
+  right_distances <- calc_extension_distances2(
     geos_geoms             = right_trans_geos,
     ids                    = right_trans$tmp_id,
     lines_to_cut           = intersect_polygons,
@@ -819,6 +819,81 @@ calc_extension_distances <- function(geos_geoms, ids, lines_to_cut, lines_to_cut
   return(extension_dists)
 }
 
+#' Calculate the minimum distance a line would need to extend to reach the boundary of the polygon/line that the input geometries are entirely within 
+#' VERSION 2
+#' @param geos_geoms list of geos_geometrys
+#' @param ids character vector
+#' @param lines_to_cut geos_linestrings
+#' @param lines_to_cut_indices numeric vector
+#' @param direction character, either "head", "tail" or "both"
+#' @param max_extension_distance numeric
+#'
+#' @return numeric vector, distance to extend each geos_geoms
+#' @importFrom vctrs vec_c
+calc_extension_distances2 <- function(
+    geos_geoms, 
+    ids, 
+    lines_to_cut, 
+    lines_to_cut_indices, 
+    direction = "head", 
+    max_extension_distance = 2500
+) {
+  
+  if (!direction %in% c("head", "tail")) {
+    stop("Invalid 'direction' value, must be one of 'head' or 'tail'")
+  }
+  
+  # -----------------------------------------------------
+  # geos_geoms             = geos::as_geos_geometry(left_partition)
+  # ids                    = left_partition$tmp_id
+  # 
+  # # mapview::mapview(left_partition[1:4, ]$geom, color = "green") + 
+  # # mapview::mapview(
+  # # sf::st_as_sf(mls[unique(unlist(left_partition[1:4, ]$polygon_index))]), color = "red"
+  # # )
+  # 
+  # lines_to_cut           = mls 
+  # lines_to_cut_indices   = left_partition$polygon_index
+  # 
+  # direction              = "head"
+  # max_extension_distance = 3000
+  # -----------------------------------------------------
+  
+  distance_range               <- 1:max_extension_distance
+  
+  # preallocate vector that stores the extension. distances
+  extension_dists              <- vctrs::vec_c(rep(0, length(ids)))
+  
+  # number of geometries that will be iterated over, keeping this variable to reference in message block  
+  total                        <- length(ids)
+  
+  # output a message every ~10% intervals
+  message_interval             <- total %/% 20
+  
+  for (i in seq_along(ids)) {
+    
+    # log percent complete
+    if (message_interval != 0 && i %% message_interval == 0) {
+      # get the percent complete
+      percent_done <- round(i/total, 2) * 100
+      message(i, " > ", percent_done, "% ") 
+    }
+    
+    index_vect <- unlist(lines_to_cut_indices[[i]])
+    
+    distance_to_extend <- geos_bs_distance(
+      distances    = distance_range,
+      line         = geos_geoms[[i]],
+      geoms_to_cut = lines_to_cut[index_vect],
+      direction    = direction
+    )
+    
+    extension_dists[i] <- distance_to_extend
+    
+  }
+  
+  return(extension_dists)
+}
 
 # Given 2 geos_geometry point geometries, create a line between the 2 points
 # start: geos_geoemtry, point
