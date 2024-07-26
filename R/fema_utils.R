@@ -74,6 +74,28 @@ extend_transects_to_polygons <- function(transect_lines,
                                          max_extension_distance = 3000 
                                          ) {
   # ----------------------------------------------------------
+  # library(sf)
+  # library(dplyr)
+  # # library(lwgeom)
+  # # library(wk)
+  # # library(vctrs)
+  # library(geos)
+  # # library(rmapshaper)
+  # 
+  # polygons <- sf::read_sf("/Users/anguswatters/Desktop/lynker-spatial/FEMA_BY_VPU/VPU_02/fema_vpu_02_output.gpkg")
+  # transect_lines <- sf::read_sf("/Users/anguswatters/Desktop/test_transects_02.gpkg")
+  # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/test_flines_02.gpkg")
+  # crosswalk_id           = "hy_id"
+  # intersect_group_id     = "mainstem"
+  # max_extension_distance = 3000 
+  # 
+  # # mapview::npts(polygons) 
+  # 
+  # polygons <- rmapshaper::ms_simplify(polygons, keep_shapes = T, keep = 0.01, sys = TRUE, sys_mem = 16)
+
+  # mapview::npts(polygons)
+  
+  # ----------------------------------------------------------------------------------
   
   # transect_lines         = transects
   # 
@@ -144,6 +166,10 @@ extend_transects_to_polygons <- function(transect_lines,
   # polygons
   transects_geos  <- geos::as_geos_geometry(transect_lines)
   polygons_geos   <- geos::as_geos_geometry(polygons)     
+  
+  # polygons_geos %>% 
+    # geos::geos_type() %>% 
+    # unique()
   
   transects_polygons_matrix <- geos::geos_intersects_matrix(transects_geos, polygons_geos) 
   polygons_transects_matrix <- geos::geos_intersects_matrix(polygons_geos, transects_geos) 

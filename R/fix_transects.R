@@ -1914,7 +1914,8 @@ geos_bs_distance <- function(
     
     # if ANY of the geometries in geoms_to_cut are intersected by the new extended line
     if(
-      any(geos::geos_intersects(geoms_to_cut, new_line))
+      any(lengths(geos::geos_intersects_matrix(new_line, geoms_to_cut)) > 0)
+      # any(geos::geos_intersects(geoms_to_cut, new_line))
     ) {
       
       # then DECREMENT RIGHT pointer (DECREASE DISTANCE VALUE) to the midpoint - 1
