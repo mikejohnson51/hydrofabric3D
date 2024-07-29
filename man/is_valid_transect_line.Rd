@@ -8,14 +8,14 @@ the 'transect_to_check' does NOT interesect any other transects ('transect_lines
 If the 'transect_to_check' intersects ANY other transects OR intersects a flowline more
 than once (OR more than one flowline in the network) then the function returns FALSE.}
 \usage{
-is_valid_transect_line(transect_to_check, transect_lines, flowlines)
+is_valid_transect_line(transect_to_check, trans, flines)
 }
 \arguments{
 \item{transect_to_check}{geos_geometry, linestring}
 
-\item{transect_lines}{geos_geometry, linestring}
+\item{trans}{geos_geometry, linestring}
 
-\item{flowlines}{geos_geometry, linestring}
+\item{flines}{geos_geometry, linestring}
 }
 \value{
 TRUE if the extension should be used, FALSE if it shouldn't be used
