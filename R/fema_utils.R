@@ -1153,6 +1153,63 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
   
   return(extensions_by_id)
 }
+
+#' Decide the start and end points for the final transect line given two extended versions of the same transect
+#' Requires two logicals indicating what to do with the extensions (these are decided by checking for intersections with the rest of the network)
+#' Internal helper function
+#' @param left_extension geos_geometry linestring
+#' @param right_extension geos_geometry linestring 
+#' @param use_left logical, do we use the left extension
+#' @param use_right logical, do we use the right extension
+#' @importFrom geos geos_point_start geos_point_end
+#' @return geos_geometry points, the start and end point of the final extension line
+#' @export
+pick_extension_pts <- function(
+    left_extension, 
+    right_extension, 
+    use_left, 
+    use_right
+) {
+  
+  use_both <- use_left && use_right
+  
+  # Get the start and end of both extended tranects
+  left_start  <- geos::geos_point_start(left_extension)
+  left_end    <- geos::geos_point_end(left_extension)
+  right_start <- geos::geos_point_start(right_extension)
+  right_end   <- geos::geos_point_end(right_extension)
+  
+  # Extend in BOTH directions
+  if(use_both) {
+    # message("Extend direction: BOTH")
+    start  <- left_start
+    end    <- right_end
+    
+    # extend ONLY the left side
+  } else if(use_left && !use_right) {
+    # message("Extend direction: LEFT")       
+    start  <- left_start
+    end    <- left_end
+    
+    # Extend ONLY the right side
+  } else if(!use_left && use_right) {
+    # message("Extend direction: RIGHT")       
+    start  <- right_start
+    end    <- right_end
+    
+    # DO NOT extend either direction
+  } else {
+    # message("No extension")   
+    # TODO: Really dont need to do anything 
+    # TODO: in this scenario because we just use the original transect line
+    start  <- left_end
+    end    <- right_start
+  }
+  
+  return( c(start, end) )
+  
+}
+
 #' Given a set of transect lines, a flowline network, extend the transect lines out given distances from the left and right
 #' Flowlines are required to ensure valid transect intersection relationship is maintained
 #'
@@ -1490,6 +1547,7 @@ extend_transects_by_distances <- function(
 extend_transects_to_polygons2 <- function(
     transect_lines, 
     polygons, 
+    flowlines, 
     crosswalk_id = 'hy_id',  
     grouping_id = 'mainstem',
     max_extension_distance = 3000

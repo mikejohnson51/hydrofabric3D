@@ -8,6 +8,7 @@ WIP/internal function for extending transect lines out to FEMA 100 year flood pl
 extend_transects_to_polygons2(
   transect_lines,
   polygons,
+  flowlines,
   crosswalk_id = "hy_id",
   grouping_id = "mainstem",
   max_extension_distance = 3000
@@ -18,6 +19,8 @@ extend_transects_to_polygons2(
 
 \item{polygons}{set of sf polygons that transect lines should be exteneded}
 
+\item{flowlines}{set of Sf linestrings}
+
 \item{crosswalk_id}{character, flowline ID that matches flowlines with transect lines. This crosswalk_id must appear are a column in both flowlines and transect_lines.}
 
 \item{grouping_id}{character, name of a column in flowlines that should be used to group each transect with 1 or more flowlines.
@@ -27,8 +30,6 @@ The intersect_group_id must appear as a column in both flowlines and transect_li
 
 \item{max_extension_distance}{numeric, maximum distance (meters) to extend a transect line
 in either direction to try and intersect one of the "polygons". Default is 3000m}
-
-\item{flowlines}{set of Sf linestrings}
 }
 \value{
 sf linestring, with extended transect lines
