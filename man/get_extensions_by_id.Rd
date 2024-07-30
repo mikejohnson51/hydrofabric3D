@@ -7,13 +7,13 @@
 get_extensions_by_id(transects, polygons, crosswalk_id, max_extension_distance)
 }
 \arguments{
-\item{transects}{}
+\item{transects}{sf linestring dataframe}
 
-\item{polygons}{}
+\item{polygons}{sf polygon dataframe}
 
-\item{crosswalk_id}{}
+\item{crosswalk_id}{character}
 
-\item{max_extension_distance}{}
+\item{max_extension_distance}{numeric}
 }
 \value{
 data.frame or tibble
