@@ -9,3 +9,17 @@ workspace
 ^docs$
 ^pkgdown$
 ^vignettes/articles$
+^\\runners$
+^runners/.*$
+
+^hydrofabric3D\.Rproj$
+^\.github$
+^\\.urs_cookies$
+^\\.dodsrc$
+^[.].*$
+^.*/[.].*$
+^general_visuals\.R$
+^scraps\.R$
+^scraps2\.R$
+^scraps3\.R$
+

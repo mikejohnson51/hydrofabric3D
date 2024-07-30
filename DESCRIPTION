@@ -1,6 +1,6 @@
 Package: hydrofabric3D
 Title: hydrofabric3D
-Version: 0.0.1
+Version: 0.0.96
 Authors@R: c(person("Mike", "Johnson", role = c("aut", "cre"), email = "mikecp11@gmail.com"),
              person("Angus", "Watters",  role = "aut"),
              person("Arash", "Modaresi",  role = "ctb"),
@@ -16,19 +16,27 @@ Imports:
   wk,
   terra,
   dplyr,
-  terra,
   tidyr,
   vctrs,
   sf,
   smoothr,
   zoo,
   nhdplusTools,
-  fastmap
+  fastmap,
+  ggplot2,
+  rlang,
+  lwgeom,
+  rmapshaper,
+  AHGestimation
+Remotes:
+  mikejohnson51/AHGestimation
 Depends: 
     R (>= 2.10)
 LazyData: true
 Config/Needs/website: rmarkdown
 Suggests: 
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
 VignetteBuilder: knitr
+Config/testthat/edition: 3
