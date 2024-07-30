@@ -1222,6 +1222,7 @@ pick_extension_pts <- function(
 #' @importFrom geos as_geos_geometry
 #' @importFrom wk wk_crs 
 #' @importFrom sf st_geometry st_as_sf st_length
+#' @importFrom nhdplusTools rename_geometry 
 #' @importFrom dplyr mutate relocate any_of
 #' @return transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
 #' @export
@@ -1239,6 +1240,12 @@ extend_transects_by_distances <- function(
   # crosswalk_id = "hy_id"
   # cs_id = "cs_id"
   # grouping_id = 'mainstem'
+  # transects    = transect_lines
+  # flowlines    = flowlines
+  # crosswalk_id = crosswalk_id
+  # cs_id        = "cs_id"
+  # grouping_id  = grouping_id 
+  
   # ---------------------------------------
   
   # ----------------------------------------------------------------------------------
@@ -1497,8 +1504,6 @@ extend_transects_by_distances <- function(
   
   # })
 
-  
-  
   # Update the "transects_to_extend" with new geos geometries ("geos_list")
   sf::st_geometry(transects) <- sf::st_geometry(sf::st_as_sf(transects_geos))
   
@@ -1510,12 +1515,19 @@ extend_transects_by_distances <- function(
   transects$left_is_extended   <- left_extended_flag
   transects$right_is_extended  <- right_extended_flag
   
+  message("==========================")
   message("Structure of transects object ^^^^^^^", utils::str(transects))
+  message("==========================")
+  
+  transects <- nhdplusTools::rename_geometry(transects, "geometry")
+  
+  message("Structure of transects object AFTER RENAME ^^^^^^^", utils::str(transects))
+  message("==========================")
   
   transects <-
     transects %>% 
     dplyr::mutate(
-      cs_lengthm = as.numeric(sf::st_length(geom))
+      cs_lengthm = as.numeric(sf::st_length(.))
     ) %>% 
     dplyr::relocate(
       dplyr::any_of(c(crosswalk_id, cs_id)),
@@ -1560,7 +1572,7 @@ extend_transects_to_polygons2 <- function(
     grouping_id = 'mainstem',
     max_extension_distance = 3000
 ) {
-  # ----------------------------------------------------------
+  # # ----------------------------------------------------------
   # library(sf)
   # library(dplyr)
   # library(geos)
@@ -1576,14 +1588,14 @@ extend_transects_to_polygons2 <- function(
   # crosswalk_id           = "hy_id"
   # grouping_id     = "mainstem"
   # max_extension_distance = 3000
-  # # 
-  # # mapview::npts(polygons, by_feature = T) %>% sort(decreasing = T) %>% .[1:100]
-  # 
+  # # # # 
+  # # # # mapview::npts(polygons, by_feature = T) %>% sort(decreasing = T) %>% .[1:100]
+  # # # 
   # polygons <- rmapshaper::ms_simplify(polygons, keep_shapes = T, keep = 0.02, sys = TRUE, sys_mem = 16)
-  # mapview::mapview(polygons, col.regions = "white", color = "green") +
-  # mapview::mapview(polygons2, col.regions = "white", color = "red")
-  # mapview::npts(polygons, by_feature = T) %>% sort(decreasing = T) %>% .[1:100]
-  # mapview::npts(polygons)
+  # # mapview::mapview(polygons, col.regions = "white", color = "green") +
+  # # mapview::mapview(polygons2, col.regions = "white", color = "red")
+  # # mapview::npts(polygons, by_feature = T) %>% sort(decreasing = T) %>% .[1:100]
+  # # mapview::npts(polygons)
 
   # ----------------------------------------------------------------------------------
   # ----------- Input checking ------

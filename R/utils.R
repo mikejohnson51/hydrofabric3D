@@ -129,7 +129,11 @@ get_unique_tmp_ids <- function(df, x = hy_id, y = cs_id) {
 move_geometry_to_last <- function(df) {
   # Check if any of the columns in the dataframe are geometry types
   check_for_geom <- sapply(df, function(col) {
-    any(class(col) %in% c("sfc_POINT", "sfc", "sfc_GEOMETRY", "sfc_MULTIPOINT"))
+    any(class(col) %in% c("sfc", "sfc_GEOMETRY", 
+                         "sfc_POINT",  "sfc_MULTIPOINT", 
+                          "sfc_LINESTRING", "sfc_MULTILINESTRING", 
+                          "sfc_POLYGON",  "sfc_MULTIPOLYGON"
+                          ))
   })
   
   # If there is a geometry type column, move it to the last position
