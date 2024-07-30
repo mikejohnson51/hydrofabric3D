@@ -1515,14 +1515,14 @@ extend_transects_by_distances <- function(
   transects$left_is_extended   <- left_extended_flag
   transects$right_is_extended  <- right_extended_flag
   
-  message("==========================")
-  message("Structure of transects object ^^^^^^^", utils::str(transects))
-  message("==========================")
+  # message("==========================")
+  # message("Structure of transects object ^^^^^^^", utils::str(transects))
+  # message("==========================")
   
   transects <- nhdplusTools::rename_geometry(transects, "geometry")
   
-  message("Structure of transects object AFTER RENAME ^^^^^^^", utils::str(transects))
-  message("==========================")
+  # message("Structure of transects object AFTER RENAME ^^^^^^^", utils::str(transects))
+  # message("==========================")
   
   transects <-
     transects %>% 
