@@ -3,14 +3,14 @@
 \name{extend_transects_to_polygons}
 \alias{extend_transects_to_polygons}
 \title{Give a set of transecct linestrings and poylgons and get the minimum distance to extend each transect line (from both directions, to try and reach the edge of a "polygons")
-WIP/internal function for extending transect lines out to FEMA 100 year flood plain polygons}
+WIP/internal function for extending transect lines out to FEMA 100 year flood plain polygons (VERSION 2)}
 \usage{
 extend_transects_to_polygons(
   transect_lines,
   polygons,
   flowlines,
-  crosswalk_id,
-  intersect_group_id = NULL,
+  crosswalk_id = "hy_id",
+  grouping_id = "mainstem",
   max_extension_distance = 3000
 )
 }
@@ -23,7 +23,7 @@ extend_transects_to_polygons(
 
 \item{crosswalk_id}{character, flowline ID that matches flowlines with transect lines. This crosswalk_id must appear are a column in both flowlines and transect_lines.}
 
-\item{intersect_group_id}{character, name of a column in flowlines that should be used to group each transect with 1 or more flowlines.
+\item{grouping_id}{character, name of a column in flowlines that should be used to group each transect with 1 or more flowlines.
 That is, when transects are checked to make sure they don't intersect
 other transects or other flowlines, this group ID will distinguise which flowlines a transect should be checked against.
 The intersect_group_id must appear as a column in both flowlines and transect_lines dataframes}
@@ -36,5 +36,5 @@ sf linestring, with extended transect lines
 }
 \description{
 Give a set of transecct linestrings and poylgons and get the minimum distance to extend each transect line (from both directions, to try and reach the edge of a "polygons")
-WIP/internal function for extending transect lines out to FEMA 100 year flood plain polygons
+WIP/internal function for extending transect lines out to FEMA 100 year flood plain polygons (VERSION 2)
 }

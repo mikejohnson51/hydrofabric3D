@@ -2,7 +2,8 @@
 % Please edit documentation in R/fema_utils.R
 \name{calc_extension_distances}
 \alias{calc_extension_distances}
-\title{Calculate the minimum distance a line would need to extend to reach the boundary of the polygon/line that the input geometries are entirely within}
+\title{Calculate the minimum distance a line would need to extend to reach the boundary of the polygon/line that the input geometries are entirely within
+VERSION 2}
 \usage{
 calc_extension_distances(
   geos_geoms,
@@ -31,4 +32,5 @@ numeric vector, distance to extend each geos_geoms
 }
 \description{
 Calculate the minimum distance a line would need to extend to reach the boundary of the polygon/line that the input geometries are entirely within
+VERSION 2
 }
