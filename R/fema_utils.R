@@ -469,7 +469,7 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
   mls <- sf_polygons_to_geos_multilinestrings(polygons, 200)
   
   message("Generating left side distances....") 
-  left_distances <- calc_extension_distances2(
+  left_distances <- calc_extension_distances(
     geos_geoms             = geos::as_geos_geometry(left_partition),
     ids                    = left_partition$tmp_id,
     lines_to_cut           = mls,
@@ -479,7 +479,7 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
   )
   
   message("Generating right side distances...")
-  right_distances <- calc_extension_distances2(
+  right_distances <- calc_extension_distances(
     geos_geoms             = geos::as_geos_geometry(right_partition),
     ids                    = right_partition$tmp_id,
     lines_to_cut           = mls,
