@@ -766,7 +766,8 @@ add_cs_bathymetry <- function(
   
   # split the cross section into a left and right half, from the midpoint of the bottom
   # and then join on the maximum X point of the LEFT half of the AHG parabolas 
-  # this paritioned set of cross sections will ultimately get the AHG parabolas inserted in between the left and right partitions
+  # this paritioned set of cross sections will ultimately get the AHG parabolas inserted in between
+  # the left and right partitions
   partioned_cs <- 
     cross_section_pts %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
@@ -1061,14 +1062,6 @@ add_cs_bathymetry <- function(
       )
     ) %>% 
     dplyr::ungroup()
-  
-  # parabolas %>%
-  #   hydrofabric3D::add_tmp_id() %>%
-  #   ggplot2::ggplot() +
-  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z)) +
-  #   ggplot2::facet_wrap(~tmp_id)
-  # out_cs %>%
-  #   hydrofabric3D::plot_cs_pts(x = "relative_distance", color = "is_dem_point")
   
   tryCatch({
     message("Generate XY coordinates for AHG estimated points...")

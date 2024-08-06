@@ -215,7 +215,8 @@ classify_points <- function(
                           )
   
   # required cols that will be selected from the classified_pts object and in this order
-  req_cols       <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type")
+  req_cols       <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", 
+                      "class", "point_type")
   
   # any starting columns in the original data 
   starting_cols  <- names(cs_pts)

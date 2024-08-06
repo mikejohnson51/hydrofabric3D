@@ -85,6 +85,30 @@ improve_invalid_cs = function(
     fix_ids        = FALSE,
     verbose        = TRUE
 ) {
+   # ----------------------------------------
+  
+  # library(sf)
+  # library(dplyr)
+  # library(geos)
+  # library(terra)
+  # 
+  # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
+  # net <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg")
+  # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_transects_06.gpkg")
+  # 
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  # scale          = 0.5
+  # pct_of_length_for_relief = 0.01
+  # fix_ids        = FALSE
+  # verbose        = TRUE
+  
+  # sf::write_sf(cs_pts, "/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
+  # sf::write_sf(flines, "/Users/anguswatters/Desktop/test_improve_flines.gpkg")
+  # sf::write_sf(transects, "/Users/anguswatters/Desktop/test_improve_transects.gpkg")
+  
+  # ----------------------------------------
   
   # add a "tmp_id" column to easily index transects by hy_id and cs_id 
   transects <- hydrofabric3D::add_tmp_id(transects)
@@ -138,10 +162,11 @@ improve_invalid_cs = function(
   # - Newly extended transect intersects with its flowlines AT MOST 1 time
   # - Newly extended transect does NOT intersect with any of the other NEWLY EXTENDED transect lines
   # - Newly extended transect does NOT intersect with any of the ORIGINAL transect lines
-  
+ 
+
   # NOTE: extend_invalid_transects() returns the "transects" object with updated attributes for any
   # extensions that were made (geometries, cs_lengthm, "is_extended" flag) and keeps all the rest of the remaining data in place
-  extended_geoms <- extend_invalid_transects(
+  extended_geoms <- extend_invalid_transects2(
     transects_to_check  = transects, 
     net                 = net, 
     scale               = scale,

@@ -48,6 +48,9 @@ flowline <-
     geometry
   )
 
+# flowline
+# flowline$geometry %>% plot()
+
 testthat::test_that("cut 10 transects along single flowline, then add cross section points column, NULL points, and 10 min", {
 
   dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
