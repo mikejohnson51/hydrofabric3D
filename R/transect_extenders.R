@@ -131,7 +131,7 @@ extend_invalid_transects3 <- function(
     # stop("Mismatch in number of points after splitting data by the 'valid_banks' and 'has_relief' columns, likely a missing value in either 'valid_banks' or 'has_relief' columns")
   }
   
-  if(verbose) { message(paste0("Extending ", nrow(invalid_transects), 
+  if(verbose) { message(paste0("Extending ", nrow(transects_to_check), 
                                " transects without valid banks or relief by ",     
                                scale * 100, "%...")) }
   
