@@ -380,7 +380,7 @@ extend_transects_by_distances <- function(
   # message_interval <- total %/% 20
   number_of_skips  <- 0
   
-  make_progress <- make_progress_bar(verbose, length(transect_crosswalk_id_array))
+  make_progress <- make_progress_bar(TRUE, length(transect_crosswalk_id_array))
   
   # profvis::profvis({
   
