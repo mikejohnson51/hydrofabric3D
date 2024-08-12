@@ -697,6 +697,19 @@ add_cs_bathymetry <- function(
   
   ########################################################## 
   ##########################################################
+  # library(dplyr)
+  # library(sf)
+  # library(geos)
+  # 
+  # cross_section_pts <- arrow::read_parquet("/Users/anguswatters/Desktop/test_ml_cs_pts_06.parquet")
+  # 
+  # cross_section_pts <-
+  #   cross_section_pts %>%
+  #   # dplyr::filter(hy_id == "wb-1001918")
+  #   dplyr::filter(hy_id == "wb-1001918", cs_id == 3)
+  # cross_section_pts %>% 
+    # hydrofabric3D::plot_cs_pts()
+  
   # cross_section_pts <-
   #   inchannel_cs %>%
   #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
@@ -736,11 +749,12 @@ add_cs_bathymetry <- function(
   
   
   ##########################################################
-
+  
   # Replace any topwidth values that are GREATER than the actual cross section length (meters)
   cross_section_pts <- fix_oversized_topwidths(
     cross_section_pts = cross_section_pts
   )
+  
 
   # generate AHG parabolas for each hy_id/cs_id in the cross section points 
   # using the provided top_widths, depths, and dingman's R
@@ -749,9 +763,17 @@ add_cs_bathymetry <- function(
   )
 
   # ##############################################
-
+  # example <- 
+  #   ahg_parabolas %>% 
+  #   dplyr::filter(hy_id == "wb-1005207", cs_id == 2)
+  # example <- 
+    # ahg_parabolas %>% 
+    # dplyr::filter(hy_id == "wb-1001918", cs_id == 2) 
+  # ml_output
+  # cross_section_pts %>% hydrofabric3D::plot_cs_pts(y = "Z", x = "relative_distance")
+  # plot(ahg_parabolas$ahg_y ~ ahg_parabolas$ahg_x)
   # plot(ahg_parabolas$ahg_y)
-  
+  # 
   # store the maximum X on the left side of the parabola for later use
   ahg_left_max <- 
     ahg_parabolas %>% 
@@ -997,6 +1019,7 @@ add_cs_bathymetry <- function(
   
   # merge
   parabolas <- dplyr::bind_rows(left_parabolas, right_parabolas)
+  # plot(parabolas$ahg_y ~ parabolas$ahg_x)
   
   # reorder to parabolas by X values so they are in order from left to right for each hy_id/cs_id
   parabolas <- 
@@ -1063,6 +1086,38 @@ add_cs_bathymetry <- function(
     ) %>% 
     dplyr::ungroup()
   
+  # dplyr::bind_rows(
+  #   dplyr::mutate(
+  #     cross_section_pts, 
+  #     is_ml = FALSE
+  #   ),
+  #   dplyr::mutate(
+  #     out_cs,
+  #     is_ml = TRUE
+  #   )
+  # ) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, 
+  #                                    y = Z, 
+  #                                    color = is_ml
+  #                                    ), size = 4) 
+  # 
+  # dplyr::bind_rows(
+  #   dplyr::mutate(
+  #     cross_section_pts, 
+  #     is_ml = FALSE
+  #   ),
+  #   dplyr::mutate(
+  #     out_cs,
+  #     is_ml = TRUE
+  #   )
+  # ) %>% 
+  #   ggplot2::ggplot() +
+  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = is_ml)) 
+  # 
+  # out_cs %>% 
+  #   hydrofabric3D::plot_cs_pts(x = "relative_distance", y = 'Z')
+  # 
   tryCatch({
     message("Generate XY coordinates for AHG estimated points...")
     out_cs <- fill_missing_ahg_coords(out_cs)

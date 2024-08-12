@@ -2,7 +2,7 @@ library(testthat)
 library(dplyr)
 library(sf)
 # library(hydrofabric3D)
-
+devtools::load_all()
 # -------------------------------------------------------------------
 # ---- hydrofabric3D:::validate_cut_cross_section_inputs() ----
 # -------------------------------------------------------------------
@@ -51,7 +51,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                             NULL)
   
   # Test valid inputs
-  testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
+  testthat::expect_error(alidate_cut_cross_section_inputs(net = net, 
                                                            id = "anotherID",
                                                            cs_widths = 100,
                                                            num = 10, 
@@ -64,8 +64,8 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            version = 2, 
                                                            braid_method = "comid", 
                                                            precision = 1, 
-                                                           add = FALSE), 
-                         NULL)
+                                                           add = FALSE)
+                         )
   
   # Test valid inputs with terminal_id
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
@@ -154,7 +154,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                          )
   
   # Test invalid id type (id is NULL)
-  testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
+  testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
                                                            id = NULL,
                                                            cs_widths = 100,
                                                            num = 10, 
@@ -167,7 +167,8 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            version = 2, 
                                                            braid_method = "comid", 
                                                            precision = 1, 
-                                                           add = FALSE)
+                                                           add = FALSE),
+                         NULL
                          )
   
   # Test invalid id type (id is a numeric)

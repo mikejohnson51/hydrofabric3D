@@ -46,13 +46,21 @@ utils::globalVariables(
 )
 
 #' Generate a Perpendicular Linestring of a Given Width
-#' @param edge LINESRTING
+#' @param edge geos_geometry LINESTRING
 #' @param width Length of Perpendicular LINESTRING
 #' @return GEOS object
 #' @importFrom geos geos_interpolate_normalized geos_point_end geos_x geos_y geos_length
 #' @importFrom wk wk_transform wk_affine_compose wk_affine_translate wk_affine_scale wk_affine_rotate wk_set_crs wk_crs
 #' @export
 cut_transect = function(edge, width){
+  
+  if(!inherits(edge, "geos_geometry")) {
+    stop("'edge' must be of type 'geos_geometry'")
+  }
+  
+  if(geos::geos_is_empty(edge)) {
+    stop("'edge' is an empty geos_geometry")
+  }
   
   midpoint <- geos::geos_interpolate_normalized(edge, 0.5)
   ep       <- geos::geos_point_end(edge)
@@ -94,8 +102,31 @@ get_transects <- function(line, bf_width, n) {
   
   # if NOT a geos_geometry class, coerce
   if(!inherits(line, "geos_geometry")) {
-    # convert to geos geometry
-    line <- geos::as_geos_geometry(line)
+    
+    is_sf <- inherits(line, "sf")
+    
+    is_linestring <- (
+      is(line, "LINESTRING") || 
+      is(line, "MULTILINESTRING") || 
+      is(line, "sf_LINESTRING") || 
+      is(line, "sf_MULTILINESTRING") || 
+      is(line, "sfc_LINESTRING") ||
+      is(line, "sfc_MULTILINESTRING")
+    )
+    
+    if (is_sf || is_linestring) {
+      # convert to geos geometry
+      line <- geos::as_geos_geometry(line)  
+    
+    } else if (!is_linestring) {
+      stop("Invalid 'line' value, must be geos_geometry LINESTRING or MULTILINESTRING, sf LINESTRING / MULTILINESTRING, or LINESTRING / MULTILINESTRING")
+    } 
+    
+    
+  }
+  
+  if (!is.numeric(bf_width)) {
+    stop("Invalid 'bf_width', bf_width must be a numeric")
   }
   
   # vertices of line
@@ -211,7 +242,6 @@ get_transects <- function(line, bf_width, n) {
   #       )
   
 }
-
 #' Calculate sinuosity between cross sections on flowlines by
 #' 
 #' @param lines sf linestring geometry of flowlines with a unique "hy_id" column
@@ -294,6 +324,115 @@ get_cs_sinuosity <- function(
       cross_sections,
       dplyr::select(pts, -cs_measure), 
       by = c("hy_id", "cs_id")
+    )
+    
+    return(cross_sections)
+    
+  }
+  
+  return(pts)
+  
+}
+#' Calculate sinuosity between cross sections on flowlines by
+#' 
+#' @param lines sf linestring geometry of flowlines with a unique "hy_id" column
+#' @param cross_sections sf linestring dataframe with a "hy_id" unique identifier that maps to a linestring geometry in 'lines'. Must contain a "cs_id" column to uniquely identify cross sections in each hy_id and the order on the given hy_id.
+#'  Also must include a "cs_measure" column, which indicates the percent downstream the cross section linestring is along the linestring in 'lines'.
+#' @param crosswalk_id character, name of the unique identifier column in 'lines' and 'cross_sections' 
+#' @param add logical, whether to add the sinuosity values to the original cross section dataset (TRUE). Default is TRUE. If FALSE, a dataframe with hy_id, cs_id, cs_measure, and sinuosity columns is returned
+#'
+#' @noRd
+#' @keywords internal
+#' @return sf dataframe containing the cross_sections dataset with an added sinuosity column (add = TRUE), or a dataframe with with hy_id, cs_id, cs_measure, and sinuosity columns with values for each linestring in 'cross_sections' 
+#' @importFrom dplyr select group_by ungroup relocate mutate bind_rows lead filter left_join
+#' @importFrom sf st_geometry st_distance st_length st_centroid st_drop_geometry
+#' @importFrom nhdplusTools get_node
+get_cs_sinuosity2 <- function(
+    lines, 
+    cross_sections, 
+    crosswalk_id = "hydrofabric_id",
+    add = TRUE
+) {
+  
+  # lines          = net
+  # cross_sections = transects
+  # crosswalk_id   = "hydrofabric_id"
+  # add            = TRUE
+  
+  # convert cross section linestrings into points at the centroid of each cross section
+  pts <- 
+    cross_sections %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, geometry) %>% 
+    # dplyr::select(hy_id, cs_id, cs_measure, ds_distance, geometry) %>% 
+    sf::st_centroid()
+
+  # # plot(pts$geometry)
+  # plot(start$geometry, col = "green", add= T)
+  # plot(end$geometry, col = "red", add= T)
+  # plot(dplyr::slice(cs_lines, 3)$geometry, col = "red", add= T)
+  # plot(cs_lines$geometry, col = "red", add= T)
+  # plot(lines$geometry, add= T)
+  
+  # calculate line lengths
+  lines <- 
+    lines %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), geometry) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
+    # dplyr::select(hy_id, geometry) %>% 
+    # dplyr::group_by(hy_id) %>% 
+    dplyr::mutate(
+      ds_distance = as.numeric(sf::st_length(geometry)),
+      cs_id       = "end",
+      cs_measure  = 100
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::relocate(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, geometry)
+    # dplyr::relocate(hy_id, cs_id, cs_measure, ds_distance, geometry)
+
+  # replace linestring geometries with the point endpoint geometry for each hy_id linestring in 'lines'
+  # this is needed so that the final cross section point on the linestring has a final point that 
+  # it can use to calculate sinuosity between
+  sf::st_geometry(lines) <- sf::st_geometry(nhdplusTools::get_node(lines, "end"))
+  
+  # bind the cross section points together with the extra point geometries at the end of each linestring 
+  pts <- dplyr::bind_rows(
+    dplyr::mutate(pts, 
+                  cs_id = as.character(cs_id)), 
+    lines
+  ) 
+  
+  # calculate euclidean distance between each point and the next point on the linestring 
+  # and calculate the along channel distance and then calcualate sinuosity as along_channel / euclid_dist
+  pts <- 
+    pts %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>%
+    # dplyr::group_by(hy_id) %>%
+    dplyr::mutate(
+      euclid_dist   = as.numeric(sf::st_distance(geometry,        
+                                                 dplyr::lead(geometry),
+                                                 by_element = TRUE)),
+      along_channel = dplyr::lead(ds_distance) - ds_distance, 
+      sinuosity     = along_channel / euclid_dist
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, along_channel, 
+                  euclid_dist, sinuosity, geometry) %>% 
+    # dplyr::select(hy_id, cs_id, cs_measure, ds_distance, along_channel, 
+    #               euclid_dist, sinuosity, geometry) %>% 
+    dplyr::filter(cs_id != "end") %>% 
+    dplyr::mutate(cs_id = as.integer(cs_id)) %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, sinuosity)
+    # dplyr::select(hy_id, cs_id, cs_measure, sinuosity)
+  
+  
+  # if add is TRUE, then add the sinuosity column back to the original data
+  if (add) {
+    cross_sections <- dplyr::left_join(
+      cross_sections,
+      dplyr::select(pts, -cs_measure), 
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     )
     
     return(cross_sections)
@@ -543,6 +682,310 @@ cut_cross_sections <- function(
                       "sinuosity",
                       "geometry"
       ))
+    )
+  
+  return(transects)
+  
+}
+#' Generate Cross Sections Across Hydrographic Network
+#'
+#' @param net Hydrographic LINESTRING Network
+#' @param id Unique Identifier in net
+#' @param cs_widths numeric, Bankfull Widths (length of cross sections for each net element)
+#' @param num numeric, Number of transects per Net element
+#' @param smooth logical, whether to smooth linestring geometries or not. Default is TRUE.
+#' @param densify numeric, how many times more points should be added to linestrings. Default is 2.
+#' @param rm_self_intersect logical, whether to remove self intersecting transect linestrings
+#' @param fix_braids logical, whether to fix braided transect lines or not. If TRUE, linestrings that are part of a braided network are augmented. Default is FALSE.
+#' @param terminal_id character, column name containing a unique identifier, delineating separate networks in the 'net' dataset. Default is NULL which will best effort determine the connected components in the network to try and create a 'component_id' column in 'net' 
+#' @param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline 
+#' lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
+#' Default is NULL, which will attempt to fix all the braid transects in the data
+#' @param version integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
+#' @param braid_method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
+#' @param precision int, distance in meters. Only applicable when fix_braids = TRUE. This is the number of meters to approximate final cross section linestring length. Increasing this value will decrease runtime of cross section extension algorithm. Value you must be greater than 0. Default is 1
+#' @param add logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.
+#'
+#' @return sf object
+#' @importFrom dplyr group_by mutate ungroup n left_join all_of rename
+#' @importFrom sf st_crs st_transform st_intersects st_length st_drop_geometry st_as_sf
+#' @importFrom smoothr smooth densify
+#' @importFrom geos as_geos_geometry
+#' @importFrom wk wk_vertices wk_linestring
+#' @export
+cut_cross_sections2 <- function(
+    net, 
+    id                = NULL,
+    cs_widths         = 100, 
+    num               = 10,
+    smooth            = TRUE,
+    densify           = 2,
+    rm_self_intersect = TRUE,
+    fix_braids        = FALSE,
+    terminal_id       = NULL,
+    braid_threshold   = NULL,
+    version           = 2,
+    braid_method      = "comid",
+    precision         = 1,
+    add               = FALSE
+) {
+  
+  # net <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>% 
+  #   dplyr::select(-id)
+  # id = NULL
+  # cs_widths = 100
+  # num = 5
+  # densify=2
+  # smooth = TRUE
+  # rm_self_intersect = TRUE
+  # fix_braids        = FALSE
+  # terminal_id       = NULL
+  # braid_threshold   = NULL
+  # version           = 2
+  # braid_method      = "comid"
+  # precision         = 1
+  # add               = FALSE
+  
+
+  # net %>% 
+    # add_hydrofabric_id() %>%  
+    # dplyr::relocate(hydrofabric_id)
+  # flowline <- 
+    # flowlines[10, ] %>% 
+    # dplyr::select(geometry = geom)
+  
+  
+  
+  # validate all inputs are valid, throws an error if they are not
+  validate_cut_cross_section_inputs(net = net, 
+                                    id = id, 
+                                    cs_widths = cs_widths, 
+                                    num = num, 
+                                    smooth = smooth, 
+                                    densify = densify, 
+                                    rm_self_intersect = rm_self_intersect, 
+                                    fix_braids = fix_braids,
+                                    terminal_id = terminal_id,
+                                    braid_threshold = braid_threshold,
+                                    version = version, 
+                                    braid_method = braid_method, 
+                                    precision = precision,
+                                    add = add 
+  )
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(id)) {
+    net <- add_hydrofabric_id(net) 
+    id  <- 'hydrofabric_id'
+  }
+  
+  # standardize geometry name
+  net <- nhdplusTools::rename_geometry(net, "geometry")
+  
+  # keep track of the CRS of the input to retransform return 
+  start_crs <- sf::st_crs(net, parameters = T)$epsg
+  
+  # check if net CRS is 5070, if not, transform it to 5070
+  if(start_crs != 5070) {
+    # message("Transforming CRS to EPSG: 5070")
+    net <- sf::st_transform(net, 5070) 
+  }
+  
+  # Densify network flowlines, adds more points to each linestring
+  if(!is.null(densify)){ 
+    message("Densifying")
+    net <- smoothr::densify(net, densify) 
+  }
+  
+  # smooth out flowlines
+  if(smooth){ 
+    message("Smoothing")
+    # net = smoothr::smooth(net, "ksmooth")
+    net <- smoothr::smooth(net, "spline")
+  }
+  
+  # list to store transect outputs
+  transects <- list()
+  
+  # if there is a missing number of cross section widths given relative to the number of rows in net, fill in the missing values
+  if (length(cs_widths) != nrow(net)) {
+    cs_widths = rep(cs_widths[1], nrow(net))
+  }
+  
+  if (length(num) != nrow(net)) {
+    num = pmax(3, rep(num[1], nrow(net)))
+  }
+  
+  message("Cutting")
+  
+  # dplyr::relocate(
+  #   dplyr::any_of(c(crosswalk_id, cs_id)),
+  #   # dplyr::any_of(crosswalk_id),
+  #   # dplyr::any_of(cs_id),
+  #   cs_lengthm
+  # )
+  
+  # iterate through each linestring in "net" and generate transect lines along each line 
+  for (j in 1:nrow(net)) {
+    # j = 1
+    # logger::log_info("{j} / {nrow(net)}")
+    # cut transect lines at each 'edge' generated along our line of interest
+    trans <- get_transects(
+      line     = geos::as_geos_geometry(net$geometry[j]),
+      bf_width = cs_widths[j],
+      n        = num[j]
+    )
+    
+    # if 0 transects can be formed, skip the iteration
+    if(nrow(trans) == 0) {
+      # logger::log_info("---> SKIPPING ITERATION {j}")
+      next
+    }
+    
+    # assign hy_id from net
+    trans[[id]]     <- net[[id]][j]
+    trans$cs_widths <- cs_widths[j]
+    
+    # insert 'trans' sf dataframe into list
+    transects[[j]] <- trans
+    
+    # # cut transect lines at each 'edge' generated along our line of interest
+    # transects[[j]] <- get_transects(
+    #                       line     = geos::as_geos_geometry(net$geometry[j]),
+    #                       bf_width = cs_widths[j],
+    #                       n        = num[j]
+    #                     )
+  }
+  
+  # # get length of each dataframe to assign "hy_id" back with cross sections
+  # ids_length <- sapply(transects, nrow)
+  # # # ids_length <- lengths(transects)
+  
+  # crs_list <- lapply(transects, function(i) { is.na(sf::st_crs(i)$epsg) } )
+  
+  # bind list of sf dataframes of transects back together
+  transects <- dplyr::bind_rows(transects)
+  # transects <- sf::st_as_sf(Reduce(c, transects))]
+  
+  if(nrow(transects) == 0){
+    return(NULL)
+  }
+  
+  message("Formating")
+  
+  # # add id column if provided as an input
+  # if (!is.null(id)) {
+  #   transects$hy_id = rep(net[[id]], times = ids_length)
+  # } else {
+  #   transects$hy_id = rep(1:nrow(net), times = ids_length)
+  # }
+  # 
+  # # add back cross sections width column
+  # transects$cs_widths = rep(cs_widths, times = ids_length)
+  
+  # remove self intersecting transects or not
+  if(rm_self_intersect){
+    transects <- 
+      transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
+      # dplyr::group_by(hy_id) %>% 
+      dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+  } else {
+    transects <- 
+      transects %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
+      # dplyr::group_by(hy_id) %>% 
+      dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+  }
+  
+  # if original columns of data should be added to transects dataset
+  if(add) {
+    transects <-
+      dplyr::left_join(
+        transects,
+        sf::st_drop_geometry(net),
+        by = id
+        # by = c("hy_id" = id)
+        # by = c("hy_id" = "comid")
+      )
+  }
+  
+  # if fix_braids is set to TRUE, then fix the braided transect lines
+  if(fix_braids) {
+    
+    # message(paste0("Applying fixes to braided transects using:\n",
+    #          "- Braid detection version: ", version, "\n",
+    #          "- Braid grouping method: ", braid_method
+    #          ))
+    
+    transects <- fix_braid_transects(
+      net             = net,
+      transect_lines  = transects,
+      terminal_id     = terminal_id,
+      braid_threshold = braid_threshold,
+      version         = version,
+      method          = braid_method,
+      precision       = precision,
+      rm_intersects   = rm_self_intersect
+    )
+  }
+  
+  # remove any transect lines that intersect with any flowlines more than 1 time
+  transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
+   
+  # TODO: removed this forcing to "hy_id", part of migration of ALL code 
+  # TODO: to rely on an specified "id" and/or "crosswalk_id" 
+  # # rename "id" column to hy_id if "hy_id" is not already present
+  # if (!"hy_id" %in% names(net)) {
+  #   net <- dplyr::rename(net, hy_id = dplyr::all_of(id))
+  # }
+  
+  # get_cs_sinuosity2(
+  #   lines          = net, 
+  #   cross_sections = transects, 
+  #   crosswalk_id   = "hydrofabric_id",
+  #   add            = TRUE
+  # )
+  
+  # calculate sinuosity and add it as a column to the cross sections
+  transects <- get_cs_sinuosity2(
+    lines          = net, 
+    cross_sections = transects, 
+    crosswalk_id   = id,
+    add            = TRUE
+  )
+  
+  # transform CRS back to input CRS
+  if(start_crs != 5070) {
+    # message("Transforming CRS back to EPSG: ", start_crs)
+    transects <- sf::st_transform(transects, start_crs)
+  }
+  
+  # rename the cs_widths column to cs_lengthm
+  transects <- dplyr::rename(transects, "cs_lengthm" = cs_widths)
+  
+  # select all relevent columns and set output columns order
+  transects <-
+    transects %>%
+    dplyr::select(
+      dplyr::any_of(
+        c(
+          id,
+          # "hy_id",
+          "cs_id",
+          "cs_lengthm", 
+          # "cs_widths", 
+          "cs_measure",
+          "ds_distance",
+          "lengthm",
+          "sinuosity",
+          "geometry"
+          )
+        )
     )
   
   return(transects)

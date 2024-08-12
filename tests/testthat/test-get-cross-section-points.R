@@ -32,14 +32,14 @@ library(sf)
 # dem <- terra::rast(dem_url)
 # 
 # bb  <- sf::st_bbox(
-#           c(xmin = 966779.4, xmax = 968520.8, ymax = 1383172.0, ymin = 1381795.0), 
+#           c(xmin = 966779.4, xmax = 968520.8, ymax = 1383172.0, ymin = 1381795.0),
 #           crs = sf::st_crs(5070)
-#           ) %>% 
-#   sf::st_as_sfc() %>% 
-#   sf::st_transform(4269) 
+#           ) %>%
+#   sf::st_as_sfc() %>%
+#   sf::st_transform(4269)
 # 
 # dem_cropped <- terra::crop(dem, bb)
-# dem_cropped <- terra::aggregate(dem_cropped, 5) 
+# dem_cropped <- terra::aggregate(dem_cropped, 5)
 # dem_cropped
 # terra::writeRaster(dem_cropped, "tests/testthat/testdata/dem.tif", overwrite = T)
 # sf::write_sf(flowline, "tests/testthat/testdata/flowline.gpkg")

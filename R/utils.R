@@ -106,6 +106,20 @@ get_unique_tmp_ids <- function(df, x = hy_id, y = cs_id) {
   
 }
 
+#' Add a unique 'hydrofabric_id` to each row of a dataframe
+#' Internal conveniance function for when a dataframe / flowlines network does NOT have a specified ID column
+#' @param df sf dataframe, tibble, or dataframe
+#' @importFrom dplyr mutate n
+#' @return
+add_hydrofabric_id <- function(df) {
+  df <- 
+    df %>% 
+    dplyr::mutate(
+      hydrofabric_id = 1:dplyr::n()
+    )
+  return(df) 
+}
+
 #' @title Move Geometry Column to the last column position
 #' @description 
 #' Internal utility function for taking a dataframe or an sf dataframe, checks for the existence of a geometry type column, and 
@@ -918,10 +932,22 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'net' must be an sf object.")
   }
   
-  # Check if 'id' is NOT a character or if its NULL 
-  if (!is.character(id) || is.null(id)) {
+  # # Check if 'id' is NOT a character or if its NULL 
+  # if (!is.character(id) || is.null(id)) {
+  #   # if (is.null(id) || !is.character(id)) {
+  #   stop("'id' must be a character vector")
+  # }
+  # 
+  
+  # Check if 'id' is NOT a character AND its NOT NULL
+  if (!is.character(id) && !is.null(id)) {
     # if (is.null(id) || !is.character(id)) {
-    stop("'id' must be a character vector")
+    stop("'id' must be a character vector or NULL")
+  }
+  
+  # check if NOT NULL id is a column in 'net' 
+  if (!id %in% names(net) && !is.null(id)) {
+    stop("'id' column ", id, " is not a valid column in 'net'. 'id' must be a character vector or NULL")
   }
   
   # Check if 'cs_widths' is numeric or a numeric vector
