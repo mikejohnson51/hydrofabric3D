@@ -98,6 +98,96 @@ cross_section_pts = function(
   
 }
 
+#' Get Points across transects with elevation values
+#' @param cs character, Hydrographic LINESTRING Network file path
+#' @param points_per_cs the desired number of points per CS. If NULL, then approximately 1 per grid cell resultion of DEM is selected.
+#' @param min_pts_per_cs Minimum number of points per cross section required.
+#' @param dem the DEM to extract data from
+#' @return sf object cross section points along the 'cs' linestring geometries
+#' @importFrom dplyr mutate group_by ungroup n select everything relocate last_col bind_rows filter
+#' @importFrom terra linearUnits res rast extract project vect crs 
+#' @importFrom sf st_line_sample st_set_geometry st_cast
+#' @export
+cross_section_pts2 = function(
+    cs             = NULL,
+    id             = NULL, 
+    points_per_cs  = NULL,
+    min_pts_per_cs = 10,
+    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+){
+  
+  ### ### ## ## ### ## ### ##
+  
+  # cs             = transects2
+  # id             = NULL
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  # scale          = 5
+
+  ## ### ### ### ### #### ##
+  
+  # check if a cross section is given, and return NULL if missing
+  if (is.null(cs)) {
+    return(NULL)
+  }
+  
+  # check if a file path or not
+  if(is.character(cs)) {
+    # Read in file
+    cs <- sf::read_sf(cs)
+  }
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(id)) {
+    # TODO: this might mess things up, assigning a new hydrofabric_id to 
+    # TODO: the cross section input and then not giving that back to the user, 
+    # TODO: how would they map the output of this function back to their input transects ????
+    # cs  <- add_hydrofabric_id(cs) 
+    id  <- 'hydrofabric_id'
+  }
+  
+  # # make sure the 'id' column actually exists in the dataset 
+  # if (!id %in% names(cs)) {
+  #   stop("'id' ", id, " is not a column in input 'cs'")
+  # }
+  
+  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
+   
+  REQUIRED_COLS <- c(id, "cs_id", "cs_lengthm")
+  # REQUIRED_COLS <- c(id, 'cats', "cs_id", "cs_lengthm")
+  # names(cs) %in% REQUIRED_COLS
+  # !all(REQUIRED_COLS %in% names(cs))
+  
+  if (!all(REQUIRED_COLS %in% names(cs))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
+    
+    stop("'cs' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  
+  # add points per cross sections 
+  cs <- add_points_per_cs(
+    cs             = cs,
+    points_per_cs  = points_per_cs,
+    min_pts_per_cs = min_pts_per_cs,
+    dem            = dem
+  )
+  
+  
+  # Extract DEM "Z" values for each point along cross section linestrings
+  cs_pts <- extract_dem_values2(
+                          cs  = cs, 
+                          id  = id, 
+                          dem = dem
+                          )
+  
+  return(cs_pts)
+  
+}
+
 #' Add a points per cross section column to an sf dataframe of linestrings given a DEM and min points value
 #' 
 #' This function calculates and adds a column called 'points_per_cs' to an sf dataframe
@@ -173,6 +263,80 @@ extract_dem_values <- function(cs, dem) {
       ) %>% 
       dplyr::ungroup() %>% 
       dplyr::select(hy_id, cs_id, pt_id, Z, cs_lengthm, relative_distance, dplyr::everything())
+  })
+  
+  return(cs_pts)
+  
+}
+
+#' Given a set of linestrings, extract DEM values at points along the linestring
+#'
+#' @param cs cross section sf object
+#' @param id character, column name of unique flowline / transect ID
+#' @param dem SpatRaster DEM or character pointing to remote DEM resource
+#' @importFrom dplyr mutate group_by n ungroup select everything across any_of
+#' @importFrom sf st_set_geometry st_line_sample st_cast
+#' @importFrom terra extract project vect crs rast
+#' @return sf dataframe with Z values extracted from DEM
+extract_dem_values2 <- function(cs, id = NULL, dem = NULL) {
+  
+  extract_pt_val <- function(rast, pts) {
+    terra::extract(
+      rast,
+      terra::project(terra::vect(pts), terra::crs(rast))
+    )[, 2]
+  }
+  
+  # TODO: not sure if this is the best way to do this, we just want it so if 
+  # TODO: you dont specify an ID (or dont have an ID), then we autogenerate one
+  # default NULL id to the default 'hydrofabric_id' 
+  if(is.null(id)) {
+    # net <- add_hydrofabric_id(net) 
+    id  <- 'hydrofabric_id'
+  }
+  
+  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
+  REQUIRED_COLS <- c(id, "cs_id", "points_per_cs", "cs_lengthm")
+  
+  # if (!all(names(cs) %in% REQUIRED_COLS)) {
+  #   stop("'cs' is missing one or more of the required columns:\n > ", 
+  #        paste0(REQUIRED_COLS, collapse = "\n > "))
+  # }
+  # 
+  if (!all(REQUIRED_COLS %in% names(cs))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
+    
+    stop("'cs' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  suppressWarnings({
+    cs_pts <- 
+      sf::st_set_geometry(
+        cs, 
+        sf::st_line_sample(cs, cs$points_per_cs)
+        ) %>% 
+      sf::st_cast("POINT") %>%
+      dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .)) %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(c(id, "cs_id")))) %>% 
+      # dplyr::group_by(hy_id, cs_id) %>% 
+      dplyr::mutate(
+        pt_id             = 1:dplyr::n(),
+        relative_distance = seq(from = 0, to = cs_lengthm[1], length.out = dplyr::n())
+      ) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::select(
+        # hy_id, 
+        dplyr::any_of(id),
+        cs_id, 
+        pt_id, 
+        Z, 
+        cs_lengthm, 
+        relative_distance, 
+        dplyr::everything()
+        )
+    # dplyr::select(dplyr::any_of(cols_to_select))
   })
   
   return(cs_pts)

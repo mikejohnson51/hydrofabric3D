@@ -255,7 +255,7 @@ get_transects <- function(line, bf_width, n) {
 #' @importFrom dplyr select group_by ungroup relocate mutate bind_rows lead filter left_join
 #' @importFrom sf st_geometry st_distance st_length st_centroid st_drop_geometry
 #' @importFrom nhdplusTools get_node
-get_cs_sinuosity <- function(
+get_cs_sinuosity2 <- function(
     lines, 
     cross_sections, 
     add = TRUE
@@ -347,7 +347,7 @@ get_cs_sinuosity <- function(
 #' @importFrom dplyr select group_by ungroup relocate mutate bind_rows lead filter left_join
 #' @importFrom sf st_geometry st_distance st_length st_centroid st_drop_geometry
 #' @importFrom nhdplusTools get_node
-get_cs_sinuosity2 <- function(
+get_cs_sinuosity <- function(
     lines, 
     cross_sections, 
     crosswalk_id = "hydrofabric_id",
@@ -469,7 +469,7 @@ get_cs_sinuosity2 <- function(
 #' @importFrom geos as_geos_geometry
 #' @importFrom wk wk_vertices wk_linestring
 #' @export
-cut_cross_sections <- function(
+cut_cross_sections2 <- function(
     net, 
     id                = NULL,
     cs_widths         = 100, 
@@ -653,7 +653,7 @@ cut_cross_sections <- function(
   }
   
   # calculate sinuosity and add it as a column to the cross sections
-  transects <- get_cs_sinuosity(
+  transects <- get_cs_sinuosity2(
     lines          = net, 
     cross_sections = transects, 
     add            = TRUE
@@ -713,7 +713,7 @@ cut_cross_sections <- function(
 #' @importFrom geos as_geos_geometry
 #' @importFrom wk wk_vertices wk_linestring
 #' @export
-cut_cross_sections2 <- function(
+cut_cross_sections <- function(
     net, 
     id                = NULL,
     cs_widths         = 100, 
@@ -952,7 +952,7 @@ cut_cross_sections2 <- function(
   # )
   
   # calculate sinuosity and add it as a column to the cross sections
-  transects <- get_cs_sinuosity2(
+  transects <- get_cs_sinuosity(
     lines          = net, 
     cross_sections = transects, 
     crosswalk_id   = id,

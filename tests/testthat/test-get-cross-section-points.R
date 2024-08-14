@@ -5,7 +5,68 @@ library(dplyr)
 library(sf)
 # library(hydrofabric3D)
 
+devtools::load_all()
 
+# -------------------------------------------------------------------
+# ---- hydrofabric::cut_cross_sections() ----
+# -------------------------------------------------------------------
+check_cs_pts_output_cols <- function(transects, id = "hydrofabric_id") {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  expected_cols <- c(id, "cs_id","cs_lengthm", "cs_measure", "ds_distance", 
+                     "lengthm", "sinuosity", "geometry")
+  
+  return(
+    all(expected_cols %in% names(transects)) && length(expected_cols) == length(names(transects))
+  )
+}
+
+testthat::test_that("check CS points default columns, from basic single flowline transects data (using 'hy_id')", {
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  flowlines    <- dplyr::slice(flowlines, 1)
+  
+  MIN_BF_WIDTH       <- 50
+  ID_COL             <- "hy_id"
+  NUM_OF_TRANSECTS   <- 3
+  
+  flowlines <-
+    flowlines %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::rename(!!sym(ID_COL) := id) %>% 
+    dplyr::select(
+      dplyr::any_of(ID_COL), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geom
+    ) 
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = ID_COL,  
+    num = NUM_OF_TRANSECTS
+  )
+  
+  transects 
+  transects2 <- dplyr::select(
+                    transects,
+                    id = hy_id, 
+                    cs_id, 
+                    cs_lengthm,
+                    geometry
+                    )
+  
+  hydrofabric3D::cross_section_pts(
+    cs = transects2
+  ) 
+   
+  end_unique_ids_count <- length(unique(transects$hydrofabric_id))
+  
+  testthat::expect_true(end_unique_ids_count == start_unique_ids_count)
+  
+})
 # dem       <- terra::rast("tests/testthat/testdata/dem.tif")
 # flowline  <- sf::read_sf("tests/testthat/testdata/flowline.gpkg")
 # 
