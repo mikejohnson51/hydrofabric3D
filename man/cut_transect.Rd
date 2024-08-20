@@ -7,7 +7,7 @@
 cut_transect(edge, width)
 }
 \arguments{
-\item{edge}{LINESRTING}
+\item{edge}{geos_geometry LINESTRING}
 
 \item{width}{Length of Perpendicular LINESTRING}
 }

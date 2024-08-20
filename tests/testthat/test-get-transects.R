@@ -2,7 +2,7 @@ library(testthat)
 library(sf)
 library(geos)
 
-devtools::load_all()
+# devtools::load_all()
 
 testthat::test_that("get_transects creates multiple cross sections", {
   line <- sf::st_geometry(sf::st_linestring(matrix(c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ,10, 11, 12, 13, 14, 15, 16, 17), ncol = 2, byrow = TRUE)))

@@ -110,7 +110,7 @@ get_unique_tmp_ids <- function(df, x = hy_id, y = cs_id) {
 #' Internal conveniance function for when a dataframe / flowlines network does NOT have a specified ID column
 #' @param df sf dataframe, tibble, or dataframe
 #' @importFrom dplyr mutate n
-#' @return
+#' @return dataframe, sf dataframe, or tibble
 add_hydrofabric_id <- function(df) {
   df <- 
     df %>% 

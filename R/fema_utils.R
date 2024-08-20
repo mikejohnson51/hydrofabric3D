@@ -512,7 +512,6 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
   
   return(extensions_by_id)
 }
-
 #' Decide the start and end points for the final transect line given two extended versions of the same transect
 #' Requires two logicals indicating what to do with the extensions (these are decided by checking for intersections with the rest of the network)
 #' Internal helper function
@@ -569,8 +568,19 @@ pick_extension_pts <- function(
   
 }
 
-
-
+#' Get the starting and ending points of geos_linestring 
+#' Internal helper function
+#' @param extension geos_geometry linestring
+#' @param use_extension logical, do we use the extension
+#' @importFrom geos geos_point_start geos_point_end
+#' @return geos_geometry points, the start and end point of the final extension line
+#' @export
+get_line_node_pts <- function(
+    line
+) {
+  # Get the start and end of the geos_linestring (extended transect)
+  return( c(geos::geos_point_start(line),  geos::geos_point_end(line)) )
+}
 
 #' #Calculate the minimum distance a line would need to extend to reach the boundary of the polygon/line that the input geometries are entirely within 
 #' #'

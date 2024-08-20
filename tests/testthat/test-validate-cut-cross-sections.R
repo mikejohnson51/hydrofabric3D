@@ -2,7 +2,7 @@ library(testthat)
 library(dplyr)
 library(sf)
 # library(hydrofabric3D)
-devtools::load_all()
+# devtools::load_all()
 # -------------------------------------------------------------------
 # ---- hydrofabric3D:::validate_cut_cross_section_inputs() ----
 # -------------------------------------------------------------------

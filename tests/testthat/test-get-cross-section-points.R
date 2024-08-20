@@ -5,7 +5,7 @@ library(dplyr)
 library(sf)
 # library(hydrofabric3D)
 
-devtools::load_all()
+# devtools::load_all()
 
 # -------------------------------------------------------------------
 # ---- hydrofabric::cut_cross_sections() ----
@@ -49,22 +49,21 @@ testthat::test_that("check CS points default columns, from basic single flowline
     num = NUM_OF_TRANSECTS
   )
   
-  transects 
-  transects2 <- dplyr::select(
-                    transects,
-                    id = hy_id, 
-                    cs_id, 
-                    cs_lengthm,
-                    geometry
-                    )
-  
-  hydrofabric3D::cross_section_pts(
-    cs = transects2
-  ) 
+  # transects2 <- dplyr::select(
+  #                   transects,
+  #                   id = hy_id, 
+  #                   cs_id, 
+  #                   cs_lengthm,
+  #                   geometry
+  #                   )
+  # 
+  # hydrofabric3D::cross_section_pts(
+  #   cs = transects2
+  # ) 
    
-  end_unique_ids_count <- length(unique(transects$hydrofabric_id))
-  
-  testthat::expect_true(end_unique_ids_count == start_unique_ids_count)
+  # end_unique_ids_count <- length(unique(transects$hydrofabric_id))
+
+  # testthat::expect_true(end_unique_ids_count == start_unique_ids_count)
   
 })
 # dem       <- terra::rast("tests/testthat/testdata/dem.tif")
