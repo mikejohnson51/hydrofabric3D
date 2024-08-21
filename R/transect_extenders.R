@@ -91,10 +91,10 @@ extend_invalid_transects3 <- function(
   }
   
   # set geometry coluimn name as beginning 
-  transects_to_check <- nhdplusTools::rename_geometry(transects_to_check, "geom") 
+  transects_to_check <- nhdplusTools::rename_geometry(transects_to_check, "geometry") 
   
   # check for necessary columns
-  req_cols    <- c(crosswalk_id, "cs_id", "cs_lengthm", "valid_banks", "has_relief", "geom")
+  req_cols    <- c(crosswalk_id, "cs_id", "cs_lengthm", "valid_banks", "has_relief", "geometry")
   start_cols  <- names(transects_to_check)
   
   if (!all(req_cols %in% start_cols)) {
@@ -168,7 +168,7 @@ extend_invalid_transects3 <- function(
   # Set the is_extended flag based on if either the left OR the right side were extended
   extended_transects <- 
     extended_transects %>% 
-    nhdplusTools::rename_geometry("geom") %>%
+    nhdplusTools::rename_geometry("geometry") %>%
     dplyr::mutate(
       is_extended = dplyr::case_when(
         left_is_extended | right_is_extended ~ TRUE,

@@ -117,6 +117,9 @@ improve_invalid_cs3 = function(
   # add a "tmp_id" column to easily index transects by hy_id and cs_id 
   transects <- hydrofabric3D::add_tmp_id(transects)
   
+  # set geometry coluimn name as beginning 
+  transects <- nhdplusTools::rename_geometry(transects, "geometry") 
+  
   ### ### ## ## ### ## ### ##  ### ### ## ## ### ## ### ##
   
   if (verbose) { message("Determining points to reevaluate...") }
@@ -143,7 +146,7 @@ improve_invalid_cs3 = function(
       dplyr::mutate(
         is_extended = FALSE
       ) %>% 
-      dplyr::relocate(geom, .after = dplyr::last_col())
+      dplyr::relocate(geometry, .after = dplyr::last_col())
     
     return(cs_pts)
   }
@@ -243,8 +246,8 @@ improve_invalid_cs3 = function(
   # ---> We get this score for the old and the new set of extended cross sections and 
   # then take the points in the new data that showed improvement from the original cross section. 
   # The cross section points that did NOT show improvment remain untouched in the original data
-  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, "old_validity_score"))
-  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, "new_validity_score"))
+  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, "hy_id", "old_validity_score"))
+  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, "hy_id", "new_validity_score"))
   
   # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
   check_for_improvement <- dplyr::left_join(
@@ -322,7 +325,7 @@ improve_invalid_cs3 = function(
   # length(unique(hydrofabric3D::add_tmp_id(final_pts)$tmp_id)) == length(unique(hydrofabric3D::add_tmp_id(cs_pts)$tmp_id))
   
   # rename geometry column to "geom" 
-  final_pts <- nhdplusTools::rename_geometry(final_pts, "geom")
+  final_pts <- nhdplusTools::rename_geometry(final_pts, "geometry")
   
   # TODO: this should probably be removed and just kept as its own separete function and use outside of this function
   # If TRUE then the cs_ids are renumbered to make sure each hy_id has cross sections
@@ -538,8 +541,8 @@ improve_invalid_cs2 = function(
   # ---> We get this score for the old and the new set of extended cross sections and 
   # then take the points in the new data that showed improvement from the original cross section. 
   # The cross section points that did NOT show improvment remain untouched in the original data
-  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, "old_validity_score"))
-  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, "new_validity_score"))
+  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, "hy_id", "old_validity_score"))
+  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, "hy_id", "new_validity_score"))
   
   # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
   check_for_improvement <- dplyr::left_join(
@@ -813,8 +816,8 @@ improve_invalid_cs = function(
   # ---> We get this score for the old and the new set of extended cross sections and 
   # then take the points in the new data that showed improvement from the original cross section. 
   # The cross section points that did NOT show improvment remain untouched in the original data
-  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, "old_validity_score"))
-  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, "new_validity_score"))
+  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, "hy_id", "old_validity_score"))
+  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, "hy_id", "new_validity_score"))
   
   # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
   check_for_improvement <- dplyr::left_join(

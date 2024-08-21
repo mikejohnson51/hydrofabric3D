@@ -54,7 +54,7 @@ utils::globalVariables(
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 #' @export
-cross_section_pts = function(
+cross_section_pts2 = function(
     cs             = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -100,6 +100,7 @@ cross_section_pts = function(
 
 #' Get Points across transects with elevation values
 #' @param cs character, Hydrographic LINESTRING Network file path
+#' @param crosswalk_id character, ID column
 #' @param points_per_cs the desired number of points per CS. If NULL, then approximately 1 per grid cell resultion of DEM is selected.
 #' @param min_pts_per_cs Minimum number of points per cross section required.
 #' @param dem the DEM to extract data from
@@ -108,9 +109,9 @@ cross_section_pts = function(
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 #' @export
-cross_section_pts2 = function(
+cross_section_pts = function(
     cs             = NULL,
-    id             = NULL, 
+    crosswalk_id   = NULL, 
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
     dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
@@ -139,12 +140,12 @@ cross_section_pts2 = function(
   }
   
   # make a unique ID if one is not given (NULL 'id')
-  if(is.null(id)) {
+  if(is.null(crosswalk_id)) {
     # TODO: this might mess things up, assigning a new hydrofabric_id to 
     # TODO: the cross section input and then not giving that back to the user, 
     # TODO: how would they map the output of this function back to their input transects ????
     # cs  <- add_hydrofabric_id(cs) 
-    id  <- 'hydrofabric_id'
+    crosswalk_id  <- 'hydrofabric_id'
   }
   
   # # make sure the 'id' column actually exists in the dataset 
@@ -154,7 +155,7 @@ cross_section_pts2 = function(
   
   # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
    
-  REQUIRED_COLS <- c(id, "cs_id", "cs_lengthm")
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_lengthm")
   # REQUIRED_COLS <- c(id, 'cats', "cs_id", "cs_lengthm")
   # names(cs) %in% REQUIRED_COLS
   # !all(REQUIRED_COLS %in% names(cs))
@@ -178,10 +179,10 @@ cross_section_pts2 = function(
   
   
   # Extract DEM "Z" values for each point along cross section linestrings
-  cs_pts <- extract_dem_values2(
-                          cs  = cs, 
-                          id  = id, 
-                          dem = dem
+  cs_pts <- extract_dem_values(
+                          cs           = cs, 
+                          crosswalk_id = crosswalk_id, 
+                          dem          = dem
                           )
   
   return(cs_pts)
@@ -242,7 +243,7 @@ add_points_per_cs <- function(cs,
 #' @importFrom sf st_set_geometry st_line_sample st_cast
 #' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
-extract_dem_values <- function(cs, dem) {
+extract_dem_values2 <- function(cs, dem) {
   
   extract_pt_val <- function(rast, pts) {
     terra::extract(
@@ -272,13 +273,13 @@ extract_dem_values <- function(cs, dem) {
 #' Given a set of linestrings, extract DEM values at points along the linestring
 #'
 #' @param cs cross section sf object
-#' @param id character, column name of unique flowline / transect ID
+#' @param crosswalk_id character, column name of unique flowline / transect ID
 #' @param dem SpatRaster DEM or character pointing to remote DEM resource
 #' @importFrom dplyr mutate group_by n ungroup select everything across any_of
 #' @importFrom sf st_set_geometry st_line_sample st_cast
 #' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
-extract_dem_values2 <- function(cs, id = NULL, dem = NULL) {
+extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
   
   extract_pt_val <- function(rast, pts) {
     terra::extract(
@@ -290,13 +291,13 @@ extract_dem_values2 <- function(cs, id = NULL, dem = NULL) {
   # TODO: not sure if this is the best way to do this, we just want it so if 
   # TODO: you dont specify an ID (or dont have an ID), then we autogenerate one
   # default NULL id to the default 'hydrofabric_id' 
-  if(is.null(id)) {
+  if(is.null(crosswalk_id)) {
     # net <- add_hydrofabric_id(net) 
-    id  <- 'hydrofabric_id'
+    crosswalk_id  <- 'hydrofabric_id'
   }
   
   # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
-  REQUIRED_COLS <- c(id, "cs_id", "points_per_cs", "cs_lengthm")
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "points_per_cs", "cs_lengthm")
   
   # if (!all(names(cs) %in% REQUIRED_COLS)) {
   #   stop("'cs' is missing one or more of the required columns:\n > ", 
@@ -319,7 +320,7 @@ extract_dem_values2 <- function(cs, id = NULL, dem = NULL) {
         ) %>% 
       sf::st_cast("POINT") %>%
       dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .)) %>% 
-      dplyr::group_by(dplyr::across(dplyr::any_of(c(id, "cs_id")))) %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
       # dplyr::group_by(hy_id, cs_id) %>% 
       dplyr::mutate(
         pt_id             = 1:dplyr::n(),
@@ -327,8 +328,7 @@ extract_dem_values2 <- function(cs, id = NULL, dem = NULL) {
       ) %>% 
       dplyr::ungroup() %>% 
       dplyr::select(
-        # hy_id, 
-        dplyr::any_of(id),
+        dplyr::any_of(crosswalk_id),
         cs_id, 
         pt_id, 
         Z, 
@@ -343,7 +343,6 @@ extract_dem_values2 <- function(cs, id = NULL, dem = NULL) {
   
 }
 
-
 #' Classify Cross Section Points 
 #' @param cs_pts CS points, output of hydrofabric3D::cross_section_pts()
 #' @param pct_of_length_for_relief numeric, percent of cross section length (cs_lengthm) to use as the 
@@ -354,7 +353,7 @@ extract_dem_values2 <- function(cs, id = NULL, dem = NULL) {
 #' @importFrom dplyr filter group_by mutate ungroup select between n left_join
 #' @importFrom zoo rollmean
 #' @export
-classify_points <- function(
+classify_points2 <- function(
     cs_pts, 
     pct_of_length_for_relief = 0.01
 ){
@@ -376,7 +375,7 @@ classify_points <- function(
   # # remove any columns that already exist
   cs_pts <- dplyr::select(cs_pts, 
                           !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", "right_bank", "valid_banks", "has_relief"))
-                          )
+  )
   
   # required cols that will be selected from the classified_pts object and in this order
   req_cols       <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", 
@@ -457,6 +456,160 @@ classify_points <- function(
     dplyr::left_join(
       validity_checks,
       by = c("hy_id", "cs_id")
+    ) 
+  
+  # move the geometry column to the last column (if one exists)
+  classified_pts <- move_geometry_to_last(classified_pts)
+  
+  return(classified_pts)
+  
+}
+
+#' Classify Cross Section Points 
+#' @param cs_pts CS points, output of hydrofabric3D::cross_section_pts()
+#' @param crosswalk_id character, ID column in cs_pts
+#' @param pct_of_length_for_relief numeric, percent of cross section length (cs_lengthm) to use as the 
+#' threshold depth for classifying whether a cross section has "relief". If a cross section has at least X% of its length in depth, 
+#' then it is classified as "having relief" (i.e. has_relief = TRUE). Value must be non negative number (greater than or equal to 0). 
+#' Default is 0.01 (1% of the cross sections length).
+#' @return sf object
+#' @importFrom dplyr filter group_by mutate ungroup select between n left_join
+#' @importFrom zoo rollmean
+#' @export
+classify_points <- function(
+    cs_pts, 
+    crosswalk_id = NULL,
+    pct_of_length_for_relief = 0.01
+    ){
+  
+  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
+    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
+
+  # cs_pts2 <- cs_pts
+  # crosswalk_id = "hy_id"
+  # pct_of_length_for_relief = 0.01
+   
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # cs  <- add_hydrofabric_id(cs) 
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
+  # REQUIRED_COLS <- c(id, "cs_id")
+  
+  if (!all(REQUIRED_COLS %in% names(cs_pts))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs_pts))]
+    
+    stop("'cs_pts' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  # type checking
+  if (!is.numeric(pct_of_length_for_relief)) {
+    stop("Invalid argument type, 'pct_of_length_for_relief' must be of type 'numeric', given type was '",   
+         class(pct_of_length_for_relief), "'")
+  }
+  
+  # Make sure pct_of_length_for_relief is valid percentage value (greater than 0)
+  if (pct_of_length_for_relief < 0 ) {
+    stop("Invalid value 'pct_of_length_for_relief' of ", pct_of_length_for_relief, ", 'pct_of_length_for_relief' must be greater than or equal to 0")
+  } 
+  
+  # # remove any columns that already exist
+  cs_pts <- dplyr::select(cs_pts, 
+                          !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", "right_bank", "valid_banks", "has_relief"))
+                          )
+  
+  # required cols that will be selected from the classified_pts object and in this order
+  req_cols       <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", 
+                      "cs_lengthm", "class", "point_type")
+  
+  # any starting columns in the original data 
+  starting_cols  <- names(cs_pts)
+  
+  # name and order of columns to select with
+  cols_to_select <- c(req_cols, starting_cols[!starting_cols %in% req_cols])
+  
+  # create classifications for points
+  classified_pts <-
+    dplyr::filter(cs_pts) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>%
+    dplyr::mutate(
+      third          = ceiling(dplyr::n() / 3),
+      mean_dist      = mean(diff(relative_distance)),
+      in_channel_pts = ceiling(cs_lengthm[1] / mean_dist),
+      b1             = ceiling(in_channel_pts / 2),
+      b2             = in_channel_pts - b1,
+      low_pt         = min(Z[third[1]:(2*third[1] - 1)]),
+      class          = ifelse(Z <= low_pt & dplyr::between(pt_id, third[1], (2*third[1] - 1)), 
+                         "bottom", 
+                         "bank"
+                         ),
+      Z2             = c(Z[1], zoo::rollmean(Z, 3), Z[dplyr::n()]),
+      Z              = ifelse(class == "bottom", Z, Z2),
+      min_bottom     = which(class == "bottom")[1],
+      mid_bottom     = which(class == "bottom")[ceiling(length(which(class == "bottom"))/2)],
+      max_bottom     = which(class == "bottom")[length(which(class == "bottom"))],
+      L1             = pmax(1, mid_bottom - b1),
+      L2             = pmax(1, mid_bottom - b2),
+      R1             = pmin(mid_bottom + b2, n()),
+      R2             = pmin(mid_bottom + b1, n()),
+      anchor         = ifelse(Z[R2] < Z[L1], 2, 1),
+      L              = pmax(third, ifelse(anchor == 1, L1, L2)),
+      R              = pmin(2*third[1], ifelse(anchor == 1, R1, R2)),
+      count_left     = min_bottom - L,
+      count_right    = R - max_bottom,
+      L              = ifelse(count_left == 0, L - count_right, L),
+      R              = ifelse(count_right == 0, R + count_left, R),
+      class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+      class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+      class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)
+      ) %>%
+    dplyr::ungroup() %>% 
+    dplyr::mutate(point_type = class) %>% 
+    dplyr::select(dplyr::any_of(cols_to_select))
+    # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
+  
+    # classified_pts[cols_to_select]                       # Another method for selecting columns....
+  
+  # get bank validity attributes for each hy_id/cs_id
+  # - Uses the count of point types per cross section and checks Z to make sure that a "bottom" point is
+  #   in each cross section and each "bottom" point has a valid left and right bank)
+  bank_validity_df <- get_bank_attributes(classified_pts, crosswalk_id)
+ 
+   # classified_pts %>%
+    # dplyr::filter(hy_id %in% c('wb-1003260')) %>%
+    # hydrofabric3D::plot_cs_pts(color = "point_type")
+  
+  # # Or add bank attributes 
+  # banked_pts <- add_bank_attributes(output_pts)
+  
+  # get relief data, determine if a cross section has relief within X% percentage of the cross sections length
+  relief_df <- get_relief(
+    classified_pts, 
+    crosswalk_id             = crosswalk_id,
+    pct_of_length_for_relief = pct_of_length_for_relief, 
+    detailed                 = FALSE
+  )
+  
+  # join the bank validity attributes with the relief values
+  validity_checks <- dplyr::left_join(
+    bank_validity_df, 
+    relief_df, 
+    by = c(crosswalk_id, "cs_id")  
+    # by = c("hy_id", "cs_id")
+  )
+  
+  # join the new validity check values to the classified points
+  classified_pts <- 
+    classified_pts %>% 
+    dplyr::left_join(
+      validity_checks,
+      by = c(crosswalk_id, "cs_id")  
+      # by = c("hy_id", "cs_id")
     ) 
   
   # move the geometry column to the last column (if one exists)
@@ -601,7 +754,7 @@ classify_points <- function(
 #' @return sf object
 #' @importFrom dplyr filter group_by mutate ungroup select between n
 #' @importFrom zoo rollmean
-classify_points2 <- function(cs_pts){
+classify_points3 <- function(cs_pts){
   
   . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
     count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL

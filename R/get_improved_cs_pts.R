@@ -75,6 +75,7 @@ utils::globalVariables(
 #' @param cs_pts sf dataframe or dataframe of cross section points from cross_section_pts() followed by classify_points()
 #' @param net Hydrographic LINESTRING Network
 #' @param transects character, Hydrographic LINESTRING of transects along hydrographic (net) network
+#' @param crosswalk_id character, ID column that uniquely identifies and crosswalks features between 'net', 'transects' and 'cs_pts'
 #' @param points_per_cs  the desired number of points per CS. If NULL, then approximently 1 per grid cell resultion of DEM is selected.
 #' @param min_pts_per_cs Minimun number of points per cross section required.
 #' @param dem the DEM to extract data from
@@ -97,13 +98,13 @@ get_improved_cs_pts = function(
     cs_pts         = NULL,   
     net            = NULL,
     transects      = NULL,
+    crosswalk_id   = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
     dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
     scale          = 0.5,
     pct_of_length_for_relief = 0.01,
     fix_ids        = FALSE,
-    crosswalk_id   = NULL,
     verbose        = TRUE
 ) {
   # ----------------------------------------
@@ -158,6 +159,12 @@ get_improved_cs_pts = function(
   # add a "tmp_id" column to easily index transects by hy_id and cs_id 
   transects <- hydrofabric3D::add_tmp_id(transects, x = get(crosswalk_id))
   
+  # rename geometry column to "geom" 
+  cs_pts    <- nhdplusTools::rename_geometry(cs_pts, "geometry")
+  net       <- nhdplusTools::rename_geometry(net, "geometry")
+  transects <- nhdplusTools::rename_geometry(transects, "geometry")
+  # transects <- nhdplusTools::rename_geometry(transects, "geom")
+  
   ### ### ## ## ### ## ### ##  ### ### ## ## ### ## ### ##
   
   if (verbose) { message("Determining points to reevaluate...") }
@@ -192,7 +199,7 @@ get_improved_cs_pts = function(
       dplyr::mutate(
         is_extended = FALSE
       ) %>% 
-      dplyr::relocate(geom, .after = dplyr::last_col())
+      dplyr::relocate(geometry, .after = dplyr::last_col())
     
     return(cs_pts)
   }
@@ -243,7 +250,11 @@ get_improved_cs_pts = function(
   if (verbose) { message("Extracting new DEM values..")}
   
   # extract DEM values for newly extended cross sections
-  extended_pts <- extract_dem_values(cs = extended_transects, dem = dem)
+  extended_pts <- extract_dem_values(
+                      cs           = extended_transects, 
+                      crosswalk_id = crosswalk_id, 
+                      dem          = dem
+                    )
   
   # Drop the old valid_banks and has_relief columns
   extended_pts <- dplyr::select(extended_pts, -valid_banks, -has_relief)
@@ -254,10 +265,11 @@ get_improved_cs_pts = function(
   if (verbose) { message("Double checking new extended cross section DEM values for flatness") }
   
   # reclassify the cross sections to look for any improvments in the points bank/relief validity
-  reclassified_pts <- hydrofabric3D::classify_points(
-    extended_pts, 
-    pct_of_length_for_relief = pct_of_length_for_relief
-  )
+  reclassified_pts <- classify_points(
+                        extended_pts, 
+                        crosswalk_id             = crosswalk_id,
+                        pct_of_length_for_relief = pct_of_length_for_relief
+                      )
   
   # add tmp id for convenience
   reclassified_pts <- hydrofabric3D::add_tmp_id(reclassified_pts, x = get(crosswalk_id))
@@ -269,16 +281,21 @@ get_improved_cs_pts = function(
   # ---> We get this score for the old and the new set of extended cross sections and 
   # then take the points in the new data that showed improvement from the original cross section. 
   # The cross section points that did NOT show improvment remain untouched in the original data
-  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, "old_validity_score"), x = get(crosswalk_id))
-  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, "new_validity_score"), x = get(crosswalk_id))
+  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, crosswalk_id, "old_validity_score"), x = get(crosswalk_id))
+  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, crosswalk_id, "new_validity_score"), x = get(crosswalk_id))
   
   # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
   check_for_improvement <- dplyr::left_join(
-    dplyr::select(dplyr::filter(old_validity_scores, 
-                                tmp_id %in% unique(new_validity_scores$tmp_id)),  
-    dplyr::any_of(crosswalk_id), cs_id, old_validity_score), 
-    dplyr::select(new_validity_scores, dplyr::any_of(crosswalk_id), cs_id, new_validity_score),
-    by = c("hy_id", "cs_id")
+    dplyr::select(
+        dplyr::filter(old_validity_scores, tmp_id %in% unique(new_validity_scores$tmp_id)),  
+      dplyr::any_of(crosswalk_id), cs_id, old_validity_score
+    ), 
+    dplyr::select(
+        new_validity_scores, 
+      dplyr::any_of(crosswalk_id), cs_id, new_validity_score
+    ),
+    by = c(crosswalk_id, "cs_id")
+    # by = c("hy_id", "cs_id")
   ) %>% 
     dplyr::mutate(
       improved = dplyr::case_when(
@@ -310,8 +327,12 @@ get_improved_cs_pts = function(
   # pts_to_move_to_good_set <- dplyr::filter(extended_pts2, tmp_id %in% ids_to_add_to_good_set)
   
   # Reclassify the pts_to_keep so they can be added back to the remaining "good" cross section points from the input
-  pts_to_keep             <- hydrofabric3D::classify_points(pts_to_keep,
-                                                            pct_of_length_for_relief = pct_of_length_for_relief)
+  pts_to_keep             <- classify_points(
+                                          pts_to_keep,
+                                          crosswalk_id = crosswalk_id,
+                                          pct_of_length_for_relief = pct_of_length_for_relief
+                                          )
+  # pts_to_keep             <- hydrofabric3D::classify_points(pts_to_keep, pct_of_length_for_relief = pct_of_length_for_relief)
   
   # pts_to_keep %>% 
   #   dplyr::filter(is_extended)
@@ -346,7 +367,7 @@ get_improved_cs_pts = function(
   # length(unique(hydrofabric3D::add_tmp_id(final_pts)$tmp_id)) == length(unique(hydrofabric3D::add_tmp_id(cs_pts)$tmp_id))
   
   # rename geometry column to "geom" 
-  final_pts <- nhdplusTools::rename_geometry(final_pts, "geom")
+  final_pts <- nhdplusTools::rename_geometry(final_pts, "geometry")
   
   # TODO: this should probably be removed and just kept as its own separete function and use outside of this function
   # If TRUE then the cs_ids are renumbered to make sure each hy_id has cross sections

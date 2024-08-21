@@ -294,7 +294,6 @@ get_point_type_counts <- function(classified_pts) {
   return(point_type_counts)
   
 }
-
 #' @title Add the count of each point type as a column to a dataframe of section points
 #' @description add_point_type_counts() will add columns to the input dataframe with the counts of every point_type for each hy_id/cs_id in the input dataframe of classified cross section points (output of classify_pts())
 #' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well as a 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
@@ -303,7 +302,7 @@ get_point_type_counts <- function(classified_pts) {
 #' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
 #' @importFrom tidyr pivot_wider pivot_longer
 #' @export
-add_point_type_counts <- function(classified_pts) {
+add_point_type_counts2 <- function(classified_pts) {
   
   # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
   # add = F
@@ -407,6 +406,139 @@ add_point_type_counts <- function(classified_pts) {
     dplyr::left_join(
       point_type_counts,
       by = c("hy_id", "cs_id")
+    )
+  
+  # check if any of the columns in 'classified_pts' are geometry types  and move them to the end column if they do exist
+  classified_pts <- move_geometry_to_last(classified_pts)
+  
+  return(classified_pts)
+}
+
+#' @title Add the count of each point type as a column to a dataframe of section points
+#' @description add_point_type_counts() will add columns to the input dataframe with the counts of every point_type for each hy_id/cs_id in the input dataframe of classified cross section points (output of classify_pts())
+#' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well as a 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
+#' @param crosswalk_id character, ID column 
+#' @return dataframe or sf dataframe with "<point_type>_count" columns added
+#' @importFrom sf st_drop_geometry
+#' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
+#' @importFrom tidyr pivot_wider pivot_longer
+#' @export
+add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
+  
+  # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
+  # add = F
+  # classified_pts = classified_pts2
+  # add = TRUE  
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  # type checking
+  if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
+    stop("Invalid argument type, 'classified_pts' must be of type 'sf', 'tbl_df', 'tbl' or 'data.frame', given type was '",  
+         class(classified_pts), "'")
+  }
+  
+  # create a copy of the input dataset, add a tmp_id column
+  stage_df <- 
+    classified_pts %>% 
+    sf::st_drop_geometry() %>% 
+    hydrofabric3D::add_tmp_id(x = get(crosswalk_id)) 
+  
+  # # create a reference dataframe with all possible combinations of tmp_id and point_type
+  # reference_df <- expand.grid(
+  #   tmp_id     = unique(stage_df$tmp_id),
+  #   point_type = unique(stage_df$point_type)
+  # )
+  
+  # get a count of the point_types in each hy_id/cs_id group (i.e. each cross section)
+  point_type_counts <- 
+    stage_df %>%
+    dplyr::group_by(tmp_id, point_type) %>%
+    dplyr::count() %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      # add levels to the point_type column so if a given point_type
+      # is NOT in the cross seciton points, then it will be added with NAs in the subsequent pivot_wider
+      point_type = factor(point_type, levels = c("left_bank", "bottom", "right_bank", "channel"))
+    ) 
+  
+  # pivot data wider to get implicit missing groups with NA values
+  point_type_counts <- 
+    point_type_counts %>% 
+    tidyr::pivot_wider(
+      names_from   = point_type,
+      values_from  = n,
+      names_expand = TRUE
+    ) 
+  
+  point_type_counts <- 
+    point_type_counts %>% 
+    tidyr::pivot_longer(
+      cols      = c(bottom, channel, right_bank, left_bank),
+      names_to  = "point_type",
+      values_to = "n"
+    ) %>% 
+    dplyr::mutate(n = ifelse(is.na(n), 0, n))
+  
+  # # Join the count of point types in each group with the reference_df to 
+  # # get rows of NA values for any group that is missing a specific point_type
+  # point_type_counts <- 
+  #   point_type_counts %>% 
+  #   dplyr::right_join(reference_df, by = c("tmp_id", "point_type"))
+  
+  # # For any cross section group that does NOT contain a point type, 
+  # # the point type will be NA and here we replace those NAs with 0 
+  # point_type_counts$n[is.na(point_type_counts$n)] <- 0
+  
+  # # make sure that all tmp_id groups have all 4 point types
+  check_counts <-
+    point_type_counts %>%
+    dplyr::group_by(tmp_id) %>%
+    dplyr::summarize(unique_count = dplyr::n_distinct(point_type)) %>%
+    dplyr::filter(unique_count == 4) 
+  
+  # if the number of distinct points types in each cross section is not 4, raise an error
+  if (length(unique(stage_df$tmp_id)) != nrow(check_counts)) {
+    stop("Error validating each hy_id/cs_id cross section contains exactly 4 distinct values in the 'point_type' column")  
+  }
+  
+  # get the hy_id, cs_id for each tmp_id to cross walk back to just using hy_id/cs_id
+  stage_df <- 
+    stage_df %>% 
+    dplyr::select(tmp_id, dplyr::any_of(crosswalk_id), cs_id) %>% 
+    dplyr::group_by(tmp_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup()
+  
+  # convert the column of point types to be a column for each point type that 
+  # has the point type count for each hy_id/cs_id (cross section)
+  point_type_counts <- 
+    point_type_counts %>% 
+    tidyr::pivot_wider(
+      names_from  = point_type,  
+      names_glue  = "{point_type}_count", 
+      values_from = n
+      ) %>% 
+    dplyr::left_join(
+      stage_df,
+      by = "tmp_id"
+    ) %>% 
+    dplyr::select(
+      dplyr::any_of(crosswalk_id),
+      cs_id, 
+      left_bank_count, right_bank_count, channel_count, bottom_count
+      )
+  
+  # Join the point type counts to the original dataframe
+  classified_pts <- 
+    classified_pts %>% 
+    dplyr::left_join(
+      point_type_counts,
+      by = c(crosswalk_id, "cs_id")  
+      # by = c("hy_id", "cs_id")
     )
   
   # check if any of the columns in 'classified_pts' are geometry types  and move them to the end column if they do exist
@@ -556,7 +688,7 @@ add_bank_attributes <- function(
 #' @return dataframe with each row being a unique hy_id/cs_id with "bottom", "left_bank", "right_bank", and "valid_banks" values for each hy_id/cs_id.
 #' @importFrom dplyr mutate case_when filter select group_by summarise ungroup left_join
 #' @importFrom tidyr pivot_wider
-get_bank_attributes <- function(
+get_bank_attributes2 <- function(
     classified_pts
 ) {
   
@@ -649,6 +781,123 @@ get_bank_attributes <- function(
     dplyr::select(hy_id, cs_id, 
                   bottom, left_bank, right_bank, 
                   valid_banks)
+  
+  return(bank_validity)
+  
+}
+
+#' @title Get attributes about the banks of each cross section in a dataframe of cross section points 
+#' Given a set of cross section points with point_type column, return a dataframe of the unique hy_id/cs_ids with the following calculated columns:
+#' "bottom", "left_bank", "right_bank" columns which are the Z values of the "lowest" bottom point, and the "highest" left and right bank Z values, respectively. 
+#' And a "valid_banks" column indicating whether the hy_id/cs_id set of cross section point has at least a signle bottom point with 
+#' at least 1 left bank point AND 1 right bank point that are above the lowest "bottom" point.
+#' @param classified_pts sf or dataframe of points with "hy_id", "cs_id", and "point_type" columns. Output of hydrofabric3D::classify_pts()
+#' @param crosswalk_id character, ID column  
+#' @return dataframe with each row being a unique hy_id/cs_id with "bottom", "left_bank", "right_bank", and "valid_banks" values for each hy_id/cs_id.
+#' @importFrom dplyr mutate case_when filter select group_by summarise ungroup left_join
+#' @importFrom tidyr pivot_wider
+get_bank_attributes <- function(
+    classified_pts,
+    crosswalk_id = NULL
+) {
+  
+  # classified_pts <- output_pts
+  # crosswalk_id = "hy_id"
+  # classified_pts
+  # classified_pts <- classified_pts2 
+  
+  # type checking, throw an error if not "sf", "tbl_df", "tbl", or "data.frame"
+  if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
+    stop("Invalid argument type, 'classified_pts' must be of type 'sf', 'tbl_df', 'tbl' or 'data.frame', given type was '",
+         class(classified_pts), "'")
+  }
+  
+  # Add columns with the counts of point types
+  classified_pts <- add_point_type_counts(classified_pts, crosswalk_id)
+  # classified_pts <- hydrofabric3D::add_point_type_counts2(classified_pts, crosswalk_id)
+  
+  # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
+  # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
+  classified_pts <- sf::st_drop_geometry(classified_pts)
+  
+  # Add a valid_count column which is TRUE 
+  # if a hy_id/cs_id has a bottom point AND atleast 1 left and right bank
+  classified_pts <- 
+    classified_pts %>% 
+    # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
+    dplyr::mutate(
+      valid_count = dplyr::case_when(
+        (bottom_count > 0 & 
+           left_bank_count > 0 & 
+           right_bank_count > 0)  ~ TRUE,
+        TRUE                      ~ FALSE
+      )
+    )
+  
+  # Add minimum bottom Z, max left and right bank Z, and 
+  # flags noting if the left/right banks are "valid" (i.e. max left/right bank values are greater than the bottom Z)
+  bank_validity <-
+    classified_pts %>% 
+    # classified_pts2 %>% 
+    # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
+    dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
+    # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id", "point_type")))) %>% 
+    # dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
+    # dplyr::group_by(hy_id, cs_id, point_type) %>% 
+    dplyr::summarise(
+      minZ = min(Z, na.rm = TRUE),
+      maxZ = max(Z, na.rm = TRUE)
+    ) %>% 
+    dplyr::ungroup() %>%
+    tidyr::pivot_wider(
+      names_from  = point_type,
+      values_from = c(minZ, maxZ)
+    ) %>% 
+    dplyr::select(
+        dplyr::any_of(crosswalk_id), 
+        cs_id, 
+        bottom     = minZ_bottom, 
+        left_bank  = maxZ_left_bank, 
+        right_bank = maxZ_right_bank
+        ) 
+  
+  bank_validity <-
+    bank_validity %>% 
+    dplyr::mutate(
+      # bottom     = ifelse(is.na(bottom), 0, bottom),          # Old way was to set the NA left/bank/bottom Z values to 0 but i think this could lead to problems with small number of edge cases
+      # right_bank = ifelse(is.na(right_bank), 0, right_bank),
+      # left_bank  = ifelse(is.na(left_bank), 0, left_bank),
+      valid_left_bank = dplyr::case_when(
+        (left_bank > bottom) & (!is.na(left_bank))   ~ TRUE,    # Old method used: left_bank > bottom ~ TRUE,
+        TRUE               ~ FALSE
+      ),
+      valid_right_bank = dplyr::case_when(
+        (right_bank > bottom) & (!is.na(right_bank)) ~ TRUE,    # Old method used: right_bank > bottom ~ TRUE,
+        TRUE                ~ FALSE
+      ),
+      valid_banks = valid_left_bank & valid_right_bank
+    )
+  # tidyr::pivot_longer(cols = c(right_bank, left_bank), 
+  # names_to = "point_type", values_to = "max_Z_at_banks") %>% 
+  # dplyr::mutate(max_Z_at_banks = ifelse(is.na(max_Z_at_banks), 0, max_Z_at_banks))
+  
+  # Add the following columns to the final output data:
+  # bottom - numeric, max depth (depth of lowest "bottom" point)
+  # left_bank - numeric, min depth of left bank (depth of the highest "left_bank" point). If no left_bank points exist, value is 0.
+  # right_bank - numeric, min depth of right bank (depth of the highest "right_bank" point). If no right_bank points exist, value is 0.
+  # valid_banks - logical, TRUE if the hy_id/cs_id has a bottom point with atleast 1 leftbank point AND 1 rightbank point that are above the lowest "bottom" point 
+  
+  # subset to just hy_id/cs_id and added bank attributes to 
+  # return a dataframe with unique hy_id/cs_ids for each row 
+  bank_validity <- 
+    bank_validity %>% 
+    dplyr::select(
+      dplyr::any_of(crosswalk_id), 
+      cs_id,
+      bottom, left_bank, right_bank, valid_banks
+      )
   
   return(bank_validity)
   
@@ -784,7 +1033,7 @@ add_relief <- function(
 #' @importFrom dplyr select group_by slice ungroup mutate filter summarise left_join case_when all_of relocate last_col
 #' @importFrom tidyr pivot_wider
 #' @export
-get_relief <- function(
+get_relief2 <- function(
     classified_pts,
     pct_of_length_for_relief = 0.01,
     detailed = FALSE
@@ -887,6 +1136,158 @@ get_relief <- function(
   relief <-
     relief %>% 
     dplyr::select(hy_id, cs_id, has_relief)
+  
+  return(relief)
+}
+
+#' @title Get relief attributes from a dataframe of cross sections points
+#' Generate a dataframe from a set of classified cross section points indicating whether a cross section "has relief". 
+#' Relief is determined by checking each set of cross section points have a left OR right bank that has a depth difference from the bottom that is
+#'  greater than or equal to a percentage of the cross section length (e.g. Assuming a 'pct_of_length_for_relief' of 0.01 (1%) of a 100m cross section would have a relief depth threshold of 1m)
+#' @param classified_pts sf or dataframe of points with "hy_id", "cs_id", "cs_lengthm", and "point_type" columns. Output of hydrofabric3D::classify_pts()
+#' @param crosswalk_id character, ID column 
+#' @param pct_of_length_for_relief numeric, percent of cs_lengthm to use as the threshold depth for classifying whether a cross section has "relief". Default is 0.01 (1% of the cross sections length).
+#' @param detailed logical, whether to return only a the "has_relief" column or 
+#' include all derived relief based columns such as "max_relief" and the "pct_of_length_for_relief" used. Default is FALSE and returns a dataframe with only "hy_id", "cs_id", and "has_relief".
+#' @return dataframe with each row being a unique hy_id/cs_id with a "has_relief" value for each hy_id/cs_id. If detailed = TRUE, then the output dataframe will include the following additional columns: "cs_lengthm", "max_relief", "pct_of_length_for_relief".
+#' @importFrom dplyr select group_by slice ungroup mutate filter summarise left_join case_when all_of relocate last_col
+#' @importFrom tidyr pivot_wider
+#' @export
+get_relief <- function(
+    classified_pts,
+    crosswalk_id = NULL,
+    pct_of_length_for_relief = 0.01,
+    detailed = FALSE
+) {
+  
+  # classified_pts
+  # pct_of_length_for_relief = pct_of_length_for_relief
+  # detailed                 = FALSE
+  
+  # classified_pts = output_pts
+  # crosswalk_id = "hy_id"
+  # pct_of_length_for_relief = 0.01
+  # detailed = FALSE 
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # cs  <- add_hydrofabric_id(cs) 
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "Z", "point_type")
+  # REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
+
+  if (!all(REQUIRED_COLS %in% names(classified_pts))) {
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(classified_pts))]
+    stop("'classified_pts' is missing one or more of the required columns:\n > ",
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  # type checking
+  if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
+    stop("Invalid argument type, 'classified_pts' must be of type 'sf', 'tbl_df', 'tbl' or 'data.frame', given type was '",   class(classified_pts), "'")
+  }
+  
+  # type checking
+  if (!is.numeric(pct_of_length_for_relief)) {
+    stop("Invalid argument type, 'pct_of_length_for_relief' must be of type 'numeric', given type was '",   class(pct_of_length_for_relief), "'")
+  }
+  
+  # type checking
+  if (!is.logical(detailed)) {
+    stop("Invalid argument type, 'detailed' must be of type 'logical', given type was '",   class(detailed), "'")
+  }
+  
+  # drop geometries as safety precaution
+  classified_pts <- sf::st_drop_geometry(classified_pts)
+  
+  # store the cross section lengths and calculate the depth threshold as a percent of the cross sections length
+  cs_lengths <- 
+    classified_pts %>%
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_lengthm) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::select(hy_id, cs_id, cs_lengthm) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      depth_threshold = round(cs_lengthm * pct_of_length_for_relief, 3) # maybe use floor() here
+    )
+  
+  # get the minimum bottom point and maximum left and right bank points
+  relief <-
+    classified_pts %>%
+    # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
+    dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id", "point_type")))) %>% 
+    # dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
+    # dplyr::group_by(hy_id, cs_id, point_type) %>% 
+    dplyr::summarise(
+      minZ = min(Z, na.rm = TRUE),
+      maxZ = max(Z, na.rm = TRUE)
+    ) %>% 
+    dplyr::ungroup() %>%
+    tidyr::pivot_wider(
+      names_from  = point_type,
+      values_from = c(minZ, maxZ)
+    ) %>% 
+    dplyr::select(
+          dplyr::any_of(crosswalk_id),
+          cs_id, 
+          bottom     = minZ_bottom, 
+          left_bank  = maxZ_left_bank, 
+          right_bank = maxZ_right_bank
+        ) 
+  
+  # join lengths and depth threshold back with relief table and
+  # calculate if the max difference between left/right bank vs bottom is 
+  # greater than or equal to the depth threshold
+  relief <-
+    relief %>% 
+    dplyr::left_join(
+      cs_lengths, 
+      by = c(crosswalk_id, "cs_id")  
+      # by = c("hy_id", "cs_id")
+    ) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      max_relief = max(c(round(right_bank - bottom, 3), 
+                         round(left_bank - bottom, 3)), 
+                       na.rm = TRUE)                     # TODO: removing NAs might not be the right call, removing them might set has_relief to TRUE and says "there IS relief but no valid banks"
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      has_relief = dplyr::case_when(
+        max_relief >= depth_threshold ~ TRUE,
+        TRUE                          ~ FALSE
+      ),
+      pct_of_length_for_relief = pct_of_length_for_relief
+    )
+  
+  # if detailed set of data is specified, return the relief dataframe with additional columns
+  if(detailed) {
+    relief <- 
+      relief %>% 
+      dplyr::select(
+        dplyr::any_of(crosswalk_id),
+        cs_id, cs_lengthm, has_relief, max_relief, pct_of_length_for_relief
+        )
+    
+    return(relief)
+    
+  }
+  
+  # return dataframe with just hy_id/cs_id, and has_relief
+  relief <-
+    relief %>% 
+    dplyr::select(
+        dplyr::any_of(crosswalk_id), 
+        cs_id, 
+        has_relief
+      )
   
   return(relief)
 }
@@ -1085,25 +1486,31 @@ get_cs_bottom_length <- function(cross_section_pts) {
 #' Calculates a validity score column based on valid_banks and has_relief columns in a set of cross section points
 #'
 #' @param cs_to_validate dataframe
+#' @param crosswalk_id character, ID column
 #' @param validity_col_name name of the output validity score column
 #' @importFrom sf st_drop_geometry
 #' @importFrom dplyr group_by slice ungroup mutate select
 #' @return dataframe with added validity_score column
-calc_validity_scores <- function(cs_to_validate, validity_col_name = "validity_score") {
+calc_validity_scores <- function(cs_to_validate, 
+                                 crosswalk_id = NULL, 
+                                 validity_col_name = "validity_score") {
   
   scores <- 
     cs_to_validate %>% 
     sf::st_drop_geometry() %>% 
-    hydrofabric3D::add_tmp_id() %>% 
+    hydrofabric3D::add_tmp_id(x = get(crosswalk_id)) %>% 
     dplyr::group_by(tmp_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(
       validity_score = valid_banks + has_relief
     ) %>% 
-    dplyr::select(hy_id, cs_id, valid_banks, has_relief, validity_score)
+    dplyr::select(
+      # hy_id, 
+      dplyr::any_of(crosswalk_id),
+      cs_id, valid_banks, has_relief, validity_score)
   
-  names(scores) <- c("hy_id", "cs_id", "valid_banks", "has_relief", validity_col_name)
+  names(scores) <- c(crosswalk_id, "cs_id", "valid_banks", "has_relief", validity_col_name)
   
   return(scores)
   
