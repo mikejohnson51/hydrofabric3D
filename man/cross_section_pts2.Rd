@@ -6,7 +6,6 @@
 \usage{
 cross_section_pts2(
   cs = NULL,
-  id = NULL,
   points_per_cs = NULL,
   min_pts_per_cs = 10,
   dem =

@@ -1516,6 +1516,30 @@ calc_validity_scores <- function(cs_to_validate,
   
 }
 
+
+#' Check if data is an SF linestring / multilinestring
+#'
+#' @param data dataframe, tibble, sf dataframe, geometry
+#'
+#' @return logical, TRUE if data is an sf linestring / multilinestring
+is_sf_linestring <- function(data) {
+  
+  # check if the object inherits from sf class
+  is_sf <- inherits(data, "sf")
+  
+  # Check if the object is a linestring or multilinestring
+  is_linestring <- (
+    inherits(data, "LINESTRING") || 
+      inherits(data, "MULTILINESTRING") || 
+      inherits(data, "sf_LINESTRING") || 
+      inherits(data, "sf_MULTILINESTRING") || 
+      inherits(data, "sfc_LINESTRING") ||
+      inherits(data, "sfc_MULTILINESTRING")
+  )
+  
+  return(is_sf && is_linestring)
+}
+
 #' Make a progress bar and return an "make_progress()" function to update the progress bar.
 #' Credit to the exactextractr team: https://github.com/isciences/exactextractr/blob/5fd17dcf02717332b125345aea586304f668cf12/R/exact_extract_helpers.R#L361
 #' @param progress logical, whether to make a progress bar or not (FALSE)

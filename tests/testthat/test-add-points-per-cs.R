@@ -4,74 +4,461 @@ library(testthat)
 library(dplyr)
 library(sf)
 # library(hydrofabric3D)
+# devtools::load_all()
 
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::add_points_per_cs() ----
 # -------------------------------------------------------------------
-
-# create test data (hy_id = "wb-1004970" from nextgen flowlines)
-coords <- matrix(c(968520.8, 1381795, 968471.3, 1381851, 968420.6, 1381874, 
-                   968418.1, 1381897, 968436.2, 1381961, 968426.9, 1382022, 
-                   968412.6, 1382036,  968211.2, 1382114, 968197.2, 1382148, 
-                   968172.4, 1382166,  968029.8, 1382217, 967972.7, 1382319, 
-                   967936.7, 1382369,  967835.1, 1382461, 967831.7, 1382514, 
-                   967836.6, 1382538, 967764.9, 1382589,  967741.8, 1382615, 
-                   967695.0, 1382625, 967639.9, 1382619,  967108.0, 1382436, 
-                   967072.6, 1382434,  967038.1, 1382448,  966982.6, 1382491, 
-                   966947.4, 1382534,  966945.7, 1382549, 966932.3, 1382555, 
-                   966886.3, 1382694,  966876.6, 1382781,  966930.3, 1382957, 
-                   966926.8, 1382988,  966873.1, 1383015, 966851.8, 1383046, 
-                   966807.0, 1383062, 966779.4, 1383172), 
-                 ncol = 2, byrow = TRUE)
-
-# create linestring and Sf dataframe
-linestring_geom <- sf::st_linestring(as.matrix(coords))
-flowline <- sf::st_as_sf(
-  data.frame(hy_id = "wb-1004970", 
-             tot_drainage_areasqkm = 3.90825,
-             geom = sf::st_geometry(linestring_geom)),
-  crs = 5070
-)
-
-# lengthkm and bankful width (power law equation using total draineage area (sq. km))
-flowline <- 
-  flowline %>% 
-  dplyr::mutate(
-    lengthkm = as.numeric(sf::st_length(geometry))/1000,
-    bf_width = exp(0.700    + 0.365* log(tot_drainage_areasqkm))
-  ) %>% 
-  dplyr::select(
-    hy_id,
-    lengthkm,
-    tot_drainage_areasqkm,
-    bf_width,
-    geometry
-  )
-
-# flowline
-# flowline$geometry %>% plot()
-
-testthat::test_that("cut 10 transects along single flowline, then add cross section points column, NULL points, and 10 min", {
-
-  dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
-  # 
-  transects <- hydrofabric3D::cut_cross_sections(
-    net               = flowline,
-    id                = "hy_id",
-    cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
-    num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
-    smooth            = TRUE,                          # smooth lines
-    densify           = 3,                             # densify linestring points
-    rm_self_intersect = TRUE,                          # remove self intersecting transects
-    fix_braids        = FALSE
+testthat::test_that("correct points per cross section on 3 transects from single flowline w/ minimum req columns, POINTS_PER_CS = NULL", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  # flowlines    <- dplyr::slice(flowlines, 1)
+  
+  MIN_BF_WIDTH       <- 50
+  ID_COL             <- "hy_id"
+  NUM_OF_TRANSECTS   <- 3
+  
+  # Cross section point inputs
+  DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
+  POINTS_PER_CS     <- NULL
+  MIN_PTS_PER_CS    <- 10
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>%
+    # dplyr::slice(1:3) %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::rename(!!sym(ID_COL) := id) %>% 
+    dplyr::select(
+      dplyr::any_of(ID_COL), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geom
+    ) 
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = ID_COL,  
+    num = NUM_OF_TRANSECTS
+  ) 
+  
+  # minimum required column
+  transects <- dplyr::select(transects, cs_lengthm)
+  
+  cs_ppcs <- hydrofabric3D:::add_points_per_cs(
+    cs               = transects,
+    points_per_cs    = POINTS_PER_CS,
+    min_pts_per_cs   = MIN_PTS_PER_CS, 
+    dem              = DEM_PATH
   )
   
-  # # # add points per cross sections 
-  # testthat::expect_error(hydrofabric3D:::add_points_per_cs(
-  #   cs             = transects,
-  #   points_per_cs  = NULL,
-  #   min_pts_per_cs = 10,
-  #   dem            = dem
-  # ))
-
+  # hydrofabric3D:::add_points_per_cs(
+    # cs               = transects,
+    # points_per_cs    = POINTS_PER_CS,
+    # min_pts_per_cs   = MIN_PTS_PER_CS, 
+    # dem              = DEM_PATH
+  # ) 
+  
+  # has the correct added column
+  has_ppcs_col <- "points_per_cs" %in% names(cs_ppcs)
+  testthat::expect_true(has_ppcs_col)
+  
+  # all points per cross section are greater than or equal to the specified MINIMUM
+  all_ppcs_ge_min_ppcs <- all(cs_ppcs$points_per_cs >= MIN_PTS_PER_CS)
+  testthat::expect_true(all_ppcs_ge_min_ppcs)
+  
 })
+
+testthat::test_that("correct points per cross section on 3 transects from
+                    single flowline w/ minimum req columns, POINTS_PER_CS = 20, MIN PTS = 10", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  # flowlines    <- dplyr::slice(flowlines, 1)
+  
+  MIN_BF_WIDTH       <- 50
+  ID_COL             <- "hy_id"
+  NUM_OF_TRANSECTS   <- 3
+  
+  # Cross section point inputs
+  DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
+  POINTS_PER_CS     <- 20
+  MIN_PTS_PER_CS    <- 10
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>%
+    # dplyr::slice(1:3) %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::rename(!!sym(ID_COL) := id) %>% 
+    dplyr::select(
+      dplyr::any_of(ID_COL), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geom
+    ) 
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = ID_COL,  
+    num = NUM_OF_TRANSECTS
+  ) 
+  
+  # minimum required column
+  transects <- dplyr::select(transects, cs_lengthm)
+  
+  cs_ppcs <- hydrofabric3D:::add_points_per_cs(
+    cs               = transects,
+    points_per_cs    = POINTS_PER_CS,
+    min_pts_per_cs   = MIN_PTS_PER_CS, 
+    dem              = DEM_PATH
+  )
+  
+  # has the correct added column
+  has_ppcs_col <- "points_per_cs" %in% names(cs_ppcs)
+  testthat::expect_true(has_ppcs_col)
+  
+  # all points per cross section are greater than or equal to the specified MINIMUM
+  all_ppcs_ge_min_ppcs <- all(cs_ppcs$points_per_cs >= MIN_PTS_PER_CS)
+  testthat::expect_true(all_ppcs_ge_min_ppcs)
+  
+})
+
+testthat::test_that("correct points per cross section on 3 transects from 
+                    single flowline w/ minimum req columns, POINTS_PER_CS = NULL, MIN PTS PER CS less than equal to 2", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  # flowlines    <- dplyr::slice(flowlines, 1)
+  
+  MIN_BF_WIDTH       <- 50
+  ID_COL             <- "hy_id"
+  NUM_OF_TRANSECTS   <- 3
+  
+  # Cross section point inputs
+  DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
+  POINTS_PER_CS     <- NULL
+  MIN_PTS_PER_CS    <- 0
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>%
+    # dplyr::slice(1:3) %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::rename(!!sym(ID_COL) := id) %>% 
+    dplyr::select(
+      dplyr::any_of(ID_COL), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geom
+    ) 
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = ID_COL,  
+    num = NUM_OF_TRANSECTS
+  ) 
+  
+  # minimum required column
+  transects <- dplyr::select(transects, cs_lengthm)
+  
+  # cs_ppcs <- 
+  
+  testthat::expect_true(
+    all(
+      hydrofabric3D:::add_points_per_cs(
+          cs               = transects,
+          points_per_cs    = NULL,
+          min_pts_per_cs   = 0, 
+          dem              = DEM_PATH
+        ) %>% 
+        .$points_per_cs == 2
+      )    
+    )
+  
+  testthat::expect_true(
+      all( 
+        hydrofabric3D:::add_points_per_cs(
+          cs               = transects,
+          points_per_cs    = NULL,
+          min_pts_per_cs   = 1, 
+          dem              = DEM_PATH
+          ) %>% 
+          .$points_per_cs == 2
+        )
+      )
+  
+  testthat::expect_true(
+     all( 
+      hydrofabric3D:::add_points_per_cs(
+        cs               = transects,
+        points_per_cs    = NULL,
+        min_pts_per_cs   = 2, 
+        dem              = DEM_PATH
+      ) %>% 
+      .$points_per_cs == 2
+     )
+    )
+})
+
+testthat::test_that("dem argument is ignored if a 'points_per_cs' is given", {
+  
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  # flowlines    <- dplyr::slice(flowlines, 1)
+  
+  MIN_BF_WIDTH       <- 50
+  ID_COL             <- "hy_id"
+  NUM_OF_TRANSECTS   <- 3
+  
+  # Cross section point inputs
+  DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
+  POINTS_PER_CS     <- 20
+  MIN_PTS_PER_CS    <- 10
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>%
+    # dplyr::slice(1:3) %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::rename(!!sym(ID_COL) := id) %>% 
+    dplyr::select(
+      dplyr::any_of(ID_COL), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geom
+    ) 
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = ID_COL,  
+    num = NUM_OF_TRANSECTS
+  ) 
+  
+ testthat::expect_true( 
+  all(
+    hydrofabric3D:::add_points_per_cs(
+        cs               = transects, 
+        points_per_cs    = POINTS_PER_CS,
+        min_pts_per_cs   = MIN_PTS_PER_CS, 
+        dem              = testthat::test_path("testdata", "dem_flowlines.tif")
+      )  %>% 
+      .$points_per_cs == POINTS_PER_CS
+  )
+  )
+ testthat::expect_true( 
+  all(
+      hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = POINTS_PER_CS,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = TRUE
+      ) %>% 
+      .$points_per_cs == POINTS_PER_CS
+    )
+ )
+  testthat::expect_true(
+      all(
+        hydrofabric3D:::add_points_per_cs(
+          cs               = transects, 
+          points_per_cs    = POINTS_PER_CS,
+          min_pts_per_cs   = MIN_PTS_PER_CS, 
+          dem              = FALSE
+        ) %>% 
+          .$points_per_cs == POINTS_PER_CS
+    )
+  )
+  testthat::expect_true(
+    all(
+      hydrofabric3D:::add_points_per_cs(
+        cs               = transects, 
+        points_per_cs    = POINTS_PER_CS,
+        min_pts_per_cs   = MIN_PTS_PER_CS, 
+        dem              = c(213324)
+      ) %>% 
+        .$points_per_cs == POINTS_PER_CS
+    )
+  )
+  
+  testthat::expect_true(
+    all(
+      hydrofabric3D:::add_points_per_cs(
+        cs               = transects, 
+        points_per_cs    = POINTS_PER_CS,
+        min_pts_per_cs   = MIN_PTS_PER_CS, 
+        dem              = c("AAA")
+      ) %>% 
+        .$points_per_cs == POINTS_PER_CS
+    )
+  )
+  
+})
+
+testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL", {
+  
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  # flowlines    <- dplyr::slice(flowlines, 1)
+  
+  MIN_BF_WIDTH       <- 50
+  ID_COL             <- "hy_id"
+  NUM_OF_TRANSECTS   <- 3
+  
+  # Cross section point inputs
+  DEM_PATH          <- FALSE
+  POINTS_PER_CS     <- NULL
+  MIN_PTS_PER_CS    <- 10
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>%
+    # dplyr::slice(1:3) %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::rename(!!sym(ID_COL) := id) %>% 
+    dplyr::select(
+      dplyr::any_of(ID_COL), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geom
+    ) 
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = ID_COL,  
+    num = NUM_OF_TRANSECTS
+  ) 
+  
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = FALSE
+    )  
+  )
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = TRUE
+    )  
+  )
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = c(213324)
+    )  
+  )
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = c("AAA")
+    )  
+  )
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = 100
+    )  
+  )
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = "AAAAAAA" 
+    )  
+  )
+  
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = NULL 
+    )  
+  )
+  
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = transects, 
+      points_per_cs    = NULL,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = NA
+    )  
+  )
+  
+})
+
+testthat::test_that("error flowline WITHOUT minimum required columns", {
+  
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  # flowlines    <- dplyr::slice(flowlines, 1)
+  
+  MIN_BF_WIDTH       <- 50
+  ID_COL             <- "hy_id"
+  NUM_OF_TRANSECTS   <- 3
+  
+  # Cross section point inputs
+  DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
+  POINTS_PER_CS     <- NULL
+  MIN_PTS_PER_CS    <- 10
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>%
+    # dplyr::slice(1:3) %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::rename(!!sym(ID_COL) := id) %>% 
+    dplyr::select(
+      dplyr::any_of(ID_COL), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geom
+    ) 
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = ID_COL,  
+    num = NUM_OF_TRANSECTS
+  ) 
+  
+  # Select everything EXCEPT the minimum required column (cs_lengthm)
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = dplyr::select(transects, -cs_lengthm),
+      points_per_cs    = POINTS_PER_CS,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = DEM_PATH
+    )
+  )
+  
+  # misspelled the minimum required column (cs_lengthm)
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = dplyr::select(transects, lengthm = cs_lengthm),
+      points_per_cs    = POINTS_PER_CS,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = DEM_PATH
+    )
+  )
+  
+  # no columns except geometry (LINESTRING)
+  testthat::expect_error(
+    hydrofabric3D:::add_points_per_cs(
+      cs               = dplyr::select(transects),
+      points_per_cs    = POINTS_PER_CS,
+      min_pts_per_cs   = MIN_PTS_PER_CS, 
+      dem              = DEM_PATH
+    )
+  )
+  
+})
+
+  

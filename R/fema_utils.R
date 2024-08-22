@@ -202,22 +202,6 @@ calc_extension_distances <- function(
     stop("Invalid 'direction' value, must be one of 'head' or 'tail'")
   }
   
-  # -----------------------------------------------------
-  # geos_geoms             = geos::as_geos_geometry(left_partition)
-  # ids                    = left_partition$tmp_id
-  # 
-  # # mapview::mapview(left_partition[1:4, ]$geom, color = "green") + 
-  # # mapview::mapview(
-  # # sf::st_as_sf(mls[unique(unlist(left_partition[1:4, ]$polygon_index))]), color = "red"
-  # # )
-  # 
-  # lines_to_cut           = mls 
-  # lines_to_cut_indices   = left_partition$polygon_index
-  # 
-  # direction              = "head"
-  # max_extension_distance = 3000
-  # -----------------------------------------------------
-  
   distance_range               <- 1:max_extension_distance
   
   # preallocate vector that stores the extension. distances

@@ -471,10 +471,10 @@ testthat::test_that("cut 100 transects along single flowline & remove intersects
     fix_braids        = FALSE
   )
   
-  transects
-  plot(flowline$geometry[1])
-  plot(transects$geometry, add = T)
-  
+  # transects
+  # plot(flowline$geometry[1])
+  # plot(transects$geometry, add = T)
+  # 
   # test that the number of rows is right and all cs IDs are present
   testthat::expect_equal(nrow(transects), 69)
   testthat::expect_equal(transects$cs_id, c(1:69))

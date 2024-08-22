@@ -26,7 +26,7 @@ check_cs_pts_has_exact_cols <- function(cs_pts, id = "hydrofabric_id") {
 }
 
 check_cs_pts_and_transect_cols <- function(cs_pts, transects, id = "hydrofabric_id") {
-  
+  # id = "hy_id"
   if(is.null(id)) {
     id = "hydrofabric_id"
   }
@@ -90,6 +90,11 @@ testthat::test_that("check CS points default columns, from basic single flowline
     num = NUM_OF_TRANSECTS
   )
   
+  transects <- dplyr::select(transects,
+                dplyr::any_of(ID_COL),
+                cs_id,
+                cs_lengthm
+  )
   # transects2 <- dplyr::select(
   #                   transects,
   #                   id = hy_id, 
@@ -106,20 +111,18 @@ testthat::test_that("check CS points default columns, from basic single flowline
   #   dem            = DEM_PATH
   # )
   
-  cs_pts = hydrofabric3D::cross_section_pts2(
-    cs             = dplyr::select(transects,
-                                   dplyr::any_of(ID_COL),
-                                   cs_id,
-                                   cs_lengthm
-                                   ),
-    id             = ID_COL,
-    points_per_cs  = POINTS_PER_CS,
-    min_pts_per_cs = MIN_PTS_PER_CS,
-    dem            = DEM_PATH
+  cs_pts = hydrofabric3D::cross_section_pts(
+    cs              = transects,
+    crosswalk_id    = ID_COL,
+    points_per_cs   = POINTS_PER_CS,
+    min_pts_per_cs  = MIN_PTS_PER_CS,
+    dem             = DEM_PATH
   )
  
-  # cross section points should NOT have the minimum number of columns, should have transect columns in addition to the default cs pts cols 
-  testthat::expect_false(
+  # cross section points should have the minimum number of columns, 
+  # should have transect columns in addition to the default cs pts cols 
+  # Which in this case, the transect cols + cs_pt cols ALL overlap
+  testthat::expect_true(
     check_cs_pts_has_exact_cols(cs_pts, id = ID_COL)
   ) 
   
@@ -170,23 +173,23 @@ testthat::test_that("error when incorrect columns are provided", {
   )
   
    testthat::expect_error(
-    hydrofabric3D::cross_section_pts2(
+    hydrofabric3D::cross_section_pts(
       cs             = dplyr::select(transects,
                                      cs_id
       ),
-      id             = ID_COL,
+      crosswalk_id   = ID_COL,
       points_per_cs  = POINTS_PER_CS,
       min_pts_per_cs = MIN_PTS_PER_CS,
       dem            = DEM_PATH
     )
   )
   testthat::expect_error(
-    hydrofabric3D::cross_section_pts2(
+    hydrofabric3D::cross_section_pts(
       cs             = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_lengthm
       ),
-      id             = ID_COL,
+      crosswalk_id             = ID_COL,
       points_per_cs  = POINTS_PER_CS,
       min_pts_per_cs = MIN_PTS_PER_CS,
       dem            = DEM_PATH
@@ -194,12 +197,12 @@ testthat::test_that("error when incorrect columns are provided", {
   )
   
    testthat::expect_error(
-    hydrofabric3D::cross_section_pts2(
+    hydrofabric3D::cross_section_pts(
       cs             = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_id
       ),
-      id             = ID_COL,
+      crosswalk_id             = ID_COL,
       points_per_cs  = POINTS_PER_CS,
       min_pts_per_cs = MIN_PTS_PER_CS,
       dem            = DEM_PATH
@@ -208,26 +211,26 @@ testthat::test_that("error when incorrect columns are provided", {
     
    # incorrecct 'id' value
    testthat::expect_error(
-    hydrofabric3D::cross_section_pts2(
+    hydrofabric3D::cross_section_pts(
       cs             = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_id,
                                      cs_lengthm
       ),
-      id             = "132365764",
+      crosswalk_id             = "132365764",
       points_per_cs  = POINTS_PER_CS,
       min_pts_per_cs = MIN_PTS_PER_CS,
       dem            = DEM_PATH
     )
   )
   
-  cs_pts = hydrofabric3D::cross_section_pts2(
+  cs_pts = hydrofabric3D::cross_section_pts(
     cs             = dplyr::select(transects,
                                    dplyr::any_of(ID_COL),
                                    cs_id,
                                    cs_lengthm
     ),
-    id             = ID_COL,
+    crosswalk_id             = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
     dem            = DEM_PATH
@@ -235,7 +238,8 @@ testthat::test_that("error when incorrect columns are provided", {
   
 })
 
-testthat::test_that("check CS points with default Transect columns, single flowline transects data (using 'hy_id')", {
+testthat::test_that("default transects columns from single flowline, using specified 'hy_id' column", {
+  
   flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
   # flowlines    <- dplyr::slice(flowlines, 1)
   
@@ -282,34 +286,34 @@ testthat::test_that("check CS points with default Transect columns, single flowl
   #   dem            = DEM_PATH
   # )
   
-  cs_pts = hydrofabric3D::cross_section_pts2(
+  cs_pts = hydrofabric3D::cross_section_pts(
     cs             = transects,
-    id             = ID_COL,
+    crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
     dem            = DEM_PATH
   )
- 
-  # check has the exact minimum output columns and NO EXTRA COLUMNS
-  testthat::expect_true(
+  
+  # the cross section points should NOT have the minimum cs_pts columns, they should have columns from the input transects in addition to the columns added by cross_section_pts() 
+  testthat::expect_false(
    check_cs_pts_has_exact_cols(cs_pts, id = ID_COL)
    ) 
-  expected_cols <- c(ID_COL, 
-                     "cs_id","pt_id", "Z", "cs_lengthm", 
-                     "relative_distance", "points_per_cs", "geometry"
+  
+  testthat::expect_true(
+    check_cs_pts_and_transect_cols(cs_pts, transects, ID_COL)
   )
-
-  all(unique(c(expected_cols, names(transects))) %in% names(cs_pts ))
  
   # check has minimum required output columns
- testthat::expect_true(
-  check_cs_pts_has_required_cols(cs_pts, id = ID_COL)
+  testthat::expect_true(
+    check_cs_pts_has_required_cols(cs_pts, id = ID_COL)
   ) 
   
   # atleast the minimum number of points were extracted 
   testthat::expect_true(nrow(cs_pts) >= nrow(transects) * MIN_PTS_PER_CS)
   
 })
+
+
 # dem       <- terra::rast("tests/testthat/testdata/dem.tif")
 # flowline  <- sf::read_sf("tests/testthat/testdata/flowline.gpkg")
 # 

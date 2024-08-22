@@ -202,11 +202,22 @@ cross_section_pts = function(
 #' the function calculates it based on the length of cross-sections and the resolution of the DEM.
 #' @importFrom terra linearUnits rast res
 #' @return An updated sf dataframe with the 'points_per_cs' column added.
-add_points_per_cs <- function(cs,
+add_points_per_cs2 <- function(cs,
                               points_per_cs  = NULL,
                               min_pts_per_cs = 10,
                               dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
 ) {
+  
+  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
+  REQUIRED_COLS <- c("cs_lengthm")
+  
+  if (!all(REQUIRED_COLS %in% names(cs))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
+    
+    stop("'cs' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
   
   # If NULL value is given to points_per_cs argument, calculate points_per_cs values
   # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
@@ -223,8 +234,8 @@ add_points_per_cs <- function(cs,
         (cs$cs_lengthm) / min(terra::res(terra::rast(dem)))
       )
     }
-    
   }
+  
   # else {
   #   points_per_cs = min_pts_per_cs
   # }
@@ -233,6 +244,105 @@ add_points_per_cs <- function(cs,
   cs$points_per_cs = pmax(min_pts_per_cs, points_per_cs)
   
   return(cs)
+}
+
+#' Add a points per cross section column to an sf dataframe of linestrings given a DEM and min points value
+#' 
+#' This function calculates and adds a column called 'points_per_cs' to an sf dataframe
+#' representing cross-sections (linestrings) based on a provided DEM and a minimum points
+#' value per cross section.
+#'
+#' @param cs An sf dataframe representing cross-sections (linestrings). With a required cs_lengthm column (length of cross section in meters)
+#' @param points_per_cs numeric, number of points per cross section. Default is NULL
+#' @param min_pts_per_cs An optional minimum points value per cross section. If not provided, 
+#' @param dem A SpatRaster object representing the Digital Elevation Model (DEM) or a character string referencing a remote resource.
+#' the function calculates it based on the length of cross-sections and the resolution of the DEM.
+#' @importFrom terra linearUnits rast res
+#' @return An updated sf dataframe with the 'points_per_cs' column added.
+add_points_per_cs <- function(cs,
+                              points_per_cs  = NULL,
+                              min_pts_per_cs = 10,
+                              dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+) {
+  
+  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
+  REQUIRED_COLS <- c("cs_lengthm")
+  
+  if (!all(REQUIRED_COLS %in% names(cs))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
+    
+    stop("'cs' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  # get the points per cross section based on the prescribed "points_per_cs" or the provided DEM (if points_per_cs is NULL) 
+  cs$points_per_cs <- get_points_per_cs(cs$cs_lengthm, points_per_cs, min_pts_per_cs, dem)
+  
+  return(cs)
+}
+
+#' Calculate the points per cross section based off length 
+#' 
+#' @param cs_length numeric vector, lengths of each cross section (meters)
+#' @param points_per_cs numeric, number of points per cross section. Default is NULL
+#' @param min_pts_per_cs An optional minimum points value per cross section. If not provided, 
+#' @param dem A SpatRaster object representing the Digital Elevation Model (DEM) or a character string referencing a remote resource.
+#' the function calculates it based on the length of cross-sections and the resolution of the DEM.
+#' @importFrom terra linearUnits rast res
+#' @return numeric vector, indicating the number of points per cross section for each cs_length
+get_points_per_cs <- function(cs_length,
+                              points_per_cs  = NULL,
+                              min_pts_per_cs = 10,
+                              dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+) {
+  
+  # If NULL value is given to points_per_cs argument, calculate points_per_cs values
+  # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
+  # -- then divide the cross section length by 111139 and divide that resulting value by the minimum resolution value from the DEM (then round the result up)
+  # - ELSE:
+  # -- just divide the cross section length by the minimum resolution value from the DEM (then round the result up)
+  if (is.null(points_per_cs)) {
+    points_per_cs <- dem_based_points_per_cs(cs_length = cs_length, dem = dem)
+  }
+  
+  # Take the max between the given minimum points per cross section and the derived points per cross section
+  points_per_cs   <- pmax(min_pts_per_cs, points_per_cs)
+  
+  return(points_per_cs)
+}
+
+#' Calculate the points per cross section based off length relative to a DEM
+#' Given the length of cross sections and a DEM, approximate the appropriate number of points for each cross section length
+#' @param cs_length numeric vector, lengths of each cross section (meters)
+#' @param dem A SpatRaster object representing the Digital Elevation Model (DEM) or a character string referencing a remote resource.
+#' the function calculates it based on the length of cross-sections and the resolution of the DEM.
+#' @importFrom terra linearUnits rast res
+#' @return numeric vector of length cs_length, with the number of points per cs_length
+dem_based_points_per_cs <- function(
+    cs_length,
+    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+) {
+  
+  # cs_length = c(100, 500)
+  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  
+  # If NULL value is given to points_per_cs argument, calculate points_per_cs values
+  # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
+  # -- then divide the cross section length by 111139 and divide that resulting value by the minimum resolution value from the DEM (then round the result up)
+  # - ELSE:
+  # -- just divide the cross section length by the minimum resolution value from the DEM (then round the result up)
+    if (terra::linearUnits(terra::rast(dem)) == 0) {
+      points_per_cs = ceiling(
+        (cs_length / 111139) / min(terra::res(terra::rast(dem)))
+      )
+    } else {
+      points_per_cs = ceiling(
+        (cs_length) / min(terra::res(terra::rast(dem)))
+      )
+    }
+  
+  return(points_per_cs)
 }
 
 #' Given a set of linestrings, extract DEM values at points along the linestring
@@ -279,7 +389,7 @@ extract_dem_values2 <- function(cs, dem) {
 #' @importFrom sf st_set_geometry st_line_sample st_cast
 #' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
-extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
+extract_dem_values3 <- function(cs, crosswalk_id = NULL, dem = NULL) {
   
   extract_pt_val <- function(rast, pts) {
     terra::extract(
@@ -336,6 +446,108 @@ extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
         relative_distance, 
         dplyr::everything()
         )
+    # dplyr::select(dplyr::any_of(cols_to_select))
+  })
+  
+  return(cs_pts)
+  
+}
+
+#' Extract raster values at points
+#'
+#' @param rast terra SpatRaster
+#' @param pts sf or terra points
+#'
+#' @return numeric vector of values from SpatRaster
+#' @importFrom terra extract project vect crs
+extract_pt_val <- function(rast, pts) {
+  return(
+    terra::extract(
+      rast,
+      terra::project(terra::vect(pts), terra::crs(rast))
+    )[, 2]
+  ) 
+}
+
+#' Convert SF linestring transect lines into SF points with 
+#'
+#' @param transects sf linestring
+#' @param points_per_cs numeric vector of length 'transects', indicating the number of points to get per transect
+#'
+#' @return sf point dataframe
+#' @importFrom sf st_set_geometry st_line_sample st_cast 
+transects_to_cs_pts <- function(transects, points_per_cs) {
+  
+  cs <- sf::st_set_geometry(
+            transects, 
+            sf::st_line_sample(transects, points_per_cs)
+          ) %>% 
+            sf::st_cast("POINT") 
+  
+  return(cs)
+}
+
+#' Given a set of linestrings, extract DEM values at points along the linestring
+#'
+#' @param cs cross section sf object
+#' @param crosswalk_id character, column name of unique flowline / transect ID
+#' @param dem SpatRaster DEM or character pointing to remote DEM resource
+#' @importFrom dplyr mutate group_by n ungroup select everything across any_of
+#' @importFrom sf st_set_geometry st_line_sample st_cast
+#' @importFrom terra extract project vect crs rast
+#' @return sf dataframe with Z values extracted from DEM
+extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
+  
+  # TODO: not sure if this is the best way to do this, we just want it so if 
+  # TODO: you dont specify an ID (or dont have an ID), then we autogenerate one
+  # default NULL id to the default 'hydrofabric_id' 
+  if(is.null(crosswalk_id)) {
+    # net <- add_hydrofabric_id(net) 
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "points_per_cs", "cs_lengthm")
+  
+  # if (!all(names(cs) %in% REQUIRED_COLS)) {
+  #   stop("'cs' is missing one or more of the required columns:\n > ", 
+  #        paste0(REQUIRED_COLS, collapse = "\n > "))
+  # }
+  # 
+  if (!all(REQUIRED_COLS %in% names(cs))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
+    
+    stop("'cs' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  suppressWarnings({
+    cs_pts <- 
+      # sf::st_set_geometry(
+      #   cs, 
+      #   sf::st_line_sample(cs, cs$points_per_cs)
+      # ) %>% 
+      # sf::st_cast("POINT") %>%
+      cs %>% 
+      transects_to_cs_pts(cs$points_per_cs) %>% 
+      dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .)) %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+      # dplyr::group_by(hy_id, cs_id) %>% 
+      dplyr::mutate(
+        pt_id             = 1:dplyr::n(),
+        relative_distance = seq(from = 0, to = cs_lengthm[1], length.out = dplyr::n())
+      ) %>% 
+      dplyr::ungroup() %>% 
+      dplyr::select(
+        dplyr::any_of(crosswalk_id),
+        cs_id, 
+        pt_id, 
+        Z, 
+        cs_lengthm, 
+        relative_distance, 
+        dplyr::everything()
+      )
     # dplyr::select(dplyr::any_of(cols_to_select))
   })
   
@@ -484,7 +696,9 @@ classify_points <- function(
   
   . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
     count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
-
+  # TODO: maybe relief_to_length_ratio is more intuitive than pct_of_length_for_relief ????
+  # relief_to_length_ratio = 0.01
+  
   # cs_pts2 <- cs_pts
   # crosswalk_id = "hy_id"
   # pct_of_length_for_relief = 0.01
