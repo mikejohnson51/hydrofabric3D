@@ -3,59 +3,13 @@ library(dplyr)
 library(sf)
 # # library(hydrofabric3D)
 
+source("testing_utils.R")
+
 # devtools::load_all()
 
 # -------------------------------------------------------------------
-# ---- hydrofabric::cut_cross_sections() ----
+# ---- hydrofabric::cross_section_pts() ----
 # -------------------------------------------------------------------
-
-check_cs_pts_has_exact_cols <- function(cs_pts, id = "hydrofabric_id") {
-  
-  if(is.null(id)) {
-    id = "hydrofabric_id"
-  }
-  
-  expected_cols <- c(id, 
-                     "cs_id","pt_id", "Z", "cs_lengthm", 
-                     "relative_distance", "points_per_cs", "geometry"
-                     )
-  
-  return(
-    all(expected_cols %in% names(cs_pts)) && length(expected_cols) == length(names(cs_pts))
-  )
-}
-
-check_cs_pts_and_transect_cols <- function(cs_pts, transects, id = "hydrofabric_id") {
-  # id = "hy_id"
-  if(is.null(id)) {
-    id = "hydrofabric_id"
-  }
-  
-  expected_cols <- c(id, 
-                     "cs_id","pt_id", "Z", "cs_lengthm", 
-                     "relative_distance", "points_per_cs", "geometry"
-                     )
-  
-  return(
-    all(unique(c(expected_cols, names(transects))) %in% names(cs_pts))
-  )
-}
-
-check_cs_pts_has_required_cols <- function(transects, id = "hydrofabric_id") {
-  
-  if(is.null(id)) {
-    id = "hydrofabric_id"
-  }
-  
-  expected_cols <- c(id, 
-                     "cs_id","pt_id", "Z", "cs_lengthm", 
-                     "relative_distance", "points_per_cs", "geometry"
-  )
-  
-  return(
-    all(expected_cols %in% names(transects))
-  )
-}
 
 testthat::test_that("check CS points default columns, from basic single flowline transects data (using 'hy_id')", {
   
@@ -108,12 +62,12 @@ testthat::test_that("check CS points default columns, from basic single flowline
   # should have transect columns in addition to the default cs pts cols 
   # Which in this case, the transect cols + cs_pt cols ALL overlap
   testthat::expect_true(
-    check_cs_pts_has_exact_cols(cs_pts, id = ID_COL)
+    cs_pts_has_min_output_cols(cs_pts, id = ID_COL)
   ) 
   
   # make sure that the cs_pts have the default cs_pts columns AND the columns from the input transects 
   testthat::expect_true(
-    check_cs_pts_and_transect_cols(cs_pts, transects, id = ID_COL)
+    cs_pts_has_correct_cols_from_transects(cs_pts, transects, id = ID_COL)
   )
   
   # check has minimum required output columns
@@ -265,11 +219,11 @@ testthat::test_that("default transects columns from single flowline, using speci
   
   # the cross section points should NOT have the minimum cs_pts columns, they should have columns from the input transects in addition to the columns added by cross_section_pts() 
   testthat::expect_false(
-   check_cs_pts_has_exact_cols(cs_pts, id = ID_COL)
+    cs_pts_has_min_output_cols(cs_pts, id = ID_COL)
    ) 
   
   testthat::expect_true(
-    check_cs_pts_and_transect_cols(cs_pts, transects, ID_COL)
+    cs_pts_has_correct_cols_from_transects(cs_pts, transects, ID_COL)
   )
  
   # check has minimum required output columns
