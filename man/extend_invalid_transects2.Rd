@@ -6,12 +6,20 @@
 Given a set of transect lines with valid_banks and has_relief columns (derived from DEM extracted cross section points), extend any transects
 by a percentage of the transects length if the transect does NOT have valid banks (valid_banks == FALSE) OR it does NOT have relief (has_relief == FALSE).}
 \usage{
-extend_invalid_transects2(transects_to_check, net, scale = 0.5, verbose = TRUE)
+extend_invalid_transects2(
+  transects_to_check,
+  net,
+  crosswalk_id,
+  scale = 0.5,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{transects_to_check}{sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters), "valid_banks", and "has_relief"}
 
 \item{net}{sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )}
+
+\item{crosswalk_id}{character, column name that connects features in transects to net}
 
 \item{scale}{numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50\% of the transect length)}
 

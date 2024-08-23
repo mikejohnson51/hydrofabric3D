@@ -41,7 +41,7 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", 
-    "crosswalk_id", "extend_invalid_transects3"
+    "crosswalk_id", "extend_invalid_transects2"
   )
 )
 

@@ -4,15 +4,15 @@
 \alias{renumber_cs_ids}
 \title{Fix IDs in a dataframe}
 \usage{
-renumber_cs_ids(df)
+renumber_cs_ids(df, crosswalk_id = NULL)
 }
 \arguments{
-\item{df}{A dataframe containing hy_id and cs_id columns.}
+\item{df}{crosswalk_id character, name of primary ID column}
 }
 \value{
 The input dataframe with renumbered cs_id values.
 }
 \description{
-This function renumbers cross section IDs in a dataframe to ensure each hy_id has cross sections
-numbered from 1 to the total number of cross sections on the hy_id.
+This function renumbers cross section IDs in a dataframe to ensure each crosswalk_id has cross sections
+numbered from 1 to the total number of cross sections on the crosswalk_id.
 }
