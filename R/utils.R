@@ -794,13 +794,23 @@ get_bank_attributes2 <- function(
 #' @param classified_pts sf or dataframe of points with "hy_id", "cs_id", and "point_type" columns. Output of hydrofabric3D::classify_pts()
 #' @param crosswalk_id character, ID column  
 #' @return dataframe with each row being a unique hy_id/cs_id with "bottom", "left_bank", "right_bank", and "valid_banks" values for each hy_id/cs_id.
-#' @importFrom dplyr mutate case_when filter select group_by summarise ungroup left_join rename any_of across
+#' @importFrom dplyr mutate case_when filter select group_by summarise ungroup left_join rename any_of across bind_rows
 #' @importFrom tidyr pivot_wider
 #' @export
 get_bank_attributes <- function(
     classified_pts,
     crosswalk_id = NULL
 ) {
+  # -----------------------------------------------------
+  # classified_pts <- data.frame(
+  #   hy_id = c("A", "A", "A", "B", "B", "B"),
+  #   cs_id = c(1, 1, 1, 1, 1, 1),
+  #   pt_id = c(1, 2, 3, 1, 2, 3),
+  #   point_type = c('channel', 'channel', 'channel', "left_bank", "bottom", "right_bank"),
+  #   Z = c(1, 5, 8, 10, 2, 12)
+  # )
+  # crosswalk_id = "hy_id"
+  # -----------------------------------------------------
   
   # type checking, throw an error if not "sf", "tbl_df", "tbl", or "data.frame"
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
@@ -906,16 +916,28 @@ get_bank_attributes <- function(
       valid_banks = valid_left_bank & valid_right_bank
     )
   
-  # tidyr::pivot_longer(cols = c(right_bank, left_bank), 
-  # names_to = "point_type", values_to = "max_Z_at_banks") %>% 
-  # dplyr::mutate(max_Z_at_banks = ifelse(is.na(max_Z_at_banks), 0, max_Z_at_banks))
-  
   # Add the following columns to the final output data:
   # bottom - numeric, max depth (depth of lowest "bottom" point)
   # left_bank - numeric, min depth of left bank (depth of the highest "left_bank" point). If no left_bank points exist, value is 0.
   # right_bank - numeric, min depth of right bank (depth of the highest "right_bank" point). If no right_bank points exist, value is 0.
   # valid_banks - logical, TRUE if the hy_id/cs_id has a bottom point with atleast 1 leftbank point AND 1 rightbank point that are above the lowest "bottom" point 
   
+  # set default column values for any IDs that didnt have 'left_bank', 'right_bank', or 'bottom' point_types 
+  bank_validity_tmp_ids <- add_tmp_id(bank_validity, x = get(crosswalk_id))$tmp_id
+  
+  default_bank_attrs <- 
+    classified_pts %>% 
+    add_tmp_id(x = get(crosswalk_id)) %>% 
+    dplyr::filter(
+      !tmp_id %in% bank_validity_tmp_ids
+    ) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, tmp_id) %>% 
+    dplyr::group_by(tmp_id) %>% 
+    dplyr::slice(1) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(-tmp_id) %>% 
+    add_default_bank_attributes() 
+    
   # subset to just hy_id/cs_id and added bank attributes to 
   # return a dataframe with unique hy_id/cs_ids for each row 
   bank_validity <- 
@@ -924,11 +946,34 @@ get_bank_attributes <- function(
       dplyr::any_of(crosswalk_id), 
       cs_id,
       bottom, left_bank, right_bank, valid_banks
-      )
+      ) %>% 
+    dplyr::bind_rows(
+      default_bank_attrs
+    )
   
   return(bank_validity)
   
 }
+
+#' Add "bottom", "left_bank", "right_bank", and "valid_banks" column defaults to a dataframe
+#' Internal helper function for get_bank_attributes()
+#' @param df dataframe, tibble, or sf dataframe
+#'
+#' @return dataframe, tibble, or sf dataframe
+#' @export
+add_default_bank_attributes <- function(df) {
+  bank_attrs_cols <- c("bottom", "left_bank", "right_bank")
+  
+  for (col in bank_attrs_cols) {
+    df[[col]] <- NA
+  }
+  
+  df$valid_banks <- FALSE 
+ 
+  return(df)
+  
+}
+
 
 #' @title Add relief attributes to a dataframe of cross sections points
 #' Given a set of cross section points (derived from hydrofabric3D::cross_section_pts() and hydrofabric3D::classify_points()) add a "has_relief" logical

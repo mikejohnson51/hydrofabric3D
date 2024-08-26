@@ -2,6 +2,7 @@
 
 export(add_angle_at_point_type)
 export(add_cs_bathymetry)
+export(add_default_bank_attributes)
 export(add_middle_index_by_point_type)
 export(add_point_type_counts)
 export(add_point_type_counts2)
