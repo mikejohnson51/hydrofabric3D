@@ -1,0 +1,290 @@
+# library(testthat)
+# library(dplyr)
+# library(sf)
+# # # library(hydrofabric3D)
+# 
+# source("testing_utils.R")
+# # source("tests/testthat/testing_utils.R")
+# 
+# # devtools::load_all()
+# 
+# # -------------------------------------------------------------------
+# # ---- hydrofabric3D::get_bank_attributes() ----
+# # -------------------------------------------------------------------
+# 
+# # TODO:
+# testthat::test_that("check 'get_bank_attributes' has valid output columns from CLASSIFIED CS from DEFAULT transects output", {
+#   
+#   flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+#   # flowlines    <- dplyr::slice(flowlines, 1)
+#   
+#   MIN_BF_WIDTH       <- 50
+#   ID_COL             <- "hy_id"
+#   NUM_OF_TRANSECTS   <- 3
+#   
+#   # Cross section point inputs
+#   DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
+#   POINTS_PER_CS     <- NULL
+#   MIN_PTS_PER_CS    <- 10
+#   
+#   PCT_OF_LENGTH_FOR_RELIEF <- 0.01
+#   
+#   flowlines <-
+#     flowlines %>% 
+#     add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+#     dplyr::rename(!!sym(ID_COL) := id) %>% 
+#     dplyr::select(
+#       dplyr::any_of(ID_COL), 
+#       tot_drainage_areasqkm,
+#       bf_width,
+#       geom
+#     ) 
+#   
+#   transects <- cut_cross_sections(
+#     net = flowlines,
+#     id  = ID_COL,  
+#     num = NUM_OF_TRANSECTS
+#   ) %>% 
+#     dplyr::select(
+#         dplyr::any_of(ID_COL),
+#         cs_id,
+#         cs_lengthm
+#         )
+#   
+#   cs_pts = hydrofabric3D::cross_section_pts(
+#     cs              = transects,
+#     crosswalk_id    = ID_COL,
+#     points_per_cs   = POINTS_PER_CS,
+#     min_pts_per_cs  = MIN_PTS_PER_CS,
+#     dem             = DEM_PATH
+#   )
+#   
+#   classified <- classify_points(
+#     cs_pts = cs_pts,
+#     crosswalk_id = ID_COL,
+#     pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
+#   ) %>% 
+#     dplyr::select(-valid_banks, -has_relief, -left_bank, -right_bank, -bottom)
+#   
+#   # hydrofabric3D::plot_cs_pts(classified, color = "point_type")
+#   
+#   bank_attrs <- get_bank_attributes(
+#     classified_pts = classified, 
+#     crosswalk_id   = ID_COL
+#   )
+#   
+#   has_all_required_output_cols <- bank_attrs_has_min_output_cols(bank_attrs = bank_attrs, id = ID_COL)
+#   testthat::expect_true(has_all_required_output_cols)
+#   
+# })
+# testthat::test_that("'get_bank_attributes' - No left_bank points", {
+#   ID_COL <- "hy_id"  
+#   
+#   no_left_bank_df <- 
+#     data.frame(
+#       hy_id = c("A", "A", "A"),
+#       cs_id = c(1, 1, 1), 
+#       pt_id = c(1, 2, 3),
+#       point_type = c('bottom', 'right_bank', 'right_bank'),
+#       Z = c(1, 5, 8)
+#     )
+#   
+#   #  <- 
+#   #   data.frame(
+#   #     hy_id = c("A", "A", "A", "B", "B", "B"),
+#   #     cs_id = c(1, 1, 1, 1, 1, 1), 
+#   #     pt_id = c(1, 2, 3, 1, 2, 3),
+#   #     point_type = c('bottom', 'right_bank', 'right_bank', "left_bank", "bottom", "right_bank"),
+#   #     Z = c(1, 5, 8, 10, 2, 12)
+#   #   )
+#   
+#   # # Add columns with the counts of point types
+#   # classified_pts <- add_point_type_counts(no_left_bank_df, ID_COL)
+#   # # classified_pts <- hydrofabric3D::add_point_type_counts2(classified_pts, crosswalk_id)
+#   # 
+#   # # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
+#   # # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
+#   # classified_pts <- sf::st_drop_geometry(classified_pts)
+#   # 
+#   # classified_pts <-
+#   #   classified_pts %>% 
+#   #   # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
+#   #   dplyr::mutate(
+#   #     valid_count = dplyr::case_when(
+#   #       (bottom_count > 0 & 
+#   #          left_bank_count > 0 & 
+#   #          right_bank_count > 0)  ~ TRUE,
+#   #       TRUE                      ~ FALSE
+#   #     )
+#   #   )
+#   # 
+#   # crosswalk_id = "hy_id"
+#   # # Add minimum bottom Z, max left and right bank Z, and 
+#   # # flags noting if the left/right banks are "valid" (i.e. max left/right bank values are greater than the bottom Z)
+#   # bank_validity <-
+#   #   classified_pts %>% 
+#   #   # classified_pts2 %>% 
+#   #   # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
+#   #   dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
+#   #   # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
+#   #   dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type) %>% 
+#   #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id", "point_type")))) %>% 
+#   #   # dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
+#   #   # dplyr::group_by(hy_id, cs_id, point_type) %>% 
+#   #   dplyr::summarise(
+#   #     minZ = min(Z, na.rm = TRUE),
+#   #     maxZ = max(Z, na.rm = TRUE)
+#   #   ) %>% 
+#   #   dplyr::ungroup() %>%
+#   #   tidyr::pivot_wider(
+#   #     names_from  = point_type,
+#   #     values_from = c(minZ, maxZ)
+#   #   ) %>% 
+#   #   dplyr::select(
+#   #     dplyr::any_of(
+#   #       c(
+#   #       crosswalk_id,
+#   #       "cs_id",
+#   #       "minZ_bottom",
+#   #       "maxZ_left_bank",
+#   #       "maxZ_right_bank"
+#   #       ))
+#   #     # cs_id,
+#   #     # bottom     = minZ_bottom, 
+#   #     # left_bank  = maxZ_left_bank, 
+#   #     # right_bank = maxZ_right_bank
+#   #   ) %>%  
+#   #   dplyr::rename(
+#   #     dplyr::any_of(c(
+#   #       bottom     = "minZ_bottom",
+#   #       left_bank  = "maxZ_left_bank",
+#   #       right_bank = "maxZ_right_bank"
+#   #       ))
+#   #     )
+#   # 
+#   # required_pt_cols <- c("bottom", "left_bank", "right_bank")
+#   # 
+#   # for (col in required_pt_cols) {
+#   #   # message(col)
+#   #   if (!col %in% names(bank_validity)) {
+#   #     # message("---> missing column ", col)
+#   #     bank_validity[[col]] <- NA
+#   #   }
+#   # }
+#   
+#   bank_attributes <- get_bank_attributes(no_left_bank_df, crosswalk_id = ID_COL)
+#   
+#   testthat::expect_true(
+#     is.na(bank_attributes$left_bank)
+#   )
+#   
+#   testthat::expect_false(
+#     bank_attributes$valid_banks
+#   )
+# })
+# 
+# # hy_id cs_id pt_id point_type  Z
+# # 1     A     1     1  left_bank 10
+# # 2     A     1     2     bottom  1
+# # 3     A     1     3    channel  3
+# # 4     A     1     4 right_bank  5
+# # 5     A     1     5 right_bank  8
+# 
+# testthat::test_that(" 'get_bank_attributes' - 2 right_bank values w/ furthest right pt being the greatest value", {
+#   ID_COL <- "hy_id"  
+#   
+#   right_bank_df <- 
+#     data.frame(
+#       hy_id = c("A", "A", "A", "A", "A"),
+#       cs_id = c(1, 1, 1, 1, 1), 
+#       pt_id = c(1, 2, 3, 4, 5),
+#       point_type = c('left_bank', 'bottom', 'channel', 'right_bank', 'right_bank'),
+#       Z = c(10, 1, 3, 5, 8)
+#     )
+#   
+#   max_right_Z <- 
+#     right_bank_df %>% 
+#     dplyr::filter(point_type == "right_bank") %>% 
+#     dplyr::pull(Z) %>% 
+#     max()
+#   
+#   right_bank_val <- get_bank_attributes(right_bank_df, crosswalk_id = ID_COL)$right_bank
+#   
+# 
+#   
+#   testthat::expect_true(
+#     max_right_Z == right_bank_val
+#     )
+# })
+# 
+# testthat::test_that("'get_bank_attributes' - 2 left_bank values w/ furthest left pt being the greatest value", {
+#   ID_COL <- "hy_id"  
+#   
+#   left_bank_df <- 
+#     data.frame(
+#       hy_id = c("A", "A", "A", "A", "A"),
+#       cs_id = c(1, 1, 1, 1, 1), 
+#       pt_id = c(1, 2, 3, 4, 5),
+#       point_type = c('left_bank', 'left_bank', 'bottom', 'right_bank', 'right_bank'),
+#       Z = c(10, 8, 1, 5, 8)
+#     )
+#   
+#   max_left_Z <- 
+#     left_bank_df %>% 
+#     dplyr::filter(point_type == "left_bank") %>% 
+#     dplyr::pull(Z) %>% 
+#     max()
+#   
+#   left_bank_val <- get_bank_attributes(left_bank_df, crosswalk_id = ID_COL)$left_bank
+#   
+#   testthat::expect_true(
+#     max_left_Z == left_bank_val
+#   )
+#   
+# })
+# 
+# testthat::test_that("error 'get_bank_attributes' when given dataframe with wrong/missing required columns", {
+#   ID_COL <- "hy_id"  
+#   
+#   wrong_cols_df <- 
+#     data.frame(
+#       hy_id = c("A", "A", "B", "B"),
+#       cs_identifier = c(1, 1, 1, 1), # NOTE: this is the wrong column name, needs to be "cs_id"
+#       pt_id = c(1, 2, 1, 2),
+#       point_type = c('left_bank', 'right_bank', 'left_bank', 'bottom'),
+#       Z = c(1, 3, 4, 2)
+#     )
+#   
+#   testthat::expect_error(
+#     get_bank_attributes(wrong_cols_df, crosswalk_id = ID_COL)
+#     )
+#   
+#   # missing "cs_id" column
+#   missing_cols_df <- 
+#     data.frame(
+#       hy_id = c("A", "A", "B", "B"),
+#       pt_id = c(1, 2, 1, 2),
+#       point_type = c('left_bank', 'right_bank', 'left_bank', 'bottom'),
+#       Z = c(1, 3, 4, 2)
+#     )
+#   
+#   testthat::expect_error(
+#     get_bank_attributes(missing_cols_df, crosswalk_id = ID_COL)
+#   )
+#   
+#   # wrong 'crosswalk_id' column specified 
+#   wrong_crosswalk_id_df <- 
+#     data.frame(
+#       hy_id = c("A", "A", "B", "B"),
+#       cs_id = c(1, 1, 1, 1),
+#       pt_id = c(1, 2, 1, 2),
+#       point_type = c('left_bank', 'right_bank', 'left_bank', 'bottom'),
+#       Z = c(1, 3, 4, 2)
+#     )
+#   
+#   testthat::expect_error(
+#     get_bank_attributes(wrong_crosswalk_id_df, crosswalk_id = "other_id")
+#   )
+# })
+# 
+# 

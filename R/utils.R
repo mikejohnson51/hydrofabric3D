@@ -794,17 +794,13 @@ get_bank_attributes2 <- function(
 #' @param classified_pts sf or dataframe of points with "hy_id", "cs_id", and "point_type" columns. Output of hydrofabric3D::classify_pts()
 #' @param crosswalk_id character, ID column  
 #' @return dataframe with each row being a unique hy_id/cs_id with "bottom", "left_bank", "right_bank", and "valid_banks" values for each hy_id/cs_id.
-#' @importFrom dplyr mutate case_when filter select group_by summarise ungroup left_join
+#' @importFrom dplyr mutate case_when filter select group_by summarise ungroup left_join rename any_of across
 #' @importFrom tidyr pivot_wider
+#' @export
 get_bank_attributes <- function(
     classified_pts,
     crosswalk_id = NULL
 ) {
-  
-  # classified_pts <- output_pts
-  # crosswalk_id = "hy_id"
-  # classified_pts
-  # classified_pts <- classified_pts2 
   
   # type checking, throw an error if not "sf", "tbl_df", "tbl", or "data.frame"
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
@@ -855,13 +851,43 @@ get_bank_attributes <- function(
       names_from  = point_type,
       values_from = c(minZ, maxZ)
     ) %>% 
+    # dplyr::select(
+    #     dplyr::any_of(crosswalk_id), 
+    #     cs_id, 
+    #     bottom     = minZ_bottom, 
+    #     left_bank  = maxZ_left_bank, 
+    #     right_bank = maxZ_right_bank
+    #     ) 
     dplyr::select(
-        dplyr::any_of(crosswalk_id), 
-        cs_id, 
-        bottom     = minZ_bottom, 
-        left_bank  = maxZ_left_bank, 
-        right_bank = maxZ_right_bank
-        ) 
+      dplyr::any_of(
+        c(
+          crosswalk_id,
+          "cs_id",
+          "minZ_bottom",
+          "maxZ_left_bank",
+          "maxZ_right_bank"
+        ))
+      # cs_id,
+      # bottom     = minZ_bottom, 
+      # left_bank  = maxZ_left_bank, 
+      # right_bank = maxZ_right_bank
+    ) %>%  
+    dplyr::rename(
+      dplyr::any_of(c(
+        bottom     = "minZ_bottom",
+        left_bank  = "maxZ_left_bank",
+        right_bank = "maxZ_right_bank"
+      ))
+    )
+  
+  # make sure that all the required columns are present, if a column is missing, add that column and set the values to NA
+  required_pt_cols <- c("bottom", "left_bank", "right_bank")
+  
+  for (col in required_pt_cols) {
+    if (!col %in% names(bank_validity)) {
+      bank_validity[[col]] <- NA
+    }
+  }
   
   bank_validity <-
     bank_validity %>% 
@@ -879,6 +905,7 @@ get_bank_attributes <- function(
       ),
       valid_banks = valid_left_bank & valid_right_bank
     )
+  
   # tidyr::pivot_longer(cols = c(right_bank, left_bank), 
   # names_to = "point_type", values_to = "max_Z_at_banks") %>% 
   # dplyr::mutate(max_Z_at_banks = ifelse(is.na(max_Z_at_banks), 0, max_Z_at_banks))
