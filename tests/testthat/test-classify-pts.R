@@ -4,7 +4,7 @@ library(sf)
 # # library(hydrofabric3D)
 
 source("testing_utils.R")
-
+# source("tests/testthat/testing_utils.R")
 # devtools::load_all()
 
 # -------------------------------------------------------------------
@@ -60,7 +60,10 @@ testthat::test_that("check CLASSIFIED CS points default output columns, from DEF
     min_pts_per_cs  = MIN_PTS_PER_CS,
     dem             = DEM_PATH
   )
- 
+  # cs_pts  %>% 
+  # # dplyr::select(hy_id, cs_id, pt_id, Z, relative_distance)  %>% 
+  # sf::st_drop_geometry() %>%
+  #  head(20)
   classified <- classify_points(
     cs_pts = cs_pts,
     crosswalk_id = ID_COL,
@@ -164,6 +167,40 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
   
 })
 
+
+# TODO: Left off here on 2024-08-27
+# TODO: IDEAL SHAPE ("left_bank", "right_bank", "bottom", "channel" point types) 
+#  \              /
+#   \            /
+#    __       __
+#      \     /
+#       \   /
+#        __
+testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
+  ID_COL <- "hy_id"
+
+  ideal_pts <-
+    data.frame(
+      hy_id      = c("A", "A", "A", "A", "A", "A", "A", "A", "A", "A"),
+      cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+      pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+      cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+      relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+      # point_type = c('left_bank', 'left_bank', 'channel', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank'),
+      Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
+    )
+
+  plot(ideal_pts$Z~ideal_pts$pt_id)
+
+  cpts <- classify_points(ideal_pts, crosswalk_id = ID_COL)
+  cpts$point_type
+
+  expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
+
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+    )
+})
 
 # testthat::test_that("check 'get_bank_attributes' has valid output columns from CLASSIFIED CS from DEFAULT transects output", {
 #   
