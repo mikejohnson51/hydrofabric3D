@@ -14,8 +14,9 @@
 #' @return sf linestring dataframe containing the the original transects with extensions performed on transects without valid_banks OR has_relief (a "is_extended" flag denotes if the geometry was extended by "scale" % or not)
 #' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
 #' @importFrom sf st_geometry st_as_sf
-#' @importFrom dplyr filter bind_rows
-#' @export
+#' @importFrom dplyr filter bind_rows mutate case_when
+#' @importFrom nhdplusTools rename_geometry 
+#' @export 
 extend_invalid_transect_sides <- function(
     transects_to_check, 
     net, 
@@ -38,6 +39,15 @@ extend_invalid_transect_sides <- function(
   # net                 = net
   # crosswalk_id        = "hy_id"
   # scale               = scale
+  # verbose             = verbose
+  
+  # transects_to_check  = transects %>% dplyr::slice(52000:54000)
+  
+  # net                 = net
+  # net2 <- net %>% dplyr::filter(hy_id %in% transects_to_check$hy_id)
+  # crosswalk_id        = crosswalk_id
+  # scale               = scale
+  # direction           = "both"
   # verbose             = verbose
   
   # ----------------------------------------
@@ -77,6 +87,9 @@ extend_invalid_transect_sides <- function(
   # invalid_transects  <- dplyr::filter(transects_to_check, !valid_banks | !has_relief)
   # valid_transects    <- dplyr::filter(transects_to_check, valid_banks & has_relief)
   
+  # TODO: problematic hy_ids in VPU 13 (have NA valid_banks / has_relief)
+  # which(transects_to_check$hy_id %in% c("wb-2131572", "wb-2146599"))
+  
   # keep track of any transects that having missing values in either valid_banks/has_relief columns, 
   # these get added back to the updated data at the end
   missing_bank_or_relief_data <- 
@@ -87,6 +100,21 @@ extend_invalid_transect_sides <- function(
   count_check <- nrow(dplyr::filter(transects_to_check, valid_banks & has_relief)) + 
     nrow(dplyr::filter(transects_to_check, !valid_banks | !has_relief)) == 
     nrow(transects_to_check) - nrow(missing_bank_or_relief_data)
+  
+  # TODO: this should be reviewed 
+  # NOTE:  --> setting a default of FALSE for NA valid_banks and NA has_relief values
+  transects_to_check <-
+    transects_to_check %>%
+      dplyr::mutate(
+        valid_banks = dplyr::case_when(
+          is.na(valid_banks) ~ FALSE,
+          TRUE               ~ valid_banks
+        ),
+        has_relief = dplyr::case_when(
+          is.na(has_relief)  ~ FALSE,
+          TRUE               ~ has_relief
+        )
+      )
   
   # count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check)
   # count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check) - nrow(missing_bank_or_relief_data)
@@ -143,13 +171,15 @@ extend_invalid_transect_sides <- function(
       -right_is_extended
     )
   
-  # add back any transects that were missing banks/relief values 
-  extended_transects <- dplyr::bind_rows(
-    extended_transects,
-    dplyr::select(missing_bank_or_relief_data, 
-                  dplyr::any_of(names(extended_transects))
-    )
-  )
+  # TODO: if we do it this way where we add back the CS that have missing banks/relief, we also need to add them back
+  # TODO: to the 'transects_to_check' 
+  # # # # add back any transects that were missing banks/relief values 
+  # extended_transects <- dplyr::bind_rows(
+  #   extended_transects,
+  #   dplyr::select(missing_bank_or_relief_data,
+  #                 dplyr::any_of(names(extended_transects))
+  #   )
+  # )
   
   # Try and fix any transects that cross multiple 
   is_multi_intersecting <- lengths(sf::st_intersects(extended_transects)) != 1
@@ -168,11 +198,11 @@ extend_invalid_transect_sides <- function(
   is_multi_intersecting_flowlines <- lengths(sf::st_intersects(extended_transects, net)) != 1
   
   # replace any extended geoms that have multiple intersections with any flowlines (replacing with the original set of transects)
-  sf::st_geometry(extended_transects[is_multi_intersecting_flowlines, ]) <- sf::st_geometry(transects_to_check[is_multi_intersecting_flowlines, ])
+  sf::st_geometry(extended_transects[is_multi_intersecting_flowlines, ])  <- sf::st_geometry(transects_to_check[is_multi_intersecting_flowlines, ])
   
   # update the lengths and is_extended flag to align with the above replacement of geometries
-  extended_transects[is_multi_intersecting_flowlines, ]$cs_lengthm       <- transects_to_check[is_multi_intersecting_flowlines, ]$cs_lengthm
-  extended_transects[is_multi_intersecting_flowlines, ]$is_extended      <- transects_to_check[is_multi_intersecting_flowlines, ]$is_extended
+  extended_transects[is_multi_intersecting_flowlines, ]$cs_lengthm        <- transects_to_check[is_multi_intersecting_flowlines, ]$cs_lengthm
+  extended_transects[is_multi_intersecting_flowlines, ]$is_extended       <- transects_to_check[is_multi_intersecting_flowlines, ]$is_extended
   
   # remove transects that intersect with OTHER TRANSECTS
   extended_transects <- 

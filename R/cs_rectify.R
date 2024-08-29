@@ -96,11 +96,13 @@ get_improved_cs_pts = function(
   # library(geos)
   # library(terra)
   # 
-  # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
-  # net <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg") %>%
+  # # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
+  # # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_11.gpkg")
+  # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_classified_11.gpkg")
+  # net <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_11.gpkg") %>%
   #   dplyr::rename(hy_id = id)
   # # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg")
-  # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_transects_06.gpkg")
+  # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_transects_11.gpkg")
   # 
   # points_per_cs  = NULL
   # min_pts_per_cs = 10

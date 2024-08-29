@@ -364,7 +364,7 @@ classify_points <- function(
   # cs_pts2 <- cs_pts
   # crosswalk_id = "hy_id"
   # pct_of_length_for_relief = 0.01
-  
+
   # make a unique ID if one is not given (NULL 'id')
   if(is.null(crosswalk_id)) {
     # cs  <- add_hydrofabric_id(cs) 

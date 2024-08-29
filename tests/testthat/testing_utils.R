@@ -5,6 +5,64 @@
 
 # library(hydrofabric3D)
 
+
+prep_flowlines_for_transect_cuts <- function(flines, id_col, min_bf_width) {
+
+  flines <- 
+    flines %>% 
+    add_powerlaw_bankful_width("tot_drainage_areasqkm", min_bf_width) %>%  
+    dplyr::rename(!!sym(id_col) := id) %>% 
+    nhdplusTools::rename_geometry("geometry") %>% 
+    dplyr::select(
+      dplyr::any_of(id_col), 
+      tot_drainage_areasqkm,
+      bf_width,
+      geometry
+    ) 
+  
+  return(flines)
+  
+}
+
+# TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
+relief_detailed_has_min_output_cols <- function(relief, id = "hydrofabric_id") {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  expected_cols <- c(id, 
+                     "cs_id" ,
+                     "cs_lengthm",
+                     "has_relief",
+                     "max_relief", 
+                     "pct_of_length_for_relief"
+                     )
+  
+  return(
+    all(expected_cols %in% names(relief)) && length(expected_cols) == length(names(relief))
+  )
+}
+
+
+# TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
+relief_has_min_output_cols <- function(relief, id = "hydrofabric_id") {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  expected_cols <- c(id, 
+                     "cs_id" ,
+                     "has_relief"
+  )
+  
+  return(
+    all(expected_cols %in% names(relief)) && length(expected_cols) == length(names(relief))
+  )
+}
+
+
 has_same_unique_tmp_ids <- function(x, y, id = "hydrofabric_id") {
   if(is.null(id)) {
     id = "hydrofabric_id"

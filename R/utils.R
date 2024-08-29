@@ -1222,7 +1222,7 @@ get_relief2 <- function(
 #' @param detailed logical, whether to return only a the "has_relief" column or 
 #' include all derived relief based columns such as "max_relief" and the "pct_of_length_for_relief" used. Default is FALSE and returns a dataframe with only "hy_id", "cs_id", and "has_relief".
 #' @return dataframe with each row being a unique hy_id/cs_id with a "has_relief" value for each hy_id/cs_id. If detailed = TRUE, then the output dataframe will include the following additional columns: "cs_lengthm", "max_relief", "pct_of_length_for_relief".
-#' @importFrom dplyr select group_by slice ungroup mutate filter summarise left_join case_when all_of relocate last_col
+#' @importFrom dplyr select group_by slice ungroup mutate filter summarise left_join case_when all_of relocate last_col any_of across
 #' @importFrom tidyr pivot_wider
 #' @export
 get_relief <- function(
@@ -1232,14 +1232,69 @@ get_relief <- function(
     detailed = FALSE
 ) {
   
-  # classified_pts
-  # pct_of_length_for_relief = pct_of_length_for_relief
-  # detailed                 = FALSE
+  # ------------------------------------------------------------------------
+  # ------------------------------------------------------------------------
+  # crosswalk_id    <- "hy_id"
+  # REQ_COLS  <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "Z", "point_type")
+  # 
+  # pct_of_length_for_relief <- 0.01
+  # CS_LENGTHM               <- 100
+  # MIN_REQ_RELIEF           <- CS_LENGTHM * pct_of_length_for_relief
+  # detailed                 <- FALSE
   
-  # classified_pts = output_pts
-  # crosswalk_id = "hy_id"
-  # pct_of_length_for_relief = 0.01
-  # detailed = FALSE 
+  # classified_pts <-
+  #   data.frame(
+  #     hy_id = c("A", "A",  "A", "A", "A"),
+  #     cs_id = c(1, 1, 1, 1, 1),
+  #     pt_id = c(1, 2, 3, 4, 5),
+  #     cs_lengthm = c(CS_LENGTHM),
+  #     point_type = c('left_bank', 'bottom', 'bottom', 'bottom', 'right_bank'),
+  #     Z = c(100, 10, 10, 10, 100)
+  #   )
+  # 
+  # classified_pts <-
+  #   data.frame(
+  #     hy_id = c("A", "A",  "A", "A", "A"),
+  #     cs_id = c(1, 1, 1, 1, 1),
+  #     pt_id = c(1, 2, 3, 4, 5),
+  #     cs_lengthm = c(CS_LENGTHM),
+  #     point_type = c('channel', 'bottom', 'bottom', 'bottom', 'right_bank'),
+  #     Z = c(100, 10, 10, 10, 100)
+  #   )
+  # 
+  # classified_pts <-
+  #   data.frame(
+  #     hy_id = c("A", "A",  "A", "A", "A",
+  #               "B", "B", "B", "B", "B"
+  #               ),
+  #     cs_id = c(1, 1, 1, 1, 1,
+  #               1, 1, 1, 1, 1
+  #               ),
+  #     pt_id = c(1, 2, 3, 4, 5,
+  #               1, 2, 3, 4, 5
+  #               ),
+  #     cs_lengthm = c(CS_LENGTHM),
+  #     point_type = c(
+  #       'channel', 'bottom', 'bottom', 'bottom', 'right_bank',
+  #       'left_bank', 'bottom', 'bottom', 'bottom', 'right_bank'
+  #       ),
+  #     Z = c(100, 10, 10, 10, 100,
+  #           100, 10, 10, 10, 100
+  #           )
+  #   )
+  
+  # classified_pts <-
+  #   data.frame(
+  #     hy_id = c("A", "A",  "A", "A", "A"),
+  #     cs_id = c(1, 1, 1, 1, 1),
+  #     pt_id = c(1, 2, 3, 4, 5),
+  #     cs_lengthm = c(CS_LENGTHM),
+  #     point_type = c('bottom', 'bottom', 'bottom', 'bottom', 'bottom'),
+  #     Z = c(100, 100, 100, 100, 100)
+  #   )
+  
+  # ------------------------------------------------------------------------
+  # ------------------------------------------------------------------------
   
   # make a unique ID if one is not given (NULL 'id')
   if(is.null(crosswalk_id)) {
@@ -1305,13 +1360,40 @@ get_relief <- function(
       names_from  = point_type,
       values_from = c(minZ, maxZ)
     ) %>% 
+    # dplyr::select(
+    #       dplyr::any_of(crosswalk_id),
+    #       cs_id, 
+    #       bottom     = minZ_bottom, 
+    #       left_bank  = maxZ_left_bank, 
+    #       right_bank = maxZ_right_bank
+    #     ) 
     dplyr::select(
-          dplyr::any_of(crosswalk_id),
-          cs_id, 
-          bottom     = minZ_bottom, 
-          left_bank  = maxZ_left_bank, 
-          right_bank = maxZ_right_bank
-        ) 
+      dplyr::any_of(
+        c(
+          crosswalk_id,
+          "cs_id",
+          "minZ_bottom",
+          "maxZ_left_bank",
+          "maxZ_right_bank"
+        ))
+    ) %>%  
+      dplyr::rename(
+        dplyr::any_of(c(
+          bottom     = "minZ_bottom",
+          left_bank  = "maxZ_left_bank",
+          right_bank = "maxZ_right_bank"
+        ))
+      )
+  
+  # make sure that all the required columns are present, if a column is missing, add that column and set the values to NA
+  required_pt_cols <- c("bottom", "left_bank", "right_bank")
+  
+  for (col in required_pt_cols) {
+    if (!col %in% names(relief)) {
+      # message("Missing ", col, " in relief, adding default NA")
+      relief[[col]] <- NA
+    }
+  }
   
   # join lengths and depth threshold back with relief table and
   # calculate if the max difference between left/right bank vs bottom is 
@@ -1326,26 +1408,54 @@ get_relief <- function(
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
-      max_relief = max(c(round(right_bank - bottom, 3), 
-                         round(left_bank - bottom, 3)), 
-                       na.rm = TRUE)                     # TODO: removing NAs might not be the right call, removing them might set has_relief to TRUE and says "there IS relief but no valid banks"
+      max_relief = max(
+                      c(
+                        round(right_bank - bottom, 3), 
+                        round(left_bank - bottom, 3)
+                      ), 
+                      na.rm = TRUE
+                      ),  # TODO: removing NAs might not be the right call, removing them might set has_relief to TRUE and says "there IS relief but no valid banks"
+      
+      # TODO: if both left AND right bank are NA, then we get an -Inf which we will just set to 0 (i.e. relief of 0)
+      max_relief = dplyr::case_when(
+        is.infinite(max_relief) ~ 0,
+        TRUE                    ~ max_relief
+      )
     ) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(
-      has_relief = dplyr::case_when(
-        max_relief >= depth_threshold ~ TRUE,
-        TRUE                          ~ FALSE
+      # TODO: if a cross section does NOT have proper left/right banks, it by default can NOT have relief (i.e. has_relief = FALSE)
+      has_missing_banks = is.na(left_bank) | is.na(right_bank),
+      has_relief        = dplyr::case_when(
+        (max_relief >= depth_threshold) & !has_missing_banks ~ TRUE,
+        TRUE                            ~ FALSE
       ),
+      # has_relief = dplyr::case_when(
+        # max_relief >= depth_threshold ~ TRUE,
+        # TRUE                          ~ FALSE
+      # ),
       pct_of_length_for_relief = pct_of_length_for_relief
-    )
+    ) 
+    # dplyr::select(-has_missing_banks)
   
   # if detailed set of data is specified, return the relief dataframe with additional columns
   if(detailed) {
     relief <- 
       relief %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+      dplyr::mutate(
+        max_relief = dplyr::case_when(
+          has_missing_banks ~ 0,
+          TRUE              ~ max_relief
+        )
+      ) %>% 
+      dplyr::ungroup() %>% 
       dplyr::select(
         dplyr::any_of(crosswalk_id),
-        cs_id, cs_lengthm, has_relief, max_relief, pct_of_length_for_relief
+        cs_id, cs_lengthm, 
+        has_relief, 
+        max_relief, 
+        pct_of_length_for_relief
         )
     
     return(relief)
