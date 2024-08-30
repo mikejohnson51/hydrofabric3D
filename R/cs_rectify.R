@@ -151,6 +151,9 @@ get_improved_cs_pts = function(
   
   ### ### ## ## ### ## ### ##  ### ### ## ## ### ## ### ##
   
+  # remove any cross sections points that might be missing Z values (i.e. NA Z values)
+  cs_pts <- drop_incomplete_cs_pts(cs_pts, crosswalk_id)
+  
   if (verbose) { message("Determining points to reevaluate...") }
   
   # add valid_banks and has_relief columns to transects data
@@ -239,6 +242,9 @@ get_improved_cs_pts = function(
     crosswalk_id = crosswalk_id, 
     dem          = dem
   )
+  
+  # remove any cross sections points that might be missing Z values (i.e. NA Z values)
+  extended_pts <- drop_incomplete_cs_pts(extended_pts, crosswalk_id)
   
   # Drop the old valid_banks and has_relief columns
   extended_pts <- dplyr::select(extended_pts, -valid_banks, -has_relief)

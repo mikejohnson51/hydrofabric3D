@@ -1665,6 +1665,29 @@ get_cs_bottom_length <- function(cross_section_pts) {
   
 }
 
+#' Remove entire cross sections that have any NA Z (depth) values
+#'
+#' @param cross_section_pts cs points dataframe, tibble, or sf dataframe
+#' @param id unique ID for flowline 
+#' @importFrom dplyr group_by across any_of ungroup filter
+#' @return cross_section_pts dataframe / tibble / sf dataframe with removed cross sections
+#' @export
+drop_incomplete_cs_pts <- function(cross_section_pts, id = NULL) {
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(id)) {
+    id  <- 'hydrofabric_id'
+  }
+  
+  cross_section_pts <-  
+    cross_section_pts %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(id, "cs_id")))) %>% 
+    dplyr::filter(!any(is.na(Z))) %>% 
+    dplyr::ungroup()
+  
+  return(cross_section_pts)
+  
+}
+
 #' Calculates a validity score column based on valid_banks and has_relief columns in a set of cross section points
 #'
 #' @param cs_to_validate dataframe
