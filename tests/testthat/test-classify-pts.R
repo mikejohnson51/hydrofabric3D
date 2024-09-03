@@ -190,16 +190,217 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank ab
       Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
     )
 
-  plot(ideal_pts$Z~ideal_pts$pt_id)
+  # plot(ideal_pts$Z~ideal_pts$pt_id)
 
   cpts <- classify_points(ideal_pts, crosswalk_id = ID_COL)
-  cpts$point_type
-
+  
   expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
 
   testthat::expect_true(
     all(cpts$point_type == expected_point_types)
     )
+})
+
+generate_cs <- function(num_unique_ids = 1, 
+                               num_pts_per_id = 3, 
+                               cs_id = 1, 
+                               cs_lengthm = 100,
+                               num_peaks = 1, 
+                               amplitude = 1
+                               ) {
+  unique_ids <- LETTERS[1:num_unique_ids]
+  rel_dist_interval <- (cs_lengthm / num_pts_per_id) / 100
+  rel_dist <- cumsum(rep(rel_dist_interval, num_pts_per_id))
+  
+  # Generate Z values based on sine wave to simulate peaks and troughs, shifted upwards to be > 0
+  x <- seq(0, 2 * pi * num_peaks, length.out = num_pts_per_id)
+  z_values <- amplitude * sin(x) + amplitude
+  
+  cs <- data.frame(
+    hy_id = rep(unique_ids, each = num_pts_per_id),
+    cs_id = rep(cs_id, num_unique_ids * num_pts_per_id),
+    pt_id = rep(1:num_pts_per_id, times = num_unique_ids),
+    cs_lengthm = rep(cs_lengthm, num_unique_ids * num_pts_per_id),
+    relative_distance = rel_dist,
+    Z = rep(z_values, times = num_unique_ids)
+  )
+  return(cs)
+}
+
+classify_z_pts <- function(Z) {
+  slope          <- diff(c(0, Z))  
+  bottomZ        <- min(Z)      
+  points_per_id  <- length(Z)
+  
+  classification <- sapply(1:points_per_id, function(i) {
+    message(i)
+    if (i == 1) {
+      message("LB\n")
+      return("left_bank")   # handle first point
+    } else if (i == points_per_id) {
+      message("RB\n")
+      return("right_bank")  # and the last point
+    } else if (Z[i] == bottomZ) {
+      message("BOTTOM\n")
+      return("bottom")      # identify the bottom point(s) (min Z value)
+    } else if (slope[i] > 0) {
+      if (slope[i + 1] <= 0) {
+        message("CHAN\n")
+        return("channel")     #  slope changing from rising to falling (approaching bottom)
+      } else {
+        message("RB\n")
+        return("right_bank")  # rising slope but not near the bottom
+      }
+    } else if (slope[i] < 0) {
+      if (slope[i - 1] >= 0 || slope[i + 1] == 0) {
+        message("CHAN\n")
+        return("channel")   # slope changing from falling to rising (leaving bottom)
+      } else {
+      message("LB\n")
+      return("left_bank")  #  slope  falling but not near the bottom
+      }
+    } else if(slope[i] == 0) {
+      message("SLOPE is 0 --> CHAN\n")
+      return("channel")
+    }
+    
+    message("NO MATCH\n")
+    
+  })
+  
+  return(classification)
+}
+
+
+# generate_cs(
+#   num_unique_ids = 1,
+#   num_pts_per_id = 10,
+#   cs_id          = 1,
+#   cs_lengthm     = 100,
+#   num_peaks = 1,
+#   amplitude = 1
+# ) 
+
+# TODO: Left off here on 2024-08-27
+# TODO: IDEAL SHAPE ("left_bank", "right_bank", "bottom", "channel" point types) 
+#   \     /
+#    \   /
+#      _
+testthat::test_that("'classify_points' - (1 cross section, VALID) - 3 point 'V' shaped cross section", {
+  ID_COL            <- "hy_id"
+  NUM_UNIQUE_IDS    = 1
+  UNIQUE_IDS        = LETTERS[1:NUM_UNIQUE_IDS]
+  NUM_PTS = 4
+  NUM_PTS_PER_ID    = 4
+  CS_ID             = 1
+  CS_LENGTHM        = 100
+  REL_DIST_INTERVAL = (CS_LENGTHM / NUM_PTS) / 100
+  REL_DIST          = cumsum(rep(REL_DIST_INTERVAL, NUM_PTS))
+  
+  # cs <- generate_cs(
+  #   num_unique_ids = 1,
+  #   num_pts_per_id = 3,
+  #   cs_id          = 1,
+  #   cs_lengthm     = 100,
+  #   num_peaks      = 1,
+  #   amplitude      = 2
+  # )
+  # 
+  # plot(cs$Z)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
+  cs <- data.frame(
+    hy_id      = c("A", "A",  "A"),
+    cs_id      = c(1, 1, 1),
+    pt_id             = c(1, 2, 3),
+    cs_lengthm        = c(100, 100, 100),
+    relative_distance = c(0.333333, 0.666667, 1.0000000),
+    Z = c(4, 1, 4)
+  )
+  
+  cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
+  classify_z_pts(c(4, 1, 4))
+  classify_z_pts(c(10, 8, 7,4, 0, 4, 5, 10, 11, 9))
+  
+  ideal_pts <-
+    data.frame(
+      hy_id      = c("A", "A", "A"),
+      cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+      pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+      cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+      relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+      Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
+    )
+  
+  # plot(ideal_pts$Z~ideal_pts$pt_id)
+  
+  cpts <- classify_points(ideal_pts, crosswalk_id = ID_COL)
+  
+  expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
+  
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+})
+
+testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
+  ID_COL <- "hy_id"
+  
+  ideal_pts1 <-
+    data.frame(
+      hy_id      = c("A", "A", "A", "A", "A", "A", "A", "A", "A", "A"),
+      cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+      pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+      cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+      relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+      # point_type = c('left_bank', 'left_bank', 'channel', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank'),
+      Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
+    )
+  
+  classify_z_pts(ideal_pts1$Z, 10)
+  hydrofabric3D::classify_points(ideal_pts1, crosswalk_id = "hy_id")$point_type
+  
+  # Identical cross section as above with different "hy_id"
+  ideal_pts2 <-
+    data.frame(
+      hy_id      = c("B", "B", "B", "B", "B", "B", "B", "B", "B", "B"),
+      cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+      pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+      cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+      relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+      # point_type = c('left_bank', 'left_bank', 'channel', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank'),
+      Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
+    )
+  
+  two_cs <- 
+    dplyr::bind_rows(
+      ideal_pts1,
+      ideal_pts2
+    )
+  
+  # plot(two_cs$Z~two_cs$pt_id)
+  
+  cpts <- classify_points(two_cs, crosswalk_id = ID_COL)
+  
+  expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
+  
+  # make sure both hy_ids got correct classification
+  testthat::expect_true(
+    all(dplyr::filter(cpts, hy_id == "A")$point_type == expected_point_types)
+  )
+ 
+  testthat::expect_true(
+    all(dplyr::filter(cpts, hy_id == "B")$point_type == expected_point_types)
+  )
+  
+  # make sure all unique tmp_ids were preserved 
+  testthat::expect_true(
+    all(
+      hydrofabric3D::get_unique_tmp_ids(cpts) %in% hydrofabric3D::get_unique_tmp_ids(two_cs) 
+      )
+  )
+  
 })
 
 # testthat::test_that("check 'get_bank_attributes' has valid output columns from CLASSIFIED CS from DEFAULT transects output", {
