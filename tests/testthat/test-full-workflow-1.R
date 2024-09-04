@@ -140,35 +140,11 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   # sf::write_sf(cs_pts, "/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
   # sf::write_sf(flines, "/Users/anguswatters/Desktop/test_improve_flines_06.gpkg")
   # sf::write_sf(transects, "/Users/anguswatters/Desktop/test_improve_transects_06.gpkg")
-  # #
-
 
   # ----------------------------------------------------------------------------------------------------------------
   # ---- STEP 3: Try to rectify any no relief and invalid banks cross sections ----
   # ----------------------------------------------------------------------------------------------------------------
-  # dplyr::rename(flines, hy_id = id)
-  # profvis::profvis({
-  # flowlines
    
-  # system.time({
-  #   # NOTE: new inplace method for improving (rectifying) any invalid cross sections where we dont have banks and relief
-    # fixed_pts <- hydrofabric3D::improve_invalid_cs3(
-    #   # cs_pts         = cs_pts,    # cross section points generated from hydrofabric3D::cross_section_pts()
-    #   cs_pts         = classified_pts,
-    #   net            = flowlines,    # original flowline network
-    #   # net            = flines,     # original flowline network
-    #   transects      = transects,    # original transect lines
-    #   points_per_cs  = POINTS_PER_CS,
-    #   min_pts_per_cs = MIN_PTS_PER_CS, # number of points per cross sections
-    #   dem            = DEM_PATH, # DEM to extract points from
-    #   scale          = EXTENSION_PCT, # How far to extend transects if the points need to be rechecked
-    #   pct_of_length_for_relief = PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF, # percent of cross sections length to be needed in relief calculation to consider cross section to "have relief"
-    #   fix_ids = FALSE,
-    #   verbose = TRUE
-    # )
-  # })
-  # all(fixed_pts$is_extended == fixed_pts2$is_extended)
-  
   # system.time({
     # NOTE: new inplace method for improving (rectifying) any invalid cross sections where we dont have banks and relief
     fixed_pts <- hydrofabric3D::get_improved_cs_pts(
@@ -263,15 +239,6 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   
   testthat::expect_true(all_valid_pts_above_bottom)
   
-  # fixed_pts2$geometry
-  # fixed_pts2
-  # fixed_pts2 %>% 
-    # dplyr::group_by(hy_id, cs_id) %>%
-    # dplyr::filter(!any(is.na(Z)))
-  
-  # all(fixed_pts == dplyr::select(fixed_pts2, -extension_distance))
-  # all(fixed_pts == fixed_pts2)
-
 })
 
 
