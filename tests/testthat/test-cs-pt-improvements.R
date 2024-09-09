@@ -50,10 +50,10 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
               dplyr::any_of(ID_COL),
               cs_id,
               cs_lengthm
-              ) %>% 
+              ) 
     # dplyr::filter(hy_id == "wb-1003259", cs_id == 1)
   # dplyr::filter(hy_id == "wb-1003266", cs_id %in% c(1, 2))
-  dplyr::filter(hy_id == "wb-1003263", cs_id %in% c(1, 2))
+  # dplyr::filter(hy_id == "wb-1003263", cs_id %in% c(1, 2))
   # dplyr::filter(hy_id == "wb-1003266", cs_id == 1)
     # dplyr::filter(hy_id == "wb-1003267", cs_id == 3)
     # dplyr::filter(hy_id == "wb-1003266", cs_id == 2)
@@ -93,8 +93,8 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
     # classify_points(crosswalk_id = "hy_id") %>% 
     # dplyr::select(pt_id, Z, point_type) 
   
-  # classified2 <- 
-   plots2 <- 
+  classified2 <-
+   # plots2 <-
     cs_pts %>% 
     dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
@@ -113,25 +113,26 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
       
       point_type2 = classify_z_pts(
         depths = Z,
+        num_of_pts        = points_per_cs[1],
+        cs_length         = cs_lengthm[1],
+        relative_distance = relative_distance,
         pt_ids = pt_id,
-        point_types = point_type,
-        
-      )
-      point_type = get_cs_point_types(
-                        depths            = Z,
-                        num_of_pts        = points_per_cs[1],
-                        cs_length         = cs_lengthm[1],
-                        relative_distance = relative_distance,
-                        point_types       = point_type
-                      )
-      # depths <- use_smoothed_depths(
-        # depths, 
-        # smooth_depths(depths, window = 3),  # get a smoothed version of the DEM points
-        # point_types
-      # )
-    ) %>% 
-    hydrofabric3D::plot_cs_pts(color = "point_type", size = 6)
-    # dplyr::relocate(Z, point_type, point_type)
+        point_types = point_type
+      ),
+      point_type3 = classify_pts_from_slope(depths = Z)
+      # point_type3 = get_cs_point_types(
+      #                   depths            = Z,
+      #                   num_of_pts        = points_per_cs[1],
+      #                   cs_length         = cs_lengthm[1],
+      #                   relative_distance = relative_distance,
+      #                   point_types       = point_type
+      #                 )
+    ) 
+  classified2$point_type3
+  plots2 <- 
+    classified2 %>% 
+    hydrofabric3D::plot_cs_pts(color = "point_type3", size = 6)
+    # dplyr::relocate(Z, point_type, point_type2)
     # dplyr::select(hy_id, cs_id, pt_id, Z, point_type)
     # ggplot2::ggplot() + 
     # ggplot2::geom_point(
@@ -151,6 +152,7 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
     
   library(patchwork)
   plots1 / plots2
+  plots1 + plots2
   cs_pts %>% 
     classify_points(crosswalk_id = "hy_id") %>% 
     dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
