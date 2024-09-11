@@ -4,7 +4,7 @@
 \alias{plot_cs_pts}
 \title{Plots an X-Y scatter plot of cross section points}
 \usage{
-plot_cs_pts(cs_pts, x = "pt_id", y = "Z", color = NULL, grid = FALSE)
+plot_cs_pts(cs_pts, x = "pt_id", y = "Z", color = NULL, size = 1, grid = FALSE)
 }
 \arguments{
 \item{cs_pts}{data.frame of cross section points with columns hy_id, cs_id and columns for X and Y axises (i.e. "pt_id", "Z")}
@@ -14,6 +14,8 @@ plot_cs_pts(cs_pts, x = "pt_id", y = "Z", color = NULL, grid = FALSE)
 \item{y}{character name of column in cs_pts to use for Y axis}
 
 \item{color}{character name of column in cs_pts to color points on plot}
+
+\item{size}{numeric, size of the cs points, default is 1}
 
 \item{grid}{logical, if TRUE then use facet_grid, otherwise use facet_wrap. Default is FALSE (uses facet_wrap)}
 }

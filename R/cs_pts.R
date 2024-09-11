@@ -495,6 +495,778 @@ classify_points <- function(
   
 }
 
+#' Classify Cross Section Points (version 2)
+#' Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points
+#' @param cs_pts CS points, output of hydrofabric3D::cross_section_pts()
+#' @param crosswalk_id character, ID column in cs_pts
+#' @param pct_of_length_for_relief numeric, percent of cross section length (cs_lengthm) to use as the 
+#' threshold depth for classifying whether a cross section has "relief". If a cross section has at least X% of its length in depth, 
+#' then it is classified as "having relief" (i.e. has_relief = TRUE). Value must be non negative number (greater than or equal to 0). 
+#' Default is 0.01 (1% of the cross sections length).
+#' @return sf object
+#' @importFrom dplyr filter group_by mutate ungroup select between n left_join
+#' @importFrom zoo rollmean
+#' @export
+classify_points2 <- function(
+    cs_pts, 
+    crosswalk_id = NULL,
+    pct_of_length_for_relief = 0.01
+){
+  
+  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
+    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
+  # TODO: maybe relief_to_length_ratio is more intuitive than pct_of_length_for_relief ????
+  # relief_to_length_ratio = 0.01
+  
+  # cs_pts2 <- cs_pts
+  # crosswalk_id = "hy_id"
+  # pct_of_length_for_relief = 0.01
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # cs  <- add_hydrofabric_id(cs) 
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
+  # REQUIRED_COLS <- c(id, "cs_id")
+  
+  if (!all(REQUIRED_COLS %in% names(cs_pts))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs_pts))]
+    
+    stop("'cs_pts' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  # type checking
+  if (!is.numeric(pct_of_length_for_relief)) {
+    stop("Invalid argument type, 'pct_of_length_for_relief' must be of type 'numeric', given type was '",   
+         class(pct_of_length_for_relief), "'")
+  }
+  
+  # Make sure pct_of_length_for_relief is valid percentage value (greater than 0)
+  if (pct_of_length_for_relief < 0 ) {
+    stop("Invalid value 'pct_of_length_for_relief' of ", pct_of_length_for_relief, ", 'pct_of_length_for_relief' must be greater than or equal to 0")
+  } 
+  
+  # # remove any columns that already exist
+  cs_pts <- dplyr::select(cs_pts, 
+                          !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", "right_bank", "valid_banks", "has_relief"))
+  )
+  
+  # required cols that will be selected from the classified_pts object and in this order
+  req_cols       <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", 
+                      "cs_lengthm", "class", "point_type")
+  
+  # any starting columns in the original data 
+  starting_cols  <- names(cs_pts)
+  
+  # name and order of columns to select with
+  cols_to_select <- c(req_cols, starting_cols[!starting_cols %in% req_cols])
+  
+  # create classifications for points
+  classified_pts <-
+    dplyr::filter(cs_pts) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>%
+    dplyr::mutate(
+      class       = classify_banks_and_bottoms(
+                        num_of_pts = points_per_cs[1],
+                        pt_ids     = pt_id,
+                        depths     = Z
+                      ),
+      Z           = use_smoothed_depths(
+                        start_depths    = Z, 
+                        smoothed_depths = smooth_depths(Z, window = 3), 
+                        point_types     = class
+                      ),
+      anchors     = list(
+                      find_anchor_pts(
+                        depths             = Z,
+                        num_of_pts         = points_per_cs[1],
+                        cs_length          = cs_lengthm[1],
+                        relative_distance  = relative_distance,
+                        point_types        = class
+                      )
+                    ),
+      L              = anchors[[1]][1],
+      R              = anchors[[1]][2],
+      class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+      class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+      class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class),
+      
+      # get classification of concavity based on 1st and 2nd derivatives of depth points
+      deriv_type   = classify_derivatives(Z),
+      deriv_type   = dplyr::case_when(
+        (grepl("concave", deriv_type) | deriv_type == "linear") & class != "bottom" ~ "channel",
+        TRUE                         ~ class
+      ),
+      # side = dplyr::case_when(
+      #   pt_id >= R[1] ~ "right_side",
+      #   pt_id <= L[1] ~ "left_side",
+      #   TRUE          ~ "middle"
+      # ),
+      # # max_left      = which.max(Z[1:L[1]]),
+      # # max_right     = which.max(Z[R[1]:length(Z)]) + R[1],
+      # max_left      = pmax(which.max(Z[1:L[1]]), 1),
+      # max_right     = pmin(which.max(Z[R[1]:length(Z)]) + R[1], points_per_cs[1]),
+      
+      deriv_type   = clean_point_types(deriv_type),
+      deriv_type   = set_bank_anchors(
+                                    depths = Z,
+                                    point_types = deriv_type,
+                                    L = L[1],
+                                    R = R[1]
+                                    ),
+      class        = deriv_type,
+      point_type   = deriv_type
+      # class      = clean_point_types(class),
+      # point_type = class
+      
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(dplyr::any_of(cols_to_select))
+  # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
+  
+  # classified_pts[cols_to_select]                       # Another method for selecting columns....
+  
+  # get bank validity attributes for each hy_id/cs_id
+  # - Uses the count of point types per cross section and checks Z to make sure that a "bottom" point is
+  #   in each cross section and each "bottom" point has a valid left and right bank)
+  bank_validity_df <- get_bank_attributes(classified_pts, crosswalk_id)
+  
+  # classified_pts %>%
+  # dplyr::filter(hy_id %in% c('wb-1003260')) %>%
+  # hydrofabric3D::plot_cs_pts(color = "point_type")
+  
+  # # Or add bank attributes 
+  # banked_pts <- add_bank_attributes(output_pts)
+  
+  # get relief data, determine if a cross section has relief within X% percentage of the cross sections length
+  relief_df <- get_relief(
+    classified_pts, 
+    crosswalk_id             = crosswalk_id,
+    pct_of_length_for_relief = pct_of_length_for_relief, 
+    detailed                 = FALSE
+  )
+  
+  # join the bank validity attributes with the relief values
+  validity_checks <- dplyr::left_join(
+    bank_validity_df, 
+    relief_df, 
+    by = c(crosswalk_id, "cs_id")  
+    # by = c("hy_id", "cs_id")
+  )
+  
+  # join the new validity check values to the classified points
+  classified_pts <- 
+    classified_pts %>% 
+    dplyr::left_join(
+      validity_checks,
+      by = c(crosswalk_id, "cs_id")  
+      # by = c("hy_id", "cs_id")
+    ) 
+  
+  # move the geometry column to the last column (if one exists)
+  classified_pts <- move_geometry_to_last(classified_pts)
+  
+  return(classified_pts)
+  
+}
+
+#############################################################################################################
+# classify_banks_and_bottoms()
+# use_smoothed_depths()
+# smooth_depths()
+# find_anchor_pts()
+# classify_derivatives()
+# clean_point_types()
+# set_bank_anchors()
+#############################################################################################################
+# dplyr::mutate(
+#   class = classify_banks_and_bottoms(
+#     num_of_pts = points_per_cs[1],
+#     pt_ids     = pt_id,
+#     depths     = Z
+#   ),
+#   Z           = use_smoothed_depths(start_depths = Z, 
+#                                     smoothed_depths = smooth_depths(Z, window = 3), 
+#                                     point_types = class
+#   ),
+#   anchors = list(find_anchor_pts(
+#     depths             = Z,
+#     num_of_pts         = points_per_cs[1],
+#     cs_length          = cs_lengthm[1],
+#     relative_distance  = relative_distance,
+#     point_types        = class
+#   )
+#   ),
+#   L  = anchors[[1]][1],
+#   R  = anchors[[1]][2],
+#   class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+#   class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+#   class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class),
+#   
+#   deriv_type  = classify_derivatives(Z),
+#   deriv_type = dplyr::case_when(
+#     (grepl("concave", deriv_type) | deriv_type == "linear") & class != "bottom" ~ "channel",
+#     TRUE                         ~ class
+#   ),
+#   
+#   # side = dplyr::case_when(
+#   #   pt_id >= R[1] ~ "right_side",
+#   #   pt_id <= L[1] ~ "left_side",
+#   #   TRUE          ~ "middle"
+#   # ),
+#   # # max_left      = which.max(Z[1:L[1]]),
+#   # # max_right     = which.max(Z[R[1]:length(Z)]) + R[1],
+#   # max_left      = pmax(which.max(Z[1:L[1]]), 1),
+#   # max_right     = pmin(which.max(Z[R[1]:length(Z)]) + R[1], points_per_cs[1]),
+#   # deriv_type    = dplyr::case_when(
+#   #   # pt_id <= max_left ~ "left_bank",
+#   #   # pt_id >= max_right ~ "right_bank",
+#   #   pt_id == max_left ~ "left_bank",
+#   #   pt_id == max_right ~ "right_bank",
+#   #   TRUE ~ deriv_type
+#   #   ),
+#   
+#   point_type = class,
+#   # clean_pt   = clean_point_types(point_type),
+#   # clean_pt   = set_bank_anchors(depths = Z, 
+#   #                               point_types = clean_pt,
+#   #                               L = L[1],
+#   #                               R = R[1]
+#   #                               ),
+#   clean_der   = clean_point_types(deriv_type),
+#   clean_der2  = set_bank_anchors(depths = Z,
+#                                  point_types = clean_der,
+#                                  L = L[1],
+#                                  R = R[1]
+#   )
+# )
+
+#' Classify banks and bottoms
+#'
+#' @param num_of_pts 
+#' @param pt_ids 
+#' @param depths 
+#'
+#' @return character vector
+#' @export
+classify_banks_and_bottoms <- function(
+    num_of_pts, 
+    pt_ids, 
+    depths
+) {
+  
+  # calc the 
+  # - number of points in a third of the cross section (third)
+  third              <- ceiling(num_of_pts / 3)
+  
+  mid_third_left_idx   <- third
+  mid_third_right_idx  <- ((2 * third) - 1)
+  
+  mid_third_idxs    <- mid_third_left_idx:mid_third_right_idx
+  mid_third_low_pt  <- min(depths[mid_third_idxs])
+  
+  # logic for determining if its a bottom point (at lowest depth AND in middle third)
+  is_at_bottom_Z      <- depths <= mid_third_low_pt
+  is_at_middle_third  <- dplyr::between(pt_ids, mid_third_left_idx, mid_third_right_idx)
+  
+  point_type <- ifelse(is_at_bottom_Z & is_at_middle_third, "bottom", "bank")
+  
+  return(point_type)
+}
+
+#' Smooth out depth values
+#'
+#' @param depths 
+#' @param num_of_pts 
+#' @param window 
+#'
+#' @return numeric vector
+#' @export
+smooth_depths <- function(
+    depths,
+    num_of_pts = NULL,
+    window     = 3
+) {
+  
+  # depths <- cs_pts$Z
+  # num_of_pts          <- 10
+  # window = 3
+  
+  if(is.null(num_of_pts)) {
+    num_of_pts <- length(depths)    
+  } 
+  
+  # calculate a rolling mean of the depths between the starting and ending depth
+  smoothed_depths <- c(
+    depths[1],
+    zoo::rollmean(depths, window),
+    depths[num_of_pts]
+  )
+  
+  return(smoothed_depths)
+}
+
+#' @title Use the bottom points from the original depth values otherwise use the (rolling mean) smoothed depth values
+#'
+#' @param start_depths 
+#' @param smoothed_depths 
+#' @param point_types 
+#'
+#' @return numeric vector
+#' @export
+use_smoothed_depths <- function(
+    start_depths, 
+    smoothed_depths, 
+    point_types
+) {
+  return(
+    ifelse(point_types == "bottom", start_depths, smoothed_depths)
+  )
+}
+
+#' @title Find the anchor points on the left and right of the bottoms (where bottom points end)
+#' given depths and relative distances and points classified into banks vs bottoms
+#' determine the indices for 
+#' - start of the left side bank/channel 
+#' - start of the right/side bank channel
+#' - the index of the point at the middle of the bottom 
+#' @param depths 
+#' @param num_of_pts 
+#' @param cs_length 
+#' @param relative_distance 
+#' @param point_types 
+#'
+#' @return numeric vector of length 3 with the index of the left anchor, middle point, and right anchor (i.e. c(2, 5, 9) -> c(left_anchor, middle_bottom, right_anchor))
+#' @export
+find_anchor_pts <- function(depths, 
+                            num_of_pts,
+                            cs_length, 
+                            relative_distance, 
+                            point_types
+) {
+  
+  
+  # ------------------------------
+  # depths            = depths
+  # num_of_pts        = num_of_pts
+  # relative_distance = relative_distances
+  # cs_length         = cs_length
+  # point_types       = point_types
+  
+  # ------------------------------
+  third          = ceiling(num_of_pts / 3)
+  
+  dist_between_pts   <- mean(diff(relative_distance))
+  in_channel_pts     <- ceiling(cs_length / dist_between_pts)
+  
+  b1  <- ceiling(in_channel_pts / 2) # b1
+  b2  <- in_channel_pts - b1 # b2
+  
+  # bank_idxs      <- find_in_channel_pts(relative_distances, cs_length)
+  # 
+  # left_bank      <- bank_idxs[1] 
+  # right_bank     <- bank_idxs[2]
+  
+  bottom_idxs <- which(point_types == "bottom")
+  # point_type_is_bottom = which(point_types == "bottom")
+  
+  min_bottom  <- bottom_idxs[1]
+  mid_bottom  <- bottom_idxs[ceiling(length(bottom_idxs) / 2)]
+  max_bottom  <- bottom_idxs[length(bottom_idxs)]
+  # min_bottom     = which(point_types == "bottom")[1]
+  # mid_bottom     = which(point_types == "bottom")[ceiling(length(which(point_types == "bottom"))/2)]
+  # max_bottom     = which(point_types == "bottom")[length(which(point_types == "bottom"))]
+  
+  L1             = pmax(1, mid_bottom - b1)
+  L2             = pmax(1, mid_bottom - b2)
+  
+  R1             = pmin(mid_bottom + b2, num_of_pts)
+  R2             = pmin(mid_bottom + b1, num_of_pts)
+  
+  anchor         = ifelse(depths[R2] < depths[L1], 2, 1)
+  
+  LEFT           = pmax(third, ifelse(anchor == 1, L1, L2))
+  RIGHT          = pmin(2 * third, ifelse(anchor == 1, R1, R2))
+  
+  count_left     = min_bottom - LEFT
+  count_right    = RIGHT - max_bottom
+  
+  LEFT           = ifelse(count_left == 0, LEFT - count_right, LEFT)
+  RIGHT          = ifelse(count_right == 0, RIGHT + count_left, RIGHT)
+  
+  return(c(LEFT, mid_bottom, RIGHT))
+  
+}
+
+#' @title Classify a numeric vector based on 1st and 2nd derivative values
+#' @description Given depths of a cross section, calculate the first and second derivative of the points
+#' and then classify the points based on 1st / 2nd derivative values at each point. 
+#' With the intention that points with concavity / linear should be "channel" points
+#' Points are labeled as:
+#' - flat
+#' - concave_up_increasing
+#' - concave_up_decreasing
+#' - concave_down_increasing
+#' - concave_down_decreasing
+#' - "linear"
+#' @param depths numeric vector
+#'
+#' @return character vector
+#' @export
+classify_derivatives <- function(depths) {
+  
+  classify_derivs <- function(slope, second_deriv) {
+    if (slope == 0) {
+      return("flat")
+    } else if (second_deriv > 0 && slope > 0) {
+      return("concave_up_increasing")
+    } else if (second_deriv > 0 && slope < 0) {
+      return("concave_up_decreasing")
+    } else if (second_deriv < 0 && slope > 0) {
+      return("concave_down_increasing")
+    } else if (second_deriv < 0 && slope < 0) {
+      return("concave_down_decreasing")
+    } else {
+      return("linear")  
+    }
+  }
+  
+  # padding the starting depth values w/ a duplicate first and last values
+  depths_padded <- c(depths[1], depths, depths[length(depths)])
+  
+  # calculate first deriv (slope) on padded depth values
+  slopes <- diff(depths_padded)
+  
+  # calculate second deriv (differences of the first differences)
+  second_derivative <- diff(slopes)
+  
+  # classify points based on padded 1st and 2nd derivatives 
+  classifications <- mapply(classify_derivs, slopes[1:(length(second_derivative))], second_derivative)
+  
+  return(classifications)
+} 
+
+#' Cleanup some common invalid point type classifications in cross section points
+#' given a vector of point types representing a cross section of depths, set rules on what points can exist in proximity to other points
+#' - set any banks surrounded by channel and bottoms to "channel"
+#' - set any bank points surrounded by "channel" points to "channel"
+#' - set any banks surrounded by bottom points to "bottom"
+#' @param point_types character vector 
+#'
+#' @return character vector
+#' @export
+clean_point_types <- function(point_types) {
+  
+  # point_types <-
+  #   smoothed %>%
+  # #   dplyr::filter(hy_id == "wb-1003265", cs_id == 2) %>%
+  # point_types <- c(point_types[1:6], c("bottom", "bottom", "channel", "channel"), point_types[7:length(point_types)] )
+  # point_types2 <- point_types
+  
+  # ----------------------------------------------------------------------------------------------------------------------------------------
+  # ---- Go through points and make sure point types follow certain rules regarding the neighboring group of point types:
+  #
+  # 1. A point is a BANK AND its between a "channel" and "bottom" point 
+  #    ----> set point_type to "channel"
+  #
+  # 2. A point is a BANK AND its between 2 "bottom" points 
+  #    ----> set point_type to "bottom"
+  # ----------------------------------------------------------------------------------------------------------------------------------------
+  
+  L  <- 1
+  M1 <- 1
+  M2 <- 1
+  R  <- 1
+  
+  RIGHT_BOUND <- length(point_types)
+  
+  # i = 1
+  
+  while (L <= R & 
+         L < RIGHT_BOUND & 
+         R < RIGHT_BOUND & 
+         M1 < RIGHT_BOUND & 
+         M2 < RIGHT_BOUND
+  ) {
+    
+    # message("-----------------------------","ITERATION ", i, "-----------------------------")
+    
+    # message("> L: ", L)
+    # message("> M1: ", M1)
+    # message("> M2: ", M2)
+    # message("> R: ", R)
+    
+    # get the point type of the start of the left group
+    left_type = point_types[L]
+    # left_group = point_types[L]            
+    
+    # message("Moving LEFT pointer")
+    while(
+      # point_types[L] == left_type
+      point_types[L] == left_type & !is.na(point_types[L])
+    ) {
+      L = L + 1
+      # message(" > ", L-1, " to ", L)
+      # message(" -> ", point_types[L - 1], " --> ", point_types[L])
+    }
+    
+    # get the rightmost left side group 
+    L = L - 1
+    
+    left_group = point_types[L]
+    
+    # message("Left group: ", left_group)
+    
+    # make a M1 and M2 points which will be the start and end indices of the middle group
+    M1 <- L + 1
+    M2 <- M1
+    
+    # current middle group 
+    mid_type <- point_types[M1]
+    # mid_group = point_types[M]  
+    
+    # message("Moving MIDDLE pointer...")
+    # move middle right pointer until another group is found
+    while(
+      # point_types[M2] == mid_type
+      point_types[M2] == mid_type & !is.na(point_types[M2])
+    ) {
+      M2 <- M2 + 1
+      # message(" > ", M2 - 1, " to ", M2)
+      # message(" -> ", point_types[M2 - 1], " --> ", point_types[M2])
+    }
+    
+    # get the group to left of the right hand group
+    M2 <- M2 - 1
+    
+    mid_group <- point_types[M2]
+    
+    # message("Moving RIGHT pointer...")
+    # move the right pointer to the right of the middle group
+    R <- M2 + 1
+    
+    right_group <- point_types[R]
+    
+    at_final_groups <- is.na(left_group) | is.na(mid_group) | is.na(right_group)
+    # at_last_group <- is.na(right_group)
+    
+    if (at_final_groups) {
+      # message("Reached last groups, stopping early!")
+      break
+    }
+    
+    # ---------------------------------------------------------   
+    # ----- conditions for changing point types -----
+    # ---------------------------------------------------------   
+    # - point is a BANK AND its between a "channel" and "bottom" point 
+    #    ----> set point_type to "channel"
+    is_bank_mid_group                   <-  mid_group %in% c("left_bank", "right_bank")
+    
+    is_bank_between_bottom_and_channel  <-  is_bank_mid_group & 
+                                            left_group == "bottom" & 
+                                            right_group == "channel"
+    
+    is_bank_between_channel_and_bottom  <-  is_bank_mid_group & 
+                                            left_group == "channel" & 
+                                            right_group == "bottom"
+    
+    if(is_bank_between_channel_and_bottom | is_bank_between_bottom_and_channel) {
+      # message("\n~~~~~~~~~~~~~","\n-----> FOUND 'bank' point between channel and bottom point: \n (", left_group, " > ", mid_group, " < ", right_group, "\n~~~~~~~~~~~~~")
+      point_types[M1:M2] <- "channel"
+    } 
+    
+    # - point is a BANK AND its between 2 "channel" points 
+    #    ----> set point_type to "channel"
+    is_bank_between_channel_and_channel   <- is_bank_mid_group & 
+                                             left_group == "channel" & 
+                                             right_group == "channel" 
+    
+    if(is_bank_between_channel_and_channel) {
+      # message("\n~~~~~~~~~~~", "\n-----> FOUND 'bank' point between 2 channel points: \n (", left_group, " > ", mid_group, " < ", right_group, "\n~~~~~~~~~~~")
+      point_types[M1:M2] <- "channel"
+    }
+    
+    # - point is a BANK AND its between 2 "bottom" points 
+    #    ----> set point_type to "bottom"
+    is_bank_between_bottom_and_bottom   <- is_bank_mid_group & 
+                                           left_group == "bottom" & 
+                                           right_group == "bottom" 
+    
+    if(is_bank_between_bottom_and_bottom) {
+      # message("\n~~~~~~~~~~~", "\n-----> FOUND 'bank' point between 2 bottom points: \n (", left_group, " > ", mid_group, " < ", right_group, "\n~~~~~~~~~~~")
+      point_types[M1:M2] <- "bottom"
+    } 
+    
+    # message("=======================================", 
+    #         "\nFound groups: \n", "\n- Left: (",  L, ") ", 
+    #         left_group, "\n- Mid: (", M1, " - ",  M2, ") ", mid_group, "\n- Right: (", R, ") ",  right_group,
+    #         "\n=======================================")
+    
+    # move the LEFT pointer to the start of the next group 
+    L <- L + 1
+    
+  }
+  
+  # ----------------------------------------------------------------------------------------------------------------------------------------
+  # ---- Go make sure that the "bottom" points have ATLEAST a single "channel" point to the left and right of the "bottom" ----
+  # ----------------------------------------------------------------------------------------------------------------------------------------
+  
+  # set pointers 
+  L  <- 1
+  M1 <- 1
+  M2 <- 1
+  R  <- 1
+  
+  # set a safe default value for the left and right of the bottom assuming 
+  # the edge of the bottom is 1 position left and right of the middle third of the points
+  third   <- length(point_types) %/% 3
+  # third   <- ceiling(length(point_types) / 3)
+  
+  left_of_bottom   <- third - 1
+  right_of_bottom  <- (third * 2) + 1
+  
+  max_bottom_width <- 0
+  
+  while (L <= R & 
+         L < RIGHT_BOUND & 
+         R < RIGHT_BOUND & 
+         M1 < RIGHT_BOUND & 
+         M2 < RIGHT_BOUND
+  ) {
+    
+    # get the point type of the start of the left group
+    left_type = point_types[L]
+    while(
+      point_types[L] == left_type & !is.na(point_types[L])
+    ) {
+      L = L + 1
+    }
+    
+    # get the rightmost left side group 
+    L = L - 1
+    left_group = point_types[L]
+    
+    # make a M1 and M2 points which will be the start and end indices of the middle group
+    M1 <- L + 1
+    M2 <- M1
+    
+    # current middle group 
+    mid_type <- point_types[M1]
+    
+    # move middle right pointer until another group is found
+    while(
+      point_types[M2] == mid_type & !is.na(point_types[M2])
+    ) {
+      M2 <- M2 + 1
+    }
+    
+    # get the group to left of the right hand group
+    M2 <- M2 - 1
+    
+    mid_group <- point_types[M2]
+    
+    # move the right pointer to the right of the middle group
+    R <- M2 + 1
+    
+    right_group <- point_types[R]
+    
+    at_final_groups <- is.na(left_group) | is.na(mid_group) | is.na(right_group)
+    
+    if (at_final_groups) {
+      # message("Reached last groups, stopping early!")
+      break
+    }
+    
+    # ---------------------------------------------------------   
+    # ----- make sure points to the left and right of the bottom are set to channel -----
+    # ---------------------------------------------------------   
+    
+    is_bottom    <- mid_group == "bottom" 
+    
+    # width of the current group of bottom points
+    bottom_width <- (M2 - M1) + 1
+    
+    # is the current bottom bigger than any previously seen bottoms?
+    at_current_biggest_bottom <- bottom_width >= max_bottom_width
+    
+    # if we're at a bottom group and its the current biggest bottom, 
+    # store the point to the left and to the right of the current bottom group
+    if(is_bottom & at_current_biggest_bottom) {
+      
+      max_bottom_width <- max(bottom_width, max_bottom_width)
+      
+      left_of_bottom  <- M1 - 1
+      right_of_bottom <- M2 + 1
+      
+    } 
+    # move the Left pointer to the start of the next group 
+    L <- L + 1
+  }
+  
+  # NOTE: make sure that to the left and right of the bottom, are "channel" points
+  point_types[left_of_bottom]  <- "channel"
+  point_types[right_of_bottom] <- "channel"
+  
+  return(point_types)
+  
+}
+
+# given a vector of depths and vector of corresponding point types representing a cross section of depths, 
+
+#' @title Given a vector of depths and vector of corresponding point types representing a cross section of depths, 
+#' @description Conditions for setting left and right bank classes:
+#' - make sure there is a left_bank at the left most highest position of the left side
+#' - make sure there is a "right_bank" at the right most highest position of the right side
+#' @param depths 
+#' @param point_types 
+#' @param L 
+#' @param R 
+#'
+#' @return character vector
+#' @export
+set_bank_anchors <- function(
+    depths,
+    point_types,
+    L,
+    R
+) {
+  
+  CS_START  <- 1
+  CS_END    <- length(depths)
+  
+  left_bank_count   <- sum(point_types[1:L] == "left_bank")
+  right_bank_count  <- sum(point_types[R:CS_END] == "right_bank")
+  
+  has_both_banks    <- left_bank_count > 0 & right_bank_count > 0
+  
+  if (has_both_banks) {
+    # message("Cross section already has 'left_bank' and 'right_bank' points, returning input point_types")
+    return(point_types)
+  }
+  
+  left_max_index <- which.max(depths[1:L])
+  
+  ## TODO: method 1 for getting highest right most point index
+  ## TODO: reverse the right side, get the first max point with which.max() then subtract this offset from total number of points and add 1
+  right_offset     <- which.max(depths[CS_END:R])
+  right_max_index  <- (CS_END - right_offset) + 1
+  
+  ## TODO: method 2 for getting highest right most point index
+  # right_offset     <- max(which(depths[R:CS_END] == max(depths[R:CS_END]))) - 1
+  # right_max_index  <- R + right_offset
+  
+  point_types[left_max_index]  <- "left_bank"
+  point_types[right_max_index] <- "right_bank"
+  
+  return(point_types)
+  
+}
+
 # -----------------------------------------------------------------------------------------
 
 # classify_pts_tmp = function(
@@ -885,7 +1657,7 @@ extract_dem_values3 <- function(cs, crosswalk_id = NULL, dem = NULL) {
 #' @importFrom dplyr filter group_by mutate ungroup select between n left_join
 #' @importFrom zoo rollmean
 #' @export
-classify_points2 <- function(
+classify_points3 <- function(
     cs_pts, 
     pct_of_length_for_relief = 0.01
 ){
@@ -1002,7 +1774,7 @@ classify_points2 <- function(
 #' @return sf object
 #' @importFrom dplyr filter group_by mutate ungroup select between n
 #' @importFrom zoo rollmean
-classify_points3 <- function(cs_pts){
+classify_points4 <- function(cs_pts){
   
   . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
     count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
