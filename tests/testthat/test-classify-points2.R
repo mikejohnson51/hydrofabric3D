@@ -3,9 +3,9 @@ library(dplyr)
 library(sf)
 # # library(hydrofabric3D)
 
-# source("testing_utils.R")
-source("tests/testthat/testing_utils.R")
-devtools::load_all()
+source("testing_utils.R")
+# source("tests/testthat/testing_utils.R")
+# devtools::load_all()
 
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::classify_pts() ----
@@ -60,11 +60,25 @@ testthat::test_that("check CLASSIFIED CS points default output columns, from DEF
     min_pts_per_cs  = MIN_PTS_PER_CS,
     dem             = DEM_PATH
   )
+  # cs_pts
   # cs_pts  %>% 
   # # dplyr::select(hy_id, cs_id, pt_id, Z, relative_distance)  %>% 
   # sf::st_drop_geometry() %>%
-  #  head(20)
-  classified <- classify_points(
+  # classify_points(
+  #   cs_pts = cs_pts,
+  #   crosswalk_id = ID_COL,
+  #   pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
+  # ) %>% 
+  #   hydrofabric3D::plot_cs_pts(color = "point_type", size = 4)
+  # 
+  # classify_points2(
+  #   cs_pts = cs_pts,
+  #   crosswalk_id = ID_COL,
+  #   pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
+  # ) %>% 
+  #   hydrofabric3D::plot_cs_pts(color = "point_type", size = 4)
+  
+  classified <- classify_points2(
     cs_pts = cs_pts,
     crosswalk_id = ID_COL,
     pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
@@ -73,24 +87,24 @@ testthat::test_that("check CLASSIFIED CS points default output columns, from DEF
   # check if minimum required output columns 
   testthat::expect_true(
     classified_cs_pts_has_min_output_cols(classified_pts = classified, id = ID_COL)
-    )
+  )
   
   # check that if NO 'id' is specified, then the default output columns will NOT match the classified points that DID have a specified 'id' 
   testthat::expect_false(
     classified_cs_pts_has_min_output_cols(classified_pts = classified )
-    )
+  )
   
   # test same number of input points are in classified output points 
   same_num_pts_after_classifying <- nrow(cs_pts)  == nrow(classified)
   testthat::expect_true(same_num_pts_after_classifying)
- 
+  
   # make sure all the unique tmp_ids (id + cs_id) are the same in the input AND output 
   same_unique_tmp_ids <- has_same_unique_tmp_ids(x = cs_pts, y = classified, id = ID_COL)
   testthat::expect_true(same_unique_tmp_ids)
   
 })
-  
-  
+
+
 # TODO:
 testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from DEFAULT transects output", {
   
@@ -141,11 +155,26 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
     dem             = DEM_PATH
   )
   
-  classified <- classify_points(
+  # cs_pts <- 
+    # cs_pts %>% 
+    # dplyr::filter(hy_id == "wb-1003258", cs_id == 1)
+  
+  classified <- classify_points2(
     cs_pts = cs_pts,
     crosswalk_id = ID_COL,
     pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
   ) 
+  # classify_points(
+  #   cs_pts = cs_pts,
+  #   crosswalk_id = ID_COL,
+  #   pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
+  # ) %>% 
+  #      plot_cs_pts(color = 
+  #                 "point_type", size = 4)
+  # 
+  # classified %>% 
+  #   plot_cs_pts(color = 
+  #                 "point_type", size = 4)
   
   true_valid_banks <- 
     classified %>% 
@@ -176,7 +205,7 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
 #      \     /
 #       \   /
 #        __
-testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
+testthat::test_that("'classify_points2' - (1 cross section, VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
   ID_COL <- "hy_id"
   
   
@@ -205,17 +234,17 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank ab
   #   dplyr::group_by(dplyr::across(dplyr::any_of(c(ID_COL, "cs_id"))))
   
   # plot(ideal_pts$Z~ideal_pts$pt_id)
-
-  cpts <- classify_points(ideal_pts, crosswalk_id = ID_COL)
   
-  # classify_points(ideal_pts, crosswalk_id = ID_COL) %>% 
+  cpts <- classify_points2(ideal_pts, crosswalk_id = ID_COL)
+  
+  # classify_points2(ideal_pts, crosswalk_id = ID_COL) %>% 
   #   plot_cs_pts(color = "point_type", size = 4)
   
   expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
-
+  
   testthat::expect_true(
     all(cpts$point_type == expected_point_types)
-    )
+  )
 })
 
 # generate_cs <- function(num_unique_ids = 1, 
@@ -303,8 +332,8 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank ab
 #   \     /
 #    \   /
 #      _
-testthat::test_that("'classify_points' - (1 cross section, VALID) - 3 point 'V' shaped cross section", {
-
+testthat::test_that("'classify_points2' - (1 cross section, VALID) - 3 point 'V' shaped cross section", {
+  
   ID_COL            <- "hy_id"
   NUM_UNIQUE_IDS    = 1
   UNIQUE_IDS        = LETTERS[1:NUM_UNIQUE_IDS]
@@ -336,7 +365,7 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - 3 point 'V' 
     Z = c(4, 1, 4)
   )
   
-  cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
   cpts
   cpts$has_relief
   
@@ -348,7 +377,7 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - 3 point 'V' 
     relative_distance = c(0.25, 0.50, 0.75, 1.0000000),
     Z = c(4, 1, 1, 4)
   )
-  cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
   cpts
   cpts$has_relief
   # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
@@ -367,7 +396,7 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - 3 point 'V' 
   
   # plot(ideal_pts$Z~ideal_pts$pt_id)
   
-  cpts <- classify_points(ideal_pts, crosswalk_id = ID_COL)
+  cpts <- classify_points2(ideal_pts, crosswalk_id = ID_COL)
   
   expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
   
@@ -376,7 +405,7 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - 3 point 'V' 
   )
 })
 
-testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
+testthat::test_that("'classify_points2' - (2 cross section, both VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
   ID_COL <- "hy_id"
   
   ideal_pts1 <-
@@ -391,7 +420,7 @@ testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_ba
     )
   
   # classify_z_pts(ideal_pts1$Z, 10)
-  # hydrofabric3D::classify_points(ideal_pts1, crosswalk_id = "hy_id")$point_type
+  # hydrofabric3D::classify_points2(ideal_pts1, crosswalk_id = "hy_id")$point_type
   
   # Identical cross section as above with different "hy_id"
   ideal_pts2 <-
@@ -413,7 +442,7 @@ testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_ba
   
   # plot(two_cs$Z~two_cs$pt_id)
   
-  cpts <- classify_points(two_cs, crosswalk_id = ID_COL)
+  cpts <- classify_points2(two_cs, crosswalk_id = ID_COL)
   
   expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
   
@@ -421,7 +450,7 @@ testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_ba
   testthat::expect_true(
     all(dplyr::filter(cpts, hy_id == "A")$point_type == expected_point_types)
   )
- 
+  
   testthat::expect_true(
     all(dplyr::filter(cpts, hy_id == "B")$point_type == expected_point_types)
   )
@@ -430,7 +459,7 @@ testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_ba
   testthat::expect_true(
     all(
       hydrofabric3D::get_unique_tmp_ids(cpts) %in% hydrofabric3D::get_unique_tmp_ids(two_cs) 
-      )
+    )
   )
   
 })
@@ -481,7 +510,7 @@ testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_ba
 #     dem             = DEM_PATH
 #   )
 #   
-#   classified <- classify_points(
+#   classified <- classify_points2(
 #     cs_pts = cs_pts,
 #     crosswalk_id = ID_COL,
 #     pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
@@ -727,25 +756,24 @@ testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_ba
 
 
 
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
