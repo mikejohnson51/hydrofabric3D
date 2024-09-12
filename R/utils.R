@@ -184,18 +184,32 @@ remove_cols_from_df <- function(df, columns_to_remove) {
 
 #' @title Get the count of each point type in a set of cross section points
 #' @description get_point_type_counts() will create a dataframe providing the counts of every point_type for each hy_id/cs_id in a set of classified cross section points (output of classify_pts())
-#' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well asa 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
+#' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well as a 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
+#' @param crosswalk_id character, ID column 
 #' @return dataframe or sf dataframe with hy_id, cs_id, and <point_type>_count columns for each point_type
 #' @importFrom sf st_drop_geometry
 #' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
 #' @importFrom tidyr pivot_wider pivot_longer
 #' @export
-get_point_type_counts <- function(classified_pts) {
+get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
   
   # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
   # add = F
   # classified_pts = classified_pts2
   # add = TRUE
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "point_type")
+  
+  if (!all(REQUIRED_COLS %in% names(classified_pts))) {
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(classified_pts))]
+    stop("'classified_pts' is missing one or more of the required columns:\n > ",
+         paste0(missing_cols, collapse = "\n > "))
+  }
   
   # type checking
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
@@ -207,7 +221,7 @@ get_point_type_counts <- function(classified_pts) {
   stage_df <- 
     classified_pts %>% 
     sf::st_drop_geometry() %>% 
-    hydrofabric3D::add_tmp_id() 
+    hydrofabric3D::add_tmp_id(x = get(crosswalk_id)) 
   
   # # create a reference dataframe with all possible combinations of tmp_id and point_type
   # reference_df <- expand.grid(
@@ -270,7 +284,8 @@ get_point_type_counts <- function(classified_pts) {
   # get the hy_id, cs_id for each tmp_id to cross walk back to just using hy_id/cs_id
   stage_df <- 
     stage_df %>% 
-    dplyr::select(tmp_id, hy_id, cs_id) %>% 
+    dplyr::select(tmp_id, dplyr::any_of(crosswalk_id), cs_id) %>% 
+    # dplyr::select(tmp_id, hy_id, cs_id) %>% 
     dplyr::group_by(tmp_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup()
@@ -286,7 +301,11 @@ get_point_type_counts <- function(classified_pts) {
       stage_df,
       by = "tmp_id"
     ) %>% 
-    dplyr::select(hy_id, cs_id, left_bank_count, right_bank_count, channel_count, bottom_count)
+    dplyr::select(
+      dplyr::any_of(crosswalk_id),
+      cs_id, 
+      left_bank_count, right_bank_count, channel_count, bottom_count
+    )
   
   # point_type_counts %>% 
   #   dplyr::arrange(-right_bank_count)

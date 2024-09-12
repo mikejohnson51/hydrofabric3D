@@ -1518,7 +1518,8 @@ renumber_cs_ids <- function(df, crosswalk_id = NULL) {
     dplyr::select(
       # hy_id, 
       dplyr::any_of(crosswalk_id),
-      cs_id, pt_id, cs_measure
+      cs_id, cs_measure
+      # cs_id, pt_id, cs_measure
       ) %>%
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     # dplyr::group_by(hy_id, cs_id) %>%

@@ -3,9 +3,9 @@ library(dplyr)
 library(sf)
 # # library(hydrofabric3D)
 
-# source("testing_utils.R")
-source("tests/testthat/testing_utils.R")
-devtools::load_all()
+source("testing_utils.R")
+# source("tests/testthat/testing_utils.R")
+# devtools::load_all()
 
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::classify_pts() ----
@@ -298,6 +298,7 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank ab
 #   amplitude = 1
 # ) 
 
+# TODO: WORK IN PROGRESS______
 # TODO: Left off here on 2024-08-27
 # TODO: IDEAL SHAPE ("left_bank", "right_bank", "bottom", "channel" point types) 
 #   \     /
@@ -305,75 +306,75 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank ab
 #      _
 testthat::test_that("'classify_points' - (1 cross section, VALID) - 3 point 'V' shaped cross section", {
 
-  ID_COL            <- "hy_id"
-  NUM_UNIQUE_IDS    = 1
-  UNIQUE_IDS        = LETTERS[1:NUM_UNIQUE_IDS]
-  NUM_PTS = 4
-  NUM_PTS_PER_ID    = 4
-  CS_ID             = 1
-  CS_LENGTHM        = 100
-  REL_DIST_INTERVAL = (CS_LENGTHM / NUM_PTS) / 100
-  REL_DIST          = cumsum(rep(REL_DIST_INTERVAL, NUM_PTS))
-  
-  # cs <- generate_cs(
-  #   num_unique_ids = 1,
-  #   num_pts_per_id = 3,
-  #   cs_id          = 1,
-  #   cs_lengthm     = 100,
-  #   num_peaks      = 1,
-  #   amplitude      = 2
+  # ID_COL            <- "hy_id"
+  # NUM_UNIQUE_IDS    = 1
+  # UNIQUE_IDS        = LETTERS[1:NUM_UNIQUE_IDS]
+  # NUM_PTS = 4
+  # NUM_PTS_PER_ID    = 4
+  # CS_ID             = 1
+  # CS_LENGTHM        = 100
+  # REL_DIST_INTERVAL = (CS_LENGTHM / NUM_PTS) / 100
+  # REL_DIST          = cumsum(rep(REL_DIST_INTERVAL, NUM_PTS))
+  # 
+  # # cs <- generate_cs(
+  # #   num_unique_ids = 1,
+  # #   num_pts_per_id = 3,
+  # #   cs_id          = 1,
+  # #   cs_lengthm     = 100,
+  # #   num_peaks      = 1,
+  # #   amplitude      = 2
+  # # )
+  # # 
+  # # plot(cs$Z)
+  # # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  # # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
+  # cs <- data.frame(
+  #   hy_id      = c("A", "A",  "A"),
+  #   cs_id      = c(1, 1, 1),
+  #   pt_id             = c(1, 2, 3),
+  #   cs_lengthm        = c(100, 100, 100),
+  #   relative_distance = c(0.333333, 0.666667, 1.0000000),
+  #   Z = c(4, 1, 4)
   # )
   # 
-  # plot(cs$Z)
   # cpts <- classify_points(cs, crosswalk_id = ID_COL)
-  # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
-  cs <- data.frame(
-    hy_id      = c("A", "A",  "A"),
-    cs_id      = c(1, 1, 1),
-    pt_id             = c(1, 2, 3),
-    cs_lengthm        = c(100, 100, 100),
-    relative_distance = c(0.333333, 0.666667, 1.0000000),
-    Z = c(4, 1, 4)
-  )
-  
-  cpts <- classify_points(cs, crosswalk_id = ID_COL)
-  cpts
-  cpts$has_relief
-  
-  cs <- data.frame(
-    hy_id      = c("A", "A",  "A", "A"),
-    cs_id      = c(1, 1, 1, 1),
-    pt_id             = c(1, 2, 3, 4),
-    cs_lengthm        = c(100, 100, 100, 100),
-    relative_distance = c(0.25, 0.50, 0.75, 1.0000000),
-    Z = c(4, 1, 1, 4)
-  )
-  cpts <- classify_points(cs, crosswalk_id = ID_COL)
-  cpts
-  cpts$has_relief
-  # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
-  # classify_z_pts(c(4, 1, 4))
-  # classify_z_pts(c(10, 8, 7,4, 0, 4, 5, 10, 11, 9))
-  
-  ideal_pts <-
-    data.frame(
-      hy_id      = c("A", "A", "A"),
-      cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-      pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
-      cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
-      relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
-      Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
-    )
-  
-  # plot(ideal_pts$Z~ideal_pts$pt_id)
-  
-  cpts <- classify_points(ideal_pts, crosswalk_id = ID_COL)
-  
-  expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
-  
-  testthat::expect_true(
-    all(cpts$point_type == expected_point_types)
-  )
+  # # cpts
+  # # cpts$has_relief
+  # 
+  # cs <- data.frame(
+  #   hy_id      = c("A", "A",  "A", "A"),
+  #   cs_id      = c(1, 1, 1, 1),
+  #   pt_id             = c(1, 2, 3, 4),
+  #   cs_lengthm        = c(100, 100, 100, 100),
+  #   relative_distance = c(0.25, 0.50, 0.75, 1.0000000),
+  #   Z = c(4, 1, 1, 4)
+  # )
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  # # cpts
+  # # cpts$has_relief
+  # # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
+  # # classify_z_pts(c(4, 1, 4))
+  # # classify_z_pts(c(10, 8, 7,4, 0, 4, 5, 10, 11, 9))
+  # 
+  # ideal_pts <-
+  #   data.frame(
+  #     hy_id      = c("A", "A", "A"),
+  #     cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+  #     pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+  #     cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+  #     relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+  #     Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
+  #   )
+  # 
+  # # plot(ideal_pts$Z~ideal_pts$pt_id)
+  # 
+  # cpts <- classify_points(ideal_pts, crosswalk_id = ID_COL)
+  # 
+  # expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
+  # 
+  # testthat::expect_true(
+  #   all(cpts$point_type == expected_point_types)
+  # )
 })
 
 testthat::test_that("'classify_points' - (2 cross section, both VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {

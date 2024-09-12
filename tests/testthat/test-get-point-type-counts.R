@@ -29,7 +29,7 @@ classified_pts <- data.frame(hy_id, cs_id, point_type)
 testthat::test_that("Adding point type counts with default arguments", {
   
   # result <- get_point_type_counts(classified_pts)
-  result <- hydrofabric3D::get_point_type_counts(classified_pts)
+  result <- hydrofabric3D::get_point_type_counts(classified_pts, crosswalk_id = "hy_id")
   
   testthat::expect_equal(names(result), c("hy_id", "cs_id", "left_bank_count", "right_bank_count", "channel_count", "bottom_count"))
   testthat::expect_equal(unique(result$hy_id), c("A", "B", "C", "D", "E"))
