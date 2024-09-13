@@ -522,9 +522,18 @@ classify_points2 <- function(
   #   relative_distance = c(0.333333, 0.666667, 1.0000000),
   #   Z = c(4, 1, 4)
   # )
+  # cs_pts <- data.frame(
+  #   hy_id      = c("A", "A",  "A"),
+  #   cs_id      = c(1, 1, 1),
+  #   pt_id             = c(1, 2, 3),
+  #   cs_lengthm        = c(100, 100, 100),
+  #   relative_distance = c(0.333333, 0.666667, 1.0000000),
+  #   Z = c(4, 1, 4)
+  # )
   # crosswalk_id = "hy_id"
   # pct_of_length_for_relief = 0.01
-  message("message from dev testing ~.____.~")
+  
+  message("message from dev testing ~.__.~")
   # -----------------------------------------------------------------------
   
   . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
@@ -641,10 +650,10 @@ classify_points2 <- function(
       # max_right     = pmin(which.max(Z[R[1]:length(Z)]) + R[1], points_per_cs[1]),
       
       deriv_type   = clean_point_types(deriv_type),
-      deriv_type   = set_missing_bottom(
-                                      depths      = Z, 
-                                      point_types = deriv_type
-                                      ),
+      # deriv_type   = set_missing_bottom(
+      #                                 depths      = Z, 
+      #                                 point_types = deriv_type
+      #                                 ),
       deriv_type   = set_channel_anchors(deriv_type),
       deriv_type   = set_bank_anchors2(
                                     depths = Z,
@@ -652,6 +661,10 @@ classify_points2 <- function(
                                     L = L[1],
                                     R = R[1]
                                     ),
+      deriv_type   = set_missing_bottom(
+        depths      = Z, 
+        point_types = deriv_type
+      ),
       class        = deriv_type,
       point_type   = deriv_type
       # class      = clean_point_types(class),
@@ -661,6 +674,8 @@ classify_points2 <- function(
     dplyr::ungroup() %>% 
     dplyr::select(dplyr::any_of(cols_to_select))
   # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
+  # classified_pts$point_type
+  
   
   # classified_pts[cols_to_select]                       # Another method for selecting columns....
   
@@ -1565,6 +1580,11 @@ set_missing_bottom <- function(depths, point_types) {
   # depths <- c(10, 8, 4, 7, 12)
   # point_types <- c("left_bank", "left_bank", "channel", "right_bank", "right_bank")
   # plot(depths)
+  
+  # depths
+  # depths <- classified_pts$Z
+  # point_types <- classified_pts$deriv_type
+  # point_types
   
   is_bank_channel_bank <- is_bank_channel_bank_pattern(point_types)
   
