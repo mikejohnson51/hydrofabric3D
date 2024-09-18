@@ -45,6 +45,8 @@ utils::globalVariables(
   )
 )
 
+sf::sf_use_s2(FALSE)
+
 #' Generate a Perpendicular Linestring of a Given Width
 #' @param edge geos_geometry LINESTRING
 #' @param width Length of Perpendicular LINESTRING
@@ -52,7 +54,7 @@ utils::globalVariables(
 #' @importFrom geos geos_interpolate_normalized geos_point_end geos_x geos_y geos_length
 #' @importFrom wk wk_transform wk_affine_compose wk_affine_translate wk_affine_scale wk_affine_rotate wk_set_crs wk_crs
 #' @export
-cut_transect = function(edge, width){
+cut_transect <- function(edge, width){
   
   if(!inherits(edge, "geos_geometry")) {
     stop("'edge' must be of type 'geos_geometry'")
@@ -782,14 +784,19 @@ cut_cross_sections <- function(
   # standardize geometry name
   net <- nhdplusTools::rename_geometry(net, "geometry")
   
-  # keep track of the CRS of the input to retransform return 
-  start_crs <- sf::st_crs(net, parameters = T)$epsg
+  # -----------------------------
+  # TODO: Testing out removing forced CRS change
+  # -----------------------------
   
-  # check if net CRS is 5070, if not, transform it to 5070
-  if(start_crs != 5070) {
-    # message("Transforming CRS to EPSG: 5070")
-    net <- sf::st_transform(net, 5070) 
-  }
+  # # keep track of the CRS of the input to retransform return 
+  # start_crs <- sf::st_crs(net, parameters = T)$epsg
+  # 
+  # # check if net CRS is 5070, if not, transform it to 5070
+  # if(start_crs != 5070) {
+  #   # message("Transforming CRS to EPSG: 5070")
+  #   net <- sf::st_transform(net, 5070) 
+  # }
+  # -----------------------------
   
   # Densify network flowlines, adds more points to each linestring
   if(!is.null(densify)){ 
@@ -959,11 +966,17 @@ cut_cross_sections <- function(
     add            = TRUE
   )
   
-  # transform CRS back to input CRS
-  if(start_crs != 5070) {
-    # message("Transforming CRS back to EPSG: ", start_crs)
-    transects <- sf::st_transform(transects, start_crs)
-  }
+  # -----------------------------
+  # TODO: Testing out removing forced CRS change
+  # -----------------------------
+
+  # # transform CRS back to input CRS
+  # if(start_crs != 5070) {
+  #   # message("Transforming CRS back to EPSG: ", start_crs)
+  #   transects <- sf::st_transform(transects, start_crs)
+  # }
+
+  # -----------------------------
   
   # rename the cs_widths column to cs_lengthm
   transects <- dplyr::rename(transects, "cs_lengthm" = cs_widths)

@@ -205,11 +205,10 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
 #      \     /
 #       \   /
 #        __
-testthat::test_that("'classify_points2' - (1 cross section, VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
+testthat::test_that("'classify_points2' - (1 cross section, VALID (relief=T, banks=T)) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
   ID_COL <- "hy_id"
   
-  
-  ideal_pts <-
+  cs <-
     data.frame(
       hy_id      = c("A", "A", "A", "A", "A", "A", "A", "A", "A", "A"),
       cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
@@ -220,38 +219,28 @@ testthat::test_that("'classify_points2' - (1 cross section, VALID) - left_bank a
       Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
     )
   
-  # is_missing_points_per_cs_col <- !"point_per_cs" %in% names(ideal_pts)
-  # 
-  # if (is_missing_points_per_cs_col) {
-  #   ideal_pts <- 
-  #     ideal_pts %>% 
-  #     dplyr::group_by(dplyr::across(dplyr::any_of(c(ID_COL, "cs_id")))) %>% 
-  #     dplyr::mutate(points_per_cs = dplyr::n()) %>% 
-  #     dplyr::ungroup()
-  # }
-  # 
-  # dplyr::filter(ideal_pts) %>% 
-  #   dplyr::group_by(dplyr::across(dplyr::any_of(c(ID_COL, "cs_id"))))
+  # plot(cs$Z~cs$pt_id)
   
-  # plot(ideal_pts$Z~ideal_pts$pt_id)
-  
-  cpts <- classify_points2(ideal_pts, crosswalk_id = ID_COL)
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
   
   # classify_points2(ideal_pts, crosswalk_id = ID_COL) %>% 
   #   plot_cs_pts(color = "point_type", size = 4)
   
-  expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
+  expected_point_types <- c('left_bank', 'channel', 'channel', 'channel', 
+                            'bottom', 'bottom', 
+                            'channel', 'channel', 'channel', 'right_bank')
   
   testthat::expect_true(
     all(cpts$point_type == expected_point_types)
   )
 })
+
 # TODO: Left off here on 2024-08-27
 # TODO: IDEAL SHAPE ("left_bank", "right_bank", "bottom", "channel" point types) 
 #   \     /
 #    \   /
 #      _
-testthat::test_that("'classify_points2' - (1 cross section, 3 pts, VALID) - 3 point 'V' shaped cross section", {
+testthat::test_that("'classify_points2' - (1 cross section, 3 pts, VALID (relief=T, banks=T)) - 3 point 'V' shaped cross section", {
   
   ID_COL            <- "hy_id"
   
@@ -302,7 +291,7 @@ testthat::test_that("'classify_points2' - (1 cross section, 3 pts, VALID) - 3 po
 #   \     /
 #    \   /
 #      _
-testthat::test_that("'classify_points2' - (1 cross section, 5 pts, 'V' shape, VALID) - 1 LB -> 1 CHAN -> 1 BOTTOM -> 1 CHAN -> 1 RB", {
+testthat::test_that("'classify_points2' - (1 cross section, 5 pts, 'V' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 1 BOTTOM -> 1 CHAN -> 1 RB", {
   
   ID_COL            <- "hy_id"
   
@@ -358,7 +347,7 @@ testthat::test_that("'classify_points2' - (1 cross section, 5 pts, 'V' shape, VA
 #   \      /
 #    \    /
 #      __
-testthat::test_that("'classify_points2' - (1 cross section, 6 pts, 'V' shape, VALID) - 1 LB -> 1 CHAN -> 2 BOTTOM -> 1 CHAN -> 1 RB", {
+testthat::test_that("'classify_points2' - (1 cross section, 6 pts, 'V' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 2 BOTTOM -> 1 CHAN -> 1 RB", {
   
   ID_COL            <- "hy_id"
   NUM_CS_PTS   <- 6
@@ -420,7 +409,7 @@ testthat::test_that("'classify_points2' - (1 cross section, 6 pts, 'V' shape, VA
 #   \       /
 #    \     /
 #      ___
-testthat::test_that("'classify_points2' - (1 cross section, 7 pts, 'V' shape, VALID) - 1 LB -> 1 CHAN -> 3 BOTTOM -> 1 CHAN -> 1 RB", {
+testthat::test_that("'classify_points2' - (1 cross section, 7 pts, 'V' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 3 BOTTOM -> 1 CHAN -> 1 RB", {
   
   ID_COL       <- "hy_id"
   NUM_CS_PTS   <- 7
@@ -481,7 +470,7 @@ testthat::test_that("'classify_points2' - (1 cross section, 7 pts, 'V' shape, VA
 #   \       /
 #    \     /
 #      ___
-testthat::test_that("'classify_points2' - (1 cross section, 8 pts, 'V' shape, VALID) - 1 LB -> 1 CHAN -> 4 BOTTOM -> 1 CHAN -> 1 RB", {
+testthat::test_that("'classify_points2' - (1 cross section, 8 pts, 'V' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 4 BOTTOM -> 1 CHAN -> 1 RB", {
   
   ID_COL       <- "hy_id"
   NUM_CS_PTS   <- 8
@@ -615,7 +604,7 @@ testthat::test_that("'classify_points2' - (1 cross section, 8 pts, 'V' shape, VA
 #   \       /
 #    \     /
 #      ___
-testthat::test_that("'classify_points2' - (1 cross section, 9 pts, 'V' shape, VALID) - 1 LB -> 1 CHAN -> 5 BOTTOM -> 1 CHAN -> 1 RB", {
+testthat::test_that("'classify_points2' - (1 cross section, 9 pts, 'V' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 5 BOTTOM -> 1 CHAN -> 1 RB", {
   
   ID_COL       <- "hy_id"
   NUM_CS_PTS   <- 9
@@ -675,10 +664,11 @@ testthat::test_that("'classify_points2' - (1 cross section, 9 pts, 'V' shape, VA
 
 
 # TODO: IDEAL SHAPE ("left_bank", "right_bank", "bottom", "channel" point types) 
+# NOTE: Cross section shape:
 #   \        /
 #    \      /
 #      ____
-testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V' shape, VALID) - 1 LB -> 1 CHAN -> 6 BOTTOM -> 1 CHAN -> 1 RB", {
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 6 BOTTOM -> 1 CHAN -> 1 RB", {
   
   ID_COL       <- "hy_id"
   NUM_CS_PTS   <- 10
@@ -738,10 +728,11 @@ testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V' shape, V
 
 
 # TODO: IDEAL SHAPE ("left_bank", "right_bank", "bottom", "channel" point types) 
+# NOTE: Cross section shape:
 #   \        /
 #    \      /
 #      ____
-testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V' shape, VALID) - 1 LB -> 1 CHAN -> 6 BOTTOM -> 1 CHAN -> 1 RB", {
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 6 BOTTOM -> 1 CHAN -> 1 RB", {
   
   ID_COL       <- "hy_id"
   NUM_CS_PTS   <- 10
@@ -799,14 +790,622 @@ testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V' shape, V
   
 })
 
+# TODO: Really wide IDEAL / VALID (relief=T, banks=T) shape with single bank points
+# NOTE: Cross section shape:
+#   \_______________/
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'WIDE U' shape, VALID (relief=T, banks=T)) - 1 LB -> 2 CHAN -> 4 BOTTOM -> 2 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(3, 1, 1, 1, 1, 1, 1, 1, 1, 3) 
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  # Z_VALS %>% plot()
+  # cpts$Z %>% plot()
+  # cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", 
+                            "bottom", "bottom", "bottom", "bottom", 
+                            "channel", "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 3)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 3)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+})
 
+# TODO: Really wide IDEAL / VALID (relief=T, banks=T) shape with single LEFT BANK point and higher RIGHT BANK
+# NOTE: Cross section shape:
+#                       /
+#                     /
+#   \_______________/
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'WIDE U, HIGH RB' shape, VALID (relief=T, banks=T)) - 1 LB -> 2 CHAN -> 4 BOTTOM -> 2 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(3, 1, 1, 1, 1, 1, 1, 2, 3, 5) 
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  Z_VALS %>% plot()
+  cpts$Z %>% plot()
+  cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", 
+                            "bottom", "bottom", "bottom", "bottom", 
+                            "channel", "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 3)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 5)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+})
+
+# TODO: Really wide IDEAL / VALID (relief=T, banks=T) shape with single RIGHT BANK points and higher LEFT BANK
+# NOTE: Cross section shape:
+#  \                     
+#   \                  
+#    \_______________/
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'WIDE U, HIGH LB' shape, VALID (relief=T, banks=T)) - 1 LB -> 2 CHAN -> 4 BOTTOM -> 2 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(5, 3, 2, 1, 1, 1, 1, 1, 1, 3) 
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  Z_VALS %>% plot()
+  cpts$Z %>% plot()
+  cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", 
+                            "bottom", "bottom", "bottom", "bottom", 
+                            "channel", "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 5)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 3)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+})
+
+# TODO: IDEAL SHAPE with LIP ("left_bank", "right_bank", "bottom", "channel" point types) 
+# NOTE: Cross section shape:
+# __           __
+#   \        /
+#    \      /
+#      ____
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V + lips' shape, VALID (relief=T, banks=T)) - 2 LB -> 2 CHAN -> 2 BOTTOM -> 3 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  
+  # cs <- make_cs(
+  #   left_bank = c(4, 4, 2),
+  #   left_channel = c(4, 1, 3),
+  #   bottom = c(1, 1, 4),
+  #   right_bank = c(1, 4, 3)
+  # ) 
+  # 
+  # cs[[ID_COL]]   <- "A"
+  # cs$cs_id       <- 1
+  # cs$cs_lengthm  <- 100
+  # cs$Z %>% plot()
+  # make_cs_curve(left_y_range = c()
+  
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(4, 4, 4, 3, 1, 1, 3, 4, 4, 4)
+  Z_VALS %>% plot()
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  # Z_VALS %>% plot()
+  # cpts$Z %>% plot()
+  # cpts$point_type
+  
+  expected_point_types <- c("left_bank", "left_bank", "channel", "channel", 
+                            "bottom", "bottom", "channel", 
+                            "channel", "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 4)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 4)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+})
+
+# TODO: IDEAL SHAPE with a break in BOTH channels, where it flattens out
+# NOTE: Cross section shape:
+# \                   /
+#   --             --
+#      \         /
+#       \      /
+#         ____
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V + breaks in both channel' shape, VALID (relief=T, banks=T)) - 1 LB -> 3 CHAN -> 2 BOTTOM -> 3 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(6, 4, 4, 3, 1, 1, 3, 4, 4, 6)
+  # Z_VALS %>% plot()
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  # Z_VALS %>% plot()
+  # cpts$Z %>% plot()
+  # cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", "channel", 
+                            "bottom", "bottom", "channel", 
+                            "channel", "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 6)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 6)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+})
+
+# TODO: IDEAL SHAPE with a break in only LEFT side of channel, where it flattens out for a bit
+# NOTE: Cross section shape:
+# \                  /
+#   --             /
+#      \         /
+#       \      /
+#         ____
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V + breaks in LEFT side of channel' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 6 BOTTOM -> 1 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(6, 4, 4, 3, 1, 1, 3, 4, 5, 6)
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  # Z_VALS %>% plot()
+  # cpts$Z %>% plot()
+  # cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", "channel", 
+                            "bottom", "bottom", "channel", 
+                            "channel", "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 6)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 6)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+})
+# TODO: IDEAL SHAPE with a break in only RIGHT side of channel, where it flattens out for a bit
+# NOTE: Cross section shape:
+#    \                  /
+#     \             --
+#      \         /
+#       \      /
+#         ____
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'V + breaks in RIGHT side of channel' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 6 BOTTOM -> 1 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(6, 5, 4, 3, 1, 1, 3, 4, 4, 6)
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  # Z_VALS %>% plot()
+  # cpts$Z %>% plot()
+  # cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", "channel", 
+                            "bottom", "bottom", "channel", 
+                            "channel", "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 6)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 6)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+})
+
+# TODO: There is a valid bottom here but algorithm struggles to find it because 
+# TODO: the minimum point that is the actual bottom is NOT in the middle third of the cross section
+# NOTE: Cross section shape:
+#                           -----
+#                        /
+#                      /
+#                  ---
+#                / 
+#              /
+#   \        /
+#    \     /
+#      ---
+testthat::test_that("'classify_points2' - (1 cross section, 16 pts, 'V on left side' shape, VALID (relief=T, banks=T)) - 1 LB -> 1 CHAN -> 6 BOTTOM -> 1 CHAN -> 1 RB", {
+  
+  ID_COL       <- "hy_id"
+  
+  # cs <- make_cs(
+  #   left_bank = c(4, 4, 2),
+  #   left_channel = c(4, 1, 3),
+  #   bottom = c(1, 1, 4),
+  #   right_bank = c(1, 4, 3)
+  # ) 
+  # 
+  # cs[[ID_COL]]   <- "A"
+  # cs$cs_id       <- 1
+  # cs$cs_lengthm  <- 100
+  # cs$Z %>% plot()
+  # make_cs_curve(left_y_range = c()
+  
+  NUM_CS_PTS   <- 16
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(6, 5, 3, 2, 3, 4, 5, 6, 7, 8, 8, 8, 9, 9, 9, 9)
+  
+  # Z_VALS %>% plot()
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts_rev <- classify_points2(cs_rev, crosswalk_id = ID_COL)
+  
+  # cpts$Z %>% plot()
+  # cpts$point_type
+  
+  # Z_VALS %>% plot()
+  # cpts_rev$Z %>% plot()
+  # cpts_rev$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", "channel", "channel",
+                            "bottom", 
+                             "channel", "channel",  "channel", "channel",  
+                            "channel", "channel", "channel", "channel", "right_bank", "right_bank")
+
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 6)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 9)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 4)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts$valid_banks)
+  )
+  
+  # ---- Reverse the cross section shape ----
+  cs_rev <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = rev(Z_VALS) 
+  )
+  cpts_rev <- classify_points2(cs_rev, crosswalk_id = ID_COL)
+  expected_point_types_rev <- c("left_bank", "left_bank", "left_bank", "channel", "channel",
+                            "channel", "channel",  "channel", "channel",  
+                            "channel", "bottom", "channel", "channel", "channel", "channel", "right_bank")
+  # correct point types
+  testthat::expect_true(
+    all(cpts_rev$point_type == expected_point_types_rev)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts_rev$left_bank == 9)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts_rev$right_bank == 6)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts_rev$bottom == 4)
+  )
+  
+  # correct has relief
+  testthat::expect_true(
+    all(cpts_rev$has_relief)
+  )
+  
+  # correct valid_banks
+  testthat::expect_true(
+    all(cpts_rev$valid_banks)
+  )
+  
+})
+
+# NOTE: Cross section shape:
+#                   /
 #                 /
-#                /
 #               /
 #         _____
-#        /
 #       /
-#      /
+#     /
+#   /
 testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (relief=T, banks=F)) - left_bank below bottom, bottom is flat, and right bank is above bottom", {
   ID_COL       <- "hy_id"
   NUM_CS_PTS   <- 10
@@ -865,13 +1464,80 @@ testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (rel
   )
   
 })
+# NOTE: Cross section shape:
+#     \        
+#      \       
+#       \     
+#        \_____
+#              \
+#               \
+#                \
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (relief=T, banks=F)) - left bank ABOVE bottom, bottom is FLAT, and right bank is BELOW bottom", {
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(7, 6, 5, 4, 3, 3, 3, 3, 2, 1) 
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  # Z_VALS %>% plot()
+  cpts$Z %>% plot()
+  cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", "channel",
+                            "bottom", "bottom", "bottom", "channel", 
+                            "right_bank", "channel")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 7)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 2)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 3)
+  )
+  
+  # correct has relief (TRUE)
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks (FALSE)
+  testthat::expect_false(
+    all(cpts$valid_banks)
+  )
+  
+})
 
+# NOTE: Cross section shape:
+#              /
+#            /
+#          /
 #        /
-#       /
 #      /
-#     /
 #    /
-#   /
 #  /
 testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (relief=T, banks=F)) - positive slope diagonal", {
   ID_COL       <- "hy_id"
@@ -932,14 +1598,13 @@ testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (rel
   )
   
 })
-
-#        /
-#       /
-#      /
-#     /
-#    /
-#   /
-#  /
+# NOTE: Cross section shape:
+# \
+#  \
+#   \
+#    \
+#     \
+#      \
 testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (relief=T, banks=F)) - negative slope diagonal", {
   ID_COL       <- "hy_id"
   NUM_CS_PTS   <- 10
@@ -959,9 +1624,9 @@ testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (rel
   cpts <- classify_points2(cs, crosswalk_id = ID_COL)
   # cpts <- classify_points(cs, crosswalk_id = ID_COL)
   
-  Z_VALS %>% plot()
-  cpts$Z %>% plot()
-  cpts$point_type
+  # Z_VALS %>% plot()
+  # cpts$Z %>% plot()
+  # cpts$point_type
   
   expected_point_types <- c("left_bank", "channel", "channel", "channel", "channel", "channel",
                             "bottom", 
@@ -999,207 +1664,195 @@ testthat::test_that("'classify_points2' - (1 cross section, 10 pts, INVALID (rel
   
 })
 
-# generate cross section Z values for testing
-generate_cs <- function(y_start, y_end, n = 10) {
-
-  # evenly spaced x vals
-  x_vals <- seq(0, 1, length.out = n)
+# TODO: FLAT cross section
+# NOTE: Cross section shape:
+# --------------------
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'flat line', INVALID (relief=F, banks=F)) - flat line", {
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- rep(1, NUM_CS_PTS)
   
-  # calculate slope (change in y / change in x)
-  slope <- (y_end - y_start) / 1  # (x_end - x_start) = 1 since x goes from 0 to 1
-  
-  # determine corresponding y values (y = mx + b)
-  intercept <- y_start  
-  y_vals    <- slope * x_vals + intercept
-  
-  #  calc relative distance (percent along the line (e.g., 0.1, 0.2, ..., 1.0)
-  relative_distance <- seq(1 / n, 1, length.out = n)
-  
-  points_df <- data.frame(
-    pt_id             = 1:n,
-    relative_distance = relative_distance,
-    X                 = x_vals,
-    Z                 = y_vals
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
   )
   
-  return(points_df)
-}
-
-get_flat_line <- function(y = 0, n = 10) {
-  return(
-    generate_cs(y_start = y, y_end = y, n = n)
-    )
-}
-
-get_neg_diagonal <- function(start = 10, end = 6) {
-  
-  if(start < end) {
-    stop("'start' is less than 'end', 'start' value must be greater than 'end' value to generate a negative slope line")
-  }
-  
-  # start = 10
-  # end = 8
-  
-  n <- start - end
-  
-  # generate_cs(y_start = start, y_end = end, n = n) %>% .$Z %>% plot()
-  return(
-    generate_cs(y_start = start, y_end = end, n = n)
-  )
-  
-}
-
-get_pos_diagonal <- function(start = 6, end = 10) {
-  
-  if(end < start) {
-    stop("'end' is less than 'start', 'end' value must be greater than 'start' value to generate a positive slope line")
-  }
-  
-  # start = 6
-  # end = 10
-  
-  n <- end - start
-  
-  # generate_cs(y_start = start, y_end = end, n = n)
-  # generate_cs(y_start = start, y_end = end, n = n) %>% .$Z %>% plot()
-  
-  return(
-    generate_cs(y_start = start, y_end = end, n = n)
-  )
-  
-}
-
-merge_lines(4,  3)
-
-left_chan   <- get_neg_diagonal(6, 2)
-bottom      <- get_flat_line(2, 4)
-right_chan  <- get_pos_diagonal(2, 6)
-
-merge_lines <- function(...) {
-  
-  args <- list(...)
-  
-  lines               <- dplyr::bind_rows(args)
-  n                   <- nrow(lines)
-  relative_distance   <- seq(1 / n, 1, length.out = n)
-  
-  lines <- 
-    lines %>% 
-    dplyr::mutate(
-      pt_id             = 1:dplyr::n()
-      )
-  
-  lines$relative_distance <- relative_distance
-  
-  return(lines)
-}
-
-merge_lines(left_chan, bottom, right_chan) %>% 
-  .$Z %>% plot()
-
-points <- generate_line_points(
-  y_start = 4, 
-  y_end = 1, 
-  n = 10
-  )
-
-generate_line_points(
-  y_start  = 0, 
-  y_end    = 0, 
-  n = 10
-) %>% 
-  dplyr::pull(Z) %>% 
-  plot()
-plot(points$Z)
-print(points)
-# generate_cs(
-#   num_unique_ids = 1,
-#   num_pts_per_id = 10,
-#   cs_id          = 1,
-#   cs_lengthm     = 100,
-#   num_peaks = 1,
-#   amplitude = 1
-# ) 
-
-# TODO: Left off here on 2024-08-27
-# TODO: IDEAL SHAPE ("left_bank", "right_bank", "bottom", "channel" point types) 
-#   \     /
-#    \   /
-#      _
-testthat::test_that("'classify_points2' - (1 cross section, VALID) - 3 point 'V' shaped cross section", {
-  
-  ID_COL            <- "hy_id"
-  NUM_UNIQUE_IDS    = 1
-  UNIQUE_IDS        = LETTERS[1:NUM_UNIQUE_IDS]
-  NUM_PTS = 4
-  NUM_PTS_PER_ID    = 4
-  CS_ID             = 1
-  CS_LENGTHM        = 100
-  REL_DIST_INTERVAL = (CS_LENGTHM / NUM_PTS) / 100
-  REL_DIST          = cumsum(rep(REL_DIST_INTERVAL, NUM_PTS))
-  
-  # cs <- generate_cs(
-  #   num_unique_ids = 1,
-  #   num_pts_per_id = 3,
-  #   cs_id          = 1,
-  #   cs_lengthm     = 100,
-  #   num_peaks      = 1,
-  #   amplitude      = 2
-  # )
-  # 
-  # plot(cs$Z)
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
   # cpts <- classify_points(cs, crosswalk_id = ID_COL)
-  # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
-  cs <- data.frame(
-    hy_id      = c("A", "A",  "A"),
-    cs_id      = c(1, 1, 1),
-    pt_id             = c(1, 2, 3),
-    cs_lengthm        = c(100, 100, 100),
-    relative_distance = c(0.333333, 0.666667, 1.0000000),
-    Z = c(4, 1, 4)
-  )
   
-  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
-  # cpts
-  # cpts$has_relief
+  Z_VALS %>% plot()
+  cpts$Z %>% plot()
+  cpts$point_type
   
-  cs <- data.frame(
-    hy_id      = c("A", "A",  "A", "A"),
-    cs_id      = c(1, 1, 1, 1),
-    pt_id             = c(1, 2, 3, 4),
-    cs_lengthm        = c(100, 100, 100, 100),
-    relative_distance = c(0.25, 0.50, 0.75, 1.0000000),
-    Z = c(4, 1, 1, 4)
-  )
-  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
-  cpts
-  cpts$has_relief
-  # cpts %>% hydrofabric3D::plot_cs_pts(color = "point_type")
-  # classify_z_pts(c(4, 1, 4))
-  # classify_z_pts(c(10, 8, 7,4, 0, 4, 5, 10, 11, 9))
+  expected_point_types <- c("left_bank", "left_bank", "channel", "bottom", "bottom", "bottom",
+                            "bottom", 
+                            "channel",  "right_bank", "right_bank")
   
-  ideal_pts <-
-    data.frame(
-      hy_id      = c("A", "A", "A"),
-      cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
-      pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
-      cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
-      relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
-      Z          = c(9, 7, 5, 5, 2, 2, 5, 5, 7, 9)
-    )
-  
-  # plot(ideal_pts$Z~ideal_pts$pt_id)
-  
-  cpts <- classify_points2(ideal_pts, crosswalk_id = ID_COL)
-  
-  expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
-  
+  # correct point types
   testthat::expect_true(
     all(cpts$point_type == expected_point_types)
   )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 1)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 1)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief (FALSE)
+  testthat::expect_false(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks (FALSE)
+  testthat::expect_false(
+    all(cpts$valid_banks)
+  )
+  
 })
 
-testthat::test_that("'classify_points2' - (2 cross section, both VALID) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
+# TODO: FLAT cross section w/ single RIGHT BANK
+# NOTE: Cross section shape:
+#                      /
+# --------------------
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'flat line w/ RIGHT BANK', INVALID (relief=T, banks=F)) - flat line", {
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(rep(1, NUM_CS_PTS - 1), 2)
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  Z_VALS %>% plot()
+  cpts$Z %>% plot()
+  cpts$point_type
+  
+  expected_point_types <- c("left_bank", "left_bank", "channel", "bottom", "bottom", "bottom",
+                            "bottom", 
+                            "channel",  "channel", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 1)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 2)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief (FALSE)
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks (FALSE)
+  testthat::expect_false(
+    all(cpts$valid_banks)
+  )
+  
+})
+
+# TODO: FLAT cross section w/ single LEFT BANK
+# NOTE: Cross section shape:
+# \                    
+#  --------------------
+testthat::test_that("'classify_points2' - (1 cross section, 10 pts, 'flat line w/ LEFT BANK', INVALID (relief=T, banks=F)) - flat line", {
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 10
+  CS_LENGTH    <- 100
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(2, rep(1, NUM_CS_PTS - 1))
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  
+  cpts <- classify_points2(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  Z_VALS %>% plot()
+  cpts$Z %>% plot()
+  cpts$point_type
+  
+  expected_point_types <- c("left_bank", "channel", "channel", "bottom", "bottom", "bottom",
+                            "bottom", 
+                            "channel",  "right_bank", "right_bank")
+  
+  # correct point types
+  testthat::expect_true(
+    all(cpts$point_type == expected_point_types)
+  )
+  
+  # correct left bank value
+  testthat::expect_true(
+    all(cpts$left_bank == 2)
+  )
+  
+  # correct right bank value
+  testthat::expect_true(
+    all(cpts$right_bank == 1)
+  )
+  
+  # correct bottom value
+  testthat::expect_true(
+    all(cpts$bottom == 1)
+  )
+  
+  # correct has relief (FALSE)
+  testthat::expect_true(
+    all(cpts$has_relief)
+  )
+  
+  # correct valid_banks (FALSE)
+  testthat::expect_false(
+    all(cpts$valid_banks)
+  )
+  
+})
+
+testthat::test_that("'classify_points2' - (2 cross section, both VALID (relief=T, banks=T)) - left_bank above bottm, flat left channel, flat bottom, flat right channel, and right_bank above bottom", {
   ID_COL <- "hy_id"
   
   ideal_pts1 <-
@@ -1238,7 +1891,9 @@ testthat::test_that("'classify_points2' - (2 cross section, both VALID) - left_b
   
   cpts <- classify_points2(two_cs, crosswalk_id = ID_COL)
   
-  expected_point_types <- c('left_bank', 'left_bank', 'left_bank', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank')
+  expected_point_types <- c('left_bank', 'channel', 'channel', 'channel', 
+                            'bottom', 'bottom', 
+                            'channel', 'channel', 'channel', 'right_bank')
   
   # make sure both hy_ids got correct classification
   testthat::expect_true(
@@ -1249,6 +1904,24 @@ testthat::test_that("'classify_points2' - (2 cross section, both VALID) - left_b
     all(dplyr::filter(cpts, hy_id == "B")$point_type == expected_point_types)
   )
   
+  # make sure both HY IDs have relief
+  testthat::expect_true(
+    all(dplyr::filter(cpts, hy_id == "A")$has_relief)
+  )
+  
+  testthat::expect_true(
+    all(dplyr::filter(cpts, hy_id == "B")$has_relief)
+  )
+  
+  # make sure both HY IDs have valid banks
+  testthat::expect_true(
+    all(dplyr::filter(cpts, hy_id == "A")$valid_banks)
+  )
+  
+  testthat::expect_true(
+    all(dplyr::filter(cpts, hy_id == "B")$valid_banks)
+  )
+  
   # make sure all unique tmp_ids were preserved 
   testthat::expect_true(
     all(
@@ -1256,290 +1929,9 @@ testthat::test_that("'classify_points2' - (2 cross section, both VALID) - left_b
     )
   )
   
+  
+  
 })
-
-# testthat::test_that("check 'get_bank_attributes' has valid output columns from CLASSIFIED CS from DEFAULT transects output", {
-#   
-#   flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
-#   # flowlines    <- dplyr::slice(flowlines, 1)
-#   
-#   MIN_BF_WIDTH       <- 50
-#   ID_COL             <- "hy_id"
-#   NUM_OF_TRANSECTS   <- 3
-#   
-#   # Cross section point inputs
-#   DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
-#   POINTS_PER_CS     <- NULL
-#   MIN_PTS_PER_CS    <- 10
-#   
-#   PCT_OF_LENGTH_FOR_RELIEF <- 0.01
-#   
-#   flowlines <-
-#     flowlines %>%
-#     add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%
-#     dplyr::rename(!!sym(ID_COL) := id) %>%
-#     dplyr::select(
-#       dplyr::any_of(ID_COL),
-#       tot_drainage_areasqkm,
-#       bf_width,
-#       geom
-#     )
-#   
-#   transects <- cut_cross_sections(
-#     net = flowlines,
-#     id  = ID_COL,
-#     num = NUM_OF_TRANSECTS
-#   ) %>%
-#     dplyr::select(
-#       dplyr::any_of(ID_COL),
-#       cs_id,
-#       cs_lengthm
-#     )
-#   
-#   cs_pts = hydrofabric3D::cross_section_pts(
-#     cs              = transects,
-#     crosswalk_id    = ID_COL,
-#     points_per_cs   = POINTS_PER_CS,
-#     min_pts_per_cs  = MIN_PTS_PER_CS,
-#     dem             = DEM_PATH
-#   )
-#   
-#   classified <- classify_points2(
-#     cs_pts = cs_pts,
-#     crosswalk_id = ID_COL,
-#     pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
-#   ) %>%
-#     dplyr::select(-valid_banks, -has_relief, -left_bank, -right_bank, -bottom)
-#   
-#   # hydrofabric3D::plot_cs_pts(classified, color = "point_type")
-#   
-#   bank_attrs <- get_bank_attributes(
-#     classified_pts = classified,
-#     crosswalk_id   = ID_COL
-#   )
-#   
-#   has_all_required_output_cols <- bank_attrs_has_min_output_cols(bank_attrs = bank_attrs, id = ID_COL)
-#   testthat::expect_true(has_all_required_output_cols)
-#   
-# })
-# 
-# testthat::test_that("'get_bank_attributes' - No left_bank points", {
-#   ID_COL <- "hy_id"
-#   
-#   no_left_bank_df <-
-#     data.frame(
-#       hy_id = c("A", "A", "A"),
-#       cs_id = c(1, 1, 1),
-#       pt_id = c(1, 2, 3),
-#       point_type = c('bottom', 'right_bank', 'right_bank'),
-#       Z = c(1, 5, 8)
-#     )
-#   
-#   #  <-
-#   #   data.frame(
-#   #     hy_id = c("A", "A", "A", "B", "B", "B"),
-#   #     cs_id = c(1, 1, 1, 1, 1, 1),
-#   #     pt_id = c(1, 2, 3, 1, 2, 3),
-#   #     point_type = c('bottom', 'right_bank', 'right_bank', "left_bank", "bottom", "right_bank"),
-#   #     Z = c(1, 5, 8, 10, 2, 12)
-#   #   )
-#   
-#   # # Add columns with the counts of point types
-#   # classified_pts <- add_point_type_counts(no_left_bank_df, ID_COL)
-#   # # classified_pts <- hydrofabric3D::add_point_type_counts2(classified_pts, crosswalk_id)
-#   #
-#   # # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
-#   # # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
-#   # classified_pts <- sf::st_drop_geometry(classified_pts)
-#   #
-#   # classified_pts <-
-#   #   classified_pts %>%
-#   #   # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
-#   #   dplyr::mutate(
-#   #     valid_count = dplyr::case_when(
-#   #       (bottom_count > 0 &
-#   #          left_bank_count > 0 &
-#   #          right_bank_count > 0)  ~ TRUE,
-#   #       TRUE                      ~ FALSE
-#   #     )
-#   #   )
-#   #
-#   # crosswalk_id = "hy_id"
-#   # # Add minimum bottom Z, max left and right bank Z, and
-#   # # flags noting if the left/right banks are "valid" (i.e. max left/right bank values are greater than the bottom Z)
-#   # bank_validity <-
-#   #   classified_pts %>%
-#   #   # classified_pts2 %>%
-#   #   # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
-#   #   dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>%
-#   #   # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>%
-#   #   dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type) %>%
-#   #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id", "point_type")))) %>%
-#   #   # dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>%
-#   #   # dplyr::group_by(hy_id, cs_id, point_type) %>%
-#   #   dplyr::summarise(
-#   #     minZ = min(Z, na.rm = TRUE),
-#   #     maxZ = max(Z, na.rm = TRUE)
-#   #   ) %>%
-#   #   dplyr::ungroup() %>%
-#   #   tidyr::pivot_wider(
-#   #     names_from  = point_type,
-#   #     values_from = c(minZ, maxZ)
-#   #   ) %>%
-#   #   dplyr::select(
-#   #     dplyr::any_of(
-#   #       c(
-#   #       crosswalk_id,
-#   #       "cs_id",
-#   #       "minZ_bottom",
-#   #       "maxZ_left_bank",
-#   #       "maxZ_right_bank"
-#   #       ))
-#   #     # cs_id,
-#   #     # bottom     = minZ_bottom,
-#   #     # left_bank  = maxZ_left_bank,
-#   #     # right_bank = maxZ_right_bank
-#   #   ) %>%
-#   #   dplyr::rename(
-#   #     dplyr::any_of(c(
-#   #       bottom     = "minZ_bottom",
-#   #       left_bank  = "maxZ_left_bank",
-#   #       right_bank = "maxZ_right_bank"
-#   #       ))
-#   #     )
-#   #
-#   # required_pt_cols <- c("bottom", "left_bank", "right_bank")
-#   #
-#   # for (col in required_pt_cols) {
-#   #   # message(col)
-#   #   if (!col %in% names(bank_validity)) {
-#   #     # message("---> missing column ", col)
-#   #     bank_validity[[col]] <- NA
-#   #   }
-#   # }
-#   
-#   bank_attributes <- get_bank_attributes(no_left_bank_df, crosswalk_id = ID_COL)
-#   
-#   testthat::expect_true(
-#     is.na(bank_attributes$left_bank)
-#   )
-#   
-#   testthat::expect_false(
-#     bank_attributes$valid_banks
-#   )
-# })
-# 
-# # hy_id cs_id pt_id point_type  Z
-# # 1     A     1     1  left_bank 10
-# # 2     A     1     2     bottom  1
-# # 3     A     1     3    channel  3
-# # 4     A     1     4 right_bank  5
-# # 5     A     1     5 right_bank  8
-# 
-# testthat::test_that(" 'get_bank_attributes' - 2 right_bank values w/ furthest right pt being the greatest value", {
-#   ID_COL <- "hy_id"
-#   
-#   right_bank_df <-
-#     data.frame(
-#       hy_id = c("A", "A", "A", "A", "A"),
-#       cs_id = c(1, 1, 1, 1, 1),
-#       pt_id = c(1, 2, 3, 4, 5),
-#       point_type = c('left_bank', 'bottom', 'channel', 'right_bank', 'right_bank'),
-#       Z = c(10, 1, 3, 5, 8)
-#     )
-#   
-#   max_right_Z <-
-#     right_bank_df %>%
-#     dplyr::filter(point_type == "right_bank") %>%
-#     dplyr::pull(Z) %>%
-#     max()
-#   
-#   right_bank_val <- get_bank_attributes(right_bank_df, crosswalk_id = ID_COL)$right_bank
-#   
-#   
-#   
-#   testthat::expect_true(
-#     max_right_Z == right_bank_val
-#   )
-# })
-# 
-# testthat::test_that("'get_bank_attributes' - 2 left_bank values w/ furthest left pt being the greatest value", {
-#   ID_COL <- "hy_id"
-#   
-#   left_bank_df <-
-#     data.frame(
-#       hy_id = c("A", "A", "A", "A", "A"),
-#       cs_id = c(1, 1, 1, 1, 1),
-#       pt_id = c(1, 2, 3, 4, 5),
-#       point_type = c('left_bank', 'left_bank', 'bottom', 'right_bank', 'right_bank'),
-#       Z = c(10, 8, 1, 5, 8)
-#     )
-#   
-#   max_left_Z <-
-#     left_bank_df %>%
-#     dplyr::filter(point_type == "left_bank") %>%
-#     dplyr::pull(Z) %>%
-#     max()
-#   
-#   left_bank_val <- get_bank_attributes(left_bank_df, crosswalk_id = ID_COL)$left_bank
-#   
-#   testthat::expect_true(
-#     max_left_Z == left_bank_val
-#   )
-#   
-# })
-# 
-# testthat::test_that("error 'get_bank_attributes' when given dataframe with wrong/missing required columns", {
-#   ID_COL <- "hy_id"
-#   
-#   wrong_cols_df <-
-#     data.frame(
-#       hy_id = c("A", "A", "B", "B"),
-#       cs_identifier = c(1, 1, 1, 1), # NOTE: this is the wrong column name, needs to be "cs_id"
-#       pt_id = c(1, 2, 1, 2),
-#       point_type = c('left_bank', 'right_bank', 'left_bank', 'bottom'),
-#       Z = c(1, 3, 4, 2)
-#     )
-#   
-#   testthat::expect_error(
-#     get_bank_attributes(wrong_cols_df, crosswalk_id = ID_COL)
-#   )
-#   
-#   # missing "cs_id" column
-#   missing_cols_df <-
-#     data.frame(
-#       hy_id = c("A", "A", "B", "B"),
-#       pt_id = c(1, 2, 1, 2),
-#       point_type = c('left_bank', 'right_bank', 'left_bank', 'bottom'),
-#       Z = c(1, 3, 4, 2)
-#     )
-#   
-#   testthat::expect_error(
-#     get_bank_attributes(missing_cols_df, crosswalk_id = ID_COL)
-#   )
-#   
-#   # wrong 'crosswalk_id' column specified
-#   wrong_crosswalk_id_df <-
-#     data.frame(
-#       hy_id = c("A", "A", "B", "B"),
-#       cs_id = c(1, 1, 1, 1),
-#       pt_id = c(1, 2, 1, 2),
-#       point_type = c('left_bank', 'right_bank', 'left_bank', 'bottom'),
-#       Z = c(1, 3, 4, 2)
-#     )
-#   
-#   testthat::expect_error(
-#     get_bank_attributes(wrong_crosswalk_id_df, crosswalk_id = "other_id")
-#   )
-# })
-
-
-
-
-
-
-
-
 
 
 

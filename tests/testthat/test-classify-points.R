@@ -64,6 +64,7 @@ testthat::test_that("check CLASSIFIED CS points default output columns, from DEF
   # # dplyr::select(hy_id, cs_id, pt_id, Z, relative_distance)  %>% 
   # sf::st_drop_geometry() %>%
   #  head(20)
+  
   classified <- classify_points(
     cs_pts = cs_pts,
     crosswalk_id = ID_COL,
@@ -217,86 +218,6 @@ testthat::test_that("'classify_points' - (1 cross section, VALID) - left_bank ab
     all(cpts$point_type == expected_point_types)
     )
 })
-
-# generate_cs <- function(num_unique_ids = 1, 
-#                                num_pts_per_id = 3, 
-#                                cs_id = 1, 
-#                                cs_lengthm = 100,
-#                                num_peaks = 1, 
-#                                amplitude = 1
-#                                ) {
-#   unique_ids <- LETTERS[1:num_unique_ids]
-#   rel_dist_interval <- (cs_lengthm / num_pts_per_id) / 100
-#   rel_dist <- cumsum(rep(rel_dist_interval, num_pts_per_id))
-#   
-#   # Generate Z values based on sine wave to simulate peaks and troughs, shifted upwards to be > 0
-#   x <- seq(0, 2 * pi * num_peaks, length.out = num_pts_per_id)
-#   z_values <- amplitude * sin(x) + amplitude
-#   
-#   cs <- data.frame(
-#     hy_id = rep(unique_ids, each = num_pts_per_id),
-#     cs_id = rep(cs_id, num_unique_ids * num_pts_per_id),
-#     pt_id = rep(1:num_pts_per_id, times = num_unique_ids),
-#     cs_lengthm = rep(cs_lengthm, num_unique_ids * num_pts_per_id),
-#     relative_distance = rel_dist,
-#     Z = rep(z_values, times = num_unique_ids)
-#   )
-#   return(cs)
-# }
-# 
-# classify_z_pts <- function(Z) {
-#   slope          <- diff(c(0, Z))  
-#   bottomZ        <- min(Z)      
-#   points_per_id  <- length(Z)
-#   
-#   classification <- sapply(1:points_per_id, function(i) {
-#     message(i)
-#     if (i == 1) {
-#       message("LB\n")
-#       return("left_bank")   # handle first point
-#     } else if (i == points_per_id) {
-#       message("RB\n")
-#       return("right_bank")  # and the last point
-#     } else if (Z[i] == bottomZ) {
-#       message("BOTTOM\n")
-#       return("bottom")      # identify the bottom point(s) (min Z value)
-#     } else if (slope[i] > 0) {
-#       if (slope[i + 1] <= 0) {
-#         message("CHAN\n")
-#         return("channel")     #  slope changing from rising to falling (approaching bottom)
-#       } else {
-#         message("RB\n")
-#         return("right_bank")  # rising slope but not near the bottom
-#       }
-#     } else if (slope[i] < 0) {
-#       if (slope[i - 1] >= 0 || slope[i + 1] == 0) {
-#         message("CHAN\n")
-#         return("channel")   # slope changing from falling to rising (leaving bottom)
-#       } else {
-#       message("LB\n")
-#       return("left_bank")  #  slope  falling but not near the bottom
-#       }
-#     } else if(slope[i] == 0) {
-#       message("SLOPE is 0 --> CHAN\n")
-#       return("channel")
-#     }
-#     
-#     message("NO MATCH\n")
-#     
-#   })
-#   
-#   return(classification)
-# }
-
-
-# generate_cs(
-#   num_unique_ids = 1,
-#   num_pts_per_id = 10,
-#   cs_id          = 1,
-#   cs_lengthm     = 100,
-#   num_peaks = 1,
-#   amplitude = 1
-# ) 
 
 # TODO: WORK IN PROGRESS______
 # TODO: Left off here on 2024-08-27

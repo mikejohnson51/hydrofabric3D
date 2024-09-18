@@ -212,6 +212,175 @@ has_same_crs <- function(sf1, sf2) {
   
 }
 
+# -------------------------------------------------------------------------------
+# ---- Functions for generating testing cross sections data ----
+# -------------------------------------------------------------------------------
+
+# generate cross section Z values for testing
+make_cs_line <- function(y_start, y_end, n = 10) {
+  
+  # evenly spaced x vals
+  x_vals <- seq(0, 1, length.out = n)
+  
+  # calculate slope (change in y / change in x)
+  slope <- (y_end - y_start) / 1  # (x_end - x_start) = 1 since x goes from 0 to 1
+  
+  # determine corresponding y values (y = mx + b)
+  intercept <- y_start  
+  y_vals    <- slope * x_vals + intercept
+  
+  #  calc relative distance (percent along the line (e.g., 0.1, 0.2, ..., 1.0)
+  relative_distance <- seq(1 / n, 1, length.out = n)
+  
+  points_df <- data.frame(
+    pt_id             = 1:n,
+    relative_distance = relative_distance,
+    X                 = x_vals,
+    Z                 = y_vals
+  )
+  
+  return(points_df)
+}
+
+get_flat_line <- function(y = 0, n = 10) {
+  return(
+    make_cs_line(y_start = y, y_end = y, n = n)
+  )
+}
+
+get_neg_diagonal <- function(start = 10, end = 6) {
+  
+  if(start < end) {
+    stop("'start' is less than 'end', 'start' value must be greater than 'end' value to generate a negative slope line")
+  }
+  
+  # start = 10
+  # end = 8
+  
+  n <- start - end
+  
+  # make_cs_line(y_start = start, y_end = end, n = n) %>% .$Z %>% plot()
+  return(
+    make_cs_line(y_start = start, y_end = end, n = n)
+  )
+  
+}
+
+get_pos_diagonal <- function(start = 6, end = 10) {
+  
+  if(end < start) {
+    stop("'end' is less than 'start', 'end' value must be greater than 'start' value to generate a positive slope line")
+  }
+  
+  # start = 6
+  # end = 10
+  
+  n <- end - start
+  
+  # make_cs_line(y_start = start, y_end = end, n = n)
+  # make_cs_line(y_start = start, y_end = end, n = n) %>% .$Z %>% plot()
+  
+  return(
+    make_cs_line(y_start = start, y_end = end, n = n)
+  )
+  
+}
+
+merge_lines <- function(...) {
+  
+  args <- list(...)
+  
+  lines               <- dplyr::bind_rows(args)
+  n                   <- nrow(lines)
+  relative_distance   <- seq(1 / n, 1, length.out = n)
+  
+  lines <- 
+    lines %>% 
+    dplyr::mutate(
+      pt_id             = 1:dplyr::n()
+    )
+  
+  lines$relative_distance <- relative_distance
+  
+  return(lines)
+}
+
+make_cs <- function(...) {
+  
+  # x = c(10, 4, 6)  
+  # x2 <- c(4, 10, 6)
+  # args <- list(x, x2)
+  
+  args <- list(...)
+  
+  cs_parts <- list()
+  
+  for (i in seq_along(args)) {
+    
+    # message(i)
+    cs_structure <- args[[i]]
+    
+    if (length(cs_structure) != 3) {
+      next
+    }
+    
+    start_y <- cs_structure[1]
+    end_y   <- cs_structure[2]
+    n       <- cs_structure[3]
+    
+    # make_cs_line(start_y, end_y, n)$Z %>% 
+    cs_parts[[i]] <- make_cs_line(start_y, end_y, n)
+    
+    
+  }
+  
+  cs <- merge_lines(cs_parts)
+  
+  return(cs)
+  
+}
+
+make_cs_curve <- function(left_y_range, right_y_range, bottom_length) {
+  # start_y1 = 10
+  # end_y1 = 4
+  # start_y2 = 4
+  # end_y2 <- 8
+  # bottom_length = 1
+  # left_y_range <- c(10, 4)
+  
+  start_y1 <- left_y_range[1]
+  end_y1 <- left_y_range[2]
+  
+  start_y2 <- right_y_range[1]
+  end_y2   <- right_y_range[2]
+  
+  bottom_y <- min(end_y1, start_y2)
+  
+  left    <- get_neg_diagonal(start_y1, end_y1)
+  bottom  <- get_flat_line(bottom_y, bottom_length)
+  right   <- get_pos_diagonal(start_y2, end_y2)
+  
+  cs      <- merge_lines(left, bottom, right)
+  
+  # gen_cs %>%
+  #   .$Z %>% plot()
+  
+  return(cs)
+  
+}
+
+# left_chan   <- get_neg_diagonal(6, 2)
+# bottom      <- get_flat_line(2, 4)
+# right_chan  <- get_pos_diagonal(2, 6)
+# 
+# gen_cs <- merge_lines(left_chan, bottom, right_chan)
+# 
+# gen_cs %>%
+#   .$Z %>% plot()
+
+# -------------------------------------------------------------------------------
+# -------------------------------------------------------------------------------
+
 # get_cs_point_types2 <- function(
 #     depths,
 #     num_of_pts,

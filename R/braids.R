@@ -1757,6 +1757,95 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
   return(braid_groups)
 }
 
+#' Create a node topology from edge network topology.
+#'
+#' This function creates a Directed Acyclic Graph (DAG) given an sf linestring network with a unique identifer.
+#'
+#' @param x A data frame or SF linestring dataframe representing a hydrologic network with crosswalk_id and linestring geometries (for SF dataframes) or a crosswalk_id with to_crosswalk_id columns 
+#' @param crossswalk_id unique ID column name 
+#' @noRd
+#' @keywords internal
+#' @return A data frame representing the Directed Acyclic Graph (DAG) of the network.
+#' @importFrom dplyr select
+#' @importFrom hydroloom hy align_names make_attribute_topology make_node_topology add_toids
+get_node_topology <- function(
+    x,
+    crosswalk_id    = NULL
+) {
+  
+  #### CODE BELOW is probably DROPPABLE ----> ( if block that checks (!is.null(start)) ) ###
+  #### is NULL check on "start" and if user DID give a start, then nhdplusTools::get_UT() is called to get more upstream COMIDs  ###
+  #### we don't want data being pulled in, probably better to 
+  #### leave it up to the user to provide the required data, instead of HOPING that we get the data they were expecting
+  ####
+  
+  # crosswalk_id = "id"
+  # to_crosswalk_id = "toid"
+  # x <- network
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id)
+  
+  if (!all(REQUIRED_COLS %in% names(x))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(x))]
+    
+    stop("'x' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  # temporary change crosswalk_id to a standard "id" for hydroloom
+  names(x)[names(x) == crosswalk_id]    <- "id"
+  # names(x)[names(x) == to_crosswalk_id] <- "toid"
+  
+  topo <-
+    x %>%
+    dplyr::select(id) %>%
+    # dplyr::select(id, toid) %>% 
+    # sf::st_drop_geometry() %>%
+    hydroloom::hy() %>% 
+    hydroloom::align_names() %>% 
+    hydroloom::make_attribute_topology(min_distance = 5) %>%
+    hydroloom::make_node_topology(add_div = TRUE) %>% 
+    hydroloom::add_toids(return_dendritic = FALSE)
+  
+  # change "id" and "toid" back to "crosswalk_id" and "to_crosswalk_id"
+  names(topo)[names(topo) == "id"]     <- crosswalk_id
+  names(topo)[names(topo) == "toid"]   <- as_to_id(crosswalk_id)
+  
+  # TODO: For when NO linestrings are given, requires a TOID
+  # x %>% 
+  #     dplyr::select(id, toid) %>%
+  #     sf::st_drop_geometry() %>%
+  #     hydroloom::hy() %>% 
+  #     hydroloom::align_names() %>% 
+  #     hydroloom::make_node_topology(add_div = T)
+  
+  # x2_ind <- 
+  #   topo %>% 
+  #   hydroloom::make_index_ids()
+  
+  # outlets <- topo[!topo$tonode %in% topo$fromnode, ]$id
+  # topo$name_attr          <- ""
+  # topo$type_attr          <- ""
+  # topo$major_types        <- ""
+  # topo %>% 
+  #   hydroloom::add_divergence(
+  #     coastal_outlet_ids = outlets,
+  #     inland_outlet_ids = c(),
+  #     name_attr = "name_attr",
+  #     type_attr = "type_attr",
+  #     major_types = c("StreamRiver", "ArtificialPath", "Connector")
+  #   )
+  
+  return(topo)
+  
+}
+
 #' Create a Directed Acyclic Graph (DAG)
 #'
 #' This function creates a Directed Acyclic Graph (DAG) given a network with tonodes and fromnodes. The function allows for trimming the network based on a specific starting node and supports the option to reverse the graph.
@@ -1839,7 +1928,7 @@ create_dag <- function(
     ),
     -fromnode, -tonode
   )
-  
+  # nhdplusTools::make_node_topology()
   # if(flag) {
   #   x[x$comid %in% network[duplicated(network$comid), ]$comid, ]$divergence = 2
   #   network[duplicated(network$comid), ]$divergence <- 2

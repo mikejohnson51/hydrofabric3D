@@ -50,33 +50,61 @@ utils::globalVariables(
 #' To do this, we traverse down the network making sure this condition is met, and, 
 #' in cases where it isn't, we will lower the in channel portion of the cross section to make it true.
 #' @param cs_pts dataframe or sf dataframe of classified cross section points (output of classify_points())
-#' @importFrom dplyr group_by summarise mutate ungroup select left_join case_when
+#' @param crosswalk_id character, ID column
+#' @importFrom dplyr group_by summarise mutate ungroup select left_join case_when any_of across
 #' @importFrom sf st_drop_geometry
 #' @return sf dataframe of cross section points with aligned banks and smoothed bottoms
 #' @export
-align_banks_and_bottoms <- function(cs_pts) {
+align_banks_and_bottoms <- function(cs_pts, crosswalk_id) {
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # cs  <- add_hydrofabric_id(cs) 
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "Z", "point_type")
+  
+  if (!all(REQUIRED_COLS %in% names(cs_pts))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs_pts))]
+    
+    stop("'cs' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
   
   adjust <- function(v){
-    if(length(v) == 1){ return(v)}
+    if(length(v) == 1){ 
+      return(v)
+      }
     for(i in 2:length(v)){ 
-      v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) }
+      v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) 
+      }
     v
   }
   
   slope <- 
     cs_pts %>% 
     sf::st_drop_geometry() %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::summarise(min_ch = min(Z[point_type == "channel"])) %>% 
     dplyr::mutate(adjust = adjust(min_ch) - min_ch) %>% 
     dplyr::ungroup() %>% 
-    dplyr::select(hy_id, cs_id, adjust)
+    dplyr::select(
+      dplyr::any_of(crosswalk_id),
+      cs_id, 
+      adjust
+      )
+    # dplyr::select(hy_id, cs_id, adjust)
   
   cs_pts <-  
     dplyr::left_join(
       cs_pts, 
       slope, 
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id") 
+      # by = c("hy_id", "cs_id")
     ) %>% 
     dplyr::mutate(
       Z = dplyr::case_when(
