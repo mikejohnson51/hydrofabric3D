@@ -1757,6 +1757,288 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
   return(braid_groups)
 }
 
+#' Create a list of braid IDs containing COMIDs in each braid for a single continguous network
+#'
+#' Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+#' Internal function for use in 'get_braid_list()'
+#' @param graph graph representation of hydrologic network. Output of get_node_topology2().
+#' @param start Optional argument specifying the starting point for braid detection.
+#' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
+#'
+#' @noRd
+#' @keywords internal
+#' @return list of braid IDs with COMIDs within each braid
+#' @importFrom dplyr select filter
+#' @importFrom sf st_drop_geometry
+#' @importFrom stats setNames
+internal_get_braid_list3  <- function(
+    graph,
+    crosswalk_id = NULL,
+    start        = NULL,
+    verbose      = FALSE
+) {
+  
+  # ---------------------------------------------------------------
+  # network = dplyr::filter(network, 
+  #                         component_id %in% components[i])
+  # crosswalk_id = "id"
+  # start   = NULL
+  # verbose = verbose
+  # net_init    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
+  # crosswalk_id = "comid"
+  # network %>% 
+  #   dplyr::filter(hydroseq >= 1385417, hydroseq <= 1385423 | 
+  #                   hydroseq %in% c(1390468, 1390467, 1390468, 1390469, 1390470, 1390471, 1390472, 1390463, 1390464)
+  #   ) %>% .$geometry %>% plot()
+  
+  # network <-
+  #   net_init %>%
+  #   dplyr::filter(hydroseq >= 1385418, hydroseq <= 1385422 |
+  #                   hydroseq %in% c(1390468, 1390467, 1390468,
+  #                                   1390469,
+  #                                   1390470, 1390471, 1390472
+  #                                   # 1390463, 1390464
+  #                   )) %>%
+  #   dplyr::select(dplyr::any_of(crosswalk_id),
+  #                 fromnode, tonode,
+  #                 divergence,
+  #                 geometry = geom
+  #                 )
+  # graph <- get_node_topology2(
+  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
+  #   # network,
+  #   crosswalk_id = crosswalk_id
+  # )
+  # ---------------------------------------------------------------
+  
+  # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
+  if(nrow(network) <= 1) {
+    
+    if(verbose) {
+      message("No cycles found, returning NULL")
+    }
+    
+    return(NULL)
+  }
+  
+  # # lower case names
+  # names(network) <- tolower(names(network))
+  
+  # get "to_<crosswalk_id>" string column name 
+  to_crosswalk_id <- as_to_id(crosswalk_id)
+  
+  # # # turn network into a directed graph
+  # graph <- get_node_topology2(
+  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
+  #   # network,
+  #   crosswalk_id = crosswalk_id
+  # )
+  # network$geometry %>% plot()
+  
+  # graph <- get_node_topology(
+  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
+  #   # network,
+  #   crosswalk_id = crosswalk_id,
+  #   deduplicate  = FALSE
+  #   )
+  
+  # graph <- hydrofabric3D:::create_dag(network)
+  
+  # get the fromnode associated with a given COMID 'start'
+  start_node <- id_to_node(graph, crosswalk_id, start)
+  
+  if(verbose) {
+    message("Starting braid detection at ", 
+            ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
+  }
+  
+  # drop graph geometry
+  graph <- sf::st_drop_geometry(graph)
+  # graph <- sf::st_drop_geometry(graph)
+  
+  # stash comids and from IDs
+  id_map <- dplyr::select(
+    graph,
+    dplyr::any_of(c(crosswalk_id, to_crosswalk_id)),
+    # dplyr::any_of(c(crosswalk_id, to_crosswalk_id, "comid", "tocomid")),
+    fromnode,
+    tonode
+  )
+  
+  # create artificial cycles from circuits in graph, doing this allows for 
+  # sections of river that form a circuit to be identfied as a cycle and thus a braid
+  # Questionable at this point, other option is the code below that uses 
+  # single_cycles() function (COMMENTED OUT CODE BELOW)
+  
+  graph <- renode_circuits2(graph, crosswalk_id = crosswalk_id, verbose = FALSE)
+  # graph <- hydrofabric3D:::renode_circuits(graph, verbose = FALSE)
+  # graph <- hydrofabric3D:::renode_circuits(dplyr::rename(graph, tocomid = to_comid), verbose = FALSE)
+  
+  # make an undirected graph
+  graph <- make_undirected2(graph)
+  # undir <- make_undirected2(graph)
+  # graph <- hydrofabric3D:::make_undirected(graph)
+  
+  # find cycles in undirected graph (proxy for braids)
+  cycles <- hydrofabric3D:::find_cycles(
+    graph     = graph,
+    # graph = distinct(graph),
+    # graph     = undir,
+    start     = start_node,
+    return_as = "list",
+    edge      = FALSE,
+    wide      = TRUE,
+    verbose   = verbose
+  )
+  
+  # if(cycles$size() == 0 & is.null(single_braids)) {
+  if(is.null(cycles)) {
+    # message("No cycles found, returning NULL")
+    return(NULL)
+  }
+  
+  # remove added nodes from renode_circuits()
+  braids <- lapply(cycles, function(i) { 
+    i[i %in% id_map$fromnode] 
+  })
+  
+  # # match fromnodes from id_map to nodes identified in each cycle
+  braids <- lapply(1:length(braids), function(k) {
+    # get COMIDs of each braid
+    id_map[id_map$fromnode %in% braids[[k]], ] %>%
+      dplyr::filter(tonode %in% braids[[k]]) %>%
+      .[[crosswalk_id]]
+  })
+  
+  # set braid_id names
+  braids <- stats::setNames(braids, paste0("braid_",  1:length(braids)))
+  
+  return(braids)
+  
+}
+
+# TODO: finalize and use this instead of get_node_topology() and create_dag()
+get_node_topology2 <- function(
+    x,
+    crosswalk_id    = NULL
+) {
+  
+  ####  ####  ####  ####  ####  ####
+  
+  # to_crosswalk_id = "toid"
+  # x <- dplyr::select(network, dplyr::any_of(crosswalk_id))
+  # network,
+  # crosswalk_id = crosswalk_id
+  # x <- network
+  # x = dplyr::select(network, dplyr::any_of(crosswalk_id))
+  # crosswalk_id = "comid"
+  # crosswalk_id = crosswalk_id
+  # stash_nodes <- x %>% dplyr::select(comid, fromnode, tonode) %>% sf::st_drop_geometry()
+  
+  ####  ####  ####  ####  ####  ####
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id)
+  
+  if (!all(REQUIRED_COLS %in% names(x))) {
+    
+    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(x))]
+    
+    stop("'x' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  # temporary change crosswalk_id to a standard "id" for hydroloom
+  names(x)[names(x) == crosswalk_id]    <- "id"
+  
+  topo <-
+    x %>%
+    dplyr::select(id) %>%
+    # dplyr::select(network, dplyr::any_of(crosswalk_id)) %>% 
+    # dplyr::select(id = comid) %>%
+    hydroloom::hy() %>% 
+    hydroloom::align_names() %>% 
+    hydroloom::make_attribute_topology(min_distance = 5)
+  
+  topo <-
+    topo %>%
+    hydroloom::make_node_topology(add_div = TRUE) %>%
+    hydroloom::add_toids(return_dendritic = FALSE) %>%
+    dplyr::tibble()
+  
+  index_ids <- 
+    topo %>% 
+    hydroloom::make_index_ids() 
+  
+  adj_list <- 
+    index_ids$to_list %>% 
+    dplyr::mutate(toindid = sapply(toindid, function(x) paste(x, collapse = ","))) %>% 
+    tidyr::separate_rows(toindid, sep = ",") %>%
+    dplyr::mutate(toindid = as.integer(trimws(toindid)))  
+  
+  # reverse_edges <- 
+  #   adj_list %>%
+  #   dplyr::rename(fromid = indid, 
+  #                 toid = toindid) %>%
+  #   dplyr::mutate(
+  #     temp_from = fromid, 
+  #     fromid = toid, 
+  #     toid = temp_from
+  #   ) %>%
+  #   dplyr::select(-temp_from) %>% 
+  #   dplyr::rename(
+  #     indid = fromid,
+  #     toindid = toid
+  #   )
+  # 
+  # # bind original and reverse edges, then drop remove duplicates
+  # undir <-
+  #   dplyr::bind_rows(adj_list_long, reverse_edges) %>%
+  #   dplyr::distinct(indid, toindid, .keep_all = TRUE)
+  
+  adj <- 
+    adj_list %>% 
+    dplyr::select(id, fromnode = indid , tonode = toindid)
+  
+  adj <- 
+    adj %>% 
+    dplyr::left_join(
+      dplyr::select(adj, toid = id, fromnode),
+      by = c("tonode" = "fromnode")
+    ) %>% 
+    dplyr::distinct() %>% 
+    dplyr::select(id, toid, fromnode, tonode) %>% 
+    dplyr::mutate(
+      toid = ifelse(is.na(toid), 0, toid)
+    )
+  
+  # adj %>% 
+  #   dplyr::arrange(id)
+  # topo %>% 
+  #   dplyr::arrange(id)
+  # # remove repeated IDs
+  # topo <- topo[!duplicated(topo$id), ]
+  # 
+  # # re generate node topology with duplicate IDs removed
+  # topo <-
+  #   topo %>% 
+  #   dplyr::select(-fromnode, -tonode) %>% 
+  #   hydroloom::make_node_topology(add = TRUE)
+  
+  # change "id" and "toid" back to "crosswalk_id" and "to_crosswalk_id"
+  names(adj)[names(adj) == "id"]     <- crosswalk_id
+  names(adj)[names(adj) == "toid"]   <- as_to_id(crosswalk_id)
+  
+  return(adj)
+  
+}
+
+
 #' Create a node topology from edge network topology.
 #'
 #' This function creates a Directed Acyclic Graph (DAG) given an sf linestring network with a unique identifer.
