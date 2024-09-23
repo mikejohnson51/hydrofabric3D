@@ -9,7 +9,7 @@ unnpack_braids(braids, into_list = FALSE)
 \arguments{
 \item{braids}{dataframe or sf dataframe containing a "comid" and "braid_id" column}
 
-\item{into_list}{logical, if TRUE, unpacked braid_ids and corresponding comids are returned as a list. Default is FALSE}
+\item{into_list}{logical, if TRUE, unpacked braid_ids and corresponding crosswalk_ids are returned as a list. Default is FALSE}
 }
 \value{
 dataframe or list

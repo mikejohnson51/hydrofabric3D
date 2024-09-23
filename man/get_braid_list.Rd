@@ -2,14 +2,14 @@
 % Please edit documentation in R/braids.R
 \name{get_braid_list}
 \alias{get_braid_list}
-\title{Create a list of braid IDs containing COMIDs in each braid}
+\title{Create a list of braid IDs containing crosswalk_ids in each braid}
 \usage{
-get_braid_list(network, terminal_id = NULL, verbose = FALSE)
+get_braid_list(network, crosswalk_id = NULL, verbose = FALSE)
 }
 \arguments{
 \item{network}{The network object representing the river network.}
 
-\item{terminal_id}{character, column name containing a unique identifier, delineating seperate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network'}
+\item{crosswalk_id}{unique ID column name}
 
 \item{verbose}{Logical indicating whether to display verbose messages during the braid detection process.}
 }
@@ -17,7 +17,7 @@ get_braid_list(network, terminal_id = NULL, verbose = FALSE)
 list of braid IDs and COMIDs within each braid
 }
 \description{
-Find and uniquely identify braids in a network of flowlines, given a dataframe containing comid, fromnode, tonode and divergence as columns. 'find_braids()" identifies braids as cycles in the graph representation of the river network.
+Find and uniquely identify braids in a network of flowlines, given an sf dataframe containing crosswalk_id and sf linestring geometries, 'find_braids()" identifies braids as cycles in the graph representation of the river network.
 }
 \examples{
  \dontrun{
@@ -30,6 +30,6 @@ net <- nhdplusTools::navigate_network(
 net <- dplyr::select(net, comid, divergence, totdasqkm, fromnode, tonode, terminalpa)
 
 # get a dataframe of COMIDs and braid IDs
-braids <- get_braid_list(network = net)
+braids <- get_braid_list(network = net, crosswalk_id = "comid")
 }
 }

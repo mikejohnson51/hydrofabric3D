@@ -4,10 +4,12 @@
 \alias{align_banks_and_bottoms}
 \title{Align banks and smooth bottoms of cross section points}
 \usage{
-align_banks_and_bottoms(cs_pts)
+align_banks_and_bottoms(cs_pts, crosswalk_id)
 }
 \arguments{
 \item{cs_pts}{dataframe or sf dataframe of classified cross section points (output of classify_points())}
+
+\item{crosswalk_id}{character, ID column}
 }
 \value{
 sf dataframe of cross section points with aligned banks and smoothed bottoms

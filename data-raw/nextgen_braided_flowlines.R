@@ -13,9 +13,14 @@ usethis::use_data(nextgen_braided_flowlines, overwrite = TRUE)
 #                                      distance_km = 100,
 #                                      network = ref_fl)
 # 
-# sf::write_sf(nav, "tests/testthat/testdata/braided_flowlines.gpkg")
-
+# # sf::write_sf(nav, "tests/testthat/testdata/braided_flowlines.gpkg")
+# nextgen_path <- "/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg//nextgen_06.gpkg"
+# sf::st_layers(nextgen_path)
+# nx_net <- sf::read_sf("/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg//nextgen_06.gpkg", layer = "network")
+# net_attr <- sf::read_sf("/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg//nextgen_06.gpkg", layer = "flowpath_attributes")
 # nx_fl <- sf::read_sf("/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg//nextgen_06.gpkg", layer = "flowpaths")
+
+
 
 # nx_sub <- 
 #   nx_fl %>% 

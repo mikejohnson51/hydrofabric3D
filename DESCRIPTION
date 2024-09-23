@@ -1,6 +1,6 @@
 Package: hydrofabric3D
 Title: hydrofabric3D
-Version: 0.1.26
+Version: 0.1.27
 Authors@R: c(person("Mike", "Johnson", role = c("aut", "cre"), email = "mikecp11@gmail.com"),
              person("Angus", "Watters",  role = "aut"),
              person("Arash", "Modaresi",  role = "ctb"),
@@ -22,6 +22,7 @@ Imports:
   smoothr,
   zoo,
   nhdplusTools,
+  hydroloom,
   fastmap,
   ggplot2,
   rlang,

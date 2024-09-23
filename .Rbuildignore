@@ -19,7 +19,13 @@ workspace
 ^[.].*$
 ^.*/[.].*$
 ^general_visuals\.R$
-^scraps\.R$
+
+^scrap\.r$ 
+^scraps\.r$
 ^scraps2\.R$
 ^scraps3\.R$
+^braids_tmp\.R$
+^braids2\.R$
+
+
 

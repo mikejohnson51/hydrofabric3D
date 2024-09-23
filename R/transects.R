@@ -731,15 +731,26 @@ cut_cross_sections <- function(
     precision         = 1,
     add               = FALSE
 ) {
-  
-  # net <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>% 
-  #   dplyr::select(-id)
-  # id = NULL
+  # library(dplyr)
+  # library(sf)
+  # 
+  # net    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
+  # # crosswalk_id = "comid"
+  # # 
+  # # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
+  # # # crosswalk_id = "id"
+  # # # verbose = TRUE
+  # # # nested      = TRUE
+  # # # verbose     = TRUE
+  # # net <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>%
+  # #   dplyr::select(-id)
+  # id = "comid"
   # cs_widths = 100
   # num = 5
   # densify=2
   # smooth = TRUE
   # rm_self_intersect = TRUE
+  # 
   # fix_braids        = FALSE
   # terminal_id       = NULL
   # braid_threshold   = NULL
@@ -747,7 +758,6 @@ cut_cross_sections <- function(
   # braid_method      = "comid"
   # precision         = 1
   # add               = FALSE
-  
 
   # net %>% 
     # add_hydrofabric_id() %>%  
@@ -776,7 +786,7 @@ cut_cross_sections <- function(
   )
   
   # make a unique ID if one is not given (NULL 'id')
-  if(is.null(id)) {
+  if (is.null(id)) {
     net <- add_hydrofabric_id(net) 
     id  <- 'hydrofabric_id'
   }
@@ -890,8 +900,16 @@ cut_cross_sections <- function(
   # # add back cross sections width column
   # transects$cs_widths = rep(cs_widths, times = ids_length)
   
+  # t2 <- transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
+  #   dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
+  #   # dplyr::group_by(hy_id) %>% 
+  #   dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+  #   dplyr::ungroup() %>% 
+  #   dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+  # mapview::mapview(transects, color = "green") + mapview::mapview(t2, color = "red")
+  
   # remove self intersecting transects or not
-  if(rm_self_intersect){
+  if (rm_self_intersect) {
     transects <- 
       transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
       dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
@@ -929,20 +947,72 @@ cut_cross_sections <- function(
     #          "- Braid grouping method: ", braid_method
     #          ))
     
-    transects <- fix_braid_transects(
+    # transects <- fix_braid_transects(
+    #   net             = net,
+    #   transect_lines  = transects,
+    #   terminal_id     = terminal_id,
+    #   braid_threshold = braid_threshold,
+    #   version         = version,
+    #   method          = braid_method,
+    #   precision       = precision,
+    #   rm_intersects   = rm_self_intersect
+    # )
+    
+    transects <- fix_braid_transects2(
       net             = net,
       transect_lines  = transects,
-      terminal_id     = terminal_id,
-      braid_threshold = braid_threshold,
-      version         = version,
+      crosswalk_id    = id,
       method          = braid_method,
       precision       = precision,
       rm_intersects   = rm_self_intersect
     )
+    
+    # transects
+    # transects[lengths(sf::st_intersects(transects, net)) == 1, ]
+    # is.na(fixed$braid_id)
+    # fixed[lengths(sf::st_intersects(fixed, net)) == 1, ]
+    # 
+    # mapview::mapview(transects, color = "green") + 
+    #   mapview::mapview(dplyr::select(fixed, -braid_vector), color = "red") +
+    #   mapview::mapview(net, color = "dodgerblue")
+    # #   # if final transect_lines has an NA for the braid_id column it means that it was part of the non braided (untouched) transect_lines,
+    #   # set braid_id to "no_braid" in those cases, otherwise keep braid_id as is
+    # 
+    # fixed$braid_id <- ifelse(
+    #     is.na(fixed$braid_id),
+    #     "no_braid",
+    #     fixed$braid_id
+    #   )
+    # fixed[!lengths(sf::st_intersects(fixed, net)) > 1 & fixed$braid_id == "no_braid", ]
+    # 
+    # fixed2 <- fixed[!(lengths(sf::st_intersects(fixed)) > 1 & fixed$braid_id == "no_braid"), ]
+    # 
+    # mapview::mapview(transects, color = "green") + 
+    #   mapview::mapview(dplyr::select(fixed, -braid_vector), color = "red") +
+    #   mapview::mapview(dplyr::select(fixed2,  -braid_vector), color = "green") +
+    #   mapview::mapview(net, color = "dodgerblue")
+    # 
+    # sum(lengths(sf::st_intersects(fixed)) > 1)
+    # fixed2 <- fixed[!(lengths(sf::st_intersects(fixed)) > 1 & fixed$braid_id == "no_braid"), ]
+    # fixed[lengths(sf::st_intersects(fixed)) == 1, ] %>%
+    #   dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>%
+    #   # dplyr::group_by(hy_id) %>%
+    #   dplyr::mutate(cs_id = 1:dplyr::n()) %>%
+    #   dplyr::ungroup() %>%
+    #   dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+    # 
+    # #   # if one of the transect lines interesects MORE than 1 line in net AND it also has a braid_id == "no_braid", then remove it from output
+    #   transect_lines <- transect_lines[!(lengths(sf::st_intersects(transect_lines, net)) > 1 & transect_lines$braid_id == "no_braid"), ]
+    #   transect_lines <- transect_lines[!(lengths(sf::st_intersects(transect_lines)) > 1 & transect_lines$braid_id == "no_braid"), ]
+    #   
+    # #   
+  } else {
+    # remove any transect lines that intersect with any flowlines more than 1 time
+    transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
   }
   
-  # remove any transect lines that intersect with any flowlines more than 1 time
-  transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
+  # # remove any transect lines that intersect with any flowlines more than 1 time
+  # transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
    
   # TODO: removed this forcing to "hy_id", part of migration of ALL code 
   # TODO: to rely on an specified "id" and/or "crosswalk_id" 
