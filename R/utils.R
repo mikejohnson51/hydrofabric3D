@@ -182,6 +182,36 @@ remove_cols_from_df <- function(df, columns_to_remove) {
   return(df)
 }
 
+#' Reorder columns in a dataframe
+#' Internal helper
+#' @param df dataframe or sf dataframe
+#' @param start_order character vector of columns to put first in order 
+#'
+#' @noRd
+#' @keywords internal
+#' @return dataframe with reordered columns
+reorder_cols <- function(df, start_order) {
+  
+  col_names <- names(df)
+  
+  # all columns in first_cols exist in the dataframe
+  missing_cols <- setdiff(start_order, col_names)
+  if (length(missing_cols) > 0) {
+    stop("The following columns are missing from the dataframe: ", paste(missing_cols, collapse = ", "))
+  }
+  
+  # the new column order
+  col_order <- c(start_order, col_names[!col_names %in% start_order])
+  
+  # # reorder cols
+  # df <- df[, col_order]
+  
+  # reorder cols
+  return(
+    df[, col_order]
+  )
+}
+
 #' @title Get the count of each point type in a set of cross section points
 #' @description get_point_type_counts() will create a dataframe providing the counts of every point_type for each hy_id/cs_id in a set of classified cross section points (output of classify_pts())
 #' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well as a 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
@@ -1491,6 +1521,38 @@ get_relief <- function(
       )
   
   return(relief)
+}
+
+#' Validate that a dataframe is valid type (inherits from a dataframe) and has the given required columns
+#'
+#' @param x dataframe, sf, or tibble
+#' @param cols character vector of columns that are required in 'x'
+#' @param obj_name character string, optional name of object to display in error messages. If not obj_name is given, obj_name defaults to 'x'
+#'
+#' @noRd
+#' @keywords internal
+#' @return logical, TRUE value if all conditions are met and valid, otherwise an error is raised
+validate_df <- function(x, cols, obj_name = NULL) {
+  
+  if(is.null(obj_name) | !inherits(obj_name, "character")) {
+    obj_name <- "x"
+  }
+  
+  if (!inherits(x, "data.frame")) {
+    stop("Invalid '", obj_name, "' type of '",  class(x), "' \n '", 
+         obj_name ,"' must inherit from 'data.frame', 'tibble', or 'sf'")
+  }
+  
+  if (!all(cols %in% names(x))) {
+    
+    missing_cols <- cols[which(!cols %in% names(x))]
+    
+    stop("'", obj_name, "' is missing one or more of the required columns:\n > ", 
+         paste0(missing_cols, collapse = "\n > "))
+  }
+  
+  return(TRUE)
+  
 }
 
 #' Validate Inputs for cut_cross_sections Function

@@ -236,7 +236,7 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   
   # NOTE: there is a kink in the flowline that CORRECTLY causes a transect to be removed
   testthat::expect_true(nrow(transects) == 20)
-  mapview::mapview(transects) + flowline
+  # mapview::mapview(transects) + flowline
   
   has_no_self_intersctions <- all(lengths(sf::st_intersects(transects)) == 1)
   testthat::expect_true(has_no_self_intersctions)

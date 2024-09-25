@@ -973,10 +973,11 @@ cut_cross_sections <- function(
     #   rm_intersects   = rm_self_intersect
     # )
     
-    transects <- fix_braid_transects2(
+    transects <- fix_braided_transects(
       net             = net,
       transect_lines  = transects,
       crosswalk_id    = id,
+      braid_threshold = braid_threshold,
       method          = braid_method,
       precision       = precision,
       rm_intersects   = rm_self_intersect
