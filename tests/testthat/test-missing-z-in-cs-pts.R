@@ -52,7 +52,7 @@ testthat::test_that("check that missing NA value is identified and added as a NA
     all(
       cs_pts %>% 
         sf::st_drop_geometry() %>% 
-        add_tmp_id(x = get(ID_COL)) %>% 
+        add_tmp_id(x = ID_COL) %>% 
         dplyr::group_by(tmp_id) %>% 
         dplyr::count() %>% 
         dplyr::pull(n) >= MIN_PTS_PER_CS

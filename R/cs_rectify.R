@@ -146,7 +146,7 @@ get_improved_cs_pts = function(
   }
   
   # add a "tmp_id" column to easily index transects by hy_id and cs_id 
-  transects <- hydrofabric3D::add_tmp_id(transects, x = get(crosswalk_id))
+  transects <- hydrofabric3D::add_tmp_id(transects, x = crosswalk_id)
   
   # rename geometry column to "geom" 
   cs_pts     <- nhdplusTools::rename_geometry(cs_pts, "geometry")
@@ -267,7 +267,7 @@ get_improved_cs_pts = function(
   )
   
   # add tmp id for convenience
-  reclassified_pts <- hydrofabric3D::add_tmp_id(reclassified_pts, x = get(crosswalk_id))
+  reclassified_pts <- hydrofabric3D::add_tmp_id(reclassified_pts, x = crosswalk_id)
   
   # Find "validity score" values which just represents a cross sections bank and relief validity as either (0, 1, or 2)
   #  Score 0 = FALSE banks & FALSE relief
@@ -276,8 +276,8 @@ get_improved_cs_pts = function(
   # ---> We get this score for the old and the new set of extended cross sections and 
   # then take the points in the new data that showed improvement from the original cross section. 
   # The cross section points that did NOT show improvment remain untouched in the original data
-  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, crosswalk_id, "old_validity_score"), x = get(crosswalk_id))
-  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, crosswalk_id, "new_validity_score"), x = get(crosswalk_id))
+  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_pts, crosswalk_id, "old_validity_score"), x = crosswalk_id)
+  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(reclassified_pts, crosswalk_id, "new_validity_score"), x = crosswalk_id)
   
   # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
   check_for_improvement <- dplyr::left_join(
@@ -305,7 +305,7 @@ get_improved_cs_pts = function(
   extended_ids_to_keep <- 
     check_for_improvement %>% 
     dplyr::filter(improved) %>% 
-    get_unique_tmp_ids(x = get(crosswalk_id))
+    get_unique_tmp_ids(x = crosswalk_id)
   
   # ids_to_add_to_good_set <- 
   #   check_for_improvement %>% 
@@ -313,7 +313,7 @@ get_improved_cs_pts = function(
   #   get_unique_tmp_ids()
   
   # add a tmp_id for joining and filtering 
-  extended_pts <- add_tmp_id(extended_pts, x = get(crosswalk_id))
+  extended_pts <- add_tmp_id(extended_pts, x = crosswalk_id)
   
   # TODO: Left off here to add back and remove old data 03/05/2024
   pts_to_keep <- dplyr::filter(extended_pts, 
@@ -341,7 +341,7 @@ get_improved_cs_pts = function(
   # bind the new version of these points to the rest of the original data
   final_pts <-
     cs_pts %>%  
-    hydrofabric3D::add_tmp_id(x = get(crosswalk_id)) %>% 
+    hydrofabric3D::add_tmp_id(x = crosswalk_id) %>% 
     dplyr::filter(
       !tmp_id %in% extended_ids_to_keep
     ) %>% 
@@ -349,7 +349,7 @@ get_improved_cs_pts = function(
       is_extended = FALSE
     ) %>% 
     dplyr::bind_rows(
-      hydrofabric3D::add_tmp_id(pts_to_keep, x = get(crosswalk_id))
+      hydrofabric3D::add_tmp_id(pts_to_keep, x = crosswalk_id)
     ) %>% 
     dplyr::select(-tmp_id) 
   
@@ -704,8 +704,9 @@ get_improved_cs_pts = function(
 #' @importFrom dplyr mutate relocate last_col select rename left_join group_by ungroup slice n bind_rows filter
 #' @importFrom sf st_drop_geometry
 #' @importFrom nhdplusTools rename_geometry
+#' @noRd
+#' @keywords internal
 #' @return sf object of cross section points based on extended transects to try and improve the number of points with "valid_banks" and "has_relief"
-#' @export
 improve_invalid_cs2 = function(
     cs_pts         = NULL,   
     net            = NULL,
@@ -1540,13 +1541,13 @@ renumber_cs_ids <- function(df, crosswalk_id = NULL) {
       new_cs_id = 1:dplyr::n()
       # tmp_id = paste0(hy_id, "_", cs_id)
     ) %>%
-    add_tmp_id(x = get(crosswalk_id)) %>% 
+    add_tmp_id(x = crosswalk_id) %>% 
     dplyr::ungroup() %>%
     dplyr::select(new_cs_id, tmp_id)
   
   # Join the new cs_ids back with the final output data to replace the old cs_ids
   df <- dplyr::left_join(
-    add_tmp_id(df, x = get(crosswalk_id)),
+    add_tmp_id(df, x = crosswalk_id),
     # dplyr::mutate(df,tmp_id = paste0(hy_id, "_", cs_id)),
     renumbered_ids,
     by = "tmp_id"

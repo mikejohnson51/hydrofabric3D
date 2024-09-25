@@ -187,19 +187,19 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   extended_pts <- 
     fixed_pts %>% 
     dplyr::filter(is_extended) %>% 
-    hydrofabric3D::add_tmp_id(x = get(ID_COL))
+    hydrofabric3D::add_tmp_id(x = ID_COL)
   
   pts_before_extension <- 
     classified_pts %>% 
-    hydrofabric3D::add_tmp_id(x = get(ID_COL)) %>% 
+    hydrofabric3D::add_tmp_id(x = ID_COL) %>% 
     dplyr::filter(tmp_id %in% extended_pts$tmp_id)
   
   cs_length_ge_pre_extension_cs_length <- all(extended_pts$cs_lengthm >= pts_before_extension$cs_lengthm)
   
   testthat::expect_true(cs_length_ge_pre_extension_cs_length)
  
-  start_uids <- hydrofabric3D::get_unique_tmp_ids(classified_pts, x = get(ID_COL))
-  end_uids   <- hydrofabric3D::get_unique_tmp_ids(fixed_pts, x = get(ID_COL)) 
+  start_uids <- hydrofabric3D::get_unique_tmp_ids(classified_pts, x = ID_COL)
+  end_uids   <- hydrofabric3D::get_unique_tmp_ids(fixed_pts, x = ID_COL) 
   
   
   same_uids_after_fixing <- all(start_uids %in% end_uids) && all(end_uids %in% start_uids)

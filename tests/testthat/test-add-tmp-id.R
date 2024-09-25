@@ -1,7 +1,10 @@
 library(testthat)
 library(dplyr)
 # library(hydrofabric3D)
+source("testing_utils.R")
 
+# source("tests/testthat/testing_utils.R")
+# devtools::load_all()
 # -------------------------------------------------------------------
 # ---- hydrofabric::add_tmp_id() ----
 # -------------------------------------------------------------------
@@ -33,7 +36,7 @@ testthat::test_that("Adding tmp_id column with specified columns in reverse orde
 })
 
 testthat::test_that("Adding tmp_id column with specified columns with no quotes (tidy select)", {
-  result <- add_tmp_id(df, hy_id, cs_id)
+  result <- add_tmp_id(df, "hy_id", "cs_id")
   testthat::expect_equal(names(result), c("hy_id", "cs_id", "tmp_id"))
   testthat::expect_equal(result$tmp_id, c("a_x", "b_y", "c_z"))
   

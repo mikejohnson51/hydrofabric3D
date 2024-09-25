@@ -150,7 +150,7 @@ extend_transects_to_polygons <- function(
         TRUE                  ~ right_distance
       )
     ) %>% 
-    hydrofabric3D::add_tmp_id(x = get(crosswalk_id), y = cs_id) 
+    hydrofabric3D::add_tmp_id(x = crosswalk_id, y = "cs_id") 
   
   transect_lines <- extend_transects_by_distances(
     transects    = transect_lines,
@@ -193,6 +193,8 @@ extend_transects_to_polygons <- function(
 #'
 #' @return numeric vector, distance to extend each geos_geoms
 #' @importFrom vctrs vec_c
+#' @noRd
+#' @keywords internal
 calc_extension_distances <- function(
     geos_geoms, 
     ids, 
@@ -249,6 +251,8 @@ calc_extension_distances <- function(
 #' @param line_crs crs
 #' @importFrom geos geos_y geos_x geos_make_linestring
 #' @return geos_geometry linestring
+#' @noRd
+#' @keywords internal
 make_line_from_start_and_end_pts <- function(start, end, line_crs) {
   
   # Y_start <- geos::geos_y(start)
@@ -284,6 +288,8 @@ make_line_from_start_and_end_pts <- function(start, end, line_crs) {
 #'
 #' @return TRUE if the extension should be used, FALSE if it shouldn't be used
 #' @importFrom geos geos_intersection geos_type geos_intersects
+#' @noRd
+#' @keywords internal
 is_valid_transect_line <- function(transect_to_check, trans, flines) {
   
   # ###   ##   ##   ##   ##   ##   ##   ##   ##   ##  
@@ -333,7 +339,8 @@ is_valid_transect_line <- function(transect_to_check, trans, flines) {
 #' @param polygons set of sf polygons that transect lines should be exteneded 
 #' @return sf linestring, with extended transect lines
 #' @importFrom geos as_geos_geometry geos_intersects_matrix 
-#' @export
+#' @noRd
+#' @keywords internal
 subset_transects_in_polygons <- function(transect_lines, polygons)  {
   
   transects_polygons_matrix <- geos::geos_intersects_matrix(geos::as_geos_geometry(transect_lines), geos::as_geos_geometry(polygons))
@@ -348,7 +355,8 @@ subset_transects_in_polygons <- function(transect_lines, polygons)  {
 #' @param polygons set of sf polygons that transect lines should be exteneded 
 #' @return sf polygon dataframe
 #' @importFrom geos as_geos_geometry geos_intersects_matrix 
-#' @export
+#' @noRd
+#' @keywords internal
 subset_polygons_in_transects <- function(transect_lines, polygons)  {
   
   # TODO: this should be a function argument OR removed, shouldn't probably forcibly and silently simplify the input polygons without user knowing..
@@ -383,7 +391,7 @@ wrangle_paritioned_transects <- function(partition,
       partition         = dir,
       partition_lengthm = as.numeric(sf::st_length(.))
     ) %>%
-    hydrofabric3D::add_tmp_id(x = get(crosswalk_id), y = cs_id) %>%
+    hydrofabric3D::add_tmp_id(x = crosswalk_id, y = "cs_id") %>%
     dplyr::relocate(tmp_id,
                     dplyr::any_of(crosswalk_id),
                     # cs_source,
@@ -562,7 +570,8 @@ pick_extension_pts <- function(
 #' @param use_extension logical, do we use the extension
 #' @importFrom geos geos_point_start geos_point_end
 #' @return geos_geometry points, the start and end point of the final extension line
-#' @export
+#' @noRd
+#' @keywords internal
 get_line_node_pts <- function(
     line
 ) {
@@ -897,7 +906,7 @@ get_line_node_pts <- function(
 #       partition_lengthm = as.numeric(sf::st_length(geometry))
 #     ) %>% 
 #     # hydrofabric3D::add_tmp_id() %>% 
-#     hydrofabric3D::add_tmp_id(x = get(crosswalk_id), y = cs_id) %>% 
+#     hydrofabric3D::add_tmp_id(x = crosswalk_id, y = cs_id) %>% 
 #     dplyr::select(tmp_id, 
 #                   # hy_id, 
 #                   dplyr::any_of(crosswalk_id),
@@ -916,7 +925,7 @@ get_line_node_pts <- function(
 #       partition_lengthm = as.numeric(sf::st_length(geometry))
 #     ) %>% 
 #     # hydrofabric3D::add_tmp_id() %>%
-#     hydrofabric3D::add_tmp_id(x = get(crosswalk_id), y = cs_id) %>% 
+#     hydrofabric3D::add_tmp_id(x = crosswalk_id, y = cs_id) %>% 
 #     dplyr::select(tmp_id, 
 #                   # hy_id,
 #                   dplyr::any_of(crosswalk_id),
@@ -1084,7 +1093,7 @@ get_line_node_pts <- function(
 #       )
 #     ) %>% 
 #     # hydrofabric3D::add_tmp_id()
-#     hydrofabric3D::add_tmp_id(x = get(crosswalk_id), y = cs_id) 
+#     hydrofabric3D::add_tmp_id(x = crosswalk_id, y = cs_id) 
 #   
 #   # rm(fema, polygons, left_trans_geos, right_trans_geos)
 #   # gc()

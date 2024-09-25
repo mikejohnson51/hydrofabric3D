@@ -272,8 +272,8 @@ extend_invalid_transect_sides <- function(
   
   # check to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT, 
   # and raise an error if they're are missing hy_id/cs_ids
-  input_uids    <- unique(hydrofabric3D::add_tmp_id(transects_to_check, x = get(crosswalk_id))$tmp_id)
-  output_uids   <- unique(hydrofabric3D::add_tmp_id(extended_transects, x = get(crosswalk_id))$tmp_id)
+  input_uids    <- unique(hydrofabric3D::add_tmp_id(transects_to_check, x = crosswalk_id)$tmp_id)
+  output_uids   <- unique(hydrofabric3D::add_tmp_id(extended_transects, x = crosswalk_id)$tmp_id)
   
   # missing_inputs <- 
   #   transects_to_check %>% 

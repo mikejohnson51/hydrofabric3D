@@ -43,7 +43,6 @@ utils::globalVariables(
     "new_cs_lengthm"
   )
 )
-
 #' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
 #' @description
 #' Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. 
@@ -55,8 +54,9 @@ utils::globalVariables(
 #' @return The input dataframe with the "tmp_id" column added.
 #' 
 #' @importFrom dplyr mutate
-#' @export
-add_tmp_id <- function(df, x = hy_id, y = cs_id) {
+#' @noRd
+#' @keywords internal
+add_tmp_id2 <- function(df, x = hy_id, y = cs_id) {
   # # Create the "tmp_id" column by concatenating values from "x" and "y"
   # df <- dplyr::mutate(df, tmp_id = paste0({{x}}, "_", {{y}}))
   
@@ -78,6 +78,28 @@ add_tmp_id <- function(df, x = hy_id, y = cs_id) {
   return(df)
 }
 
+#' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
+#' @description
+#' Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. 
+#' Default is to use hy_id and cs_id columns to create a tmp_id = <hy_id>_<cs_id>.
+#' @param df dataframe with x and y as columns
+#' @param x character, column name in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is "hy_id." 
+#' @param y character, column name in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is "cs_id."
+#' 
+#' @return The input dataframe with the "tmp_id" column added.
+#' 
+#' @export
+add_tmp_id <- function(df, x = "hy_id", y = "cs_id") {
+  # # Create the "tmp_id" column by concatenating values from "x" and "y"
+  
+  # first try to add the tmp_id as if 'x' and 'y' are characters
+  # if that fails, then use 'x' and 'y' as tidyselectors in dplyr::mutate()
+    tmp_ids = paste0(df[[x]], "_", df[[y]])
+    df$tmp_id = tmp_ids
+
+  return(df)
+}
+
 #' @title Get a list of unique tmp_ids in a dataframe 
 #' @description
 #' Dataframe can have "tmp_id" column already or the columns can be specified with 'x' and 'y' arguments
@@ -89,14 +111,21 @@ add_tmp_id <- function(df, x = hy_id, y = cs_id) {
 #' @return character vector of unique "tmp_id" values in the given dataframe 
 #' 
 #' @export
-get_unique_tmp_ids <- function(df, x = hy_id, y = cs_id) {
+get_unique_tmp_ids <- function(df, x = "hy_id", y = "cs_id") {
   
   # if no tmp_id exists, add one
   if (!"tmp_id" %in% names(df)) {
     # message("No 'tmp_id' found, adding 'tmp_id' from 'x' and 'y' columns")
-    df <- 
-      df %>% 
-      hydrofabric3D::add_tmp_id(x = {{x}}, y = {{y}}) 
+    # df <- 
+    #   df %>% 
+    #   hydrofabric3D::add_tmp_id(x = {{x}}, y = {{y}}) 
+    # df <- 
+    #   df %>% 
+    #   hydrofabric3D::add_tmp_id(x = x, y = y) 
+    
+    tmp_ids = paste0(df[[x]], "_", df[[y]])
+    df$tmp_id = tmp_ids
+
   }
   
   # get the unique tmp_ids
@@ -127,6 +156,8 @@ add_hydrofabric_id <- function(df) {
 #' @param df A dataframe or an sf dataframe.
 #' @return Returns the input dataframe with the geometry column moved to the last position if it exists. Otherwise, returns the input dataframe as is.
 #' @importFrom dplyr relocate all_of last_col
+#' @noRd
+#' @keywords internal
 #' @examples
 #' \dontrun{
 #' # Create a dataframe
@@ -251,7 +282,7 @@ get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
   stage_df <- 
     classified_pts %>% 
     sf::st_drop_geometry() %>% 
-    hydrofabric3D::add_tmp_id(x = get(crosswalk_id)) 
+    hydrofabric3D::add_tmp_id(x = crosswalk_id) 
   
   # # create a reference dataframe with all possible combinations of tmp_id and point_type
   # reference_df <- expand.grid(
@@ -350,7 +381,8 @@ get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
 #' @importFrom sf st_drop_geometry
 #' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
 #' @importFrom tidyr pivot_wider pivot_longer
-#' @export
+#' @noRd
+#' @keywords internal
 add_point_type_counts2 <- function(classified_pts) {
   
   # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
@@ -494,7 +526,7 @@ add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
   stage_df <- 
     classified_pts %>% 
     sf::st_drop_geometry() %>% 
-    hydrofabric3D::add_tmp_id(x = get(crosswalk_id)) 
+    hydrofabric3D::add_tmp_id(x = crosswalk_id) 
   
   # # create a reference dataframe with all possible combinations of tmp_id and point_type
   # reference_df <- expand.grid(
@@ -737,6 +769,8 @@ add_bank_attributes <- function(
 #' @return dataframe with each row being a unique hy_id/cs_id with "bottom", "left_bank", "right_bank", and "valid_banks" values for each hy_id/cs_id.
 #' @importFrom dplyr mutate case_when filter select group_by summarise ungroup left_join
 #' @importFrom tidyr pivot_wider
+#' @noRd
+#' @keywords internal
 get_bank_attributes2 <- function(
     classified_pts
 ) {
@@ -972,11 +1006,11 @@ get_bank_attributes <- function(
   # valid_banks - logical, TRUE if the hy_id/cs_id has a bottom point with atleast 1 leftbank point AND 1 rightbank point that are above the lowest "bottom" point 
   
   # set default column values for any IDs that didnt have 'left_bank', 'right_bank', or 'bottom' point_types 
-  bank_validity_tmp_ids <- add_tmp_id(bank_validity, x = get(crosswalk_id))$tmp_id
+  bank_validity_tmp_ids <- add_tmp_id(bank_validity, x = crosswalk_id)$tmp_id
   
   default_bank_attrs <- 
     classified_pts %>% 
-    add_tmp_id(x = get(crosswalk_id)) %>% 
+    add_tmp_id(x = crosswalk_id) %>% 
     dplyr::filter(
       !tmp_id %in% bank_validity_tmp_ids
     ) %>% 
@@ -1009,7 +1043,8 @@ get_bank_attributes <- function(
 #' @param df dataframe, tibble, or sf dataframe
 #'
 #' @return dataframe, tibble, or sf dataframe
-#' @export
+#' @noRd
+#' @keywords internal
 add_default_bank_attributes <- function(df) {
   bank_attrs_cols <- c("bottom", "left_bank", "right_bank")
   
@@ -1153,7 +1188,8 @@ add_relief <- function(
 #' @return dataframe with each row being a unique hy_id/cs_id with a "has_relief" value for each hy_id/cs_id. If detailed = TRUE, then the output dataframe will include the following additional columns: "cs_lengthm", "max_relief", "pct_of_length_for_relief".
 #' @importFrom dplyr select group_by slice ungroup mutate filter summarise left_join case_when all_of relocate last_col
 #' @importFrom tidyr pivot_wider
-#' @export
+#' @noRd
+#' @keywords internal
 get_relief2 <- function(
     classified_pts,
     pct_of_length_for_relief = 0.01,
@@ -1572,6 +1608,7 @@ validate_df <- function(x, cols, obj_name = NULL) {
 #' @param precision Numeric, the number of meters to approximate final cross-section linestring length.
 #' @param add Logical, indicating whether to add original 'net' data to the outputted transect lines.
 #' @return NULL if inputs are valid; otherwise, an error is thrown.
+#' @noRd
 #' @keywords internal
 validate_cut_cross_section_inputs <- function(net, 
                                               id,
@@ -1690,7 +1727,8 @@ validate_cut_cross_section_inputs <- function(net,
 #' @param cross_section_pts dataframe, or sf dataframe of cross section points
 #' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join
 #' @return summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
-#' @export
+#' @noRd
+#' @keywords internal
 get_cs_bottom_length <- function(cross_section_pts) {
   
   # get the distance between cross section pts in each cross section,
@@ -1780,7 +1818,7 @@ calc_validity_scores <- function(cs_to_validate,
   scores <- 
     cs_to_validate %>% 
     sf::st_drop_geometry() %>% 
-    hydrofabric3D::add_tmp_id(x = get(crosswalk_id)) %>% 
+    hydrofabric3D::add_tmp_id(x = crosswalk_id) %>% 
     dplyr::group_by(tmp_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup() %>% 

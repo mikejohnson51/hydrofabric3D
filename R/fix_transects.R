@@ -844,7 +844,7 @@ fix_braided_transects <- function(
     # dplyr::arrange(-totdasqkm)
   
   # keep track of all original crossections
-  all_xs <- add_tmp_id(xs, x = get(crosswalk_id))$tmp_id
+  all_xs <- add_tmp_id(xs, x = crosswalk_id)$tmp_id
   # all_xs <- paste0(xs[[crosswalk_id]], "_", xs$cs_id)
   
   # column to store the relative position within the braid of the flowline we're on 
@@ -1220,7 +1220,7 @@ fix_braided_transects <- function(
     dplyr::select(
       dplyr::filter(   
         add_tmp_id(transect_lines, 
-                   x = get(crosswalk_id)),
+                   x = crosswalk_id),
         # dplyr::mutate(transect_lines, tmp_id = paste0(hy_id, "_", cs_id)),
         !tmp_id %in% all_xs
       ),
@@ -3875,7 +3875,7 @@ plot_braid_geoms_to_cut <- function(
     dplyr::arrange(-totdasqkm)
   
   # keep track of all original crossections
-  all_xs <- add_tmp_id(xs, x = get(crosswalk_id))$tmp_id
+  all_xs <- add_tmp_id(xs, x = crosswalk_id)$tmp_id
   # all_xs <- paste0(xs[[crosswalk_id]], "_", xs$cs_id)
   # all_xs <- paste0(xs$hy_id, "_", xs$cs_id)
 

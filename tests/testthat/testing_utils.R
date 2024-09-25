@@ -108,8 +108,8 @@ has_same_unique_tmp_ids <- function(x, y, id = "hydrofabric_id") {
     id = "hydrofabric_id"
   }
   
-  start_ids <- hydrofabric3D:::get_unique_tmp_ids(df = x, x = get(id))
-  end_ids   <- hydrofabric3D:::get_unique_tmp_ids(df = y, x = get(id))
+  start_ids <- hydrofabric3D:::get_unique_tmp_ids(df = x, x = id)
+  end_ids   <- hydrofabric3D:::get_unique_tmp_ids(df = y, x = id)
   
   # all IDs are in x AND y and same number of ids
   same_unique_ids <- all(start_ids %in% end_ids) && all(end_ids %in% start_ids) && length(start_ids) == length(end_ids)
