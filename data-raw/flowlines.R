@@ -15,19 +15,20 @@ usethis::use_data(flowlines, overwrite = TRUE)
 #   dplyr::arrange(-n) %>%
 #   dplyr::filter(n <= 10)
 # 
-# # 1359733
+# # # 1359733
 # test_flowlines <-
 #   flines %>%
 #   dplyr::filter(mainstem == "1359733") %>%
 #   dplyr::mutate(
 #     lengthkm = as.numeric(sf::st_length(.)) / 1000
-#     ) %>% 
+#     ) %>%
 #   dplyr::select(
 #     id = hy_id,
 #     lengthkm,
 #     mainstem,
 #     tot_drainage_areasqkm
 #     )
+# 
 # sf::write_sf(test_flowlines, "tests/testthat/testdata/flowlines.gpkg")
 # 
 # test_flowlines[10, ]

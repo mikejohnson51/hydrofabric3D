@@ -40,7 +40,11 @@ utils::globalVariables(
     "cs_source", 
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
-    "new_cs_lengthm"
+    "new_cs_lengthm", "polygon_index",
+    "crosswalk_id", "extend_invalid_transects2",
+    "anchors", "deriv_type", "edge", "extension_distance", 
+    "left_is_extended", "right_is_extended", "to_node", "verbose", 
+    "toindid", "indid", "toid", "is", "internal_is_braided2"
   )
 )
 

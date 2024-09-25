@@ -13,9 +13,7 @@ cut_cross_sections(
   densify = 2,
   rm_self_intersect = TRUE,
   fix_braids = FALSE,
-  terminal_id = NULL,
   braid_threshold = NULL,
-  version = 2,
   braid_method = "comid",
   precision = 1,
   add = FALSE
@@ -38,13 +36,9 @@ cut_cross_sections(
 
 \item{fix_braids}{logical, whether to fix braided transect lines or not. If TRUE, linestrings that are part of a braided network are augmented. Default is FALSE.}
 
-\item{terminal_id}{character, column name containing a unique identifier, delineating separate networks in the 'net' dataset. Default is NULL which will best effort determine the connected components in the network to try and create a 'component_id' column in 'net'}
-
 \item{braid_threshold}{numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline
 lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
 Default is NULL, which will attempt to fix all the braid transects in the data}
-
-\item{version}{integer, version number of braid algorithm to use, either 1 or 2. Default is 2.}
 
 \item{braid_method}{The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"}
 

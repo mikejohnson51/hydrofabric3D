@@ -2,24 +2,15 @@ library(testthat)
 library(dplyr)
 library(sf)
 # library(hydrofabric3D)
+
+source("testing_utils.R")
+
+# source("tests/testthat/testing_utils.R")
 # devtools::load_all()
 
 # -------------------------------------------------------------------
 # ---- hydrofabric::cut_cross_sections() ----
 # -------------------------------------------------------------------
-check_transect_output_cols <- function(transects, id = "hydrofabric_id") {
-  
-  if(is.null(id)) {
-    id = "hydrofabric_id"
-  }
-  
-  expected_cols <- c(id, "cs_id","cs_lengthm", "cs_measure", "ds_distance", 
-                     "lengthm", "sinuosity", "geometry")
-  
-  return(
-    all(expected_cols %in% names(transects)) && length(expected_cols) == length(names(transects))
-  )
-}
 
 testthat::test_that("flowlines only (set 'id' to NULL) sf dataframe, checking proper default ID", {
   flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
@@ -97,6 +88,7 @@ testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided",
   testthat::expect_true(all_ids_have_correct_number_transects)  
   testthat::expect_true(check_transect_output_cols(transects, id_col))
 })
+
 testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided", {
   
   ID_COLS = c("hy_id", "id")
@@ -218,6 +210,7 @@ testthat::test_that("check correct output columns for transects", {
 testthat::test_that("flowline only (no other input cols) sf dataframe, checking transect number and no self intersections", {
   flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
   id_col <- "hydrofabric_id"
+  
   flowline <-
     flowlines[10, ] %>%
     dplyr::select(geom)
@@ -232,12 +225,18 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   has_no_self_intersctions <- all(lengths(sf::st_intersects(transects)) == 1)
   testthat::expect_true(has_no_self_intersctions)
   testthat::expect_true(check_transect_output_cols(transects, id_col))
+  
   transects <- cut_cross_sections(
     net = flowline,
     num = 20
   )
   
+  # plot(transects$geometry)
+  # plot(flowline$geom, col = "red", add = T)
+  
+  # NOTE: there is a kink in the flowline that CORRECTLY causes a transect to be removed
   testthat::expect_true(nrow(transects) == 20)
+  mapview::mapview(transects) + flowline
   
   has_no_self_intersctions <- all(lengths(sf::st_intersects(transects)) == 1)
   testthat::expect_true(has_no_self_intersctions)
@@ -275,6 +274,7 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   # )
   
 })
+
 testthat::test_that("cut 2 transects on a single flowline", {
   # flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
   # flowline <- flowlines[10, ] 

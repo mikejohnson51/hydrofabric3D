@@ -40,52 +40,11 @@ utils::globalVariables(
     "cs_source", 
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
-    "new_cs_lengthm"
-  )
-)
-utils::globalVariables(
-  c(".", "hy_id", "cs_id", "pt_id", "Z", "middle_index", "point_type", "minZ", 
-    "maxZ", "minZ_bottom", "maxZ_left_bank", "maxZ_right_bank", "valid_left_bank", 
-    "valid_right_bank", "bottom", "left_bank", "right_bank", "valid_banks", 
-    "relative_distance", "cs_lengthm", "default_middle", "has_relief", 
-    "max_relief", "braid_id", "geometry",
-    
-    "comid", "fromnode", "tonode", 
-    "tocomid", "divergence", "cycle_id", "node", "braid_vector", "totdasqkm", 
-    "changed", "relative_position", "head_distance", "tail_distance", 
-    "component_id", "cs_measure", "ds_distance", "along_channel", "euclid_dist", 
-    "sinuosity", "points_per_cs", "Z_at_bottom", "lower_bound", "upper_bound", 
-    "ge_bottom", "is_near_bottom", "pts_near_bottom", "total_valid_pts", 
-    "pct_near_bottom", 
-    "member_braids",  "braid_members", "diff_pts", "is_extended", 
-    "new_cs_id", "split_braid_ids",
-    
-    "braid_length", 
-    "id", 
-    "lengthm", 
-    "check_z_values", 
-    "geom", 
-    "is_same_Z", 
-    "is_multibraid", 
-    "channel", "unique_count",
-    "left_bank_count", "right_bank_count", "channel_count", "bottom_count", 
-    "terminalID",
-    "tmp_id",
-    "make_geoms_to_cut_plot",
-    "Y", "improved", "length_vector_col", "median", "min_ch", "new_validity_score",
-    "old_validity_score", "transects", "validity_score", "x",
-    "A", "DEPTH", "DINGMAN_R", "TW", "X", "X_end", "X_start", "Y_end", "Y_start",
-    "ahg_a", "ahg_index", "ahg_x", "ahg_y", 
-    "bottom_end", "bottom_length", "bottom_midpoint", 
-    "bottom_start", "cs_partition", "distance_interval", "fixed_TW", 
-    "has_new_DEPTH", "has_new_TW", "ind", "is_dem_point", "left_max", 
-    "left_start", "max_right_position", "new_DEPTH", "new_TW", "next_X_is_missing", "next_Y_is_missing",
-    "parabola", "partition", "prev_X_is_missing", 
-    "prev_Y_is_missing", "right_start", "right_start_max", "start_or_end", "start_pt_id",
-    "cs_source", 
-    "partition_lengthm", "left_fema_index", "right_fema_index", 
-    "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
-    "new_cs_lengthm"
+    "new_cs_lengthm", 
+    "crosswalk_id", "extend_invalid_transects2",
+    "anchors", "deriv_type", "edge", "extension_distance", 
+    "left_is_extended", "right_is_extended", "to_node", "verbose", 
+    "toindid", "indid", "toid", "is", "internal_is_braided2"
   )
 )
 
@@ -184,7 +143,7 @@ find_braids <- function(
 #' @param verbose Logical indicating whether to display verbose messages during the braid detection process.
 #'
 #' @return dataframe or sf dataframe with added braid_id
-#' 
+#' @importFrom dplyr mutate left_join
 #' @export
 add_braid_ids <- function(
     network,
@@ -711,7 +670,7 @@ find_connected_components <- function(
   
 }
 
-#' Create a node topology from edge network topology.
+#' Create a node topology from sf linestrings / edge network topology.
 #'
 #' This function creates a node topology dataframe given an sf linestring network with a unique identifer.
 #'
@@ -719,7 +678,7 @@ find_connected_components <- function(
 #' @param crosswalk_id unique ID column name 
 #' @noRd
 #' @keywords internal
-#' @return A data frame representing the Directed Acyclic Graph (DAG) of the network.
+#' @return dataframe, graph representation of the input network.
 #' @importFrom dplyr select tibble mutate left_join distinct
 #' @importFrom tidyr separate_rows
 #' @importFrom hydroloom hy align_names make_attribute_topology make_node_topology add_toids
@@ -744,10 +703,10 @@ get_node_topology <- function(
   # crosswalk_id = crosswalk_id
   # stash_nodes <- x %>% dplyr::select(comid, fromnode, tonode) %>% sf::st_drop_geometry()
   # *************************************
-  
+
   # make a unique ID if one is not given (NULL 'id')
   if(is.null(crosswalk_id)) {
-    # x             <- add_hydrofabric_id(x)
+    x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
   }
   
@@ -755,6 +714,12 @@ get_node_topology <- function(
   
   # validate input graph
   is_valid <- validate_df(x, REQUIRED_COLS, "x")
+  
+  is_empty_df <- nrow(x) == 0
+  
+  if(is_empty_df) {
+    stop("Input dataframe/sf dataframe 'x' is empty, node topology can not be generated from empty dataset")
+  }
   
   # temporary change crosswalk_id to a standard "id" for hydroloom
   names(x)[names(x) == crosswalk_id]    <- "id"

@@ -4,6 +4,46 @@
 #  
 
 # library(hydrofabric3D)
+# TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
+find_connected_components_has_min_output_cols <- function(df, id = "hydrofabric_id") {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  to_id <- hydrofabric3D:::as_to_id(id)
+  
+  expected_cols <- c("component_id", 
+                     id, 
+                     to_id,
+                     "fromnode",
+                     "tonode"
+  )
+  
+  return(
+    all(expected_cols %in% names(df)) && length(expected_cols) == length(names(df))
+  )
+}
+
+# TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
+get_node_topology_has_min_output_cols <- function(node_df, id = "hydrofabric_id") {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  to_id <- hydrofabric3D:::as_to_id(id)
+  
+  expected_cols <- c(id, 
+                     to_id,
+                     "fromnode",
+                     "tonode"
+                     )
+  
+  return(
+    all(expected_cols %in% names(node_df)) && length(expected_cols) == length(names(node_df))
+  )
+}
 
 
 prep_flowlines_for_transect_cuts <- function(flines, id_col, min_bf_width) {
@@ -169,6 +209,20 @@ cs_pts_has_correct_cols_from_transects <- function(cs_pts, transects, id = "hydr
   
   return(
     all(unique(c(expected_cols, names(transects))) %in% names(cs_pts))
+  )
+}
+
+check_transect_output_cols <- function(transects, id = "hydrofabric_id") {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  expected_cols <- c(id, "cs_id","cs_lengthm", "cs_measure", "ds_distance", 
+                     "lengthm", "sinuosity", "geometry")
+  
+  return(
+    all(expected_cols %in% names(transects)) && length(expected_cols) == length(names(transects))
   )
 }
 
@@ -368,6 +422,63 @@ make_cs_curve <- function(left_y_range, right_y_range, bottom_length) {
   return(cs)
   
 }
+
+# generate set of points for linestrings
+make_pts <- function(start_x, start_y, num_points, step_x = 10, step_y = 5) {
+  points <- matrix(ncol = 2, nrow = num_points)
+  points[1, ] <- c(start_x, start_y)  
+  
+  for (i in 2:num_points) {
+    points[i, ] <- points[i-1, ] + c(step_x, step_y)  
+  }
+  
+  return(points)
+}
+
+get_test_lines <- function(num_linestrings, id_col_name = NULL, connected = TRUE, step_x = 10, step_y = 5) {
+  
+  if(is.null(id_col_name)) {
+    id_col_name <- "ex_id"
+  }
+  
+  linestrings <- list()
+  
+  if (connected) {
+    start_x <- 0
+    start_y <- 0
+    
+    for (i in 1:num_linestrings) {
+      points <- make_pts(start_x, start_y, 2, step_x, step_y)  # 2 points per linestring
+      linestrings[[i]] <- sf::st_linestring(points)
+      start_x <- points[2, 1]  #2nd pt is  start of the next line
+      start_y <- points[2, 2]
+    }
+    
+  } else {
+    for (i in 1:num_linestrings) {
+      start_x <- i * 20  # shift the start position of each line by 20  to disconnect
+      start_y <- i * 10
+      points <- make_pts(start_x, start_y, 2, step_x, step_y)
+      linestrings[[i]] <- sf::st_linestring(points)
+    }
+  }
+  
+  # sf_lines <- sf::st_sfc(linestrings)
+  sf_df <- sf::st_sf(geometry = sf::st_sfc(linestrings))
+  
+  sf_df <- 
+    # sf_df %>% 
+    # dplyr::mutate(
+    #   ex_id = 1:dplyr::n()
+    # )
+    sf_df %>% 
+    dplyr::mutate(
+      !!id_col_name := 1:dplyr::n()
+    )
+  
+  return(sf_df)
+}
+
 
 # left_chan   <- get_neg_diagonal(6, 2)
 # bottom      <- get_flat_line(2, 4)

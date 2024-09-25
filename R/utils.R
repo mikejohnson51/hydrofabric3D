@@ -1505,9 +1505,7 @@ get_relief <- function(
 #' @param densify Numeric, the factor by which to densify the linestrings.
 #' @param rm_self_intersect Logical, whether to remove self-intersecting transect linestrings.
 #' @param fix_braids Logical, whether to fix braided transect lines or not.
-#' @param terminal_id Character, column name containing a unique identifier delineating separate networks in the 'net' dataset.
 #' @param braid_threshold Numeric, the total length of all flowlines in a braid below which fix_braid_transects should operate.
-#' @param version Integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
 #' @param braid_method Character, the method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid".
 #' @param precision Numeric, the number of meters to approximate final cross-section linestring length.
 #' @param add Logical, indicating whether to add original 'net' data to the outputted transect lines.
@@ -1521,9 +1519,7 @@ validate_cut_cross_section_inputs <- function(net,
                                               densify, 
                                               rm_self_intersect, 
                                               fix_braids, 
-                                              terminal_id, 
                                               braid_threshold , 
-                                              version, 
                                               braid_method, 
                                               precision, 
                                               add 
@@ -1592,21 +1588,21 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'fix_braids' must be a logical value.")
   }
   
-  # Check if 'terminal_id' is NOT a character and its NOT NULL
-  if (!is.character(terminal_id) && !is.null(terminal_id)) {
-    # if (is.null(id) || !is.character(id)) {
-    stop("'terminal_id' must be a character vector or NULL")
-  }
+  # # Check if 'terminal_id' is NOT a character and its NOT NULL
+  # if (!is.character(terminal_id) && !is.null(terminal_id)) {
+  #   # if (is.null(id) || !is.character(id)) {
+  #   stop("'terminal_id' must be a character vector or NULL")
+  # }
   
   # Check if 'braid_threshold' is numeric or NULL
   if (!is.null(braid_threshold) && !is.numeric(braid_threshold)) {
     stop("'braid_threshold' must be numeric or NULL.")
   }
   
-  # Check if 'version' is an integer and either 1 or 2
-  if (!is.numeric(version) || !(version %in% c(1, 2))) {
-    stop("'version' must be an integer, either 1 or 2.")
-  }
+  # # Check if 'version' is an integer and either 1 or 2
+  # if (!is.numeric(version) || !(version %in% c(1, 2))) {
+  #   stop("'version' must be an integer, either 1 or 2.")
+  # }
   
   # Check if 'braid_method' is one of the valid options
   valid_methods <- c("comid", "component", "neighbor")

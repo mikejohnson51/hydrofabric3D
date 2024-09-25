@@ -5,6 +5,7 @@ library(sf)
 
 source("testing_utils.R")
 
+# source("tests/testthat/testing_utils.R")
 # devtools::load_all()
 
 # -------------------------------------------------------------------
@@ -163,3 +164,4 @@ testthat::test_that("transects_to_cs_pts creates points that intersect the input
     )
   
   })
+

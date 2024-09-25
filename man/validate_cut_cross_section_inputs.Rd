@@ -13,9 +13,7 @@ validate_cut_cross_section_inputs(
   densify,
   rm_self_intersect,
   fix_braids,
-  terminal_id,
   braid_threshold,
-  version,
   braid_method,
   precision,
   add
@@ -38,11 +36,7 @@ validate_cut_cross_section_inputs(
 
 \item{fix_braids}{Logical, whether to fix braided transect lines or not.}
 
-\item{terminal_id}{Character, column name containing a unique identifier delineating separate networks in the 'net' dataset.}
-
 \item{braid_threshold}{Numeric, the total length of all flowlines in a braid below which fix_braid_transects should operate.}
-
-\item{version}{Integer, version number of braid algorithm to use, either 1 or 2. Default is 2.}
 
 \item{braid_method}{Character, the method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid".}
 
