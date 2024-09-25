@@ -675,6 +675,8 @@ get_improved_cs_pts = function(
 #   return(final_pts)
 # }
 
+# TODO: Delete this version of the cs point improver
+
 #' @title Check and fix cross section points with limited variation in Z values (without removing any flowlines)
 #' @description Duplicate process as rectify_cs() but does NOT remove any cross sections, only attempts to extend transects and improve cross sections. This function takes in a set of cross section points (cs_pts), a flowline network (net) and a set of transects lines for that flowline network (transects).
 #' This function assumes the cross section points have been classified via "classify_points()" and have "has_relief" and "valid_banks" logical columns.
@@ -961,6 +963,8 @@ improve_invalid_cs2 = function(
   
   return(final_pts)
 }
+
+# TODO: Delete this version of the cs point improver
 
 #' @title Check and fix cross section points with limited variation in Z values (without removing any flowlines)
 #' @description Duplicate process as rectify_cs() but does NOT remove any cross sections, only attempts to extend transects and improve cross sections. This function takes in a set of cross section points (cs_pts), a flowline network (net) and a set of transects lines for that flowline network (transects).
@@ -1554,6 +1558,8 @@ renumber_cs_ids <- function(df, crosswalk_id = NULL) {
   
   return(df)
 }
+
+# TODO: Delete
 
 #' @title Fix IDs in a dataframe
 #'

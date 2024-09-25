@@ -844,7 +844,7 @@ fix_braided_transects <- function(
     # dplyr::arrange(-totdasqkm)
   
   # keep track of all original crossections
-  all_xs <- add_tmp_id(xs, x = get(crosswalk_id))
+  all_xs <- add_tmp_id(xs, x = get(crosswalk_id))$tmp_id
   # all_xs <- paste0(xs[[crosswalk_id]], "_", xs$cs_id)
   
   # column to store the relative position within the braid of the flowline we're on 
@@ -3734,11 +3734,10 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
 #
 #@param net sf object of NHDplusv2 data
 #@param transect_lines sf linestring dataframe, containing cross sections of flowlines in 'net' the output of "cut_cross_sections2()" function
-#@param terminal_id character, column name containing a unique identifier, delineating seperate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network'
+#@param crosswalk_id character, column name containing a unique identifier
 #@param braid_threshold numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline
 #lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
 #Default is NULL, which will attempt to fix all the braid transects in the data
-#@param version integer, version number of braid algorithm to use, either 1 or 2. Default is 2.
 #@param method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
 #@param rm_intersects logical, whether to remove transect linestrings that intersect with other parts of the network ('net'). Default is TRUE which will remove intersecting linestrings.
 #@param keep_plots logical, whether to return a list of ggplot2 plots or have function return NULL. Default is FALSE, returns NULL
@@ -3747,9 +3746,8 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
 plot_braid_geoms_to_cut <- function(
     net,
     transect_lines,
-    terminal_id     = NULL,
+    crosswalk_id = NULL,
     braid_threshold = NULL,
-    version         = 2,
     method          = "comid",
     rm_intersects   = TRUE,
     keep_plots = FALSE,
@@ -3761,7 +3759,6 @@ plot_braid_geoms_to_cut <- function(
   # transect_lines = transects
   # terminal_id = NULL
   # braid_threshold = NULL
-  # version = 1
   # rm_intersects = TRUE
   # transect_lines <-  transects_nofix
   # net <- net3
@@ -3775,36 +3772,34 @@ plot_braid_geoms_to_cut <- function(
   # set geometry name of network to "geometry"
   net <- nhdplusTools::rename_geometry(net, "geometry")
   
-  # keep track of the original CRS of the inputs to retransform return
-  start_crs1 <- sf::st_crs(net, parameters = T)$epsg
-  start_crs2 <- sf::st_crs(transect_lines, parameters = T)$epsg
+  # # keep track of the original CRS of the inputs to retransform return
+  # start_crs1 <- sf::st_crs(net, parameters = T)$epsg
+  # start_crs2 <- sf::st_crs(transect_lines, parameters = T)$epsg
   
-  message("Start CRS: ", start_crs1)
+  # message("Start CRS: ", start_crs1)
   
-  # check if net CRS is 5070, if not, transform it to 5070
-  if(start_crs1 != 5070) {
-    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
-    message("Transforming CRS to EPSG: 5070")
-    net <- sf::st_transform(net, 5070)
-  }
+  # # check if net CRS is 5070, if not, transform it to 5070
+  # if(start_crs1 != 5070) {
+  #   # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
+  #   message("Transforming CRS to EPSG: 5070")
+  #   net <- sf::st_transform(net, 5070)
+  # }
   
-  # check if net CRS is 5070, if not, transform it to 5070
-  if(start_crs2 != 5070) {
-    # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
-    message("Transforming CRS to EPSG: 5070")
-    transect_lines <- sf::st_transform(transect_lines, 5070)
-  }
+  # # check if net CRS is 5070, if not, transform it to 5070
+  # if(start_crs2 != 5070) {
+  #   # if(sf::st_crs(net, parameters = T)$epsg != 5070) {
+  #   message("Transforming CRS to EPSG: 5070")
+  #   transect_lines <- sf::st_transform(transect_lines, 5070)
+  # }
   
   message("Identifying braids...")
   
-  braids <- find_braids(
-    network     = net,
-    terminal_id = terminal_id,
-    add         = TRUE,
-    nested      = TRUE,
-    version     = version,
-    verbose     = FALSE
-  )
+  # add braid_id column to network
+  braids <- add_braid_ids(
+    network      = net, 
+    crosswalk_id = crosswalk_id,
+    verbose      = FALSE
+  ) 
   
   if(all(braids$braid_id == "no_braid")) {
     
@@ -3845,6 +3840,7 @@ plot_braid_geoms_to_cut <- function(
     # remove braids that have a total flowline length greater than braid_threshold
     braids <- braid_thresholder(
       x         = braids,
+      crosswalk_id = crosswalk_id,
       originals = not_braids,
       threshold = braid_threshold,
       verbose   = TRUE
@@ -3866,10 +3862,11 @@ plot_braid_geoms_to_cut <- function(
     dplyr::left_join(
       sf::st_drop_geometry(
         dplyr::select(
-          braids, comid, braid_id, is_multibraid
+          braids, dplyr::any_of(crosswalk_id), braid_id, is_multibraid
         )
       ),
-      by = c("hy_id" = "comid")
+      by = crosswalk_id
+      # by = c("hy_id" = "comid")
     ) %>%
     # dplyr::filter(divergence == 0)
     dplyr::group_by(braid_id) %>%
@@ -3878,8 +3875,10 @@ plot_braid_geoms_to_cut <- function(
     dplyr::arrange(-totdasqkm)
   
   # keep track of all original crossections
-  all_xs <- paste0(xs$hy_id, "_", xs$cs_id)
-  
+  all_xs <- add_tmp_id(xs, x = get(crosswalk_id))$tmp_id
+  # all_xs <- paste0(xs[[crosswalk_id]], "_", xs$cs_id)
+  # all_xs <- paste0(xs$hy_id, "_", xs$cs_id)
+
   # column to store the relative position within the braid of the flowline we're on
   xs$relative_position <- NA
   
@@ -3939,13 +3938,13 @@ plot_braid_geoms_to_cut <- function(
     # 6 = braid_neighs
     
     # comid of transect line
-    com <- xs$hy_id[i]
+    com <- xs[[crosswalk_id]][i]
     
     # braid ID of interest
     bid <- xs$braid_id[i]
     
     # get the component ID of current COMID
-    comp_id <- braids$component_id[braids$comid == com]
+    comp_id <- braids$component_id[braids[[crosswalk_id]] == com]
     
     # make a plot for each unique component ID that comes up
     if(!seen$has(comp_id)) {

@@ -33,16 +33,13 @@ net <- nhdplusTools::navigate_network(
 net <- dplyr::select(net, comid, divergence, totdasqkm, fromnode, tonode, terminalpa)
 
 # get a dataframe of COMIDs and braid IDs
-braids <- find_braids(network = net, add = FALSE)
+braids <- find_braids(network = net, crosswalk_id = "comid")
 
-# add braid_id column to original dataset
-braid_df = find_braids(network   = net,
-                       nested    = TRUE,
-                       )
 
 # returns original data with each braid_id represented
 # by its individual COMIDs (may contain duplicate COMIDs)
 nested_braids = find_braids(network   = net,
+                       crosswalk_id = "comid",
                        nested    = FALSE
                        )
 }
