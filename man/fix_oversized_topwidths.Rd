@@ -4,10 +4,12 @@
 \alias{fix_oversized_topwidths}
 \title{Check that all cross sections points have a prescribed top width less than the total cross section length}
 \usage{
-fix_oversized_topwidths(cross_section_pts = NULL)
+fix_oversized_topwidths(cross_section_pts = NULL, crosswalk_id = NULL)
 }
 \arguments{
 \item{cross_section_pts}{dataframe or sf dataframe with "hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R"}
+
+\item{crosswalk_id}{character, ID column}
 }
 \value{
 cross_section_pts dataframe with updated "top_width" and "depth" column values

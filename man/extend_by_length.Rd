@@ -4,10 +4,12 @@
 \alias{extend_by_length}
 \title{Extend an sf linestring dataframe by a specified lengths vector}
 \usage{
-extend_by_length(x, length_vector, length_col = NULL)
+extend_by_length(x, crosswalk_id = NULL, length_vector, length_col = NULL)
 }
 \arguments{
 \item{x}{linestring sf dataframe}
+
+\item{crosswalk_id}{character, unique ID column name}
 
 \item{length_vector}{numeric, vector of length 'x' representing the number of meters to extend 'x' from both directions (i.e. 10 means the linestring will be extended 10m from both ends of the line)}
 

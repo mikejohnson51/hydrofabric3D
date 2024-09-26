@@ -1725,18 +1725,33 @@ validate_cut_cross_section_inputs <- function(net,
 #' Calculate the length between the leftmost and rightmost bottom point in each cross section 
 #'
 #' @param cross_section_pts dataframe, or sf dataframe of cross section points
-#' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join
+#' @param crosswalk_id character, ID column 
+#' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join across any_of
 #' @return summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
 #' @noRd
 #' @keywords internal
-get_cs_bottom_length <- function(cross_section_pts) {
+get_cs_bottom_length <- function(cross_section_pts, 
+                                 crosswalk_id = NULL) {
+  
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "relative_distance", "point_type")
+  
+  # validate input graph
+  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
   
   # get the distance between cross section pts in each cross section,
   # this will be used as a default for bottom length in case bottom length is 0
   interval_distances <- 
     cross_section_pts %>% 
-    dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance)
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       distance_interval = relative_distance - dplyr::lag(relative_distance)
     ) %>% 
@@ -1753,17 +1768,21 @@ get_cs_bottom_length <- function(cross_section_pts) {
   bottom_lengths <-
     cross_section_pts %>% 
     dplyr::filter(point_type == "bottom") %>% 
-    dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance)
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::summarise(
       bottom_start = min(relative_distance, na.rm = TRUE),
       bottom_end   = max(relative_distance, na.rm = TRUE)
     ) %>% 
     dplyr::left_join(
       interval_distances, 
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       bottom_length = bottom_end - bottom_start
     ) %>% 
@@ -1774,7 +1793,8 @@ get_cs_bottom_length <- function(cross_section_pts) {
         TRUE                      ~ bottom_length
       )
     ) %>%
-    dplyr::select(hy_id, cs_id, bottom_length)
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, bottom_length)
+    # dplyr::select(hy_id, cs_id, bottom_length)
   
   return(bottom_lengths)
   

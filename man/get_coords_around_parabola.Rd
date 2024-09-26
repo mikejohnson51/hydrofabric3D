@@ -4,10 +4,12 @@
 \alias{get_coords_around_parabola}
 \title{Get the coordinates surrounding a set of missing AHG X/Y coordinates.}
 \usage{
-get_coords_around_parabola(cross_section_pts)
+get_coords_around_parabola(cross_section_pts, crosswalk_id = NULL)
 }
 \arguments{
 \item{cross_section_pts}{dataframe with cross section points, (required cols, "hy_id", "cs_id", "X", "Y", "is_dem_point")}
+
+\item{crosswalk_id}{character, ID column}
 }
 \value{
 dataframe with each hy_id/cs_id cross section containing a value for X_start, X_end, Y_start, Y_end, representing the points surrounding the AHG inserted points

@@ -56,13 +56,15 @@ utils::globalVariables(
 #'
 #' @param cross_section_pts dataframe or sf dataframe with "hy_id", "cs_id", "bottom" columns and 
 #'  specififed "top_width", "depth", "dingman_r" columns  (see top_width, depth, and dingman_r arguments)
+#' @param crosswalk_id character, ID column 
 #' @importFrom dplyr bind_rows rowwise select group_by slice ungroup filter mutate
 #' @importFrom AHGestimation cross_section
 #' @importFrom tidyr unnest
 #' @importFrom rlang as_name enquo
 #' @return dataframe with a set of AHG points for each hy_id/cs_id in the input data, with AHG estimated X, Y, A point values that form a parabola
 get_ahg_parabolas <- function(
-    cross_section_pts = NULL
+    cross_section_pts = NULL,
+    crosswalk_id = NULL
 ) {
   
   # cross_section_pts <-
@@ -79,20 +81,26 @@ get_ahg_parabolas <- function(
   # depth             = "owp_y_inchan"
   # dingman_r         = "owp_dingman_r"
   
-  req_cols <- c("hy_id", "cs_id", "bottom", 
-                "TW", "DEPTH", "DINGMAN_R")
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "bottom", 
+                     "TW", "DEPTH", "DINGMAN_R")
+  
+  # validate input graph
+  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
   
   if (is.null(cross_section_pts)) {
     stop(
       paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n > ",
-             paste0(req_cols, collapse = "\n > "))
+             paste0(REQUIRED_COLS, collapse = "\n > "))
     )
   }
   
-  if (!all(req_cols %in% names(cross_section_pts))) {
-    stop(paste0('"cross_section_pts" is missing columns, must include all of:\n > ', paste0(req_cols, collapse = "\n > ") ))
-  }
-  
+
   # this function will take in one of the AHG estimated parabolas, a bottom depth, and the estimated inchannel depth 
   # and if there are infinite/NaN/NA values in the AHG estimated parabolas depth ("Y"),
   # we pin the the left and right side of the parabola to the input bottomZ and set 
@@ -144,18 +152,20 @@ get_ahg_parabolas <- function(
   # keep only a single row for each cross section
   ahg_parameters <- 
     cross_section_pts %>% 
-    dplyr::select(hy_id, cs_id, bottom, 
-                  TW, DEPTH, DINGMAN_R
-                  # dplyr::any_of(c(top_width, depth, dingman_r))
-                  # .data[[top_width]],
-                  # .data[[depth]],
-                  # .data[[dingman_r]]
-                  # !!dplyr::sym(top_width),
-                  # !!dplyr::sym(depth),
-                  # !!dplyr::sym(dingman_r),
-                  # {{top_width}}, {{depth}}, {{dingman_r}}
-    ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, bottom, TW, DEPTH, DINGMAN_R) %>% 
+    # dplyr::select(hy_id, cs_id, bottom, 
+    #               TW, DEPTH, DINGMAN_R
+    #               # dplyr::any_of(c(top_width, depth, dingman_r))
+    #               # .data[[top_width]],
+    #               # .data[[depth]],
+    #               # .data[[dingman_r]]
+    #               # !!dplyr::sym(top_width),
+    #               # !!dplyr::sym(depth),
+    #               # !!dplyr::sym(dingman_r),
+    #               # {{top_width}}, {{depth}}, {{dingman_r}}
+    # ) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup()
   
@@ -170,7 +180,7 @@ get_ahg_parabolas <- function(
   ahg_parameters <- 
     ahg_parameters %>%
     hydrofabric3D::add_tmp_id() %>% 
-    dplyr::filter(!tmp_id %in% hydrofabric3D::add_tmp_id(set_aside)$tmp_id) %>% 
+    dplyr::filter(!tmp_id %in% hydrofabric3D::add_tmp_id(set_aside, x = crosswalk_id)$tmp_id) %>% 
     dplyr::select(-tmp_id) %>% 
     dplyr::rowwise() %>%
     dplyr::mutate(
@@ -231,7 +241,8 @@ get_ahg_parabolas <- function(
   # unnest the parabola dataframes and rename columns then return
   ahg_parameters <-
     ahg_parameters %>% 
-    dplyr::select(hy_id, cs_id, parabola) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, parabola) %>% 
+    # dplyr::select(hy_id, cs_id, parabola) %>% 
     tidyr::unnest(c(parabola)) %>% 
     # dplyr::group_by(hy_id, cs_id, partition) %>% 
     # dplyr::group_by(hy_id, cs_id) %>% 
@@ -239,13 +250,15 @@ get_ahg_parabolas <- function(
     #   left_max = max(x, na.rm = TRUE)
     # ) %>% 
     # dplyr::ungroup() %>% 
-    dplyr::select(hy_id, cs_id, 
-                  ahg_index = ind, 
-                  ahg_x = x, 
-                  ahg_y = Y, 
-                  ahg_a = A, 
-                  # left_max,
-                  partition
+    dplyr::select(
+        dplyr::any_of(crosswalk_id),
+        cs_id, 
+        ahg_index = ind, 
+        ahg_x = x, 
+        ahg_y = Y, 
+        ahg_a = A, 
+        # left_max,
+        partition
     ) 
   
   # plot(ahg_parameters$ahg_y)
@@ -258,11 +271,16 @@ get_ahg_parabolas <- function(
 #' Used after inserting AHG estimated parabolas in between DEM cross sections points 
 #'
 #' @param cross_section_pts cross section points dataframe with missing X/Y coordinates between sets of known X/Y coordinates
+#' @param crosswalk_id character, ID column 
 #' @importFrom dplyr filter group_by summarize ungroup left_join select ends_with mutate n bind_rows
 #' @importFrom tidyr unnest
 #' @return dataframe, input dataframe with X/Y coordinates filled in for missing hy_id/cs_id X/Y values
 #' @export
-fill_missing_ahg_coords <- function(cross_section_pts) {
+fill_missing_ahg_coords <- function(cross_section_pts, 
+                                    crosswalk_id = NULL
+                                    ) {
+  
+  # cross_section_pts = out_cs
   
   # cross_section_pts <-
   #   cs_bathy_inchannel %>% 
@@ -289,13 +307,14 @@ fill_missing_ahg_coords <- function(cross_section_pts) {
   
   
   # get the first and last coordinates beforee the missing NA X/Y points
-  start_and_end_coords <- get_coords_around_parabola(cross_section_pts)
+  start_and_end_coords <- get_coords_around_parabola(cross_section_pts, crosswalk_id = crosswalk_id)
   
   # 
   start_and_end_pts_ids <- 
     cross_section_pts %>% 
     dplyr::filter(!is_dem_point) %>%  
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::summarize(
       start_pt_id = min(pt_id, na.rm = TRUE)
     ) %>% 
@@ -307,11 +326,17 @@ fill_missing_ahg_coords <- function(cross_section_pts) {
     dplyr::filter(!is_dem_point) %>%  
     dplyr::left_join(
       start_and_end_coords,
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
-    dplyr::select(hy_id, cs_id, pt_id, X, Y, 
-                  dplyr::ends_with("_start"), dplyr::ends_with("end")) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::select(
+        dplyr::any_of(crosswalk_id), 
+        # hy_id, 
+        cs_id, pt_id, 
+        X, Y, dplyr::ends_with("_start"), dplyr::ends_with("end")
+      ) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       n = dplyr::n()
     ) %>% 
@@ -322,23 +347,34 @@ fill_missing_ahg_coords <- function(cross_section_pts) {
     parabola_pts %>% 
     dplyr::left_join(
       start_and_end_pts_ids, 
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
-    dplyr::select(hy_id, cs_id, start_pt_id, dplyr::ends_with("_start"), dplyr::ends_with("end"), n) %>% 
-    dplyr::group_by(hy_id, cs_id)  %>% 
+    dplyr::select(
+        dplyr::any_of(crosswalk_id), 
+        cs_id, start_pt_id, 
+        dplyr::ends_with("_start"), dplyr::ends_with("end"), n
+      ) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id)  %>% 
     dplyr::slice(1)  %>% 
     dplyr::mutate(
       X = list(seq_between_start_and_end(X_start, X_end, n)),
       Y = list(seq_between_start_and_end(Y_start, Y_end, n))
     ) %>% 
     tidyr::unnest(c(X, Y)) %>% 
-    dplyr::group_by(hy_id, cs_id)  %>%
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id)  %>%
     dplyr::mutate(
       pt_id = (start_pt_id - 1) + (1:dplyr::n())
       # pt_id = start_pt_id + (0:(dplyr::n()-1))
     ) %>%
     dplyr::ungroup() %>%
-    dplyr::select(hy_id, cs_id, pt_id, X, Y) 
+    dplyr::select(
+      dplyr::any_of(crosswalk_id), 
+      # hy_id,
+      cs_id, pt_id, X, Y
+      ) 
   # dplyr::select(hy_id, cs_id, X, Y)
   
   # join the new parabola X/Y points with the rest of the original data, dropping the old NA X/Y coordinates
@@ -348,7 +384,8 @@ fill_missing_ahg_coords <- function(cross_section_pts) {
     dplyr::select(-X, -Y) %>% 
     dplyr::left_join(
       parabola_coords,
-      by = c("hy_id", "cs_id", "pt_id")
+      by = c(crosswalk_id, "cs_id", "pt_id")
+      # by = c("hy_id", "cs_id", "pt_id")
     )
   
   pts_with_fixed_coords <- 
@@ -356,10 +393,12 @@ fill_missing_ahg_coords <- function(cross_section_pts) {
       dplyr::filter(cross_section_pts, is_dem_point),
       parabolas_with_coords
     ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::arrange(relative_distance, .by_group = TRUE) %>%
     # dplyr::arrange(pt_id, .by_group = TRUE) %>%
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       pt_id = 1:dplyr::n()
     ) %>%
@@ -378,22 +417,26 @@ fill_missing_ahg_coords <- function(cross_section_pts) {
 #' Get the coordinates surrounding a set of missing AHG X/Y coordinates.
 #' 
 #' @param cross_section_pts dataframe with cross section points, (required cols, "hy_id", "cs_id", "X", "Y", "is_dem_point")
+#' @param crosswalk_id character, ID column 
 #' @importFrom tidyr pivot_wider
 #' @importFrom dplyr select group_by mutate lag lead case_when filter ungroup left_join
 #' @return dataframe with each hy_id/cs_id cross section containing a value for X_start, X_end, Y_start, Y_end, representing the points surrounding the AHG inserted points
 #' @export
-get_coords_around_parabola <- function(cross_section_pts) {
+get_coords_around_parabola <- function(cross_section_pts, crosswalk_id = NULL) {
   
   fill_value <- -999999999
   
   X_coords <-
     cross_section_pts %>% 
-    dplyr::select(hy_id, cs_id, X, is_dem_point) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, X, is_dem_point) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::select(hy_id, cs_id, X, is_dem_point) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       X = ifelse(is.na(X), fill_value, X)
     ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       next_X_is_missing  = dplyr::case_when(
         dplyr::lead(X) == fill_value       ~ TRUE,
@@ -415,29 +458,35 @@ get_coords_around_parabola <- function(cross_section_pts) {
       )
     ) %>% 
     dplyr::ungroup() %>% 
-    dplyr::select(hy_id, cs_id, X, is_dem_point, start_or_end)
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, X, is_dem_point, start_or_end)
+    # dplyr::select(hy_id, cs_id, X, is_dem_point, start_or_end)
   
   # X_coords %>% 
   #   dplyr::group_by(hy_id, cs_id)
+  # crosswalk_id = "hy_id"
   
-  # pivot so each cross sections is a single row with a "X_start" and "X_end" point 
-  X_coords <- 
+  # pivot so each cross sections is a single row with a "X_start" and "X_end" point
+  X_coords <-
     X_coords %>% 
     # dplyr::select(-is_dem_point) %>% 
     tidyr::pivot_wider(
-      id_cols = c(hy_id, cs_id),
+      id_cols = c(dplyr::any_of(crosswalk_id), cs_id),
+      # id_cols = c(hy_id, cs_id),
       names_from = start_or_end,
       values_from = X
     )
   
   Y_coords <-
     cross_section_pts %>% 
-    dplyr::select(hy_id, cs_id, Y, is_dem_point) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, Y, is_dem_point) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::select(hy_id, cs_id, Y, is_dem_point) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       Y = ifelse(is.na(Y), fill_value, Y)
     ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       next_Y_is_missing  = dplyr::case_when(
         dplyr::lead(Y) == fill_value       ~ TRUE,
@@ -456,13 +505,16 @@ get_coords_around_parabola <- function(cross_section_pts) {
       )
     ) %>% 
     dplyr::ungroup() %>% 
-    dplyr::select(hy_id, cs_id, Y, is_dem_point, start_or_end)
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, Y, is_dem_point, start_or_end)
+    # dplyr::select(hy_id, cs_id, Y, is_dem_point, start_or_end)
   
   # pivot so each cross sections is a single row with a "X_start" and "X_end" point 
   Y_coords <-
     Y_coords %>% 
     tidyr::pivot_wider(
-      id_cols = c(hy_id, cs_id),
+      id_cols = c(dplyr::any_of(crosswalk_id), cs_id),
+      # id_cols = c(crosswalk_id, cs_id), 
+      # id_cols = c(hy_id, cs_id),
       names_from = start_or_end,
       values_from = Y
     )
@@ -470,7 +522,8 @@ get_coords_around_parabola <- function(cross_section_pts) {
   coords_around_parabola <- dplyr::left_join(
     X_coords,
     Y_coords,
-    by = c("hy_id", "cs_id")
+    by = c(crosswalk_id, "cs_id")
+    # by = c("hy_id", "cs_id")
   )
   
   return(coords_around_parabola)
@@ -483,11 +536,13 @@ get_coords_around_parabola <- function(cross_section_pts) {
 #' The cross sections length (meters) minus 1 meter is used as the new top width and 
 #' the new Y max (depth) value is derived from the original ratio between the prescribed top width and Y max
 #' @param cross_section_pts dataframe or sf dataframe with "hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R"
+#' @param crosswalk_id character, ID column 
 #' @importFrom rlang as_name enquo
 #' @importFrom dplyr group_by mutate case_when sym ungroup select filter slice
 #' @return cross_section_pts dataframe with updated "top_width" and "depth" column values
 fix_oversized_topwidths <- function(
-    cross_section_pts = NULL
+    cross_section_pts = NULL,
+    crosswalk_id = NULL
 ) {
   # cross_section_pts = cross_section_pts
   # top_width         = top_width
@@ -510,19 +565,20 @@ fix_oversized_topwidths <- function(
     
   }
   
-  req_cols <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R")
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", 
+                     "class", 
+                     "point_type", "TW", "DEPTH", "DINGMAN_R")
+  
+  # validate input graph
+  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
   
   if (is.null(cross_section_pts)) {
     stop(
       paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n > ",
-             paste0(req_cols, collapse = "\n > "))
+             paste0(REQUIRED_COLS, collapse = "\n > "))
     )
   }
   
-  if (!all(req_cols %in% names(cross_section_pts))) {
-    stop(paste0('"cross_section_pts" is missing columns, must include all of:\n > ', paste0(req_cols, collapse = "\n > ") ))
-  }
-
   # original_cs %>% 
   #   hydrofabric3D::plot_cs_pts(x = "relative_distance")
   
@@ -555,8 +611,10 @@ fix_oversized_topwidths <- function(
   # we round the distance interval UP sure we are not underestimating the interval
   distance_between_pts <- 
     cross_section_pts %>% 
-    dplyr::select(hy_id, cs_id, relative_distance) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, relative_distance) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::select(hy_id, cs_id, relative_distance) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       distance_interval = relative_distance - dplyr::lag(relative_distance)
     ) %>% 
@@ -573,7 +631,8 @@ fix_oversized_topwidths <- function(
     cross_section_pts %>% 
     dplyr::left_join(
       distance_between_pts, 
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     )
   
   # message("Ending col order:\n> ", paste0(names(cross_section_pts), collapse = "\n> "))
@@ -582,7 +641,8 @@ fix_oversized_topwidths <- function(
   
   updated_TW_and_Ymax <- 
     cross_section_pts %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       new_DEPTH = dplyr::case_when(
         TW >= cs_lengthm ~ scale_DEPTH_to_TW(TW, 
@@ -624,7 +684,8 @@ fix_oversized_topwidths <- function(
   number_fixed_TWs <- 
     updated_TW_and_Ymax %>% 
     dplyr::filter(fixed_TW) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup() %>% 
     nrow()
@@ -676,6 +737,7 @@ fix_oversized_topwidths <- function(
 #' @description
 #' Still in early development phases
 #' @param cross_section_pts dataframe or sf dataframe. Default is NULL
+#' @param crosswalk_id character, ID column 
 #' @importFrom dplyr bind_rows select mutate n case_when summarise ungroup group_by filter relocate left_join slice slice_max rename arrange
 #' @importFrom AHGestimation cross_section
 #' @importFrom stats median
@@ -683,13 +745,73 @@ fix_oversized_topwidths <- function(
 #' @return dataframe or sf dataframe with AHG estimated points injected into the input cross section points
 #' @export
 add_cs_bathymetry <- function(
-    cross_section_pts = NULL
+    cross_section_pts = NULL,
+    crosswalk_id = NULL
 ) {
+  
+  ########################################################## 
+  ##########################################################
+  # library(dplyr)
+  # library(sf)
+  # library(geos)
+  # cross_section_pts <- arrow::read_parquet("/Users/anguswatters/Desktop/test_ml_cs_pts_06.parquet")
+  # crosswalk_id = "hy_id"
+  # cross_section_pts <-
+  #   cross_section_pts %>%
+  #   dplyr::filter(hy_id == "wb-1001918")
+    # dplyr::filter(hy_id == "wb-1001918", cs_id == 3)
+  # # cross_section_pts %>%
+  # # hydrofabric3D::plot_cs_pts()
+  # top_width         = cross_section_pts$TW
+  # depth             = cross_section_pts$DEPTH
+  # dingman_r         = cross_section_pts$DINGMAN_R
+  # 
+  # top_width = "owp_tw_inchan"
+  # depth     = "owp_y_inchan"
+  # dingman_r = "owp_dingman_r"
+  
+  # cross_section_pts <-
+  #   inchannel_cs %>%
+  #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
+  #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
+  # 
+  # top_width = "owp_tw_inchan"
+  # depth     = "owp_y_inchan"
+  # dingman_r = "owp_dingman_r"
+  # 
+  # cross_section_pts <-
+  #   inchannel_cs %>%
+  #   dplyr::slice(1:100000) %>%
+  #   dplyr::select(-owp_y_bf, -owp_tw_bf) %>%
+  #   dplyr::rename(
+  #     TW        = owp_tw_inchan,
+  #     DEPTH     = owp_y_inchan,
+  #     DINGMAN_R = owp_dingman_r
+  #     )
+  # # cross_section_pts = dplyr::slice(inchannel_cs, 1:100000)
+  # top_width         = cross_section_pts$TW
+  # depth             = cross_section_pts$DEPTH
+  # dingman_r         = cross_section_pts$DINGMAN_R
+  ########################################################## 
+  
+
+  # make a unique ID if one is not given (NULL 'id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", 
+                     "class", 
+                     "point_type", "TW", "DEPTH", "DINGMAN_R")
+  
+  # validate input graph
+  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
   
   if (is.null(cross_section_pts)) {
     stop(
       paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n> ",
-             paste0(c('hy_id', 'cs_id', 'Z', 'bottom', 'relative_distance', 
+             paste0(c(crosswalk_id, 'cs_id', 'Z', 'bottom', 'relative_distance', 
                       'point_type', 'class', 
                       'top_width - (specify via "top_width" argument)',  
                       'depth - (specify via "depth" argument)', 
@@ -699,90 +821,37 @@ add_cs_bathymetry <- function(
     )
   }
   
-  ########################################################## 
-  ##########################################################
-  # library(dplyr)
-  # library(sf)
-  # library(geos)
-  # 
-  # cross_section_pts <- arrow::read_parquet("/Users/anguswatters/Desktop/test_ml_cs_pts_06.parquet")
-  # 
-  # cross_section_pts <-
-  #   cross_section_pts %>%
-  #   # dplyr::filter(hy_id == "wb-1001918")
-  #   dplyr::filter(hy_id == "wb-1001918", cs_id == 3)
-  # cross_section_pts %>% 
-    # hydrofabric3D::plot_cs_pts()
-  
-  # cross_section_pts <-
-  #   inchannel_cs %>%
-  #   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
-  #   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
-  # top_width = "owp_tw_inchan"
-  # depth     = "owp_y_inchan"
-  # dingman_r = "owp_dingman_r"
-  # cross_section_pts <- 
-  #   inchannel_cs %>% 
-  #   dplyr::slice(1:100000) %>% 
-  #   dplyr::select(-owp_y_bf, -owp_tw_bf) %>% 
-  #   dplyr::rename(
-  #     TW        = owp_tw_inchan, 
-  #     DEPTH     = owp_y_inchan,
-  #     DINGMAN_R = owp_dingman_r
-  #     )
-  # # cross_section_pts = dplyr::slice(inchannel_cs, 1:100000) 
-  # top_width         = cross_section_pts$TW
-  # depth             = cross_section_pts$DEPTH
-  # dingman_r         = cross_section_pts$DINGMAN_R
-  
-  # cross_section_pts = NULL
-  # top_width = NULL
-  # depth     = NULL
-  # dingman_r = NULL
-  # 
-  ########################################################## 
-  
-
-  req_cols <- c("hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R")
-  
-  if (!all(req_cols %in% names(cross_section_pts))) {
-    stop(paste0('"cross_section_pts" is missing columns, must include all of:\n > ', paste0(req_cols, collapse = "\n > ") ))
-  }
-  
-  
-  
-  
   ##########################################################
   
   # Replace any topwidth values that are GREATER than the actual cross section length (meters)
   cross_section_pts <- fix_oversized_topwidths(
-    cross_section_pts = cross_section_pts
+    cross_section_pts = cross_section_pts,
+    crosswalk_id = crosswalk_id
   )
   
 
   # generate AHG parabolas for each hy_id/cs_id in the cross section points 
   # using the provided top_widths, depths, and dingman's R
   ahg_parabolas <- get_ahg_parabolas(
-    cross_section_pts = cross_section_pts
+    cross_section_pts = cross_section_pts,
+    crosswalk_id = crosswalk_id
   )
 
   # ##############################################
+  
   # example <- 
   #   ahg_parabolas %>% 
   #   dplyr::filter(hy_id == "wb-1005207", cs_id == 2)
-  # example <- 
-    # ahg_parabolas %>% 
-    # dplyr::filter(hy_id == "wb-1001918", cs_id == 2) 
-  # ml_output
   # cross_section_pts %>% hydrofabric3D::plot_cs_pts(y = "Z", x = "relative_distance")
   # plot(ahg_parabolas$ahg_y ~ ahg_parabolas$ahg_x)
   # plot(ahg_parabolas$ahg_y)
-  # 
+  
   # store the maximum X on the left side of the parabola for later use
   ahg_left_max <- 
     ahg_parabolas %>% 
     dplyr::filter(partition == "left") %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::summarise(left_max = max(ahg_x, na.rm = TRUE)) %>% 
     dplyr::ungroup()
   
@@ -796,7 +865,8 @@ add_cs_bathymetry <- function(
   # the left and right partitions
   partioned_cs <- 
     cross_section_pts %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       # relative_distance_of_bottom = point_type == "bottom" 
       bottom_midpoint = dplyr::case_when(
@@ -806,7 +876,8 @@ add_cs_bathymetry <- function(
       bottom_midpoint = stats::median(bottom_midpoint, na.rm = TRUE)
     ) %>% 
     # dplyr::relocate(bottom_midpoint) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       # relative_distance_of_bottom = point_type == "bottom" 
       cs_partition = dplyr::case_when(
@@ -817,7 +888,8 @@ add_cs_bathymetry <- function(
     )  %>% 
     dplyr::left_join(
       ahg_left_max,
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
     # dplyr::relocate(left_max, bottom_midpoint, cs_partition) %>% 
     dplyr::ungroup()
@@ -825,59 +897,24 @@ add_cs_bathymetry <- function(
   #  get the midpoint value for each hy_id/cs_id so we can use them during the shifting process 
   midpoints <- 
     partioned_cs %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
-    dplyr::select(hy_id, cs_id, bottom_midpoint) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, bottom_midpoint) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    # dplyr::select(hy_id, cs_id, bottom_midpoint) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup()
   
   # ------------------------------------------------------------------------------------------------
   # ---- Process LEFT side of cross section and parabola ----
   # ------------------------------------------------------------------------------------------------
-  # # lefty <- 
-  #   partioned_cs %>% 
-  #   # dplyr::filter(cs_partition == "left_cs") %>%  
-  #   dplyr::group_by(hy_id, cs_id) %>% 
-  #   # dplyr::mutate(
-  #   #   res = bottom_midpoint - max(left_max),
-  #   #   mark = relative_distance < bottom_midpoint - max(left_max) | relative_distance == 0
-  #   # ) %>% 
-  #   # dplyr::relocate(res, mark, relative_distance)
-  #   dplyr::filter(
-  #     relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0
-  #     # relative_distance < 0
-  #     )
-  # left_new <- partioned_cs %>% 
-  #   dplyr::filter(cs_partition == "left_cs") %>%  
-  #   dplyr::group_by(hy_id, cs_id) %>% 
-  #   dplyr::filter(
-  #     # relative_distance < (bottom_midpoint - max(left_max))
-  #     relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0 # TODO: testing this new condition out
-  #   ) 
-  
-  # # TODO: look back at this tomorrow
-  # left_side_pt_counts <- 
-  #   partioned_cs %>% 
-  #   dplyr::filter(cs_partition == "left_cs") %>%  
-  #   dplyr::group_by(hy_id, cs_id) %>% 
-  #   dplyr::mutate(
-  #     marked = relative_distance < (bottom_midpoint - max(left_max))
-  #   ) %>% 
-  #   dplyr::select(hy_id, cs_id, marked) %>% 
-  #   dplyr::summarise(total_left_side_pts = sum(marked, na.rm = TRUE)) %>% 
-  #   dplyr::ungroup()
-  # partioned_cs %>% 
-  #   dplyr::filter(cs_partition == "left_cs") %>% 
-  #   dplyr::left_join(
-  #     left_side_pt_counts,
-  #     by = c("hy_id", "cs_id")
-  #   ) 
   
   # grab just the left cross sections and remove any points that will be swallowed by the newly inserted AHG estimates 
   # And also determine the offset of the left parabolas X points, the left_start will be joined back onto the AHG parabolas
   left_cs <- 
     partioned_cs %>% 
     dplyr::filter(cs_partition == "left_cs") %>%  
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(
       # relative_distance < (bottom_midpoint - max(left_max))
       relative_distance < (bottom_midpoint - max(left_max)) | relative_distance == 0 # TODO: testing this new condition out
@@ -890,22 +927,27 @@ add_cs_bathymetry <- function(
   
   left_starts <- 
     left_cs %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
-    dplyr::select(hy_id, cs_id, left_start) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, left_start) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    # dplyr::select(hy_id, cs_id, left_start) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup()
   
   # offset the left parabolas X points using the left_start value
   left_parabolas <-
     ahg_parabolas %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(partition == "left") %>% 
     dplyr::ungroup() %>% 
     dplyr::left_join(
       left_starts,
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       ahg_x = ahg_x + left_start
     ) %>% 
@@ -918,25 +960,30 @@ add_cs_bathymetry <- function(
   # subset cross section to the RIGHT of the midpoint
   right_cs <-
     partioned_cs %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(relative_distance > bottom_midpoint) %>% 
     # dplyr::filter(cs_partition == "right_cs")
     dplyr::ungroup()
   
   right_parabolas <- 
     ahg_parabolas %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(partition == "right") %>% 
     dplyr::ungroup() %>% 
     dplyr::left_join(
       ahg_left_max,
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
     dplyr::left_join(
       midpoints,
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       right_start = bottom_midpoint + ((ahg_x) - left_max)
     ) %>% 
@@ -954,11 +1001,15 @@ add_cs_bathymetry <- function(
   # to make sure that the parabola is not going past the edge of the cross section
   total_cross_section_length <-
     right_cs %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     # dplyr::filter(relative_distance == max(relative_distance)) %>% 
     dplyr::slice_max(relative_distance, n = 1) %>% 
-    dplyr::select(hy_id, cs_id, 
+    dplyr::select(dplyr::any_of(crosswalk_id), 
+                  cs_id, 
                   max_right_position = relative_distance) %>% 
+    # dplyr::select(hy_id, cs_id, 
+    #               max_right_position = relative_distance) %>% 
     dplyr::ungroup() 
   
   # from the right side of the parabola, 
@@ -968,7 +1019,8 @@ add_cs_bathymetry <- function(
     right_parabolas %>% 
     dplyr::left_join(
       total_cross_section_length,
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     )  %>% 
     # dplyr::relocate(hy_id, cs_id, right_start, max_right_position) %>% 
     dplyr::filter(right_start < max_right_position) 
@@ -980,7 +1032,8 @@ add_cs_bathymetry <- function(
   # getting the starting X value for the RIGHT side of the parabola
   max_right_starting_pts <- 
     right_parabolas %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::summarise(
       right_start_max = max(right_start, na.rm = TRUE)
     ) %>% 
@@ -991,10 +1044,12 @@ add_cs_bathymetry <- function(
     right_cs %>% 
     dplyr::left_join(
       max_right_starting_pts, 
-      by = c("hy_id", "cs_id")
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
     ) %>% 
     # dplyr::relocate(right_start_max) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(
       relative_distance > right_start_max
     ) %>% 
@@ -1009,7 +1064,10 @@ add_cs_bathymetry <- function(
     dplyr::select(-ahg_x) %>% 
     dplyr::rename(ahg_x = right_start) %>% 
     dplyr::select(
-      hy_id, cs_id, ahg_index, ahg_x, ahg_y, ahg_a,
+      dplyr::any_of(crosswalk_id),
+      # hy_id, 
+      cs_id, 
+      ahg_index, ahg_x, ahg_y, ahg_a,
       partition
       # left_max, bottom_midpoint
     )
@@ -1017,7 +1075,10 @@ add_cs_bathymetry <- function(
   left_parabolas <- 
     left_parabolas %>% 
     dplyr::select(
-      hy_id, cs_id, ahg_index, ahg_x, ahg_y, ahg_a,
+      dplyr::any_of(crosswalk_id),
+      # hy_id, 
+      cs_id, 
+      ahg_index, ahg_x, ahg_y, ahg_a,
       partition
     )
   
@@ -1028,7 +1089,8 @@ add_cs_bathymetry <- function(
   # reorder to parabolas by X values so they are in order from left to right for each hy_id/cs_id
   parabolas <- 
     parabolas %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::arrange(ahg_x, .by_group = TRUE) %>% 
     dplyr::ungroup()
   
@@ -1040,7 +1102,9 @@ add_cs_bathymetry <- function(
   parabolas <- 
     parabolas %>% 
     dplyr::select(
-      hy_id, cs_id,
+      dplyr::any_of(crosswalk_id),
+      # hy_id, 
+      cs_id,
       relative_distance = ahg_x,
       Z                 = ahg_y
     )
@@ -1067,7 +1131,8 @@ add_cs_bathymetry <- function(
       dplyr::mutate(parabolas, is_dem_point = FALSE),
       dplyr::mutate(right_cs, is_dem_point = TRUE),
     ) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(relative_distance >= 0) %>% # TODO: testing out this condition as well
     dplyr::arrange(relative_distance, .by_group = TRUE) %>% 
     dplyr::ungroup()
@@ -1076,7 +1141,8 @@ add_cs_bathymetry <- function(
   # set the "point_types" of the inserted parabola points to "bottom" type
   out_cs <- 
     out_cs %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
+    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       pt_id      = 1:dplyr::n(),
       class = dplyr::case_when(
@@ -1090,41 +1156,9 @@ add_cs_bathymetry <- function(
     ) %>% 
     dplyr::ungroup()
   
-  # dplyr::bind_rows(
-  #   dplyr::mutate(
-  #     cross_section_pts, 
-  #     is_ml = FALSE
-  #   ),
-  #   dplyr::mutate(
-  #     out_cs,
-  #     is_ml = TRUE
-  #   )
-  # ) %>% 
-  #   ggplot2::ggplot() +
-  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, 
-  #                                    y = Z, 
-  #                                    color = is_ml
-  #                                    ), size = 4) 
-  # 
-  # dplyr::bind_rows(
-  #   dplyr::mutate(
-  #     cross_section_pts, 
-  #     is_ml = FALSE
-  #   ),
-  #   dplyr::mutate(
-  #     out_cs,
-  #     is_ml = TRUE
-  #   )
-  # ) %>% 
-  #   ggplot2::ggplot() +
-  #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = is_ml)) 
-  # 
-  # out_cs %>% 
-  #   hydrofabric3D::plot_cs_pts(x = "relative_distance", y = 'Z')
-  # 
   tryCatch({
     message("Generate XY coordinates for AHG estimated points...")
-    out_cs <- fill_missing_ahg_coords(out_cs)
+    out_cs <- fill_missing_ahg_coords(cross_section_pts = out_cs, crosswalk_id = crosswalk_id)
 
   }, error = function(cond) {
 

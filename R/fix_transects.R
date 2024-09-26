@@ -2977,6 +2977,7 @@ geos_bs_distance <- function(
 # 
 #   return(L)
 # }
+
 #' Perform Binary search on sorted distance vector to extend a linestring (transect line) out minimum distance to another linestring geometry
 #' This is a variation of the geos_bs_distance() function but this function actually returns the extended linestring instead of the distance TO EXTEND
 #' @param distances numeric vector sorted in ascending order
@@ -3770,7 +3771,7 @@ plot_braid_geoms_to_cut <- function(
   starting_names <- names(transect_lines)
   
   # set geometry name of network to "geometry"
-  net <- nhdplusTools::rename_geometry(net, "geometry")
+  net <- hydroloom::rename_geometry(net, "geometry")
   
   # # keep track of the original CRS of the inputs to retransform return
   # start_crs1 <- sf::st_crs(net, parameters = T)$epsg

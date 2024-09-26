@@ -277,6 +277,7 @@ extend_invalid_transects <- function(
 #' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
 #' @importFrom sf st_geometry st_as_sf
 #' @importFrom dplyr filter bind_rows
+#' @importFrom hydroloom rename_geometry 
 #' @export
 extend_invalid_transects2 <- function(
     transects_to_check, 
@@ -311,7 +312,7 @@ extend_invalid_transects2 <- function(
   }
   
   # set geometry coluimn name as beginning 
-  transects_to_check <- nhdplusTools::rename_geometry(transects_to_check, "geometry") 
+  transects_to_check <- hydroloom::rename_geometry(transects_to_check, "geometry") 
   
   # check for necessary columns
   req_cols    <- c(crosswalk_id, "cs_id", "cs_lengthm", "valid_banks", "has_relief", "geometry")
@@ -388,7 +389,7 @@ extend_invalid_transects2 <- function(
   # Set the is_extended flag based on if either the left OR the right side were extended
   extended_transects <- 
     extended_transects %>% 
-    nhdplusTools::rename_geometry("geometry") %>%
+    hydroloom::rename_geometry("geometry") %>%
     dplyr::mutate(
       is_extended = dplyr::case_when(
         left_is_extended | right_is_extended ~ TRUE,

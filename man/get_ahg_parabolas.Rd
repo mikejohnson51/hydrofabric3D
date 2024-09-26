@@ -4,11 +4,13 @@
 \alias{get_ahg_parabolas}
 \title{Get the AHG estimated parabolas for each hy_id/cs_id cross section given a set of cross section points}
 \usage{
-get_ahg_parabolas(cross_section_pts = NULL)
+get_ahg_parabolas(cross_section_pts = NULL, crosswalk_id = NULL)
 }
 \arguments{
 \item{cross_section_pts}{dataframe or sf dataframe with "hy_id", "cs_id", "bottom" columns and
 specififed "top_width", "depth", "dingman_r" columns  (see top_width, depth, and dingman_r arguments)}
+
+\item{crosswalk_id}{character, ID column}
 }
 \value{
 dataframe with a set of AHG points for each hy_id/cs_id in the input data, with AHG estimated X, Y, A point values that form a parabola

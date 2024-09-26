@@ -85,7 +85,6 @@ utils::globalVariables(
 #' @importFrom dplyr mutate case_when select left_join relocate n any_of
 #' @importFrom lwgeom st_linesubstring
 #' @importFrom wk wk_crs 
-#' @importFrom nhdplusTools rename_geometry
 #' @importFrom vctrs vec_c
 #' @export
 extend_transects_to_polygons <- function(

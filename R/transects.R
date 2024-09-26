@@ -714,6 +714,7 @@ get_cs_sinuosity <- function(
 #' @importFrom sf st_crs st_transform st_intersects st_length st_drop_geometry st_as_sf
 #' @importFrom smoothr smooth densify
 #' @importFrom geos as_geos_geometry
+#' @importFrom hydroloom rename_geometry
 #' @importFrom wk wk_vertices wk_linestring
 #' @export
 cut_cross_sections <- function(
@@ -803,7 +804,7 @@ cut_cross_sections <- function(
   }
   
   # standardize geometry name
-  net <- nhdplusTools::rename_geometry(net, "geometry")
+  net <- hydroloom::rename_geometry(net, "geometry")
   
   # -----------------------------
   # TODO: Testing out removing forced CRS change

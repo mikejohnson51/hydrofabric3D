@@ -4,10 +4,12 @@
 \alias{extend_by_percent}
 \title{Extend an sf linestring dataframe by a percent of the lines length}
 \usage{
-extend_by_percent(x, pct = 0.5, length_col = NULL)
+extend_by_percent(x, crosswalk_id = NULL, pct = 0.5, length_col = NULL)
 }
 \arguments{
 \item{x}{linestring sf dataframe}
+
+\item{crosswalk_id}{character, unique ID column name}
 
 \item{pct}{numeric, percent of line to extend linestring by in both directions}
 

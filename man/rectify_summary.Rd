@@ -4,12 +4,19 @@
 \alias{rectify_summary}
 \title{Makes a summaru dataframe and print out of differences between 2 cross section points dataframes}
 \usage{
-rectify_summary(input_points, output_points, verbose = TRUE)
+rectify_summary(
+  input_points,
+  output_points,
+  crosswalk_id = NULL,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{input_points}{sf dataframe or dataframe of cross section points}
 
 \item{output_points}{sf dataframe or dataframe of cross section points, with "is_extended" logical column}
+
+\item{crosswalk_id}{character, Unique ID column name}
 
 \item{verbose}{logical, whether to print out summary message/ Default is TRUE}
 }

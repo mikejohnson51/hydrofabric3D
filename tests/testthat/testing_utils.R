@@ -226,6 +226,20 @@ check_transect_output_cols <- function(transects, id = "hydrofabric_id") {
   )
 }
 
+# minimum possible columns for a transect
+check_min_transect_output_cols <- function(transects, id = "hydrofabric_id") {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  expected_cols <- c(id, "cs_id", "geometry")
+  
+  return(
+    all(expected_cols %in% names(transects))
+  )
+}
+
 check_cs_pts_and_transect_cols <- function(cs_pts, transects, id = "hydrofabric_id") {
   # id = "hy_id"
   if(is.null(id)) {

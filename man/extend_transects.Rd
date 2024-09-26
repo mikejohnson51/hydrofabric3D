@@ -8,6 +8,7 @@ extend_transects(
   transects_to_extend,
   transects,
   net,
+  crosswalk_id = NULL,
   scale = 0.5,
   verbose = TRUE
 )
@@ -18,6 +19,8 @@ extend_transects(
 \item{transects}{sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters)}
 
 \item{net}{sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_extend' and 'transects' )}
+
+\item{crosswalk_id}{character, unique ID column name}
 
 \item{scale}{numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50\% of the transect length)}
 
