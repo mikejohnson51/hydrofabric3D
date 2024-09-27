@@ -43,40 +43,43 @@ utils::globalVariables(
     "new_cs_lengthm"
   )
 )
-#' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
-#' @description
-#' Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. 
-#' Default is to use hy_id and cs_id columns to create a tmp_id = <hy_id>_<cs_id>.
-#' @param df dataframe with x and y as columns
-#' @param x The name of the column in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is hy_id.
-#' @param y The name of the column in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is cs_id.
-#' 
-#' @return The input dataframe with the "tmp_id" column added.
-#' 
-#' @importFrom dplyr mutate
-#' @noRd
-#' @keywords internal
-add_tmp_id2 <- function(df, x = hy_id, y = cs_id) {
-  # # Create the "tmp_id" column by concatenating values from "x" and "y"
-  # df <- dplyr::mutate(df, tmp_id = paste0({{x}}, "_", {{y}}))
-  
-  # first try to add the tmp_id as if 'x' and 'y' are characters
-  # if that fails, then use 'x' and 'y' as tidyselectors in dplyr::mutate()
-  tryCatch({
-    
-    tmp_ids = paste0(df[[x]], "_", df[[y]])
-    df$tmp_id = tmp_ids
-    
-    return(df)
-    
-  }, error = function(e) { })
-  
-  # if columns are NOT characters, then try with tidyselectors...
-  df <- dplyr::mutate(df, 
-                      tmp_id = paste0({{x}}, "_", {{y}})) # Create the "tmp_id" column by concatenating values from "x" and "y"
-  
-  return(df)
-}
+
+# 
+# # @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
+# # @description
+# # Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. 
+# # Default is to use hy_id and cs_id columns to create a tmp_id = <hy_id>_<cs_id>.
+# # @param df dataframe with x and y as columns
+# # @param x The name of the column in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is hy_id.
+# # @param y The name of the column in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is cs_id.
+# # 
+# # @return The input dataframe with the "tmp_id" column added.
+# # 
+# # @importFrom dplyr mutate
+# # @noRd
+# # @keywords internal
+# add_tmp_id2 <- function(df, x = hy_id, y = cs_id) {
+#   # # Create the "tmp_id" column by concatenating values from "x" and "y"
+#   # df <- dplyr::mutate(df, tmp_id = paste0({{x}}, "_", {{y}}))
+#   
+#   # first try to add the tmp_id as if 'x' and 'y' are characters
+#   # if that fails, then use 'x' and 'y' as tidyselectors in dplyr::mutate()
+#   tryCatch({
+#     
+#     tmp_ids = paste0(df[[x]], "_", df[[y]])
+#     df$tmp_id = tmp_ids
+#     
+#     return(df)
+#     
+#   }, error = function(e) { })
+#   
+#   # if columns are NOT characters, then try with tidyselectors...
+#   df <- dplyr::mutate(df, 
+#                       tmp_id = paste0({{x}}, "_", {{y}})) # Create the "tmp_id" column by concatenating values from "x" and "y"
+#   
+#   return(df)
+# }
+
 
 #' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
 #' @description
@@ -1728,8 +1731,7 @@ validate_cut_cross_section_inputs <- function(net,
 #' @param crosswalk_id character, ID column 
 #' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join across any_of
 #' @return summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
-#' @noRd
-#' @keywords internal
+#' @export
 get_cs_bottom_length <- function(cross_section_pts, 
                                  crosswalk_id = NULL) {
   
@@ -1748,7 +1750,7 @@ get_cs_bottom_length <- function(cross_section_pts,
   # this will be used as a default for bottom length in case bottom length is 0
   interval_distances <- 
     cross_section_pts %>% 
-    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance)
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     # dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
     # dplyr::group_by(hy_id, cs_id) %>% 
@@ -1768,7 +1770,7 @@ get_cs_bottom_length <- function(cross_section_pts,
   bottom_lengths <-
     cross_section_pts %>% 
     dplyr::filter(point_type == "bottom") %>% 
-    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance)
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     # dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
     # dplyr::group_by(hy_id, cs_id) %>% 

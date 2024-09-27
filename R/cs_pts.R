@@ -1434,10 +1434,10 @@ set_channel_anchors <- function(point_types) {
 #' @description Conditions for setting left and right bank classes:
 #' - make sure there is a left_bank at the left most highest position of the left side
 #' - make sure there is a "right_bank" at the right most highest position of the right side
-#' @param depths 
-#' @param point_types 
-#' @param L 
-#' @param R 
+#' @param depths numeric, depth values
+#' @param point_types character, poitn type
+#' @param L numeric, left pointer
+#' @param R numeric, right pointer
 #'
 #' @return character vector
 #' @export
@@ -1483,10 +1483,10 @@ set_bank_anchors <- function(
 #' @description Conditions for setting left and right bank classes:
 #' - make sure there is a left_bank at the left most highest position of the left side
 #' - make sure there is a "right_bank" at the right most highest position of the right side
-#' @param depths 
-#' @param point_types 
-#' @param L 
-#' @param R 
+#' @param depths numeric, depth values
+#' @param point_types character, poitn type
+#' @param L numeric, left pointer
+#' @param R numeric, right pointer
 #'
 #' @return character vector
 #' @export
