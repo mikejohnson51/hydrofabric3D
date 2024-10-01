@@ -13,7 +13,7 @@ extend_by_percent(x, crosswalk_id = NULL, pct = 0.5, length_col = NULL)
 
 \item{pct}{numeric, percent of line to extend linestring by in both directions}
 
-\item{length_col}{character, name of the column in "x" that has the length of the linestring (meters)}
+\item{length_col}{character, name of the output length column name. Default is NULL which will create a length column name of "geom_length".}
 }
 \value{
 sf dataframe with extended linestring geometries

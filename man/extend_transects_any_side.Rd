@@ -14,7 +14,7 @@ extend_transects_any_side(
 )
 }
 \arguments{
-\item{transects}{sf dataframe of linestrings, requires crosswalk_id, cs_id, grouping_id columns and numeric 'left_distance' and 'right_distance' columns}
+\item{transects}{sf dataframe of linestrings, requires crosswalk_id, cs_id, grouping_id columns and numeric 'extension_distance' column indicating the distance to extend}
 
 \item{flowlines}{sf dataframe of linestrings}
 

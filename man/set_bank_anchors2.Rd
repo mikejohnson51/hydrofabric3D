@@ -7,13 +7,13 @@
 set_bank_anchors2(depths, point_types, L, R)
 }
 \arguments{
-\item{depths}{}
+\item{depths}{numeric, depth values}
 
-\item{point_types}{}
+\item{point_types}{character, poitn type}
 
-\item{L}{}
+\item{L}{numeric, left pointer}
 
-\item{R}{}
+\item{R}{numeric, right pointer}
 }
 \value{
 character vector

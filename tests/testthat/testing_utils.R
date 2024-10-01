@@ -240,6 +240,48 @@ check_min_transect_output_cols <- function(transects, id = "hydrofabric_id") {
   )
 }
 
+# minimum possible columns for a dataframe / sf dataframe
+check_required_cols <- function(x, 
+                                expected_cols = NULL
+                                ) {
+  
+  if(is.null(expected_cols)) {
+    return(FALSE)
+  }
+  
+  return(
+    all(expected_cols %in% names(x))
+  )
+}
+
+
+# minimum possible columns for a transect
+check_min_extended_transects_output_cols <- function(x, 
+                                                     id = "hydrofabric_id", 
+                                                     cs_id = "cs_id"
+                                                     ) {
+  
+  if(is.null(id)) {
+    id = "hydrofabric_id"
+  }
+  
+  if(is.null(cs_id)) {
+    cs_id = "cs_id"
+  }
+  
+  expected_cols <- c(id, 
+                     cs_id, 
+                     "cs_lengthm", 
+                     "extension_distance", 
+                     "left_distance", "right_distance", 
+                     "left_is_extended", "right_is_extended"
+                     )
+  
+  return(
+    all(expected_cols %in% names(x))
+  )
+}
+
 check_cs_pts_and_transect_cols <- function(cs_pts, transects, id = "hydrofabric_id") {
   # id = "hy_id"
   if(is.null(id)) {

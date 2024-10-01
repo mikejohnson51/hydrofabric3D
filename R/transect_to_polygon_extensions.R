@@ -124,11 +124,11 @@ extend_transects_to_polygons <- function(
   # ----------------------------------------------------------------------------------
   
   # get only the relevent polygons/transects
-  transect_subset <- subset_transects_in_polygons(transect_lines, polygons)
-  polygons_subset <- subset_polygons_in_transects(transect_lines, polygons)
+  transect_subset   <- subset_transects_in_polygons(transect_lines, polygons)
+  polygons_subset   <- subset_polygons_in_transects(transect_lines, polygons)
 
   # get a dataframe that tells you how far to extend each line in either direction
-  extensions_by_id <- get_extensions_by_id(transect_subset, polygons_subset, crosswalk_id, max_extension_distance)
+  extensions_by_id  <- get_extensions_by_id(transect_subset, polygons_subset, crosswalk_id, max_extension_distance)
   
   # TODO: Add left/right extension distancces to transect data
   # TODO: this can ultimately just be the "transects" variable, dont need to make new "transects_with_distances" variable
@@ -504,6 +504,20 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
     ),
     by = c(crosswalk_id, "cs_id")
   )
+  
+  # add any missing crosswalk_id/cs_id that didnt have any extension distance w/ values of 0
+  extensions_by_id <- dplyr::bind_rows(
+                          extensions_by_id, 
+                          transects %>% 
+                            sf::st_drop_geometry() %>% 
+                            hydrofabric3D::add_tmp_id(x = crosswalk_id) %>% 
+                            dplyr::filter(!tmp_id %in% hydrofabric3D::add_tmp_id(extensions_by_id, x = crosswalk_id)$tmp_id) %>% 
+                            dplyr::select(-tmp_id) %>% 
+                            dplyr::mutate(
+                              left_distance  = 0,
+                              right_distance = 0
+                            )
+                        ) 
   
   return(extensions_by_id)
 }

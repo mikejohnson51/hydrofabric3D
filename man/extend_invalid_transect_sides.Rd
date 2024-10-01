@@ -9,7 +9,7 @@ by a percentage of the transects length if the transect does NOT have valid bank
 extend_invalid_transect_sides(
   transects_to_check,
   net,
-  crosswalk_id,
+  crosswalk_id = NULL,
   scale = 0.5,
   direction = "both",
   verbose = TRUE

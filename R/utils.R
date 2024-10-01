@@ -152,6 +152,124 @@ add_hydrofabric_id <- function(df) {
   return(df) 
 }
 
+#' Add a length column to a sf geometry dataframe
+#'
+#' @param x sf dataframe
+#' @param length_col character, name to use for length column. Default is NULL which will use "geom_length" as the length column name
+#' @param add_unit_to_col logical, whether to try and extract units from the geometry and append these to the column name. Default is FALSE 
+#'
+#' @return sf dataframe 
+#' @importFrom sf st_length st_geometry 
+#' @export
+add_length_col <- function(x, 
+                           length_col = NULL, 
+                           add_unit_to_col = FALSE
+) {
+  
+  # length_col is NULL then set it to "cs_lengthm"
+  if(is.null(length_col)) {
+    length_col = "geom_length"
+  }
+  
+  # x <- transects
+  # ll <- sf::st_length(sf::st_geometry(x))
+  
+  length_vect <- sf::st_length(sf::st_geometry(x))
+  
+  # attempt to add a unit string to the column name
+  if (add_unit_to_col) {
+    numerator_unit    <- units(length_vect)$numerator
+    numerator_unit    <- if (length(numerator_unit) > 0) { numerator_unit } else { NULL } 
+    
+    denominator_unit  <- units(length_vect)$denominator
+    denominator_unit  <- if (length(denominator_unit) > 0) { denominator_unit } else { NULL }
+    
+    unit_str   <- paste0(c(numerator_unit, denominator_unit), collapse = "_")
+    length_col <- paste0(length_col, unit_str)
+  }
+  
+  if (length_col %in% names(x)) {
+    warning("Length column '", length_col, "' is already a column in 'x', and will be overwritten")
+  }
+  
+  # create a column based on the length of the linestring using "length_col" as name of column 
+  x[length_col] <- as.numeric(length_vect)
+  
+  return(x)
+  
+}
+
+#' Add an extension_distance column based off valid_banks and has_relief attributes
+#'
+#' @param transects dataframe, tibble or sf dataframe with length_col,  "valid_banks", and "has_relief" columns
+#' @param scale numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50% of the transect length)
+#' @param length_col character, name of the column with the numeric cross section length 
+#'
+#' @return dataframe, tibble or sf dataframe
+#' @importFrom dplyr mutate case_when
+add_attribute_based_extension_distances <- function(transects, 
+                                             scale      = 0.5, 
+                                             length_col = NULL
+) {
+  # transects <- 
+  #   transects %>% 
+  #   dplyr::mutate(
+  #     has_relief = TRUE,
+  #     valid_banks = FALSE
+  #   )
+  
+  # scale = 0.5
+  # length_col = NULL 
+  
+  
+  if(!inherits(scale, "numeric")) {
+    stop("Invalid 'scale' value, scale must be an integer or float numeric value")
+  }
+  
+  if (scale < 0) {
+    stop("Invalid 'scale' value, scale must be numeric value greater than or equal to 0")
+  }
+  
+  if(is.null(length_col)) {
+    stop("Missing 'length_col' character input indicating which column in 'transects' is a numeric vector of the lengths of each transect")
+  }
+  
+  REQUIRED_COLS <- c(length_col, "valid_banks", "has_relief")
+  
+  # validate input graph
+  is_valid <- validate_df(transects, REQUIRED_COLS, "transects")
+  
+  # TODO: this should be reviewed 
+  # NOTE:  --> setting a default of FALSE for NA valid_banks and NA has_relief values
+  transects <-
+    transects %>%
+    dplyr::mutate(
+      valid_banks = dplyr::case_when(
+        is.na(valid_banks) ~ FALSE,
+        TRUE               ~ valid_banks
+      ),
+      has_relief = dplyr::case_when(
+        is.na(has_relief)  ~ FALSE,
+        TRUE               ~ has_relief
+      )
+    )
+  
+  # add distances to extend for the left and right side of a transect
+  # for any of the the already "valid transects", we just set an extension distance of 0 
+  # on both sides and these transects will be KEPT AS IS
+  transects <-
+    transects %>% 
+    dplyr::mutate(
+      extension_distance = dplyr::case_when(
+        !valid_banks | !has_relief ~ (((scale)*(.data[[length_col]])) / 2),
+        TRUE                       ~ 0
+      )
+    ) 
+  
+  return(transects)
+  
+}
+
 #' @title Move Geometry Column to the last column position
 #' @description 
 #' Internal utility function for taking a dataframe or an sf dataframe, checks for the existence of a geometry type column, and 
