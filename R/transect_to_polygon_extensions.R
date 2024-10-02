@@ -218,14 +218,18 @@ calc_extension_distances <- function(
   # output a message every ~10% intervals
   message_interval             <- total %/% 20
   
+  make_progress <- make_progress_bar(TRUE, length(ids))
+  
   for (i in seq_along(ids)) {
-    
     # log percent complete
-    if (message_interval != 0 && i %% message_interval == 0) {
-      # get the percent complete
-      percent_done <- round(i/total, 2) * 100
-      message(i, " > ", percent_done, "% ") 
-    }
+    make_progress()
+    
+    # # log percent complete
+    # if (message_interval != 0 && i %% message_interval == 0) {
+    #   # get the percent complete
+    #   percent_done <- round(i/total, 2) * 100
+    #   message(i, " > ", percent_done, "% ") 
+    # }
     
     index_vect <- unlist(lines_to_cut_indices[[i]])
     
@@ -378,7 +382,17 @@ sf_polygons_to_geos_multilinestrings <- function(polygons, tolerance = 250) {
            geos::geos_simplify_preserve_topology(tolerance))
 }
 
-# Helper function for cleaning up transects and adding some meta data after going through partition_transects_for_extension
+#' Helper function for cleaning up transects and adding some meta data after going through partition_transects_for_extension
+#'
+#' @param partition dtaframe or sf dataframe
+#' @param dir character, 'left' or 'right'. Default is 'left'
+#' @param crosswalk_id character, unique column ID name
+#'
+#' @return dataframe or sf dataframe
+#' @importFrom dplyr mutate relocate any_of
+#' @importFrom sf st_length
+#' @noRd
+#' @keywords internal
 wrangle_paritioned_transects <- function(partition, 
                                          dir = "left", 
                                          crosswalk_id = "hy_id"
@@ -390,7 +404,7 @@ wrangle_paritioned_transects <- function(partition,
       partition         = dir,
       partition_lengthm = as.numeric(sf::st_length(.))
     ) %>%
-    hydrofabric3D::add_tmp_id(x = crosswalk_id, y = "cs_id") %>%
+    add_tmp_id(x = crosswalk_id, y = "cs_id") %>%
     dplyr::relocate(tmp_id,
                     dplyr::any_of(crosswalk_id),
                     # cs_source,
@@ -409,10 +423,26 @@ wrangle_paritioned_transects <- function(partition,
 # From a set of transects and a set of polygons, subset the transects based on whether their start / end point is fully within a polygon
 # This function will return the points transect lines that need to be extended in a given direction
 # i.e. When dir = "left" then the returned transects have their starting points entirely within a polygon
-partition_transects_for_extension <- function(transects, polygons_subset, crosswalk_id = "hy_id", dir = "left") {
+
+#' From a set of transects and a set of polygons, subset the transects based on whether their start / end point is fully within a polygon
+#'  This function will return the points transect lines that need to be extended in a given direction. ( i.e. When dir = "left" then the returned transects have their starting points entirely within a polygon)
+#' @param transects sf dataframe w/ linestrings
+#' @param polygons_subset sf dataframe of polygons 
+#' @param dir character, direction to partition
+#'
+#' @return sf dataframe subset of 'transects' that are fully within polygons
+#' @importFrom geos geos_point_start geos_point_end geos_within_matrix
+#' @importFrom dplyr filter 
+#' @noRd
+#' @keywords internal
+partition_transects_for_extension <- function(transects, polygons_subset, dir = "left") {
   
   # POINT START = LEFT
   # POINT END   = RIGHT
+  
+  if (!dir %in% c("left", "right")) {
+    stop("Invalid 'dir' value '", dir, "', 'dir' must be either 'left' or 'right'")  
+  }
   
   # get the function needed for a given direction, a transects starting point is the "left" and the ending point is the right  
   dir_function      <- ifelse(dir == "left", geos::geos_point_start, geos::geos_point_end)
@@ -521,6 +551,7 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
   
   return(extensions_by_id)
 }
+
 #' Decide the start and end points for the final transect line given two extended versions of the same transect
 #' Requires two logicals indicating what to do with the extensions (these are decided by checking for intersections with the rest of the network)
 #' Internal helper function
@@ -530,7 +561,8 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
 #' @param use_right logical, do we use the right extension
 #' @importFrom geos geos_point_start geos_point_end
 #' @return geos_geometry points, the start and end point of the final extension line
-#' @export
+#' @noRd
+#' @keywords internal
 pick_extension_pts <- function(
     left_extension, 
     right_extension, 

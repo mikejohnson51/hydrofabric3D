@@ -182,116 +182,6 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
       dplyr::any_of(c(CROSSWALK_ID)), cs_id
     )
   
-  # mapview::mapview(transects) + flowlines + polygons
-  # # get only the relevent polygons/transects
-  # transect_subset   <- hydrofabric3D:::subset_transects_in_polygons(transects, polygons)
-  # polygons_subset   <- hydrofabric3D:::subset_polygons_in_transects(transects, polygons)
-  # 
-  # hydrofabric3D:::subset_transects_in_polygons()
-  
-  # get a dataframe that tells you how far to extend each line in either direction
-  # extensions_by_id  <- get_extensions_by_id(transect_subset, polygons_subset, crosswalk_id, max_extension_distance)
-  
-  
-  # transect_subset
-  # polygons_subset 
-  # crosswalk_id
-  # max_extension_distance
-  # 
-  # # transects = transect_subset
-  # # polygons = polygons_subset 
-  # crosswalk_id = CROSSWALK_ID
-  # max_extension_distance = MAX_EXT_DIST
-  # 
-  # left_partition <- partition_transects_for_extension(
-  #   transects, 
-  #   polygons, 
-  #   dir = "left"
-  # ) %>% 
-  #   wrangle_paritioned_transects(
-  #     dir          = "left", 
-  #     crosswalk_id = crosswalk_id
-  #   )
-  # 
-  # right_partition <- partition_transects_for_extension(
-  #   transects, 
-  #   polygons, 
-  #   dir = "right"
-  # ) %>% 
-  #   wrangle_paritioned_transects(
-  #     dir          = "right", 
-  #     crosswalk_id = crosswalk_id
-  #   )
-  # 
-  # # Convert the polygon to a MULTILINESTRING geometry for checking extension distances
-  # mls <- sf_polygons_to_geos_multilinestrings(polygons, 200)
-  # 
-  # message("Generating left side distances....") 
-  # left_distances <- calc_extension_distances(
-  #   geos_geoms             = geos::as_geos_geometry(left_partition),
-  #   ids                    = left_partition$tmp_id,
-  #   lines_to_cut           = mls,
-  #   lines_to_cut_indices   = left_partition$polygon_index,
-  #   direction              = "head",
-  #   max_extension_distance = max_extension_distance
-  # )
-  # 
-  # message("Generating right side distances...")
-  # right_distances <- calc_extension_distances(
-  #   geos_geoms             = geos::as_geos_geometry(right_partition),
-  #   ids                    = right_partition$tmp_id,
-  #   lines_to_cut           = mls,
-  #   lines_to_cut_indices   = right_partition$polygon_index,
-  #   direction              = "tail",
-  #   max_extension_distance = max_extension_distance
-  # )
-  # 
-  # left_partition$left_distance   <- left_distances
-  # right_partition$right_distance <- right_distances
-  # 
-  # # Distance to extend LEFT and/or RIGHT for each hy_id/cs_id
-  # extensions_by_id <- dplyr::left_join(
-  #   sf::st_drop_geometry(
-  #     dplyr::select(left_partition, 
-  #                   dplyr::any_of(crosswalk_id),
-  #                   cs_id,
-  #                   left_distance
-  #     )
-  #   ),
-  #   sf::st_drop_geometry(
-  #     dplyr::select(right_partition, 
-  #                   dplyr::any_of(crosswalk_id),
-  #                   cs_id, 
-  #                   right_distance
-  #     )
-  #   ),
-  #   by = c(crosswalk_id, "cs_id")
-  # )
-  # 
-  # # add any missing crosswalk_id/cs_id that didnt have any extension distance w/ values of 0
-  # extensions_by_id <- dplyr::bind_rows(
-  #                       extensions_by_id, 
-  #                       transects %>% 
-  #                         sf::st_drop_geometry() %>% 
-  #                         hydrofabric3D::add_tmp_id(x = crosswalk_id) %>% 
-  #                         dplyr::filter(!tmp_id %in% hydrofabric3D::add_tmp_id(extensions_by_id, x = crosswalk_id)$tmp_id) %>% 
-  #                         dplyr::select(-tmp_id) %>% 
-  #                         dplyr::mutate(
-  #                           left_distance  = 0,
-  #                           right_distance = 0
-  #                         )
-  #                     ) 
-  # 
-  
-  # # create testiung polygons by buffering the flowlines
-  # polygons <- 
-  #   flowlines %>%
-  #   dplyr::slice(flowlines, 1) %>%
-  #   sf::st_buffer( 
-  #     dplyr::slice(flowlines, 1), 
-  #     BUFF_DIST
-  #     )
-  
   # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
   ext_dists <- hydrofabric3D::get_extensions_by_id(
     transects = transects,
@@ -321,6 +211,393 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
   
 })
 
+
+testthat::test_that("get_extensions_by_id() polygon is farther away than max extension distance so transect only goes to max_extension_distance", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  
+  CROSSWALK_ID       <- "id"
+  NUM_OF_TRANSECTS   <- 3
+  MAX_EXT_DIST       <- 10
+  BUFF_DIST          <- 1000 
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID )), 
+      geom
+    ) 
+  
+  # generate transects
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = NUM_OF_TRANSECTS
+  ) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID)), cs_id
+    )
+  
+  # buffer flowline out by BUFF DIST
+  buffed_flowlines <- sf::st_buffer(flowlines, BUFF_DIST)
+  # mapview::mapview(buffed_flowlines) + transects + flowlines
+  
+  # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
+  ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  buffed_flowlines, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  # make sure that because the polygon for the transects is WAY bigger than the max extension dist + starting transect length, 
+  # then the transects are just extended to the max possible length because they never actually intersect the bounds of the
+  left_side_of_transects_is_max_extended   <- all(ext_dists$left_distance == MAX_EXT_DIST)
+  right_side_of_transects_is_max_extended  <- all(ext_dists$right_distance == MAX_EXT_DIST)
+  
+  testthat::expect_true(left_side_of_transects_is_max_extended)
+  testthat::expect_true(right_side_of_transects_is_max_extended)
+  
+})
+
+testthat::test_that("get_extensions_by_id() max extension distance is long enough that transects reach edge of polygons ", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  
+  CROSSWALK_ID       <- "id"
+  NUM_OF_TRANSECTS   <- 3
+  CS_WIDTH           <- 100
+  MAX_EXT_DIST       <- 1200
+  BUFF_DIST          <- 1000 
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID )), 
+      geom
+    ) 
+  
+  # generate transects
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = NUM_OF_TRANSECTS,
+    cs_widths = CS_WIDTH
+  ) %>% 
+  dplyr::select(
+    dplyr::any_of(c(CROSSWALK_ID)), cs_id
+  )
+  
+  # buffer flowline out by BUFF DIST
+  buffed_flowlines <- sf::st_buffer(flowlines, BUFF_DIST)
+  # mapview::mapview(buffed_flowlines) + transects + flowlines
+  
+  # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
+  ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  buffed_flowlines, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  # make sure that the transects get an extension distance less than the max because the max starting transect length + the max extension distance is much bigger 
+  # than the actual distance that the polygon is from either end of the transects
+  # (i.e. the left/right side of the transects do NOT need to go the full MAX EXTENSION DISTANCE to hit the edge of the polygon)
+  left_side_of_transects_is_less_than_max_extended  <- all(ext_dists$left_distance < MAX_EXT_DIST)
+  right_side_of_transects_is_less_than_max_extended <- all(ext_dists$right_distance < MAX_EXT_DIST)
+  
+  testthat::expect_true(left_side_of_transects_is_less_than_max_extended)
+  testthat::expect_true(right_side_of_transects_is_less_than_max_extended)
+  
+})
+
+testthat::test_that("get_extensions_by_id() transects that are already longer than and reach outside of the edge of a polygon get extension distance of 0", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  
+  CROSSWALK_ID       <- "id"
+  NUM_OF_TRANSECTS   <- 3
+  CS_WIDTH           <- 100
+  MAX_EXT_DIST       <- 200
+  BUFF_DIST          <- 10
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID )), 
+      geom
+    ) 
+  
+  # generate transects
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = NUM_OF_TRANSECTS,
+    cs_widths = CS_WIDTH
+  ) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID)), cs_id
+    )
+  
+  # buffer flowline out by BUFF DIST
+  buffed_flowlines <- sf::st_buffer(flowlines, BUFF_DIST)
+  # mapview::mapview(buffed_flowlines) + transects + flowlines
+  
+  # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
+  ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  buffed_flowlines, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  # make sure that transects that are already longer than a polygon they intersect with, do NOT get extended
+  # TODO: maybe an ideal world would give a negative distance (i.e. shorten the transect lines)
+  no_left_side_extension   <- all(ext_dists$left_distance == 0)
+  no_right_side_extension  <- all(ext_dists$right_distance == 0)
+  
+  testthat::expect_true(no_left_side_extension)
+  testthat::expect_true(no_right_side_extension)
+  
+})
+
+testthat::test_that("get_extensions_by_id() transects intersect with 2 overlapping polygons (i.e. 2 layered polygons, 1 entirely encompassing the other, both fully encompass the transect lines)", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  
+  CROSSWALK_ID       <- "id"
+  NUM_OF_TRANSECTS   <- 3
+  CS_WIDTH           <- 100
+  MAX_EXT_DIST       <- 1200
+  BUFF_DIST_1        <- 1000
+  BUFF_DIST_2        <- BUFF_DIST_1 / 2
+  
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID )), 
+      geom
+    ) 
+  
+  # generate transects
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = NUM_OF_TRANSECTS,
+    cs_widths = CS_WIDTH
+  ) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID)), cs_id
+    )
+  
+  # buffer flowline out by 2 different distances and merge them back together
+  big_polygons   <- sf::st_buffer(flowlines, BUFF_DIST_1)
+  small_polygons <- sf::st_buffer(flowlines, BUFF_DIST_2)
+  
+  buffed_flowlines <- dplyr::bind_rows(
+    big_polygons,
+    small_polygons
+  )
+  
+  # mapview::mapview(buffered_flowlines) + transects + flowlines
+  small_ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  small_polygons, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  all_ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  buffed_flowlines, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  # hardcoded correct extension distances to the smaller polygon
+  expected_left_distance  <- c(475, 585, 328)
+  expected_right_distance <- c(420, 441, 383)
+  
+  # make sure the algo just extends out to the smaller of the overlayed polygons
+  left_side_transects_extend_only_to_closer_of_overlayed_polygons  <- all(expected_left_distance == all_ext_dists$left_distance)
+  right_side_transects_extend_only_to_closer_of_overlayed_polygons <- all(expected_right_distance == all_ext_dists$right_distance)
+   
+  testthat::expect_true(left_side_transects_extend_only_to_closer_of_overlayed_polygons)
+  testthat::expect_true(right_side_transects_extend_only_to_closer_of_overlayed_polygons)
+  
+  # TODO: Not sure if this is bad practice for tests to use the function they are testing to check for correctness....
+  # TODO: these tests get the extension distances to JUST the smaller polygons and compare those distances to the extension distances calculated for the OVERLAYED polygons
+  # TODO: They should be the same extension distances because the extenssion algo will use the first set of polygon edges it reaches
+  # left_side_extensions_match_extensions_for_only_smaller_polygons   <- all(small_ext_dists$left_distance == all_ext_dists$left_distance)
+  # right_side_extensions_match_extensions_for_only_smaller_polygons  <- all(small_ext_dists$right_distance == all_ext_dists$right_distance)
+  # 
+  # testthat::expect_true(left_side_extensions_match_extensions_for_only_smaller_polygons)
+  # testthat::expect_true(right_side_extensions_match_extensions_for_only_smaller_polygons)
+  
+})
+
+testthat::test_that("get_extensions_by_id() transects intersect with 2 overlapping polygons (i.e. 2 layered polygons, 1 entirely encompassing the other, neither encompass the transect lines) should result in 0 extension distance", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  
+  CROSSWALK_ID       <- "id"
+  NUM_OF_TRANSECTS   <- 3
+  CS_WIDTH           <- 100
+  MAX_EXT_DIST       <- 1200
+  
+  BUFF_DIST_1        <- 10
+  BUFF_DIST_2        <- BUFF_DIST_1 / 2
+  
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID )), 
+      geom
+    ) 
+  
+  # generate transects
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = NUM_OF_TRANSECTS,
+    cs_widths = CS_WIDTH
+  ) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID)), cs_id
+    )
+  
+  # buffer flowline out by 2 different distances and merge them back together
+  big_polygons   <- sf::st_buffer(flowlines, BUFF_DIST_1)
+  small_polygons <- sf::st_buffer(flowlines, BUFF_DIST_2)
+  
+  buffed_flowlines <- dplyr::bind_rows(
+    big_polygons,
+    small_polygons
+  )
+  
+  # mapview::mapview(buffed_flowlines) + transects + flowlines
+  
+  small_ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  small_polygons, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  all_ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  buffed_flowlines, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  # hardcoded correct extension distances to the smaller polygon
+  expected_left_distance  <- c(0, 0, 0)
+  expected_right_distance <- c(0, 0, 0)
+  
+  # make sure the algo just extends out to the smaller of the overlayed polygons
+  left_side_transects_extend_only_to_closer_of_overlayed_polygons  <- all(expected_left_distance == all_ext_dists$left_distance)
+  right_side_transects_extend_only_to_closer_of_overlayed_polygons <- all(expected_right_distance == all_ext_dists$right_distance)
+  
+  testthat::expect_true(left_side_transects_extend_only_to_closer_of_overlayed_polygons)
+  testthat::expect_true(right_side_transects_extend_only_to_closer_of_overlayed_polygons)
+  
+  # TODO: Not sure if this is bad practice for tests to use the function they are testing to check for correctness....
+  # TODO: these tests get the extension distances to JUST the smaller polygons and compare those distances to the extension distances calculated for the OVERLAYED polygons
+  # TODO: They should be the same extension distances because the extenssion algo will use the first set of polygon edges it reaches
+  # left_side_extensions_match_extensions_for_only_smaller_polygons   <- all(small_ext_dists$left_distance == all_ext_dists$left_distance)
+  # right_side_extensions_match_extensions_for_only_smaller_polygons  <- all(small_ext_dists$right_distance == all_ext_dists$right_distance)
+  # 
+  # testthat::expect_true(left_side_extensions_match_extensions_for_only_smaller_polygons)
+  # testthat::expect_true(right_side_extensions_match_extensions_for_only_smaller_polygons)
+  
+})
+
+testthat::test_that("get_extensions_by_id() transects intersect with 2 overlapping polygons (i.e. 2 layered polygons, 1 entirely encompassing the other, 1 polygon fully encompasses the transect lines, the other polygon does NOT, and is thus shorter than the transect lines) should result in transect lines getting extended to the bigger of the overlayed polygons", {
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  
+  CROSSWALK_ID       <- "id"
+  NUM_OF_TRANSECTS   <- 3
+  CS_WIDTH           <- 100
+  MAX_EXT_DIST       <- 1200
+  
+  BUFF_DIST_1        <- 1000
+  BUFF_DIST_2        <- 10
+  
+  
+  flowlines <-
+    flowlines %>% 
+    dplyr::slice(1) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID )), 
+      geom
+    ) 
+  
+  # generate transects
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = NUM_OF_TRANSECTS,
+    cs_widths = CS_WIDTH
+  ) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID)), cs_id
+    )
+  
+  # buffer flowline out by 2 different distances and merge them back together
+  big_polygons   <- sf::st_buffer(flowlines, BUFF_DIST_1)
+  small_polygons <- sf::st_buffer(flowlines, BUFF_DIST_2)
+  
+  buffed_flowlines <- dplyr::bind_rows(
+    big_polygons,
+    small_polygons
+  )
+  
+  # mapview::mapview(buffed_flowlines) + transects + flowlines
+  
+  small_ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  small_polygons, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  all_ext_dists <- hydrofabric3D::get_extensions_by_id(
+    transects    = transects,
+    polygons     =  buffed_flowlines, 
+    crosswalk_id = CROSSWALK_ID, 
+    max_extension_distance = MAX_EXT_DIST
+  )
+  
+  # hardcoded correct extension distances to the smaller polygon
+  expected_left_distance  <- c(955, 952, 882)
+  expected_right_distance <- c(937, 939, 952)
+  
+  # make sure the algo extends out to the LARGER of the overlayed polygons
+  left_side_transects_extend_only_to_closer_of_overlayed_polygons  <- all(expected_left_distance == all_ext_dists$left_distance)
+  right_side_transects_extend_only_to_closer_of_overlayed_polygons <- all(expected_right_distance == all_ext_dists$right_distance)
+  
+  testthat::expect_true(left_side_transects_extend_only_to_closer_of_overlayed_polygons)
+  testthat::expect_true(right_side_transects_extend_only_to_closer_of_overlayed_polygons)
+  
+  # TODO: Not sure if this is bad practice for tests to use the function they are testing to check for correctness....
+  # TODO: these tests get the extension distances to JUST the smaller polygons and compare those distances to the extension distances calculated for the OVERLAYED polygons
+  # TODO: They should be the same extension distances because the extenssion algo will use the first set of polygon edges it reaches
+  # left_side_extensions_match_extensions_for_only_smaller_polygons   <- all(small_ext_dists$left_distance == all_ext_dists$left_distance)
+  # right_side_extensions_match_extensions_for_only_smaller_polygons  <- all(small_ext_dists$right_distance == all_ext_dists$right_distance)
+  # 
+  # testthat::expect_true(left_side_extensions_match_extensions_for_only_smaller_polygons)
+  # testthat::expect_true(right_side_extensions_match_extensions_for_only_smaller_polygons)
+  
+})
 
 # buff <- 
 #   flowlines %>% 
