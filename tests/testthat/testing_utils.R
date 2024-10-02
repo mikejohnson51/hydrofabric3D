@@ -321,6 +321,75 @@ has_same_crs <- function(sf1, sf2) {
   )
   
 }
+make_flowlines_and_transects_test_data <- function() {
+  
+  coords <- matrix(c(
+    0, 0,   # bottom-left
+    0, 2,   # top-left
+    2, 2,   # top-right
+    2, 0    # bottom-right
+  ), ncol = 2, byrow = TRUE)
+  
+  u_shape <- sf::st_sfc(sf::st_linestring(coords), crs = 5070)  
+  
+  # plot(u_shape) 
+  
+  trans_coords1 <- matrix(c(
+    -1, 1, # transect 1
+    1, 1  # transect 1
+    
+  ), ncol = 2, byrow = TRUE)
+  trans1 <- sf::st_sfc(sf::st_linestring(trans_coords1), crs = 5070)  
+  
+  # plot(trans1, add = T)
+  
+  trans_coords2 <- matrix(c(
+    0.5, 3, # transect 2
+    0.5, 0.5  # transect 2
+    
+  ), ncol = 2, byrow = TRUE)
+  
+  trans2 <- sf::st_sfc(sf::st_linestring(trans_coords2), crs = 5070)  
+  
+  # plot(trans2, add = T)
+  
+  trans_coords3 <- matrix(c(
+    1.5, 3, # transect 2
+    1.5, 0.5  # transect 2
+    
+  ), ncol = 2, byrow = TRUE)
+  
+  trans3 <- sf::st_sfc(sf::st_linestring(trans_coords3), crs = 5070)  
+  
+  # plot(trans3, add = T)
+  
+  trans_coords4 <- matrix(c(
+    1, 0.25, # transect 2
+    3, 0.25  # transect 2
+    
+  ), ncol = 2, byrow = TRUE)
+  
+  trans4 <- sf::st_sfc(sf::st_linestring(trans_coords4), crs = 5070)  
+  
+  # plot(trans4, add = T)
+  
+  trans_coords5 <- matrix(c(
+    -1, 1.25, # transect 2
+    3, 1.25  # transect 2
+    
+  ), ncol = 2, byrow = TRUE)
+  
+  trans5 <- sf::st_sfc(sf::st_linestring(trans_coords5), crs = 5070)  
+  
+  # plot(trans5, add = T)
+  
+  
+  combined <- sf::st_as_sf(c(trans1, trans2, trans3, trans4, trans5, u_shape), crs = 5070)
+  
+  combined$line_type <- c("transect", "transect", "transect", "transect", "transect", "flowline")
+  
+  return(combined)
+}
 
 # -------------------------------------------------------------------------------
 # ---- Functions for generating testing cross sections data ----

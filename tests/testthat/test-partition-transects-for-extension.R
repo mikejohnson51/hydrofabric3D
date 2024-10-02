@@ -155,14 +155,14 @@ testthat::test_that("partition_transects_for_extension() correct output columns 
     polygons_subset = polygons,
     dir = "right"
   ) 
-   
+  
   # minimum expected cols
   expected_cols <- c(CROSSWALK_ID, 
                      "cs_id", 
                      "geometry",
                      "polygon_index"
-                     )
-                     
+  )
+  
   
   has_left_required_output_cols  <- check_required_cols(left_partition, expected_cols = expected_cols)
   has_right_required_output_cols <- check_required_cols(right_partition, expected_cols = expected_cols)
@@ -231,7 +231,7 @@ testthat::test_that("partition_transects_for_extension() 1 polygon with a set of
   
   left_half_of_transects_is_empty_list   <- inherits(left_partition$polygon_index, "list") && length(left_partition$polygon_index) == 0 
   right_half_of_transects_is_empty_list  <- inherits(right_partition$polygon_index, "list") && length(right_partition$polygon_index) == 0 
-
+  
   testthat::expect_true(left_half_of_transects_is_empty_list)
   testthat::expect_true(right_half_of_transects_is_empty_list)
   
