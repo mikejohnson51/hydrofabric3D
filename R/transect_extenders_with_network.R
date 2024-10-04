@@ -187,7 +187,7 @@ extend_invalid_transect_sides <- function(
   transects_to_check <- add_attribute_based_extension_distances(transects = transects_to_check, 
                                                                 scale = scale, 
                                                                 length_col = "cs_lengthm"
-                                                                )
+  )
   # # TODO: this should be reviewed 
   # # NOTE:  --> setting a default of FALSE for NA valid_banks and NA has_relief values
   # transects_to_check <-
@@ -223,14 +223,14 @@ extend_invalid_transect_sides <- function(
   
   # extend the transects based on the 'extension_distance' column (meters)
   extended_transects <- extend_transects_sides(
-      transects    = transects_to_check,
-      flowlines    = net,
-      crosswalk_id = crosswalk_id,
-      cs_id        = "cs_id",
-      grouping_id  = crosswalk_id,
-      direction    = direction
-    ) 
-    
+    transects    = transects_to_check,
+    flowlines    = net,
+    crosswalk_id = crosswalk_id,
+    cs_id        = "cs_id",
+    grouping_id  = crosswalk_id,
+    direction    = direction
+  ) 
+  
   # Set the is_extended flag based on if either the left OR the right side were extended
   extended_transects <- 
     extended_transects %>% 
@@ -353,7 +353,7 @@ extend_transects_sides <-   function(
     stop("Invalid 'direction' argument '", direction, 
          "'\n'direction' must be one of ", 
          paste(valid_directions, collapse = ", "))
-    }
+  }
   
   extension_function <- switch(
     direction,
@@ -502,7 +502,7 @@ extend_transects_any_side <- function(
     # skip the iteration if no extension required
     no_extension_required <- (
       (left_distance_to_extend == 0 || is.na(left_distance_to_extend) || is.null(left_distance_to_extend)) && 
-      (right_distance_to_extend == 0 || is.na(right_distance_to_extend) || is.null(right_distance_to_extend)) 
+        (right_distance_to_extend == 0 || is.na(right_distance_to_extend) || is.null(right_distance_to_extend)) 
     )
     # no_extension_required <- (left_distance_to_extend == 0 && right_distance_to_extend == 0)
     
@@ -640,7 +640,7 @@ extend_transects_any_side <- function(
   # Flags indicating if extensions happened or not (probably can just be dropped)
   transects$left_is_extended   <- left_extended_flag
   transects$right_is_extended  <- right_extended_flag
-
+  
   transects <- hydroloom::rename_geometry(transects, "geometry")
   
   transects <-
@@ -1407,7 +1407,7 @@ extend_transects_by_length <- function(
 # # @importFrom dplyr filter bind_rows
 # # @export
 # extend_invalid_transects3 <- function(
-#     transects_to_check, 
+    #     transects_to_check, 
 #     net, 
 #     scale = 0.5,
 #     verbose = TRUE

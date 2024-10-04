@@ -50,31 +50,31 @@ testthat::test_that("flowlines only (set 'id' to NULL) sf dataframe, checking pr
 testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided", {
   flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
   
-  id_col = "hy_id"
+  CROSSWALK_ID = "hy_id"
   NUMBER_OF_TRANSECTS = 10
   flowlines <-
     flowlines %>% 
-    dplyr::rename(!!sym(id_col) := id) %>% 
-    dplyr::select(dplyr::any_of(id_col), geom)
+    dplyr::rename(!!sym(CROSSWALK_ID) := id) %>% 
+    dplyr::select(dplyr::any_of(CROSSWALK_ID), geom)
   
-  start_unique_ids_count <- length(unique(flowlines[[id_col]]))
+  start_unique_ids_count <- length(unique(flowlines[[CROSSWALK_ID]]))
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id = id_col,
+    id = CROSSWALK_ID,
     num = NUMBER_OF_TRANSECTS,
     cs_widths  = 5
   )
   
-  end_unique_ids_count <- length(unique(transects[[id_col]]))
+  end_unique_ids_count <- length(unique(transects[[CROSSWALK_ID]]))
   
   testthat::expect_true(end_unique_ids_count == start_unique_ids_count)
-  testthat::expect_true(id_col %in% names(transects))
+  testthat::expect_true(CROSSWALK_ID %in% names(transects))
   
   all_ids_have_correct_number_transects <- 
     transects %>% 
     sf::st_drop_geometry() %>% 
-    dplyr::group_by(dplyr::across(dplyr::any_of(id_col))) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(CROSSWALK_ID))) %>% 
     dplyr::count() %>% 
     dplyr::mutate(
       correct_number_transects = dplyr::case_when(
@@ -86,40 +86,40 @@ testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided",
     all()
   
   testthat::expect_true(all_ids_have_correct_number_transects)  
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
 })
 
 testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided", {
   
-  ID_COLS = c("hy_id", "id")
+  CROSSWALK_IDS = c("hy_id", "id")
   
-  for (id_col in ID_COLS) {
+  for (CROSSWALK_ID in CROSSWALK_IDS) {
     
     NUMBER_OF_TRANSECTS = 10
     flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
     flowlines <-
       flowlines %>% 
-      dplyr::rename(!!sym(id_col) := id) %>% 
-      dplyr::select(dplyr::any_of(id_col), geom)
+      dplyr::rename(!!sym(CROSSWALK_ID) := id) %>% 
+      dplyr::select(dplyr::any_of(CROSSWALK_ID), geom)
     
-    start_unique_ids_count <- length(unique(flowlines[[id_col]]))
+    start_unique_ids_count <- length(unique(flowlines[[CROSSWALK_ID]]))
     
     transects <- cut_cross_sections(
       net = flowlines,
-      id = id_col,
+      id = CROSSWALK_ID,
       num = NUMBER_OF_TRANSECTS,
       cs_widths  = 5
     )
     
-    end_unique_ids_count <- length(unique(transects[[id_col]]))
+    end_unique_ids_count <- length(unique(transects[[CROSSWALK_ID]]))
     
     testthat::expect_true(end_unique_ids_count == start_unique_ids_count)
-    testthat::expect_true(id_col %in% names(transects))
+    testthat::expect_true(CROSSWALK_ID %in% names(transects))
     
     all_ids_have_correct_number_transects <- 
       transects %>% 
       sf::st_drop_geometry() %>% 
-      dplyr::group_by(dplyr::across(dplyr::any_of(id_col))) %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(CROSSWALK_ID))) %>% 
       dplyr::count() %>% 
       dplyr::mutate(
         correct_number_transects = dplyr::case_when(
@@ -131,7 +131,7 @@ testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided",
       all()
     
     testthat::expect_true(all_ids_have_correct_number_transects)  
-    testthat::expect_true(check_transect_output_cols(transects, id_col))
+    testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   } 
 })
 
@@ -140,17 +140,17 @@ testthat::test_that("5 meter long transects distance check", {
   NUMBER_OF_TRANSECTS = 10
   EXPECTED_WIDTH = 5
   
-  id_col = 'id'
+  CROSSWALK_ID = 'id'
   
   flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
   flowlines <-
     flowlines %>% 
-    dplyr::rename(!!sym(id_col) := id) %>% 
-    dplyr::select(dplyr::any_of(id_col), geom)
+    dplyr::rename(!!sym(CROSSWALK_ID) := id) %>% 
+    dplyr::select(dplyr::any_of(CROSSWALK_ID), geom)
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id = id_col,
+    id = CROSSWALK_ID,
     num = NUMBER_OF_TRANSECTS,
     cs_widths  = EXPECTED_WIDTH
   )
@@ -165,7 +165,7 @@ testthat::test_that("5 meter long transects distance check", {
     all()
   
   testthat::expect_true(is_correct_length_transects)
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   
 })
 
@@ -175,22 +175,22 @@ testthat::test_that("check correct output columns for transects", {
   NUMBER_OF_TRANSECTS = 10
   EXPECTED_WIDTH = 5
   
-  id_col = NULL
+  CROSSWALK_ID = NULL
   
   flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
   flowlines <-
     flowlines %>%
-    # dplyr::rename(!!sym(id_col) := id) %>% 
+    # dplyr::rename(!!sym(CROSSWALK_ID) := id) %>% 
     dplyr::select(geom)
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id = id_col,
+    id = CROSSWALK_ID,
     num = NUMBER_OF_TRANSECTS,
     cs_widths  = EXPECTED_WIDTH
   )
   
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   
   is_correct_length_transects <- (
     transects %>% 
@@ -202,14 +202,14 @@ testthat::test_that("check correct output columns for transects", {
     all()
   
   testthat::expect_true(is_correct_length_transects)
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   
 })
 
 
 testthat::test_that("flowline only (no other input cols) sf dataframe, checking transect number and no self intersections", {
   flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
-  id_col <- "hydrofabric_id"
+  CROSSWALK_ID <- "hydrofabric_id"
   
   flowline <-
     flowlines[10, ] %>%
@@ -224,7 +224,7 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   
   has_no_self_intersctions <- all(lengths(sf::st_intersects(transects)) == 1)
   testthat::expect_true(has_no_self_intersctions)
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   
   transects <- cut_cross_sections(
     net = flowline,
@@ -241,7 +241,7 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   has_no_self_intersctions <- all(lengths(sf::st_intersects(transects)) == 1)
   testthat::expect_true(has_no_self_intersctions)
   
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   
   transects <- cut_cross_sections(
     net = flowline,
@@ -252,7 +252,7 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   
   has_no_self_intersctions <- all(lengths(sf::st_intersects(transects)) == 1)
   testthat::expect_true(has_no_self_intersctions)
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   # trans <- cut_cross_sections(
   #   net = flowline,
   #   cs_widths = 2500,
@@ -301,7 +301,7 @@ testthat::test_that("cut 2 transects on a single flowline", {
   # testthat::expect_equal(nrow(transects), 10)
   # testthat::expect_equal(transects$cs_id, c(1:10))
   # 
-  # testthat::expect_true(check_transect_output_cols(transects, id_col))
+  # testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   # 
   # # Expect cs_lengthm and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
   # testthat::expect_true(dplyr::between(transects$cs_lengthm[1], 50-2, 50+2))
@@ -333,7 +333,7 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
   # testthat::expect_equal(nrow(transects), 10)
   # testthat::expect_equal(transects$cs_id, c(1:10))
   # # test correct column names
-  # testthat::expect_true(check_transect_output_cols(transects, id_col))
+  # testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   # 
   # # Expect cs_lengthm and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
   # testthat::expect_true(dplyr::between(transects$cs_lengthm[1], 50-2, 50+2))
@@ -387,10 +387,10 @@ flowline <-
   )
 
 testthat::test_that("cut 10 transects along single flowline & remove intersects (power law bankful widths, smooth, densify 3)", {
-  id_col                = "hy_id"
+  CROSSWALK_ID                = "hy_id"
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowline,
-    id                = id_col,
+    id                = CROSSWALK_ID,
     cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
     num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
     smooth            = TRUE,                          # smooth lines
@@ -407,7 +407,7 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
   testthat::expect_equal(transects$cs_id, c(1:10))
   
   # test correct column names 
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   # testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_lengthm", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
   
   # Expect cs_lengthm and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
@@ -420,11 +420,11 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
 })
 
 testthat::test_that("cut 20 transects along single flowline & remove intersects (power law bankful widths, smooth, densify 3)", {
-  id_col              = "hy_id"
+  CROSSWALK_ID              = "hy_id"
   
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowline,
-    id                = id_col,
+    id                = CROSSWALK_ID,
     cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
     num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
     smooth            = TRUE,                          # smooth lines
@@ -438,7 +438,7 @@ testthat::test_that("cut 20 transects along single flowline & remove intersects 
   # plot(transects$geometry, add = T)
   
   # test correct column names 
-  testthat::expect_true(check_transect_output_cols(transects, id_col))
+  testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
   # testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_lengthm", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
    
   # test that the number of rows is right and all cs IDs are present

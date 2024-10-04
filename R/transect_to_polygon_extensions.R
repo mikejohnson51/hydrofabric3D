@@ -296,21 +296,17 @@ make_line_from_start_and_end_pts <- function(start, end, line_crs) {
 is_valid_transect_line <- function(transect_to_check, trans, flines) {
   
   # ###   ##   ##   ##   ##   ##   ##   ##   ##   ##  
-  # transect_to_check <- right_extended_trans
-  # trans <- transects_geos[transect_crosswalk_id_array == current_hy_id & transect_cs_id_array != current_cs_id]
-  # flines <- flowlines_geos[fline_id_array == current_hy_id]
-  
-  # transect_to_check <- right_extended_trans
-  # trans <- transects_geos[transect_group_id_array == transect_group_id_array[i]]
-  # flines <-  flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
-  
-  # ###   ##   ##   ##   ##   ##   ##   ##   ##   ##  
   
   # Define conditions to decide which version of the transect to use
   
   # 1. Use transect with extension in BOTH directions
   # 2. Use transect with LEFT extension only
   # 3. Use transect with RIGHT extension only
+  
+  # check for NULL / empty geometries
+  if (is.null(transect_to_check) || is.null(trans) || is.null(flines)) {
+    stop("invalid geometry: geometries cannot be NULL")
+  }
   
   # Check that the extended transect lines only intersect a single flowline in the network only ONCE
   intersects_with_flowlines <- geos::geos_intersection(

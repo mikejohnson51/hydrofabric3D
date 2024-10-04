@@ -323,16 +323,35 @@ has_same_crs <- function(sf1, sf2) {
 }
 make_flowlines_and_transects_test_data <- function() {
   
-  coords <- matrix(c(
+  u_shape_coords <- matrix(c(
     0, 0,   # bottom-left
     0, 2,   # top-left
     2, 2,   # top-right
     2, 0    # bottom-right
   ), ncol = 2, byrow = TRUE)
   
-  u_shape <- sf::st_sfc(sf::st_linestring(coords), crs = 5070)  
+  v_shape_coords <- matrix(c(
+    4, 4,   # bottom-left
+    5, 5,   # top-left
+    6, 4   # top-right
+  ), ncol = 2, byrow = TRUE)
   
-  # plot(u_shape) 
+  separated_trans_coords <- matrix(c(
+    5, 10, 
+    7, 10  #
+    
+  ), ncol = 2, byrow = TRUE)
+  
+  main_shapes <- sf::st_sfc(
+    c(
+    sf::st_linestring(u_shape_coords),
+    sf::st_linestring(v_shape_coords),
+    sf::st_linestring(separated_trans_coords)
+    ),
+    crs = 5070
+    )  %>% 
+    sf::st_cast("LINESTRING")
+  
   
   trans_coords1 <- matrix(c(
     -1, 1, # transect 1
@@ -340,38 +359,28 @@ make_flowlines_and_transects_test_data <- function() {
     
   ), ncol = 2, byrow = TRUE)
   trans1 <- sf::st_sfc(sf::st_linestring(trans_coords1), crs = 5070)  
-  
-  # plot(trans1, add = T)
-  
+ 
   trans_coords2 <- matrix(c(
     0.5, 3, # transect 2
     0.5, 0.5  # transect 2
     
   ), ncol = 2, byrow = TRUE)
-  
   trans2 <- sf::st_sfc(sf::st_linestring(trans_coords2), crs = 5070)  
-  
-  # plot(trans2, add = T)
-  
+ 
   trans_coords3 <- matrix(c(
     1.5, 3, # transect 2
     1.5, 0.5  # transect 2
     
   ), ncol = 2, byrow = TRUE)
-  
   trans3 <- sf::st_sfc(sf::st_linestring(trans_coords3), crs = 5070)  
-  
-  # plot(trans3, add = T)
   
   trans_coords4 <- matrix(c(
     1, 0.25, # transect 2
     3, 0.25  # transect 2
     
   ), ncol = 2, byrow = TRUE)
-  
   trans4 <- sf::st_sfc(sf::st_linestring(trans_coords4), crs = 5070)  
   
-  # plot(trans4, add = T)
   
   trans_coords5 <- matrix(c(
     -1, 1.25, # transect 2
@@ -381,16 +390,137 @@ make_flowlines_and_transects_test_data <- function() {
   
   trans5 <- sf::st_sfc(sf::st_linestring(trans_coords5), crs = 5070)  
   
+  # plot(main_shapes, add = F)
+  # plot(trans1, add = T)
+  # plot(trans2, add = T)
+  # plot(trans3, add = T)
+  # plot(trans4, add = T)
   # plot(trans5, add = T)
   
+  combined <- sf::st_as_sf(c(trans1, trans2, trans3, trans4, trans5, main_shapes), crs = 5070)
+  # plot(combined$x[8])
   
-  combined <- sf::st_as_sf(c(trans1, trans2, trans3, trans4, trans5, u_shape), crs = 5070)
+  combined$line_type <- c("transect", "transect", "transect", "transect", "transect", "flowline", "flowline2", "separated_transect")
   
-  combined$line_type <- c("transect", "transect", "transect", "transect", "transect", "flowline")
+  # ggplot2::ggplot() +
+  #   ggplot2::geom_sf(data = combined, ggplot2::aes(color = line_type))
   
   return(combined)
 }
 
+make_flowlines_and_transects_test_data_all_valid <- function() {
+  
+  u_shape_coords <- matrix(c(
+    0, 0,   # bottom-left
+    0, 2,   # top-left
+    2, 2,   # top-right
+    2, 0    # bottom-right
+  ), ncol = 2, byrow = TRUE)
+  
+  v_shape_coords <- matrix(c(
+    4, 4,   # bottom-left
+    5, 5,   # top-left
+    6, 4   # top-right
+  ), ncol = 2, byrow = TRUE)
+  
+  separated_trans_coords <- matrix(c(
+    5, 10, 
+    7, 10  #
+    
+  ), ncol = 2, byrow = TRUE)
+  
+  main_shapes <- sf::st_sfc(
+    c(
+      sf::st_linestring(u_shape_coords),
+      sf::st_linestring(v_shape_coords),
+      sf::st_linestring(separated_trans_coords)
+    ),
+    crs = 5070
+  )  %>% 
+    sf::st_cast("LINESTRING")
+  
+  
+  trans_coords1 <- matrix(c(
+    -1, 1, # transect 1
+    1, 1  # transect 1
+    
+  ), ncol = 2, byrow = TRUE)
+  trans1 <- sf::st_sfc(sf::st_linestring(trans_coords1), crs = 5070)  
+  
+  # trans_coords2 <- matrix(c(
+  #   0.5, 3, # transect 2
+  #   0.5, 0.5  # transect 2
+  #   
+  # ), ncol = 2, byrow = TRUE)
+  # trans2 <- sf::st_sfc(sf::st_linestring(trans_coords2), crs = 5070)  
+  
+  trans_coords3 <- matrix(c(
+    1.5, 3, # transect 2
+    1.5, 0.5  # transect 2
+    
+  ), ncol = 2, byrow = TRUE)
+  trans3 <- sf::st_sfc(sf::st_linestring(trans_coords3), crs = 5070)  
+  
+  trans_coords4 <- matrix(c(
+    1, 0.25, # transect 2
+    3, 0.25  # transect 2
+    
+  ), ncol = 2, byrow = TRUE)
+  trans4 <- sf::st_sfc(sf::st_linestring(trans_coords4), crs = 5070)  
+  
+  
+  # trans_coords5 <- matrix(c(
+  #   -1, 1.25, # transect 2
+  #   3, 1.25  # transect 2
+  #   
+  # ), ncol = 2, byrow = TRUE)
+  # 
+  # trans5 <- sf::st_sfc(sf::st_linestring(trans_coords5), crs = 5070)  
+  
+  # plot(main_shapes, add = F)
+  # plot(trans1, add = T)
+  # plot(trans2, add = T)
+  # plot(trans3, add = T)
+  # plot(trans4, add = T)
+  # plot(trans5, add = T)
+  
+  combined <- sf::st_as_sf(c(trans1, trans3, trans4, main_shapes), crs = 5070)
+  # plot(combined$x[8])
+  
+  combined$line_type <- c("transect", "transect", "transect", "flowline", "flowline2", "separated_transect")
+  
+  # ggplot2::ggplot() +
+  #   ggplot2::geom_sf(data = combined, ggplot2::aes(color = line_type))
+  
+  return(combined)
+}
+
+make_single_straight_line <- function(epsg_code = 5070) {
+  
+  line_coords <- matrix(c(
+    -100, 100,
+    100, 100  
+    
+  ), ncol = 2, byrow = TRUE)
+  
+  line_geom <- sf::st_sfc(sf::st_linestring(line_coords), crs = epsg_code)  
+  
+  line <- sf::st_as_sf(c(line_geom), crs = epsg_code)
+  
+  # plot(line$x)
+  # line %>% 
+  #   sf::st_cast("POINT")
+  
+  # sf::st_segmentize(line, 100) %>% 
+  #   sf::st_cast("POINT")
+  
+
+  
+  # ggplot2::ggplot() +
+  #   ggplot2::geom_sf(data = combined, ggplot2::aes(color = line_type))
+  
+  return(line)
+}
 # -------------------------------------------------------------------------------
 # ---- Functions for generating testing cross sections data ----
 # -------------------------------------------------------------------------------

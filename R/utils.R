@@ -1712,6 +1712,38 @@ validate_df <- function(x, cols, obj_name = NULL) {
   
 }
 
+#' Validate all arguments given are of the types specified in type_map
+#' Function throws an error if any argument is not specified in the type map or its type does not match the possible types in type_map
+#' Internal function for easily type checking all the inputs for a given function
+#' @param ... list of args
+#' @param type_map list, argument names as the keys and a vector of values representing the valid types
+#'
+#' @return
+validate_arg_types <- function(..., type_map) {
+  args <- list(...)
+  
+  for (arg_name in names(args)) {
+    # message(arg_name) 
+    
+    if (!arg_name %in% names(type_map)) {
+      stop(paste0("Unexpected argument: ", arg_name))
+    }
+    
+    expected_types <- type_map[[arg_name]]
+    val <- args[[arg_name]]
+    
+    is_expected_type <- any(unlist(lapply(expected_types, function(i) inherits(args[[arg_name]], i))))
+    
+    if (!is_expected_type) {
+      stop(paste0("Argument '", arg_name, "' must be of type '", expected_type, 
+                  "' but got '", class(args[[arg_name]]), "'"))
+    }
+  }
+  
+  return(TRUE)
+}
+
+
 #' Validate Inputs for cut_cross_sections Function
 #'
 #' This function validates the inputs for the cut_cross_sections function to ensure they meet the required criteria.
