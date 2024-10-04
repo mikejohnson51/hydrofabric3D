@@ -1722,8 +1722,21 @@ validate_df <- function(x, cols, obj_name = NULL) {
 validate_arg_types <- function(..., type_map) {
   args <- list(...)
   
+  # args = list()
+  # type_map <- list(
+  #   x = c("numeric", "NULL"),
+  #   y = "character"
+  # )
+  
+  is_empty_args      <- length(args) == 0 
+  is_empty_type_map  <- length(type_map) == 0
+  
+  if (is_empty_args && !is_empty_type_map) {
+    stop(paste0("No arguments provided but 'type_map' has ", length(type_map), " provided argument types"))
+  }
+  
   for (arg_name in names(args)) {
-    # message(arg_name) 
+    # message(arg_name)
     
     if (!arg_name %in% names(type_map)) {
       stop(paste0("Unexpected argument: ", arg_name))
@@ -1735,7 +1748,8 @@ validate_arg_types <- function(..., type_map) {
     is_expected_type <- any(unlist(lapply(expected_types, function(i) inherits(args[[arg_name]], i))))
     
     if (!is_expected_type) {
-      stop(paste0("Argument '", arg_name, "' must be of type '", expected_type, 
+      stop(paste0("Argument '", arg_name, "' must be of type(s) '", 
+                  paste0(expected_types, collapse=', '),  
                   "' but got '", class(args[[arg_name]]), "'"))
     }
   }
