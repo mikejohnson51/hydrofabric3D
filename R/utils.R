@@ -1718,7 +1718,7 @@ validate_df <- function(x, cols, obj_name = NULL) {
 #' @param ... list of args
 #' @param type_map list, argument names as the keys and a vector of values representing the valid types
 #'
-#' @return
+#' @return logical, TRUE if no error, otherwise raises an error 
 validate_arg_types <- function(..., type_map) {
   args <- list(...)
   

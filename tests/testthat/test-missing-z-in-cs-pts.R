@@ -5,8 +5,8 @@ library(sf)
 # # library(hydrofabric3D)
 
 source("testing_utils.R")
-# source("tests/testthat/testing_utils.R")
 
+# source("tests/testthat/testing_utils.R")
 # devtools::load_all()
 
 # -------------------------------------------------------------------
@@ -62,10 +62,8 @@ testthat::test_that("check that missing NA value is identified and added as a NA
   
 })
 
-# TODO: this test / behavior needs improving, if there are missing Z values, 
-# TODO: how should we classify those points AND the neighboring points that actually do have Z values
-# TODO: Right now this test passes, but maybe it shouldn't...
-testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values, only a bottom is classified?", {
+# TODO: maybe there should be some methods to allow for NAs and give a warning instead?
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values throws an error", {
   
   TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
   ID_COL              <- "hy_id"
@@ -89,10 +87,11 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
     dem            = DEM_PATH
   ) 
   
-  classified_pts <- hydrofabric3D::classify_points(cs_pts, crosswalk_id = ID_COL)
- 
-  has_bottom_point_type <- c("bottom") %in% classified_pts$point_type
-  testthat::expect_true(has_bottom_point_type)
+  testthat::expect_error(
+    hydrofabric3D::classify_points(cs_pts, crosswalk_id = ID_COL)
+  )
+  # has_bottom_point_type <- c("bottom") %in% classified_pts$point_type
+  # testthat::expect_true(has_bottom_point_type)
   
 })
 

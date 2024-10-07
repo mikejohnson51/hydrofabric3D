@@ -77,7 +77,7 @@
 #    
 #   
 #   cs_pts %>% 
-#     hydrofabric3D::classify_points2(crosswalk_id = "hy_id") %>% 
+#     hydrofabric3D::classify_points(crosswalk_id = "hy_id") %>% 
 #     hydrofabric3D::plot_cs_pts(color = "point_type", size = 5) + 
 #     ggplot2::labs(title = "DERIVATIVE")
 #   

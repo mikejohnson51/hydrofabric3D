@@ -3,10 +3,10 @@ library(dplyr)
 library(sf)
 # library(hydrofabric3D)
 
-# source("testing_utils.R")
-source("tests/testthat/testing_utils.R")
+source("testing_utils.R")
+# source("tests/testthat/testing_utils.R")
 
-devtools::load_all()
+# devtools::load_all()
 
 testthat::test_that("validate_arg_types passes with valid arguments", {
   type_map <- list(

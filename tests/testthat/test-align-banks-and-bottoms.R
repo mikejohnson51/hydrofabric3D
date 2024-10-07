@@ -61,7 +61,7 @@ testthat::test_that("check align_banks_and_bottoms() default output columns", {
     dem             = DEM_PATH
   )
   
-  classified <- classify_points2(
+  classified <- classify_points(
     cs_pts = cs_pts,
     crosswalk_id = ID_COL,
     pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF

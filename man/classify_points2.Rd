@@ -2,8 +2,7 @@
 % Please edit documentation in R/cs_pts.R
 \name{classify_points2}
 \alias{classify_points2}
-\title{Classify Cross Section Points (version 2)
-Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points}
+\title{Classify Cross Section Points (v1 deprecated)}
 \usage{
 classify_points2(cs_pts, crosswalk_id = NULL, pct_of_length_for_relief = 0.01)
 }
@@ -21,6 +20,5 @@ Default is 0.01 (1\% of the cross sections length).}
 sf object
 }
 \description{
-Classify Cross Section Points (version 2)
-Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points
+Classify Cross Section Points (v1 deprecated)
 }
