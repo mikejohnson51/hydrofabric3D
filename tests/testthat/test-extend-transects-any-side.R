@@ -270,8 +270,9 @@ testthat::test_that("extend_transects_any_side() incorrect input columns in FLOW
     # message(i)
     col_to_ignore       <- req_cols[i]
     select_col_indexes  <- which(df_cols != col_to_ignore)
-    # flowlines[ , select_col_indexes]
-    message(i, " - Ignoring column > '", col_to_ignore, "'") 
+    
+    # message(i, " - Ignoring column > '", col_to_ignore, "'") 
+    
     # missing cols = ERROR
     testthat::expect_error(
       extend_transects_any_side(
@@ -444,6 +445,337 @@ testthat::test_that("extend_transects_any_side() mismatched CROSSWALK_ID column 
       grouping_id   = CROSSWALK_ID
     )
   )
+  
+})
+
+
+# ---------------------------------------------------------------------------
+# ---- test that left OR right can be extended (doesn't need to be both) ----
+# ---------------------------------------------------------------------------
+
+testthat::test_that("extend_transects_any_side() test that a transect can be extended from 1 side and not the other side", {
+  
+  CROSSWALK_ID       <- "id"
+  CS_ID              <- "cs_id"
+  LAT        <- 34.41249
+  LON        <- -119.74095
+  CRS_OF_PT  <- 4326
+  
+  flowlines <- 
+    create_v_line(lat = LAT, 
+                  lon = LON, 
+                  crs = CRS_OF_PT
+                  ) %>% 
+    dplyr::mutate(
+      id = 1:dplyr::n()
+    ) %>% 
+    sf::st_transform(5070)
+  
+  # create_v_line(lat = LAT, 
+  #               lon = LON, 
+  #               crs = 4326
+  # ) %>% 
+  #   dplyr::mutate(
+  #     id = 1:dplyr::n()
+  #   ) %>% 
+  #   sf::st_transform(5070) %>%
+  #   sf::st_crs() %>% 
+  #   names()
+  
+  transects <- cut_cross_sections(
+      net = flowlines,
+      id  = CROSSWALK_ID,  
+      num = 10
+    ) %>% 
+    dplyr::filter(cs_id == 4) %>% 
+    hydrofabric3D:::renumber_cs_ids(crosswalk_id = CROSSWALK_ID) %>% 
+    dplyr::select(dplyr::any_of(c(CROSSWALK_ID, CS_ID))) %>% 
+    dplyr::mutate(
+      extension_distance = 100
+    )
+  
+  extensions <- extend_transects_any_side(transects    = transects, 
+                                          flowlines    = flowlines, 
+                                          crosswalk_id = CROSSWALK_ID, 
+                                          cs_id        = CS_ID,
+                                          grouping_id  = CROSSWALK_ID
+  )
+  # extensions_any <- extend_transects_any_side(transects    = transects, 
+  #                                         flowlines    = flowlines, 
+  #                                         crosswalk_id = CROSSWALK_ID, 
+  #                                         cs_id        = CS_ID,
+  #                                         grouping_id  = CROSSWALK_ID
+  # )
+  # extensions_both <- extend_transects_both_sides(transects    = transects, 
+  #                                         flowlines    = flowlines, 
+  #                                         crosswalk_id = CROSSWALK_ID, 
+  #                                         cs_id        = CS_ID,
+  #                                         grouping_id  = CROSSWALK_ID
+  # )
+  # plot(flowlines$geometry)
+  # plot(extensions$geometry, col = "black", lwd = 4, add = T)
+  # plot(transects$geometry, col = "green", lwd = 2, add = T)
+  # # 
+  # mapview::mapview(flowlines) +
+  #   # mapview::mapview(extensions, color = "red") +
+  #   mapview::mapview(extensions_any, color = "red") +
+  #   mapview::mapview(extensions_both, color = "red") +
+  #   mapview::mapview(transects, color = "green")
+  
+  left_is_extended  <- extensions$left_is_extended
+  right_is_extended <- extensions$right_is_extended
+  
+  # left gets extended but right does NOT
+  testthat::expect_true(left_is_extended)
+  testthat::expect_false(right_is_extended)
+  
+})
+
+testthat::test_that("extend_transects_any_side() test that both sides of a transect will be extended if they're both valid extensions", {
+  
+  CROSSWALK_ID       <- "id"
+  CS_ID              <- "cs_id"
+  LAT        <- 34.41249
+  LON        <- -119.74095
+  CRS_OF_PT  <- 4326
+  
+  flowlines <- 
+    create_v_line(lat = LAT, 
+                  lon = LON, 
+                  crs = CRS_OF_PT
+    ) %>% 
+    dplyr::mutate(
+      id = 1:dplyr::n()
+    ) %>% 
+    sf::st_transform(5070)
+  
+  # create_v_line(lat = LAT, 
+  #               lon = LON, 
+  #               crs = 4326
+  # ) %>% 
+  #   dplyr::mutate(
+  #     id = 1:dplyr::n()
+  #   ) %>% 
+  #   sf::st_transform(5070) %>%
+  #   sf::st_crs() %>% 
+  #   names()
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = 10
+  ) %>% 
+    dplyr::filter(cs_id == 4) %>% 
+    hydrofabric3D:::renumber_cs_ids(crosswalk_id = CROSSWALK_ID) %>% 
+    dplyr::select(dplyr::any_of(c(CROSSWALK_ID, CS_ID))) %>% 
+    dplyr::mutate(
+      extension_distance = 25
+    )
+  
+  extensions <- extend_transects_any_side(transects    = transects, 
+                                          flowlines    = flowlines, 
+                                          crosswalk_id = CROSSWALK_ID, 
+                                          cs_id        = CS_ID,
+                                          grouping_id  = CROSSWALK_ID
+  )
+  # extensions_any <- extend_transects_any_side(transects    = transects, 
+  #                                         flowlines    = flowlines, 
+  #                                         crosswalk_id = CROSSWALK_ID, 
+  #                                         cs_id        = CS_ID,
+  #                                         grouping_id  = CROSSWALK_ID
+  # )
+  # extensions_both <- extend_transects_both_sides(transects    = transects, 
+  #                                         flowlines    = flowlines, 
+  #                                         crosswalk_id = CROSSWALK_ID, 
+  #                                         cs_id        = CS_ID,
+  #                                         grouping_id  = CROSSWALK_ID
+  # )
+  # plot(flowlines$geometry)
+  # plot(extensions$geometry, col = "black", lwd = 4, add = T)
+  # plot(transects$geometry, col = "green", lwd = 2, add = T)
+
+  
+  # mapview::mapview(flowlines) +
+  #   mapview::mapview(extensions, color = "red") +
+  # #   mapview::mapview(extensions_any, color = "red") +
+  # #   mapview::mapview(extensions_both, color = "red") +
+  #   mapview::mapview(transects, color = "green")
+  
+  left_is_extended  <- extensions$left_is_extended
+  right_is_extended <- extensions$right_is_extended
+  
+  # left gets extended but right does NOT
+  testthat::expect_true(left_is_extended)
+  testthat::expect_true(right_is_extended)
+  
+})
+
+testthat::test_that("extend_transects_any_side() test that both sides can be extended even if one of the sides has to be cut in half in order to not intersect flowline more than once", {
+  
+  CROSSWALK_ID       <- "id"
+  CS_ID              <- "cs_id"
+  LAT        <- 34.41249
+  LON        <- -119.74095
+  CRS_OF_PT  <- 4326
+  EXT_DIST <- 50
+  HALF_EXT_DIST <- EXT_DIST / 2
+  
+  flowlines <- 
+    create_v_line(lat = LAT, 
+                  lon = LON, 
+                  crs = CRS_OF_PT
+    ) %>% 
+    dplyr::mutate(
+      id = 1:dplyr::n()
+    ) %>% 
+    sf::st_transform(5070)
+  
+  # create_v_line(lat = LAT, 
+  #               lon = LON, 
+  #               crs = 4326
+  # ) %>% 
+  #   dplyr::mutate(
+  #     id = 1:dplyr::n()
+  #   ) %>% 
+  #   sf::st_transform(5070) %>%
+  #   sf::st_crs() %>% 
+  #   names()
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = 10
+  ) %>% 
+    dplyr::filter(cs_id == 4) %>% 
+    hydrofabric3D:::renumber_cs_ids(crosswalk_id = CROSSWALK_ID) %>% 
+    dplyr::select(dplyr::any_of(c(CROSSWALK_ID, CS_ID))) %>% 
+    dplyr::mutate(
+      extension_distance = EXT_DIST
+    )
+  
+  extensions <- extend_transects_any_side(transects    = transects, 
+                                          flowlines    = flowlines, 
+                                          crosswalk_id = CROSSWALK_ID, 
+                                          cs_id        = CS_ID,
+                                          grouping_id  = CROSSWALK_ID
+  )
+  # extensions_any <- extend_transects_any_side(transects    = transects, 
+  #                                         flowlines    = flowlines, 
+  #                                         crosswalk_id = CROSSWALK_ID, 
+  #                                         cs_id        = CS_ID,
+  #                                         grouping_id  = CROSSWALK_ID
+  # )
+  # extensions_both <- extend_transects_both_sides(transects    = transects, 
+  #                                         flowlines    = flowlines, 
+  #                                         crosswalk_id = CROSSWALK_ID, 
+  #                                         cs_id        = CS_ID,
+  #                                         grouping_id  = CROSSWALK_ID
+  # )
+  # plot(flowlines$geometry)
+  # plot(extensions$geometry, col = "black", lwd = 4, add = T)
+  # plot(transects$geometry, col = "green", lwd = 2, add = T)
+  #
+  
+  # mapview::mapview(flowlines) +
+  #   mapview::mapview(extensions, color = "red") +
+  # #   mapview::mapview(extensions_any, color = "red") +
+  # #   mapview::mapview(extensions_both, color = "red") +
+  #   mapview::mapview(transects, color = "green")
+  
+  left_is_extended  <- extensions$left_is_extended
+  right_is_extended <- extensions$right_is_extended
+  
+  # both sides get extended
+  testthat::expect_true(left_is_extended)
+  testthat::expect_true(right_is_extended)
+  
+  full_left_extension  <- extensions$left_distance == EXT_DIST
+  half_right_extension <- extensions$right_distance == HALF_EXT_DIST
+  
+  # both sides get extended but right side is only extended halfway
+  testthat::expect_true(full_left_extension)
+  testthat::expect_true(half_right_extension)
+  
+})
+
+
+testthat::test_that("extend_transects_any_side() test that only 1 side will be extended when the otherside will hit a flowline twice at both the full extension distance AND at half of the full extension distance", {
+  
+  CROSSWALK_ID       <- "id"
+  CS_ID              <- "cs_id"
+  LAT        <- 34.41249
+  LON        <- -119.74095
+  CRS_OF_PT  <- 4326
+  EXT_DIST <- 100
+  HALF_EXT_DIST <- EXT_DIST / 2
+  
+  flowlines <- 
+    create_v_line(lat = LAT, 
+                  lon = LON, 
+                  crs = CRS_OF_PT
+    ) %>% 
+    dplyr::mutate(
+      id = 1:dplyr::n()
+    ) %>% 
+    sf::st_transform(5070)
+  
+  # create_v_line(lat = LAT, 
+  #               lon = LON, 
+  #               crs = 4326
+  # ) %>% 
+  #   dplyr::mutate(
+  #     id = 1:dplyr::n()
+  #   ) %>% 
+  #   sf::st_transform(5070) %>%
+  #   sf::st_crs() %>% 
+  #   names()
+  
+  transects <- cut_cross_sections(
+    net = flowlines,
+    id  = CROSSWALK_ID,  
+    num = 10
+  ) %>% 
+    dplyr::filter(cs_id == 4) %>% 
+    hydrofabric3D:::renumber_cs_ids(crosswalk_id = CROSSWALK_ID) %>% 
+    dplyr::select(dplyr::any_of(c(CROSSWALK_ID, CS_ID))) %>% 
+    dplyr::mutate(
+      extension_distance = EXT_DIST
+    )
+  
+  extensions <- extend_transects_any_side(transects    = transects, 
+                                          flowlines    = flowlines, 
+                                          crosswalk_id = CROSSWALK_ID, 
+                                          cs_id        = CS_ID,
+                                          grouping_id  = CROSSWALK_ID
+  )
+  
+  # # plot(flowlines$geometry)
+  # # plot(extensions$geometry, col = "black", lwd = 4, add = T)
+  # # plot(transects$geometry, col = "green", lwd = 2, add = T)
+  # # 
+  
+  # mapview::mapview(flowlines) +
+  #   mapview::mapview(extensions, color = "red") +
+  # #   mapview::mapview(extensions_any, color = "red") +
+  # #   mapview::mapview(extensions_both, color = "red") +
+  #   mapview::mapview(transects, color = "green")
+  
+  # extensions$left_distance
+  # extensions$right_distance
+  
+  left_is_extended  <- extensions$left_is_extended
+  right_is_extended <- extensions$right_is_extended
+  
+  # both sides get extended
+  testthat::expect_true(left_is_extended)
+  testthat::expect_false(right_is_extended)
+  
+  full_left_extension     <- extensions$left_distance == EXT_DIST
+  right_extension_is_zero <- extensions$right_distance == 0
+  
+  # both sides get extended but right side is only extended halfway
+  testthat::expect_true(full_left_extension)
+  testthat::expect_true(right_extension_is_zero)
   
 })
 

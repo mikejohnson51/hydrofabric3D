@@ -603,30 +603,67 @@ extend_transects_any_side <- function(
     # TODO: in case the above code is making a copy, below should NOT ( i dont think creating start/end is a copy but just a pointer to the data)
     # updated_trans  <- make_line_from_start_and_end_pts(extension_pts[1], extension_pts[2], line_crs) 
     
-    # flag if left extension happened
-    if(use_left_extension) {
-      left_extended_flag[i]  <- TRUE
+    # use_left_extension <- TRUE
+    # used_half_of_left <- F
+    # left_distance_to_extend <- 100
+    # half_left_distance <- left_distance_to_extend / 2
+    
+    left_extended_flag[i]   <- use_left_extension
+    right_extended_flag[i]  <- use_right_extension
+    updated_left_distance   <- ifelse(use_left_extension, 
+                                     ifelse(used_half_of_left, half_left_distance, left_distance_to_extend),
+                                     0
+                                     )
+    
+    updated_right_distance  <- ifelse(use_right_extension, 
+                                    ifelse(used_half_of_right, half_right_distance, right_distance_to_extend),
+                                    0
+                                    )
+    
+    left_distances[i]       <- updated_left_distance
+    right_distances[i]      <- updated_right_distance
+    
+    # TODO: review this, didnt have this check before so theoretically, an iteration could happen where neither left or right extensions were used, but we still 
+    # TODO: set the transect to the updated transect
+    if (use_left_extension || use_right_extension) {
+      # last step is to replace the original transect with the updated transect (extended)
+      transects_geos[i] <- updated_trans
     }
     
-    # flag if right extension happened
-    if(use_right_extension) {
-      right_extended_flag[i] <- TRUE
-    }
-    
-    # update the left extension distance if half the original distance was used
-    if (used_half_of_left) {
-      left_distances[i]  <- half_left_distance 
-      # updated_left_distances[i]  <- half_left_distance 
-    }
-    
-    # update the right extension distance if half the original distance was used   
-    if (used_half_of_right) {
-      right_distances[i] <- half_right_distance
-      # updated_right_distances[i] <- half_right_distance 
-    }
-    
-    # last step is to replace the original transect with the updated transect (extended)
-    transects_geos[i] <- updated_trans
+    # # last step is to replace the original transect with the updated transect (extended)
+    # transects_geos[i] <- updated_trans
+    # 
+    # # flag if left extension happened
+    # if(use_left_extension) {
+    #   left_extended_flag[i]  <- TRUE
+    # }
+    # 
+    # # flag if right extension happened
+    # if(use_right_extension) {
+    #   right_extended_flag[i] <- TRUE
+    # }
+    # 
+    # # update the left extension distance if half the original distance was used
+    # if (used_half_of_left) {
+    #   left_distances[i]  <- half_left_distance 
+    #   # updated_left_distances[i]  <- half_left_distance 
+    # }
+    # 
+    # # update the right extension distance if half the original distance was used   
+    # if (used_half_of_right) {
+    #   right_distances[i] <- half_right_distance
+    #   # updated_right_distances[i] <- half_right_distance 
+    # }
+    # 
+    # # TODO: review this, didnt have this check before so theoretically, an iteration could happen where neither left or right extensions were used, but we still 
+    # # TODO: set the transect to the updated transect
+    # if (use_left_extension || use_right_extension) {
+    #   # last step is to replace the original transect with the updated transect (extended)
+    #   transects_geos[i] <- updated_trans
+    # }
+    # 
+    # # last step is to replace the original transect with the updated transect (extended)
+    # transects_geos[i] <- updated_trans
     
   }      
   
@@ -844,21 +881,45 @@ extend_transects_both_sides <- function(
       #   message("Successful half extension > ", successful_half_extension_count)
       # }
       
+      # TODO: this is dumb, TRUE if TRUE ELSE FALSE 
       used_half_of_extension <- ifelse(use_extension, TRUE,  FALSE)
     } 
     
-    # flag if extension happened
+    # set is extended flag
+    is_extended_flag[i]     <- use_extension
+    
+    # get the extension distance (might have been cut in half), if no extension happened, then distance is 0
+    updated_distance        <- ifelse(use_extension, 
+                                      ifelse(used_half_of_extension, half_distance, distance_to_extend),
+                                      0
+                                 )
+    
+    extension_distances[i]  <- updated_distance 
+    
+    # update the transect geos to the extended transect (if use_extension is TRUE)
     if(use_extension) {
-      is_extended_flag[i]  <- TRUE
+      # TODO: Review this, i think this is right but not sure
+      # last step is to replace the original transect with the updated transect (extended)
+      transects_geos[i] <- extended_trans
     }
     
-    # update the extension distance if half the original distance was used
-    if (used_half_of_extension) {
-      extension_distances[i]  <- half_distance 
-    }
-    
-    # last step is to replace the original transect with the updated transect (extended)
-    transects_geos[i] <- extended_trans
+    # # flag if extension happened
+    # if(use_extension) {
+    #   is_extended_flag[i]  <- TRUE
+    #   
+    #   # TODO: Review this, i think this is right but not sure
+    #   # last step is to replace the original transect with the updated transect (extended)
+    #   transects_geos[i] <- extended_trans
+    # }
+    # 
+    # # update the extension distance if half the original distance was used
+    # if (used_half_of_extension) {
+    #   extension_distances[i]  <- half_distance 
+    # }
+    # 
+    # # TODO: Review this, i think this is wrong and the transect should ONLY be replaced IF it was used (duh) 
+    # # # last step is to replace the original transect with the updated transect (extended)
+    # transects_geos[i] <- extended_trans
     
   }      
   

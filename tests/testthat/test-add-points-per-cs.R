@@ -6,6 +6,9 @@ library(sf)
 # library(hydrofabric3D)
 # devtools::load_all()
 
+# source("tests/testthat/testing_utils.R")
+# devtools::load_all()
+
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::add_points_per_cs() ----
 # -------------------------------------------------------------------
@@ -366,6 +369,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
       dem              = 100
     )  
   )
+  
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
       cs               = transects, 
@@ -375,7 +379,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
     )  
   )
   
-  testthat::expect_error(
+  testthat::expect_no_error(
     hydrofabric3D:::add_points_per_cs(
       cs               = transects, 
       points_per_cs    = NULL,

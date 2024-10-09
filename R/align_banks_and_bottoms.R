@@ -69,14 +69,8 @@ align_banks_and_bottoms <- function(cs_pts, crosswalk_id) {
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "Z", "point_type")
   
-  if (!all(REQUIRED_COLS %in% names(cs_pts))) {
-    
-    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs_pts))]
-    
-    stop("'cs' is missing one or more of the required columns:\n > ", 
-         paste0(missing_cols, collapse = "\n > "))
-  }
-  
+  # validate input graph
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
   
   adjust <- function(v){
     if(length(v) == 1){ 

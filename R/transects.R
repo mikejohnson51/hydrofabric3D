@@ -238,14 +238,9 @@ get_transects <- function(line, bf_width, n) {
   # transects$cs_measure <- edge_lengths
   
   return(transects)
-  # return(list(
-  #         transects = transects,
-  #         cs_measure = measures
-  #         # cs_measure = edge_lengths
-  #         )
-  #       )
   
 }
+
 #' Calculate sinuosity between cross sections on flowlines by
 #' 
 #' @param lines sf linestring geometry of flowlines with a unique "hy_id" column

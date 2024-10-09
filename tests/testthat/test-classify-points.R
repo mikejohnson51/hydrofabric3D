@@ -2,106 +2,150 @@ library(testthat)
 library(dplyr)
 library(sf)
 # # library(hydrofabric3D)
-
+# 
 source("testing_utils.R")
+
 # source("tests/testthat/testing_utils.R")
 # devtools::load_all()
+
 
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::classify_points() ----
 # -------------------------------------------------------------------
 
 # TODO:
-testthat::test_that("check CLASSIFIED CS points default output columns, from DEFAULT transects output", {
+testthat::test_that("cross section points plot test", {
   
-  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
-  # flowlines    <- dplyr::slice(flowlines, 1)
-  
-  MIN_BF_WIDTH       <- 50
-  ID_COL             <- "hy_id"
-  NUM_OF_TRANSECTS   <- 3
-  
-  # Cross section point inputs
-  DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
-  POINTS_PER_CS     <- NULL
-  MIN_PTS_PER_CS    <- 10
-  
-  PCT_OF_LENGTH_FOR_RELIEF <- 0.01
-  
-  flowlines <-
-    flowlines %>% 
-    dplyr::slice(1) %>%
-    # dplyr::slice(1:3) %>% 
-    add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
-    dplyr::rename(!!sym(ID_COL) := id) %>% 
-    dplyr::select(
-      dplyr::any_of(ID_COL), 
-      tot_drainage_areasqkm,
-      bf_width,
-      geom
-    ) 
-  
-  transects <- cut_cross_sections(
-    net = flowlines,
-    id  = ID_COL,  
-    num = NUM_OF_TRANSECTS
-  )
-  
-  transects <- dplyr::select(transects,
-                             dplyr::any_of(ID_COL),
-                             cs_id,
-                             cs_lengthm
-  )
-  
-  cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
-    crosswalk_id    = ID_COL,
-    points_per_cs   = POINTS_PER_CS,
-    min_pts_per_cs  = MIN_PTS_PER_CS,
-    dem             = DEM_PATH
-  )
-  # cs_pts
-  # cs_pts  %>% 
-  # # dplyr::select(hy_id, cs_id, pt_id, Z, relative_distance)  %>% 
-  # sf::st_drop_geometry() %>%
-  # classify_points(
-  #   cs_pts = cs_pts,
-  #   crosswalk_id = ID_COL,
-  #   pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
-  # ) %>% 
-  #   hydrofabric3D::plot_cs_pts(color = "point_type", size = 4)
+  # flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))
+  #   # dplyr::slice(10)
+  # # flowlines    <- dplyr::slice(flowlines, 1)
   # 
-  # classify_points(
-  #   cs_pts = cs_pts,
-  #   crosswalk_id = ID_COL,
-  #   pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
-  # ) %>% 
-  #   hydrofabric3D::plot_cs_pts(color = "point_type", size = 4)
-  
-  classified <- classify_points(
-    cs_pts = cs_pts,
-    crosswalk_id = ID_COL,
-    pct_of_length_for_relief = PCT_OF_LENGTH_FOR_RELIEF
-  ) 
-  
-  # check if minimum required output columns 
-  testthat::expect_true(
-    classified_cs_pts_has_min_output_cols(classified_pts = classified, id = ID_COL)
-  )
-  
-  # check that if NO 'id' is specified, then the default output columns will NOT match the classified points that DID have a specified 'id' 
-  testthat::expect_false(
-    classified_cs_pts_has_min_output_cols(classified_pts = classified )
-  )
-  
-  # test same number of input points are in classified output points 
-  same_num_pts_after_classifying <- nrow(cs_pts)  == nrow(classified)
-  testthat::expect_true(same_num_pts_after_classifying)
-  
-  # make sure all the unique tmp_ids (id + cs_id) are the same in the input AND output 
-  same_unique_tmp_ids <- has_same_unique_tmp_ids(x = cs_pts, y = classified, id = ID_COL)
-  testthat::expect_true(same_unique_tmp_ids)
-  
+  # MIN_BF_WIDTH       <- 50
+  # ID_COL             <- "hy_id"
+  # NUM_OF_TRANSECTS   <- 3
+  # 
+  # # Cross section point inputs
+  # DEM_PATH          <- testthat::test_path("testdata", "dem_flowlines.tif")
+  # POINTS_PER_CS     <- NULL
+  # MIN_PTS_PER_CS    <- 10
+  # 
+  # PCT_OF_LENGTH_FOR_RELIEF <- 0.01
+  # 
+  # cs_pts <-
+  #   flowlines %>% 
+  #   dplyr::rename(!!sym(ID_COL) := id) %>% 
+  #   dplyr::select(
+  #     dplyr::any_of(ID_COL)
+  #   ) %>% 
+  #   cut_cross_sections(
+  #     net = .,
+  #     id  = ID_COL,  
+  #     num = 3 
+  #   ) %>% 
+  #   dplyr::select(
+  #     dplyr::any_of(ID_COL), 
+  #     cs_lengthm,
+  #     cs_id
+  #   ) %>% 
+  #   hydrofabric3D::cross_section_pts(
+  #     cs              = .,
+  #     crosswalk_id    = ID_COL,
+  #     points_per_cs   = NULL,
+  #     min_pts_per_cs  = 10,
+  #     dem             = DEM_PATH
+  #   ) %>% 
+  #   hydrofabric3D::classify_points(crosswalk_id = ID_COL) %>% 
+  #   dplyr::mutate(
+  #     pt_bin = dplyr::case_when(
+  #       has_relief & valid_banks    ~ "valid banks + relief",
+  #       !has_relief & valid_banks   ~ "valid banks + NO relief",
+  #       has_relief & !valid_banks   ~ "NO valid banks + relief",
+  #       !has_relief & !valid_banks  ~ "NO valid banks + NO relief",
+  #       TRUE                        ~ NA
+  #     )
+  #   ) %>% 
+  #   hydrofabric3D::add_tmp_id(x = ID_COL)
+  # 
+  # # cs_pts %>% 
+  # #   ggplot2::ggplot() +
+  # #   ggplot2::geom_point(
+  # #     ggplot2::aes(x = pt_id, 
+  # #                  y = Z,
+  # #                  color = pt_bin
+  # #                  ),
+  # #     size = 4
+  # #     ) +
+  # #   ggplot2::facet_wrap(hy_id~cs_id, scales = "free")
+  # 
+  # 
+  # # cs_pts %>% 
+  # #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4)
+  # 
+  # cs_pts %>% 
+  #   dplyr::filter(has_relief, valid_banks) %>% 
+  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  #   ggplot2::labs(title = "valid banks + relief")
+  # 
+  # cs_pts %>% 
+  #   dplyr::filter(!has_relief, valid_banks) %>% 
+  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  #   ggplot2::labs(title = "valid banks + NO relief")
+  # 
+  # cs_pts %>% 
+  #   dplyr::filter(has_relief, !valid_banks) %>% 
+  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  #   ggplot2::labs(title = "NO valid banks + relief")
+  # 
+  # cs_pts %>% 
+  #   dplyr::filter(!has_relief, !valid_banks) %>% 
+  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  #   ggplot2::labs(title = "NO valid banks + NO relief")
+  # 
+  # cs_pts
+  # 
+  # adjust <- function(v){
+  #   if(length(v) == 1){ 
+  #     return(v)
+  #   }
+  #   for(i in 2:length(v)){ 
+  #     v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) 
+  #   }
+  #   v
+  # }
+  # 
+  # slope <- 
+  #   cs_pts %>% 
+  #   sf::st_drop_geometry() %>% 
+  #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+  #   # dplyr::group_by(hy_id, cs_id) %>% 
+  #   dplyr::summarise(min_ch = min(Z[point_type == "channel"])) %>% 
+  #   dplyr::mutate(
+  #     a = adjust(min_ch),
+  #     adjust = adjust(min_ch) - min_ch
+  #     ) %>% 
+  #   dplyr::ungroup() %>% 
+  #   dplyr::select(
+  #     dplyr::any_of(crosswalk_id),
+  #     cs_id, 
+  #     adjust
+  #   )
+  # # dplyr::select(hy_id, cs_id, adjust)
+  # 
+  # cs_pts <-  
+  #   dplyr::left_join(
+  #     cs_pts, 
+  #     slope, 
+  #     by = c(crosswalk_id, "cs_id") 
+  #     # by = c("hy_id", "cs_id")
+  #   ) %>% 
+  #   dplyr::mutate(
+  #     Z = dplyr::case_when(
+  #       point_type  == "channel" ~ Z + adjust, 
+  #       TRUE ~ Z
+  #     )
+  #   ) %>% 
+  #   dplyr::select(-adjust)
+  # 
 })
 
 

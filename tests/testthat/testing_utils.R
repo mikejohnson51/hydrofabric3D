@@ -495,6 +495,28 @@ make_flowlines_and_transects_test_data_all_valid <- function() {
   return(combined)
 }
 
+# Create a V shaped linestring given a lat/lon 
+create_v_line <- function(lat, lon, crs = 4326) {
+  # lat <- 34.41249
+  # lon <- -119.74095
+  
+  # middle of the V shape
+  apex <- c(lon, lat)
+  
+  left_point  <- c(apex[1] - 0.001, apex[2] + 0.001)  # move left and up
+  right_point <- c(apex[1] + 0.001, apex[2] + 0.001)  # move right and up
+  
+  coords      <- rbind(left_point, apex, right_point)
+
+  v_shape_line   <- sf::st_sf(geometry = sf::st_sfc(
+                                            sf::st_linestring(coords), crs = crs
+                                            )
+                      )
+  
+  return(v_shape_line)
+}
+
+
 make_single_straight_line <- function(epsg_code = 5070) {
   
   line_coords <- matrix(c(

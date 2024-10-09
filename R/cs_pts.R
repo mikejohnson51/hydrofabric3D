@@ -89,6 +89,8 @@ cross_section_pts = function(
     cs <- sf::read_sf(cs)
   }
   
+  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
+  
   # make a unique ID if one is not given (NULL 'id')
   if(is.null(crosswalk_id)) {
     # TODO: this might mess things up, assigning a new hydrofabric_id to 
@@ -98,27 +100,11 @@ cross_section_pts = function(
     crosswalk_id  <- 'hydrofabric_id'
   }
   
-  # # make sure the 'id' column actually exists in the dataset 
-  # if (!id %in% names(cs)) {
-  #   stop("'id' ", id, " is not a column in input 'cs'")
-  # }
-  
-  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
-   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_lengthm")
-  # REQUIRED_COLS <- c(id, 'cats', "cs_id", "cs_lengthm")
-  # names(cs) %in% REQUIRED_COLS
-  # !all(REQUIRED_COLS %in% names(cs))
   
-  if (!all(REQUIRED_COLS %in% names(cs))) {
-    
-    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
-    
-    stop("'cs' is missing one or more of the required columns:\n > ", 
-         paste0(missing_cols, collapse = "\n > "))
-  }
-  
-  
+  # validate input graph
+  is_valid <- validate_df(cs, REQUIRED_COLS, "cs")
+
   # add points per cross sections 
   cs <- add_points_per_cs(
     cs             = cs,
@@ -126,7 +112,6 @@ cross_section_pts = function(
     min_pts_per_cs = min_pts_per_cs,
     dem            = dem
   )
-  
   
   # Extract DEM "Z" values for each point along cross section linestrings
   cs_pts <- extract_dem_values(
@@ -158,19 +143,23 @@ add_points_per_cs <- function(cs,
                               dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
 ) {
   
-  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
   REQUIRED_COLS <- c("cs_lengthm")
   
-  if (!all(REQUIRED_COLS %in% names(cs))) {
-    
-    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
-    
-    stop("'cs' is missing one or more of the required columns:\n > ", 
-         paste0(missing_cols, collapse = "\n > "))
-  }
+  # validate input graph
+  is_valid <- validate_df(cs, REQUIRED_COLS, "cs")
+  
+  # if (!all(REQUIRED_COLS %in% names(cs))) {
+  #   missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
+  #   stop("'cs' is missing one or more of the required columns:\n > ", 
+  #        paste0(missing_cols, collapse = "\n > "))
+  # }
   
   # get the points per cross section based on the prescribed "points_per_cs" or the provided DEM (if points_per_cs is NULL) 
-  cs$points_per_cs <- get_points_per_cs(cs$cs_lengthm, points_per_cs, min_pts_per_cs, dem)
+  cs$points_per_cs <- get_points_per_cs(cs_length = cs$cs_lengthm, 
+                                        points_per_cs = points_per_cs, 
+                                        min_pts_per_cs = min_pts_per_cs, 
+                                        dem = dem
+                                        )
   
   return(cs)
 }
@@ -190,17 +179,26 @@ get_points_per_cs <- function(cs_length,
                               dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
 ) {
   
+  has_points_per_cs <- !is.null(points_per_cs)
+  has_dem           <- !is.null(dem)
+  
   # If NULL value is given to points_per_cs argument, calculate points_per_cs values
   # - IF DEM has a longitude/latitude CRS (terra::linearUnits == 0):
   # -- then divide the cross section length by 111139 and divide that resulting value by the minimum resolution value from the DEM (then round the result up)
   # - ELSE:
   # -- just divide the cross section length by the minimum resolution value from the DEM (then round the result up)
-  if (is.null(points_per_cs)) {
+  # -- If no DEM is given, then just do the pmax of the min and points_per_cs value
+  if (!has_points_per_cs && has_dem) {
+    
     points_per_cs <- dem_based_points_per_cs(cs_length = cs_length, dem = dem)
   }
   
+  # if points_per_cs is still NULL, set a points per cs of 1 for every value 
+  points_per_cs <- if (is.null(points_per_cs)) { rep(1, length(cs_length)) } else { points_per_cs }
+  
   # Take the max between the given minimum points per cross section and the derived points per cross section
   points_per_cs   <- pmax(min_pts_per_cs, points_per_cs)
+  # points_per_cs   <- pmax(min_pts_per_cs, points_per_cs)
   
   return(points_per_cs)
 }
@@ -270,6 +268,12 @@ transects_to_cs_pts <- function(transects, points_per_cs) {
 #' @return sf dataframe with Z values extracted from DEM
 extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
   
+  # cs           = trans 
+  # crosswalk_id = ID_COL
+  # dem          = NULL
+  
+  has_dem <- !is.null(dem)
+  
   # TODO: not sure if this is the best way to do this, we just want it so if 
   # TODO: you dont specify an ID (or dont have an ID), then we autogenerate one
   # default NULL id to the default 'hydrofabric_id' 
@@ -278,37 +282,35 @@ extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
     crosswalk_id  <- 'hydrofabric_id'
   }
   
-  # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "points_per_cs", "cs_lengthm")
   
-  # if (!all(names(cs) %in% REQUIRED_COLS)) {
-  #   stop("'cs' is missing one or more of the required columns:\n > ", 
-  #        paste0(REQUIRED_COLS, collapse = "\n > "))
-  # }
-  # 
-  if (!all(REQUIRED_COLS %in% names(cs))) {
-    
-    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs))]
-    
-    stop("'cs' is missing one or more of the required columns:\n > ", 
-         paste0(missing_cols, collapse = "\n > "))
-  }
+  # validate input graph
+  is_valid <- validate_df(cs, REQUIRED_COLS, "cs")
   
   suppressWarnings({
     cs_pts <- 
-      # sf::st_set_geometry(
-      #   cs, 
-      #   sf::st_line_sample(cs, cs$points_per_cs)
-      # ) %>% 
+      # sf::st_set_geometry(cs, sf::st_line_sample(cs, cs$points_per_cs)) %>% 
       # sf::st_cast("POINT") %>%
       cs %>% 
-      transects_to_cs_pts(cs$points_per_cs) %>% 
-      dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .)) %>% 
+      transects_to_cs_pts(cs$points_per_cs) 
+      
+      # if a DEM was given, then extract the Z values, otherwise set Z to NA
+      if (has_dem) {
+        cs_pts <- 
+          cs_pts %>% 
+          dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .))
+      } else {
+        cs_pts$Z <- NA
+      }
+    
+    cs_pts <- 
+      cs_pts %>% 
+      # dplyr::mutate(Z = extract_pt_val(terra::rast(dem), .)) %>% 
       dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
       # dplyr::group_by(hy_id, cs_id) %>% 
       dplyr::mutate(
-        pt_id             = 1:dplyr::n(),
-        relative_distance = seq(from = 0, to = cs_lengthm[1], length.out = dplyr::n())
+        pt_id              = 1:dplyr::n(),
+        relative_distance  = seq(from = 0, to = cs_lengthm[1], length.out = dplyr::n())
       ) %>% 
       dplyr::ungroup() %>% 
       dplyr::select(
