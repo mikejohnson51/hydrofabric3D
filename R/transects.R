@@ -842,17 +842,10 @@ cut_cross_sections <- function(
   
   message("Cutting")
   
-  # dplyr::relocate(
-  #   dplyr::any_of(c(crosswalk_id, cs_id)),
-  #   # dplyr::any_of(crosswalk_id),
-  #   # dplyr::any_of(cs_id),
-  #   cs_lengthm
-  # )
-  
   # iterate through each linestring in "net" and generate transect lines along each line 
   for (j in 1:nrow(net)) {
     # j = 1
-    # logger::log_info("{j} / {nrow(net)}")
+    
     # cut transect lines at each 'edge' generated along our line of interest
     trans <- get_transects(
       line     = geos::as_geos_geometry(net$geometry[j]),
@@ -899,7 +892,7 @@ cut_cross_sections <- function(
     return(NULL)
   }
   
-  message("Formating")
+  message("Formatting")
   
   # # add id column if provided as an input
   # if (!is.null(id)) {
@@ -911,18 +904,11 @@ cut_cross_sections <- function(
   # # add back cross sections width column
   # transects$cs_widths = rep(cs_widths, times = ids_length)
   
-  # t2 <- transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
-  #   dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
-  #   # dplyr::group_by(hy_id) %>% 
-  #   dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
-  #   dplyr::ungroup() %>% 
-  #   dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
-  # mapview::mapview(transects, color = "green") + mapview::mapview(t2, color = "red")
-  
   # remove self intersecting transects or not
   if (rm_self_intersect) {
     transects <- 
-      transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
+      rm_self_intersections(transects) %>% 
+      # transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
       dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
       # dplyr::group_by(hy_id) %>% 
       dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
@@ -946,7 +932,6 @@ cut_cross_sections <- function(
         sf::st_drop_geometry(net),
         by = id
         # by = c("hy_id" = id)
-        # by = c("hy_id" = "comid")
       )
   }
   
@@ -957,18 +942,6 @@ cut_cross_sections <- function(
     #          "- Braid detection version: ", version, "\n",
     #          "- Braid grouping method: ", braid_method
     #          ))
-    
-    # transects <- fix_braid_transects(
-    #   net             = net,
-    #   transect_lines  = transects,
-    #   terminal_id     = terminal_id,
-    #   braid_threshold = braid_threshold,
-    #   version         = version,
-    #   method          = braid_method,
-    #   precision       = precision,
-    #   rm_intersects   = rm_self_intersect
-    # )
-    
     transects <- fix_braided_transects(
       net             = net,
       transect_lines  = transects,
@@ -979,50 +952,15 @@ cut_cross_sections <- function(
       rm_intersects   = rm_self_intersect
     )
     
-    # transects
-    # transects[lengths(sf::st_intersects(transects, net)) == 1, ]
-    # is.na(fixed$braid_id)
-    # fixed[lengths(sf::st_intersects(fixed, net)) == 1, ]
-    # 
-    # mapview::mapview(transects, color = "green") + 
-    #   mapview::mapview(dplyr::select(fixed, -braid_vector), color = "red") +
-    #   mapview::mapview(net, color = "dodgerblue")
-    # #   # if final transect_lines has an NA for the braid_id column it means that it was part of the non braided (untouched) transect_lines,
-    #   # set braid_id to "no_braid" in those cases, otherwise keep braid_id as is
-    # 
-    # fixed$braid_id <- ifelse(
-    #     is.na(fixed$braid_id),
-    #     "no_braid",
-    #     fixed$braid_id
-    #   )
-    # fixed[!lengths(sf::st_intersects(fixed, net)) > 1 & fixed$braid_id == "no_braid", ]
-    # 
-    # fixed2 <- fixed[!(lengths(sf::st_intersects(fixed)) > 1 & fixed$braid_id == "no_braid"), ]
-    # 
-    # mapview::mapview(transects, color = "green") + 
-    #   mapview::mapview(dplyr::select(fixed, -braid_vector), color = "red") +
-    #   mapview::mapview(dplyr::select(fixed2,  -braid_vector), color = "green") +
-    #   mapview::mapview(net, color = "dodgerblue")
-    # 
-    # sum(lengths(sf::st_intersects(fixed)) > 1)
-    # fixed2 <- fixed[!(lengths(sf::st_intersects(fixed)) > 1 & fixed$braid_id == "no_braid"), ]
-    # fixed[lengths(sf::st_intersects(fixed)) == 1, ] %>%
-    #   dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>%
-    #   # dplyr::group_by(hy_id) %>%
-    #   dplyr::mutate(cs_id = 1:dplyr::n()) %>%
-    #   dplyr::ungroup() %>%
-    #   dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
-    # 
     # #   # if one of the transect lines interesects MORE than 1 line in net AND it also has a braid_id == "no_braid", then remove it from output
     #   transect_lines <- transect_lines[!(lengths(sf::st_intersects(transect_lines, net)) > 1 & transect_lines$braid_id == "no_braid"), ]
     #   transect_lines <- transect_lines[!(lengths(sf::st_intersects(transect_lines)) > 1 & transect_lines$braid_id == "no_braid"), ]
-    #   
-    # #   
   } else {
     
     # remove any transect lines that intersect with any flowlines more than 1 time 
     # NOTE: IF we DID NOT do braid fixing, which could cause a transect to purposefully interesect multiple flowlines
-    transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
+    transects <- rm_multiflowline_intersections(transects = transects, flowlines = net)
+    # transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
   }
   
   # # remove any transect lines that intersect with any flowlines more than 1 time
@@ -1086,6 +1024,40 @@ cut_cross_sections <- function(
     )
   
   return(transects)
+  
+}
+
+
+
+#' Remove transect lines that intersect with more than one flowline
+#'
+#' @param transects sf linestring dataframe of transect lines
+#' @param flowlines sf linestring dataframe of flowlines
+#' @noRd
+#' @keywords internal
+#' @importFrom sf st_intersects 
+#' @return sf linestring dataframe
+rm_multiflowline_intersections <- function(transects, flowlines) {
+  
+  transects <- transects[lengths(sf::st_intersects(transects, flowlines)) == 1, ]
+  
+  return(transects)
+  
+}
+
+#' Remove linestrings that intersect with any other linestring 
+#'
+#' @param x sf linestring dataframe 
+#' @noRd
+#' @keywords internal
+#' @importFrom sf st_intersects 
+#' @return sf linestring dataframe
+rm_self_intersections <- function(x) {
+  
+  x <- x[lengths(sf::st_intersects(x)) == 1, ]
+  # x <- x[!(lengths(sf::st_intersects(x)) > 1), ]
+  
+  return(x)
   
 }
 
