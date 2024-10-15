@@ -2874,13 +2874,6 @@ geos_bs_distance <- function(
     # calculate midpoint between left and right pointers
     M = (L + R) %/% 2
     
-    # message("L: ", L)
-    # message("M: ", M)
-    # message("R: ", R)
-    # message("x[L]: ", distances[L])
-    # message("x[M]: ", distances[M])
-    # message("x[R]: ", distances[R])
-    
     if(M == 0 | M == length(distances)) {
       # message("EARLY STOPPING bc M = ", M)
       # message("RETURNING L = ", L)
@@ -2911,7 +2904,6 @@ geos_bs_distance <- function(
       L = M + 1
       
     }
-    # message("=======================")
   }
   
   # l_line = st_extend_line(ls, x[L])
