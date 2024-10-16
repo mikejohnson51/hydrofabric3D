@@ -1896,6 +1896,83 @@ testthat::test_that("'classify_points' - (1 cross section, 10 pts, 'flat line w/
   
 })
 
+# NOTE: Cross section shape:
+# NOTE: this is from a real cross section (hy_id = "wb-1002006", cs_id = 3, 3DEP DEM)
+#
+#
+#.       / \
+#      /    \                 .---__---
+#    /       \               |         \
+#  /          \             /
+#              \          /
+#               \       /
+#                ------
+testthat::test_that("'classify_points' - (1 cross section with 29 points that goes from a low point, increases to the highest point on the left bank, drops down to a flat bottom at and the rises to a right bank lower than the left bank", {
+  ID_COL       <- "hy_id"
+  NUM_CS_PTS   <- 29
+  CS_LENGTH    <- 865.4798
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  Z_VALS       <- c(250.928558349609, 251.2162588614, 251.577647456416, 252.052094071, 252.643624199761, 253.430354365596, 
+                    254.417578238028, 255.110582704897, 254.47501401548, 251.575227525499, 246.858016967773, 
+                    246.858016967773, 246.858017532914, 246.858016967773, 246.858016967773, 246.858016967773, 
+                    247.850519816081, 249.110019259983, 250.502717194734, 251.697868064598, 252.414806789822, 
+                    252.720396253798, 252.74156358507, 252.66369233308, 252.597536440249, 252.62567364728, 
+                    252.686952944155, 252.686824657299, 252.593170166016)
+  
+  cs <- data.frame(
+    hy_id             = rep("A", NUM_CS_PTS),
+    cs_id             = rep(1, NUM_CS_PTS),
+    pt_id             = 1:NUM_CS_PTS,
+    cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+    relative_distance = REL_DIST,
+    Z                 = Z_VALS
+  )
+  # plot(cs$Z)
+  cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  # cpts <- classify_points(cs, crosswalk_id = ID_COL)
+  
+  # Z_VALS %>% plot()
+  # cpts$Z %>% plot()
+  # cpts$point_type
+  # cpts %>% 
+  #   hydrofabric3D::plot_cs_pts(crosswalk_id = ID_COL, size = 4, color = "point_type")
+  # expected_point_types <- c("left_bank", "channel", "channel", "bottom", "bottom", "bottom",
+  #                           "bottom", 
+  #                           "channel",  "right_bank", "right_bank")
+  
+  # # correct point types
+  # testthat::expect_true(
+  #   all(cpts$point_type == expected_point_types)
+  # )
+  # 
+  # # correct left bank value
+  # testthat::expect_true(
+  #   all(cpts$left_bank == 2)
+  # )
+  # 
+  # # correct right bank value
+  # testthat::expect_true(
+  #   all(cpts$right_bank == 1)
+  # )
+  # 
+  # # correct bottom value
+  # testthat::expect_true(
+  #   all(cpts$bottom == 1)
+  # )
+  # 
+  # # correct has relief (FALSE)
+  # testthat::expect_true(
+  #   all(cpts$has_relief)
+  # )
+  # 
+  # # correct valid_banks (FALSE)
+  # testthat::expect_false(
+  #   all(cpts$valid_banks)
+  # )
+  # 
+})
+
+
 testthat::test_that("'classify_points' - make sure 2 valid cross sections in one dataframe are correctly classified", {
   # testthat::test_that("'classify_points' - make sure 2 valid cross sections in one dataframe are correctly classified", {
   ID_COL <- "hy_id"

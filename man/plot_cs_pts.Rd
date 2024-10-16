@@ -4,10 +4,21 @@
 \alias{plot_cs_pts}
 \title{Plots an X-Y scatter plot of cross section points}
 \usage{
-plot_cs_pts(cs_pts, x = "pt_id", y = "Z", color = NULL, size = 1, grid = FALSE)
+plot_cs_pts(
+  cs_pts,
+  crosswalk_id = NULL,
+  x = "pt_id",
+  y = "Z",
+  color = NULL,
+  size = 1,
+  grid = FALSE,
+  scales = "free_y"
+)
 }
 \arguments{
 \item{cs_pts}{data.frame of cross section points with columns hy_id, cs_id and columns for X and Y axises (i.e. "pt_id", "Z")}
+
+\item{crosswalk_id}{unique ID column name}
 
 \item{x}{character name of column in cs_pts to use for X axis}
 
@@ -18,6 +29,8 @@ plot_cs_pts(cs_pts, x = "pt_id", y = "Z", color = NULL, size = 1, grid = FALSE)
 \item{size}{numeric, size of the cs points, default is 1}
 
 \item{grid}{logical, if TRUE then use facet_grid, otherwise use facet_wrap. Default is FALSE (uses facet_wrap)}
+
+\item{scales}{Should scales be fixed ("fixed", the default), free ("free"), or free in one dimension ("free_x", "free_y")?}
 }
 \value{
 ggplot2 object

@@ -364,6 +364,10 @@ classify_points <- function(
 ){
   
   # -----------------------------------------------------------------------
+  # cs_pts <- cs
+  # crosswalk_id = "hy_id"
+  # pct_of_length_for_relief = 0.01
+  
   # cs_pts <- data.frame(
   #   hy_id      = c("A", "A",  "A"),
   #   cs_id      = c(1, 1, 1),
@@ -521,6 +525,10 @@ classify_points <- function(
       deriv_type   = set_right_bank(
         point_types = deriv_type
       ),
+      # deriv_type   = set_channel_surrounded_by_bottom(
+      #   point_types = deriv_type,
+      #   depths      = Z
+      # ),
       class        = deriv_type,
       point_type   = deriv_type
       # class      = clean_point_types(class),
@@ -1563,6 +1571,105 @@ set_right_bank <- function(point_types) {
   )
 }
 
+#' Set any channel points that are entirely surrounded by bottom points to bottom points 
+#'
+#' @param point_types character vector 
+#' @param depths numeric vector
+#'
+#' @return character
+#' @export
+set_channel_surrounded_by_bottom <- function(
+    point_types,
+    depths
+    ) {
+  
+  # point_types <- c('left_bank', 'left_bank', 'left_bank', 'left_bank', 
+  #                  'left_bank', 'left_bank', 'left_bank', 'left_bank',
+  #                  'channel', 'channel', 'bottom', 'bottom', 'channel', 'bottom', 'bottom', 'bottom',
+  #                  'channel', 'channel', 'channel', 'channel', 
+  #                  'channel', 'channel', 'right_bank', 'right_bank', 
+  #                  'right_bank', 'right_bank', 'right_bank', 'right_bank', 'right_bank')
+  # depths <- c(250.928558349609, 251.240821555808, 251.615333462939, 252.091121909059, 252.708690878786, 253.497185601128, 254.31950510284, 
+  #             254.667724986135, 253.720274748625, 250.969419502917, 246.858016967773, 246.858016967773, 246.858017156153, 246.858016967773, 
+  #             246.858016967773, 246.858016967773, 247.939518681279, 249.154418756933, 250.436868173105, 251.538464016385, 252.277690369406, 
+  #             252.62558887623, 252.708550723983, 252.6675974528, 252.628967473536, 252.636721010561, 252.666483749578, 
+  #             252.655649255823, 252.593170166016)
+  
+  # point_types <- c('left_bank', 'left_bank', 'left_bank', 'left_bank', 
+  #                  'left_bank', 'left_bank', 'left_bank', 'left_bank',
+  #                  'channel', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'channel', 
+  #                  'bottom', 'bottom', 'bottom',
+  #                  'channel', 'channel', 'channel', 'channel', 
+  #                  'channel', 'channel', 'right_bank', 'right_bank', 
+  #                  'right_bank', 'right_bank', 'right_bank', 'right_bank', 'right_bank')
+  # 
+  # depths <- c(250.928558349609, 251.240821555808, 251.615333462939, 252.091121909059, 252.708690878786, 253.497185601128, 254.31950510284, 
+  #             254.667724986135, 253.720274748625, 250.969419502917, 246.858016967773, 246.858016967773, 
+  #             
+  #             246.858017156153,246.858017156153,246.858017156153,
+  #             
+  #             246.858016967773, 
+  #             246.858016967773, 246.858016967773, 247.939518681279, 249.154418756933, 250.436868173105, 251.538464016385, 252.277690369406, 
+  #             252.62558887623, 252.708550723983, 252.6675974528, 252.628967473536, 252.636721010561, 252.666483749578, 
+  #             252.655649255823, 252.593170166016)
+  
+  # point_types <- c("left_bank", "channel", "channel", "left_bank", "channel", "channel", "bottom", "channel", "right_bank", "channel",  "right_bank")
+  # point_types <- c("left_bank", "channel", "channel", "left_bank", "channel", "channel", "channel", "right_bank")
+  # point_types <- c("left_bank", "channel", "channel", "left_bank", "bottom", "channel", "right_bank", "channel", "channel", "right_bank", "channel", "right_bank")
+  # point_types <- c("left_bank", "channel", "channel", "left_bank", "bottom", "bottom", "right_bank", "channel", "channel", "right_bank", "channel", "right_bank")
+  # point_types <- c("left_bank", "channel", "channel", "bottom", "channel", "right_bank")
+  # point_types <- c("channel", "channel", "channel", "bottom", "channel", "right_bank")
+  # point_types <- c("left_bank", "left_bank", "bottom", "bottom", "bottom", "right_bank")
+  # point_types <- c("left_bank", "left_bank", "channel", "channel", "channel")
+  # point_types <- c("left_bank", "left_bank", "right_bank", "channel", "channel", "channel", "right_bank", "right_bank")
+  # point_types <- c("left_bank", "left_bank", "channel", "bottom", "bottom", "channel", "channel", "right_bank", "right_bank")
+  # paste0(paste0("'", cpts$point_type, "'"), collapse= ", ")
+  # paste0(cpts$Z, collapse= ", ")
+  
+  # depths <- c(250.928558349609, 251.240821555808, 251.615333462939, 252.091121909059, 252.708690878786, 253.497185601128, 254.31950510284, 254.667724986135, 253.720274748625, 250.969419502917, 246.858016967773, 246.858016967773, 246.858017156153, 246.858016967773, 246.858016967773, 246.858016967773, 247.939518681279, 249.154418756933, 250.436868173105, 251.538464016385, 252.277690369406, 252.62558887623, 252.708550723983, 252.6675974528, 252.628967473536, 252.636721010561, 252.666483749578, 252.655649255823, 252.593170166016)
+
+  # get indices of where each group starts 
+  bottoms       <- which(point_types == "bottom")
+  channels      <- which(point_types == "channel")
+  
+  # channels[((channels + 1) %in% bottoms) & ((channels - 1) %in% bottoms)]
+  # make sure there is a bottom point and channel point
+  has_bottom        <- length(bottoms) > 0
+  has_channel       <- length(channels) > 0
+  
+  # if we are missing either bottom OR channel points, just return the input point types vector
+  if (!has_bottom | !has_channel) {
+    return(point_types)
+  }
+  
+  min_bottom_depth <- min(depths[bottoms])
+  
+  min_bottom <- min(bottoms)
+  max_bottom <- max(bottoms)
+  
+  # get any channel pts that are between sets of bottom points
+  channel_pts_between_bottoms                <- channels[(channels > min_bottom) & (channels < max_bottom)]
+  
+  # any(channels[(10 > min_bottom) & (100000000 < max_bottom)])
+  
+  # as long as some points were identified as channel points between bottom points....
+  if( any(channel_pts_between_bottoms )) {
+    
+      # check that the depth at those channel points between the bottom points is at the bottom (approximately)
+      channel_pts_between_bottoms_and_at_bottom  <- ceiling(depths[channel_pts_between_bottoms])  <= ceiling(min_bottom_depth)
+      
+      # if there are channel points that are both surrounded by bottoms AND at the right bottom depth, then just set those points to bottom points
+      if (any(channel_pts_between_bottoms_and_at_bottom)) {
+        point_types[channel_pts_between_bottoms[channel_pts_between_bottoms_and_at_bottom]] <- "bottom"
+      }
+  
+  }
+ 
+  # Check if left_bank, channel, and right_bank are consecutive and in correct order
+  return(
+    point_types
+  )
+}
 
 # -----------------------------------------------------------------------------------------
 
