@@ -33,7 +33,7 @@ testthat::test_that("extend_by_percent() correct output columns - default inputs
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -51,7 +51,7 @@ testthat::test_that("extend_by_percent() correct output columns - default inputs
   )
   
   # make sure the output has the min required columns for a transect 
-  has_min_output_cols <- check_min_transect_output_cols(transects, id = ID_COL)
+  has_min_output_cols <- check_min_transect_output_cols(transects, crosswalk_id = ID_COL)
   testthat::expect_true(has_min_output_cols)
   
 })
@@ -80,7 +80,7 @@ testthat::test_that("extend_by_percent() correct change in geometry length, defa
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -140,7 +140,7 @@ testthat::test_that("default inputs w/ length_col (0% increase - returns input d
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -163,7 +163,7 @@ testthat::test_that("default inputs w/ length_col (0% increase - returns input d
   new_lengths   <- round(new_trans[[LENGTH_COL_NAME]], 0) 
   
   # make sure the output has the min required columns for a transect 
-  has_min_output_cols <- check_min_transect_output_cols(transects, id = ID_COL)
+  has_min_output_cols <- check_min_transect_output_cols(transects, crosswalk_id = ID_COL)
   testthat::expect_true(has_min_output_cols)
   
   has_correctly_changed_lengths_col <- all(new_lengths == END_TRANSECT_LENGTHS)
@@ -207,7 +207,7 @@ testthat::test_that("default inputs w/o length_col (50% increase - length column
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -228,7 +228,7 @@ testthat::test_that("default inputs w/o length_col (50% increase - length column
                                                  )
   
   # make sure the output has the min required columns for a transect 
-  has_min_output_cols <- check_min_transect_output_cols(transects, id = ID_COL)
+  has_min_output_cols <- check_min_transect_output_cols(transects, crosswalk_id = ID_COL)
   testthat::expect_true(has_min_output_cols)
   
   # TODO: need to recalculate length column value because no length_col is specified so 

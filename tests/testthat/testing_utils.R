@@ -5,16 +5,16 @@
 
 # library(hydrofabric3D)
 # TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
-find_connected_components_has_min_output_cols <- function(df, id = "hydrofabric_id") {
+find_connected_components_has_min_output_cols <- function(df, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  to_id <- hydrofabric3D:::as_to_id(id)
+  to_id <- hydrofabric3D:::as_to_id(crosswalk_id)
   
   expected_cols <- c("component_id", 
-                     id, 
+                     crosswalk_id, 
                      to_id,
                      "fromnode",
                      "tonode"
@@ -26,15 +26,15 @@ find_connected_components_has_min_output_cols <- function(df, id = "hydrofabric_
 }
 
 # TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
-get_node_topology_has_min_output_cols <- function(node_df, id = "hydrofabric_id") {
+get_node_topology_has_min_output_cols <- function(node_df, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  to_id <- hydrofabric3D:::as_to_id(id)
+  to_id <- hydrofabric3D:::as_to_id(crosswalk_id)
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      to_id,
                      "fromnode",
                      "tonode"
@@ -51,7 +51,7 @@ prep_flowlines_for_transect_cuts <- function(flines, id_col, min_bf_width) {
   flines <- 
     flines %>% 
     add_powerlaw_bankful_width("tot_drainage_areasqkm", min_bf_width) %>%  
-    dplyr::rename(!!sym(id_col) := id) %>% 
+    dplyr::rename(!!sym(id_col) := crosswalk_id) %>% 
     nhdplusTools::rename_geometry("geometry") %>% 
     dplyr::select(
       dplyr::any_of(id_col), 
@@ -65,13 +65,13 @@ prep_flowlines_for_transect_cuts <- function(flines, id_col, min_bf_width) {
 }
 
 # TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
-relief_detailed_has_min_output_cols <- function(relief, id = "hydrofabric_id") {
+relief_detailed_has_min_output_cols <- function(relief, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id" ,
                      "cs_lengthm",
                      "has_relief",
@@ -86,13 +86,13 @@ relief_detailed_has_min_output_cols <- function(relief, id = "hydrofabric_id") {
 
 
 # TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
-relief_has_min_output_cols <- function(relief, id = "hydrofabric_id") {
+relief_has_min_output_cols <- function(relief, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id" ,
                      "has_relief"
   )
@@ -103,13 +103,13 @@ relief_has_min_output_cols <- function(relief, id = "hydrofabric_id") {
 }
 
 
-has_same_unique_tmp_ids <- function(x, y, id = "hydrofabric_id") {
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+has_same_unique_tmp_ids <- function(x, y, crosswalk_id = "hydrofabric_id") {
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  start_ids <- hydrofabric3D:::get_unique_tmp_ids(df = x, x = id)
-  end_ids   <- hydrofabric3D:::get_unique_tmp_ids(df = y, x = id)
+  start_ids <- hydrofabric3D:::get_unique_tmp_ids(df = x, x = crosswalk_id)
+  end_ids   <- hydrofabric3D:::get_unique_tmp_ids(df = y, x = crosswalk_id)
   
   # all IDs are in x AND y and same number of ids
   same_unique_ids <- all(start_ids %in% end_ids) && all(end_ids %in% start_ids) && length(start_ids) == length(end_ids)
@@ -118,13 +118,13 @@ has_same_unique_tmp_ids <- function(x, y, id = "hydrofabric_id") {
 }
 
 # TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
-bank_attrs_has_min_output_cols <- function(bank_attrs, id = "hydrofabric_id") {
+bank_attrs_has_min_output_cols <- function(bank_attrs, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id" ,
                      "bottom",
                      "left_bank",
@@ -138,13 +138,13 @@ bank_attrs_has_min_output_cols <- function(bank_attrs, id = "hydrofabric_id") {
 }
 
 # TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
-classified_cs_pts_has_min_output_cols <- function(classified_pts, id = "hydrofabric_id") {
+classified_cs_pts_has_min_output_cols <- function(classified_pts, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id","pt_id", "Z", "cs_lengthm", 
                      "relative_distance", "class", "point_type", 
                      "points_per_cs", 
@@ -162,13 +162,13 @@ classified_cs_pts_has_min_output_cols <- function(classified_pts, id = "hydrofab
 }
 
 # TODO: this is a better named version of check_cs_pts_has_exact_cols() (DUPLICATE)
-cs_pts_has_min_output_cols <- function(cs_pts, id = "hydrofabric_id") {
+cs_pts_has_min_output_cols <- function(cs_pts, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id","pt_id", "Z", "cs_lengthm", 
                      "relative_distance", "points_per_cs", "geometry"
   )
@@ -178,13 +178,13 @@ cs_pts_has_min_output_cols <- function(cs_pts, id = "hydrofabric_id") {
   )
 }
 
-check_cs_pts_has_exact_cols <- function(cs_pts, id = "hydrofabric_id") {
+check_cs_pts_has_exact_cols <- function(cs_pts, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id","pt_id", "Z", "cs_lengthm", 
                      "relative_distance", "points_per_cs", "geometry"
                      )
@@ -196,13 +196,13 @@ check_cs_pts_has_exact_cols <- function(cs_pts, id = "hydrofabric_id") {
 
 
 # TODO: this is a better named version of check_cs_pts_and_transect_cols() (DUPLICATE)
-cs_pts_has_correct_cols_from_transects <- function(cs_pts, transects, id = "hydrofabric_id") {
-  # id = "hy_id"
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+cs_pts_has_correct_cols_from_transects <- function(cs_pts, transects, crosswalk_id = "hydrofabric_id") {
+  # crosswalk_id = "hy_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id","pt_id", "Z", "cs_lengthm", 
                      "relative_distance", "points_per_cs", "geometry"
   )
@@ -212,13 +212,13 @@ cs_pts_has_correct_cols_from_transects <- function(cs_pts, transects, id = "hydr
   )
 }
 
-check_transect_output_cols <- function(transects, id = "hydrofabric_id") {
+check_transect_output_cols <- function(transects, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, "cs_id","cs_lengthm", "cs_measure", "ds_distance", 
+  expected_cols <- c(crosswalk_id, "cs_id","cs_lengthm", "cs_measure", "ds_distance", 
                      "lengthm", "sinuosity", "geometry")
   
   return(
@@ -227,13 +227,13 @@ check_transect_output_cols <- function(transects, id = "hydrofabric_id") {
 }
 
 # minimum possible columns for a transect
-check_min_transect_output_cols <- function(transects, id = "hydrofabric_id") {
+check_min_transect_output_cols <- function(transects, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, "cs_id", "geometry")
+  expected_cols <- c(crosswalk_id, "cs_id", "geometry")
   
   return(
     all(expected_cols %in% names(transects))
@@ -257,19 +257,19 @@ check_required_cols <- function(x,
 
 # minimum possible columns for a transect
 check_min_extended_transects_output_cols <- function(x, 
-                                                     id = "hydrofabric_id", 
+                                                     crosswalk_id = "hydrofabric_id", 
                                                      cs_id = "cs_id"
                                                      ) {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
   if(is.null(cs_id)) {
     cs_id = "cs_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      cs_id, 
                      "cs_lengthm", 
                      "extension_distance", 
@@ -282,13 +282,13 @@ check_min_extended_transects_output_cols <- function(x,
   )
 }
 
-check_cs_pts_and_transect_cols <- function(cs_pts, transects, id = "hydrofabric_id") {
-  # id = "hy_id"
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+check_cs_pts_and_transect_cols <- function(cs_pts, transects, crosswalk_id = "hydrofabric_id") {
+  # crosswalk_id = "hy_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id","pt_id", "Z", "cs_lengthm", 
                      "relative_distance", "points_per_cs", "geometry"
                      )
@@ -298,13 +298,13 @@ check_cs_pts_and_transect_cols <- function(cs_pts, transects, id = "hydrofabric_
   )
 }
 
-check_cs_pts_has_required_cols <- function(transects, id = "hydrofabric_id") {
+check_cs_pts_has_required_cols <- function(transects, crosswalk_id = "hydrofabric_id") {
   
-  if(is.null(id)) {
-    id = "hydrofabric_id"
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
   }
   
-  expected_cols <- c(id, 
+  expected_cols <- c(crosswalk_id, 
                      "cs_id","pt_id", "Z", "cs_lengthm", 
                      "relative_distance", "points_per_cs", "geometry"
   )

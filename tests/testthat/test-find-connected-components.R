@@ -2,10 +2,12 @@ library(testthat)
 library(dplyr)
 library(sf)
 # # library(hydrofabric3D)
-
+# 
 source("testing_utils.R")
 # source("tests/testthat/testing_utils.R")
 # devtools::load_all()
+
+# 
 
 # -------------------------------------------------------------------
 # ---- hydrofabric::find_connected_components() ----

@@ -4,12 +4,12 @@
 \alias{drop_incomplete_cs_pts}
 \title{Remove entire cross sections that have any NA Z (depth) values}
 \usage{
-drop_incomplete_cs_pts(cross_section_pts, id = NULL)
+drop_incomplete_cs_pts(cross_section_pts, crosswalk_id = NULL)
 }
 \arguments{
 \item{cross_section_pts}{cs points dataframe, tibble, or sf dataframe}
 
-\item{id}{unique ID for flowline}
+\item{crosswalk_id}{unique ID for flowline}
 }
 \value{
 cross_section_pts dataframe / tibble / sf dataframe with removed cross sections

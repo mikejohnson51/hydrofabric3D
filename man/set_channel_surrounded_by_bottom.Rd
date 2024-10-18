@@ -4,12 +4,12 @@
 \alias{set_channel_surrounded_by_bottom}
 \title{Set any channel points that are entirely surrounded by bottom points to bottom points}
 \usage{
-set_channel_surrounded_by_bottom(point_types, depths)
+set_channel_surrounded_by_bottom(depths, point_types)
 }
 \arguments{
-\item{point_types}{character vector}
-
 \item{depths}{numeric vector}
+
+\item{point_types}{character vector}
 }
 \value{
 character

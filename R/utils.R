@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -380,7 +380,7 @@ get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
   # classified_pts = classified_pts2
   # add = TRUE
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     crosswalk_id  <- 'hydrofabric_id'
   }
@@ -632,7 +632,7 @@ add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
   # classified_pts = classified_pts2
   # add = TRUE  
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     crosswalk_id  <- 'hydrofabric_id'
   }
@@ -1502,7 +1502,7 @@ get_relief <- function(
   # ------------------------------------------------------------------------
   # ------------------------------------------------------------------------
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'
@@ -1763,7 +1763,7 @@ validate_arg_types <- function(..., type_map) {
 #' This function validates the inputs for the cut_cross_sections function to ensure they meet the required criteria.
 #'
 #' @param net An sf object representing the hydrographic network.
-#' @param id A unique identifier column in the network data.
+#' @param crosswalk_id A unique identifier column in the network data.
 #' @param cs_widths Bankfull widths (length of cross sections) for each network element.
 #' @param num Number of transects per network element.
 #' @param smooth Logical, whether to smooth linestring geometries or not. 
@@ -1778,7 +1778,7 @@ validate_arg_types <- function(..., type_map) {
 #' @noRd
 #' @keywords internal
 validate_cut_cross_section_inputs <- function(net, 
-                                              id,
+                                              crosswalk_id,
                                               cs_widths,
                                               num, 
                                               smooth,
@@ -1796,22 +1796,22 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'net' must be an sf object.")
   }
   
-  # # Check if 'id' is NOT a character or if its NULL 
-  # if (!is.character(id) || is.null(id)) {
-  #   # if (is.null(id) || !is.character(id)) {
-  #   stop("'id' must be a character vector")
+  # # Check if 'crosswalk_id' is NOT a character or if its NULL 
+  # if (!is.character(crosswalk_id) || is.null(crosswalk_id)) {
+  #   # if (is.null(crosswalk_id) || !is.character(crosswalk_id)) {
+  #   stop("'crosswalk_id' must be a character vector")
   # }
   # 
   
-  # Check if 'id' is NOT a character AND its NOT NULL
-  if (!is.character(id) && !is.null(id)) {
-    # if (is.null(id) || !is.character(id)) {
-    stop("'id' must be a character vector or NULL")
+  # Check if 'crosswalk_id' is NOT a character AND its NOT NULL
+  if (!is.character(crosswalk_id) && !is.null(crosswalk_id)) {
+    # if (is.null(crosswalk_id) || !is.character(crosswalk_id)) {
+    stop("'crosswalk_id' must be a character vector or NULL")
   }
   
-  # check if NOT NULL id is a column in 'net' 
-  if (!id %in% names(net) && !is.null(id)) {
-    stop("'id' column ", id, " is not a valid column in 'net'. 'id' must be a character vector or NULL")
+  # check if NOT NULL crosswalk_id is a column in 'net' 
+  if (!crosswalk_id %in% names(net) && !is.null(crosswalk_id)) {
+    stop("'crosswalk_id' column ", crosswalk_id, " is not a valid column in 'net'. 'crosswalk_id' must be a character vector or NULL")
   }
   
   # Check if 'cs_widths' is numeric or a numeric vector
@@ -1856,7 +1856,7 @@ validate_cut_cross_section_inputs <- function(net,
   
   # # Check if 'terminal_id' is NOT a character and its NOT NULL
   # if (!is.character(terminal_id) && !is.null(terminal_id)) {
-  #   # if (is.null(id) || !is.character(id)) {
+  #   # if (is.null(crosswalk_id) || !is.character(crosswalk_id)) {
   #   stop("'terminal_id' must be a character vector or NULL")
   # }
   
@@ -1899,7 +1899,7 @@ validate_cut_cross_section_inputs <- function(net,
 get_cs_bottom_length <- function(cross_section_pts, 
                                  crosswalk_id = NULL) {
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -1969,19 +1969,19 @@ get_cs_bottom_length <- function(cross_section_pts,
 #' Remove entire cross sections that have any NA Z (depth) values
 #'
 #' @param cross_section_pts cs points dataframe, tibble, or sf dataframe
-#' @param id unique ID for flowline 
+#' @param crosswalk_id unique ID for flowline 
 #' @importFrom dplyr group_by across any_of ungroup filter
 #' @return cross_section_pts dataframe / tibble / sf dataframe with removed cross sections
 #' @export
-drop_incomplete_cs_pts <- function(cross_section_pts, id = NULL) {
-  # make a unique ID if one is not given (NULL 'id')
-  if(is.null(id)) {
-    id  <- 'hydrofabric_id'
+drop_incomplete_cs_pts <- function(cross_section_pts, crosswalk_id = NULL) {
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    crosswalk_id  <- 'hydrofabric_id'
   }
   
   cross_section_pts <-  
     cross_section_pts %>% 
-    dplyr::group_by(dplyr::across(dplyr::any_of(c(id, "cs_id")))) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::filter(!any(is.na(Z))) %>% 
     dplyr::ungroup()
   

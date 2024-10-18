@@ -54,7 +54,7 @@ plot(net$geometry)
 
 ```{r}
 (transects = cut_cross_sections(net = net,
-                         id = "comid", 
+                         crosswalk_id = "comid", 
                          cs_widths = pmax(50, net$bf_width * 7),
                          num = 10) )
 
@@ -92,7 +92,7 @@ ggplot(data = filter(classified_pts, hy_id == 101) ) +
 ```{r}
 system.time({
   cs = net %>% 
-  cut_cross_sections(id = "comid", 
+  cut_cross_sections(crosswalk_id = "comid", 
                      cs_widths = pmax(50, net$bf_width * 7),
                      num = 10) %>% 
   cross_section_pts(dem = '/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt') %>% 

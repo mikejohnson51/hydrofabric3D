@@ -35,7 +35,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
 
    # Test valid inputs
    testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                              id = "hy_id",
+                                                              crosswalk_id = "hy_id",
                                                               cs_widths = 100,
                                                               num = 10, 
                                                               smooth = TRUE,
@@ -52,7 +52,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test valid inputs
   testthat::expect_error(alidate_cut_cross_section_inputs(net = net, 
-                                                           id = "anotherID",
+                                                           crosswalk_id = "anotherID",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -69,7 +69,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test valid inputs with terminal_id
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -86,7 +86,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test valid inputs with braid_threshold
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -103,7 +103,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test valid inputs with add
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -120,7 +120,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
    # Test invalid sf object
    testthat::expect_error(validate_cut_cross_section_inputs(net = data.frame(), 
-                                                                id = "hy_id",
+                                                                crosswalk_id = "hy_id",
                                                                cs_widths = 100,
                                                                num = 10, 
                                                                smooth = TRUE,
@@ -135,10 +135,10 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                                add = FALSE)
                           )
    
-   # Test invalid id type (id is a numeric)
+   # Test invalid crosswalk_id type (crosswalk_id is a numeric)
   testthat::expect_error(
     validate_cut_cross_section_inputs(net = net, 
-                                       id = 2,
+                                       crosswalk_id = 2,
                                        cs_widths = 100,
                                        num = 10, 
                                        smooth = TRUE,
@@ -153,9 +153,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                        add = FALSE)
                          )
   
-  # Test invalid id type (id is NULL)
+  # Test invalid crosswalk_id type (crosswalk_id is NULL)
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = NULL,
+                                                           crosswalk_id = NULL,
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -171,9 +171,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                          NULL
                          )
   
-  # Test invalid id type (id is a numeric)
+  # Test invalid crosswalk_id type (crosswalk_id is a numeric)
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = 32324,
+                                                            crosswalk_id = 32324,
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
@@ -190,7 +190,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid num type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = "10", 
                                                            smooth = TRUE,
@@ -207,7 +207,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid densify type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -224,7 +224,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid smooth type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hy_id",
+                                                            crosswalk_id = "hy_id",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = "453",
@@ -241,7 +241,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid rm_self_intersect type 1
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -257,7 +257,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid rm_self_intersect type 2
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
@@ -273,7 +273,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid fix_braids type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -289,7 +289,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid terminal ID value (terminal ID is a number)
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
@@ -306,7 +306,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid terminal ID value (terminal ID is a logical)
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
@@ -323,7 +323,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid braid_method value
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -339,7 +339,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid precision value
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
@@ -355,7 +355,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
   
   # Test invalid add type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,

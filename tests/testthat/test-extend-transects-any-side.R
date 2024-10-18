@@ -33,7 +33,7 @@ testthat::test_that("extend_transects_any_side() correct output columns", {
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -53,7 +53,7 @@ testthat::test_that("extend_transects_any_side() correct output columns", {
                             )
   
   correct_output_cols <- check_min_extended_transects_output_cols(extensions, 
-                                                                  id = CROSSWALK_ID, 
+                                                                  crosswalk_id = CROSSWALK_ID, 
                                                                   cs_id = CS_ID)
   testthat::expect_true(correct_output_cols)
   
@@ -82,7 +82,7 @@ testthat::test_that("extend_transects_any_side() test that any transects labeled
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -102,7 +102,7 @@ testthat::test_that("extend_transects_any_side() test that any transects labeled
                                           )
   
   correct_output_cols <- check_min_extended_transects_output_cols(extensions, 
-                                                                  id = CROSSWALK_ID, 
+                                                                  crosswalk_id = CROSSWALK_ID, 
                                                                   cs_id = CS_ID)
   testthat::expect_true(correct_output_cols)
   
@@ -162,7 +162,7 @@ testthat::test_that("extend_transects_any_side() test that no transect is extend
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -183,7 +183,7 @@ testthat::test_that("extend_transects_any_side() test that no transect is extend
   
   # make sure minimum required output columns
   correct_output_cols <- check_min_extended_transects_output_cols(extensions, 
-                                                                  id = CROSSWALK_ID, 
+                                                                  crosswalk_id = CROSSWALK_ID, 
                                                                   cs_id = CS_ID)
   testthat::expect_true(correct_output_cols)
   
@@ -251,7 +251,7 @@ testthat::test_that("extend_transects_any_side() incorrect input columns in FLOW
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -309,7 +309,7 @@ testthat::test_that("extend_transects_any_side() incorrect input columns in TRAN
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -371,7 +371,7 @@ testthat::test_that("extend_transects_any_side() mismatched CROSSWALK_ID column 
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -421,7 +421,7 @@ testthat::test_that("extend_transects_any_side() mismatched CROSSWALK_ID column 
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -484,7 +484,7 @@ testthat::test_that("extend_transects_any_side() test that a transect can be ext
   
   transects <- cut_cross_sections(
       net = flowlines,
-      id  = CROSSWALK_ID,  
+      crosswalk_id  = CROSSWALK_ID,  
       num = 10
     ) %>% 
     dplyr::filter(cs_id == 4) %>% 
@@ -562,7 +562,7 @@ testthat::test_that("extend_transects_any_side() test that both sides of a trans
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = 10
   ) %>% 
     dplyr::filter(cs_id == 4) %>% 
@@ -643,7 +643,7 @@ testthat::test_that("extend_transects_any_side() test that both sides can be ext
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = 10
   ) %>% 
     dplyr::filter(cs_id == 4) %>% 
@@ -732,7 +732,7 @@ testthat::test_that("extend_transects_any_side() test that only 1 side will be e
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = 10
   ) %>% 
     dplyr::filter(cs_id == 4) %>% 

@@ -171,7 +171,7 @@ testthat::test_that("is_valid_transect_line() - check all valid pairings of 2 tr
   # # generate transects
   # transects <- cut_cross_sections(
   #   net = flowlines,
-  #   id  = CROSSWALK_ID,  
+  #   crosswalk_id  = CROSSWALK_ID,  
   #   num = NUM_OF_TRANSECTS,
   #   cs_widths = CS_WIDTH
   # ) %>% 
@@ -493,7 +493,7 @@ testthat::test_that("is_valid_transect_line() - check real flowlines ", {
   # # generate transects
   # transects <- cut_cross_sections(
   #   net = flowlines,
-  #   id  = CROSSWALK_ID,  
+  #   crosswalk_id  = CROSSWALK_ID,  
   #   num = NUM_OF_TRANSECTS,
   #   cs_widths = CS_WIDTH
   # ) %>% 

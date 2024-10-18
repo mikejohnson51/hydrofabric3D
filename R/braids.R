@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -99,7 +99,7 @@ find_braids <- function(
   # crosswalk_id = "comid"
   
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # verbose = TRUE
   # nested      = TRUE
   # verbose     = TRUE
@@ -155,14 +155,14 @@ add_braid_ids <- function(
   # crosswalk_id = "comid"
   # 
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # verbose = TRUE
   
   # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
   # crosswalk_id = "comid"
   # # 
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # verbose     = TRUE
   
   # find all braids that each crosswalk_id is a part of 
@@ -233,7 +233,7 @@ get_braid_list <- function(
   # crosswalk_id = "comid"
   
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # verbose = TRUE
   
   # # Test data for braids
@@ -244,7 +244,7 @@ get_braid_list <- function(
   # crosswalk_id = "comid"
   # 
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # recycle     = FALSE
   # verbose      = TRUE
   
@@ -266,7 +266,7 @@ get_braid_list <- function(
   #   # dplyr::filter(divergence != 2) %>% 
   #   # mapview::mapview()
   #   # .$geom %>% plot()
-  #   dplyr::select(id = comid, divergence) %>% 
+  #   dplyr::select(crosswalk_id = comid, divergence) %>% 
   #   hydroloom::hy() %>% 
   #   hydroloom::make_attribute_topology(min_distance = 5) %>% 
   #   hydroloom::make_node_topology(add_div = T) %>% 
@@ -440,7 +440,7 @@ find_connected_components <- function(
   # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
   # crosswalk_id = "comid"
   # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # # crosswalk_id = "id"
+  # # crosswalk_id = "crosswalk_id"
   # 
   
   # 
@@ -701,8 +701,21 @@ get_node_topology <- function(
   # crosswalk_id = crosswalk_id
   # stash_nodes <- x %>% dplyr::select(comid, fromnode, tonode) %>% sf::st_drop_geometry()
   # *************************************
+  # ID_COL        <- "id"
+  # TO_ID_COL     <- hydrofabric3D:::as_to_id(ID_COL)
+  
+  # flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))  %>% 
+  #   dplyr::select(dplyr::any_of(ID_COL))  
+  
+  # NUM_FLOWLINES <- nrow(flowlines)
+  # NUM_CONNECTED_COMPONENTS <- 1
+  # x =  flowlines
+  # crosswalk_id    = ID_COL
+  # x =flowlines
+  # crosswalk_id = ID_COL
 
-  # make a unique ID if one is not given (NULL 'id')
+
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -719,14 +732,14 @@ get_node_topology <- function(
     stop("Input dataframe/sf dataframe 'x' is empty, node topology can not be generated from empty dataset")
   }
   
-  # temporary change crosswalk_id to a standard "id" for hydroloom
+  # temporary change crosswalk_id to a standard "crosswalk_id" for hydroloom
   names(x)[names(x) == crosswalk_id]    <- "id"
   
   topo <-
     x %>%
     dplyr::select(id) %>%
     # dplyr::select(network, dplyr::any_of(crosswalk_id)) %>% 
-    # dplyr::select(id = comid) %>%
+    # dplyr::select(crosswalk_id = comid) %>%
     hydroloom::hy() %>% 
     hydroloom::align_names() %>% 
     hydroloom::make_attribute_topology(min_distance = 5)
@@ -740,7 +753,7 @@ get_node_topology <- function(
     dplyr::tibble()
   
   # # remove repeated IDs
-  # topo <- topo[!duplicated(topo$id), ]
+  # topo <- topo[!duplicated(topo$crosswalk_id), ]
   # # re generate node topology with duplicate IDs removed
   # topo <-
   #   topo %>% 
@@ -773,7 +786,7 @@ get_node_topology <- function(
   # undir <- dplyr::bind_rows(adj_list_long, reverse_edges) %>%
   #   dplyr::distinct(indid, toindid, .keep_all = TRUE)
   
-  # select id, fromnode and tonode
+  # select crosswalk_id, fromnode and tonode
   adj <- 
     adj_list %>% 
     dplyr::select(id, fromnode = indid , tonode = toindid)
@@ -782,7 +795,10 @@ get_node_topology <- function(
     adj <- 
       adj %>% 
       dplyr::left_join(
-        dplyr::select(adj, toid = id, fromnode),
+        dplyr::select(adj, 
+                      toid = id, 
+                      fromnode
+                      ),
         by = c("tonode" = "fromnode")
       ) %>% 
       dplyr::distinct() %>% 
@@ -793,9 +809,9 @@ get_node_topology <- function(
       )
   })
   
-  # change "id" and "toid" back to "crosswalk_id" and "to_crosswalk_id"
-  names(adj)[names(adj) == "id"]     <- crosswalk_id
-  names(adj)[names(adj) == "toid"]   <- as_to_id(crosswalk_id)
+  # change "crosswalk_id" and "toid" back to "crosswalk_id" and "to_crosswalk_id"
+  names(adj)[names(adj) == "id"]           <- crosswalk_id
+  names(adj)[names(adj) == "toid"]         <- as_to_id(crosswalk_id)
   
   return(adj)
   
@@ -837,7 +853,7 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
   #     to_comid = c("B", "C", "D", "E")
   #   )
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -1214,7 +1230,7 @@ internal_get_braid_list  <- function(
     # dplyr::any_of(c(crosswalk_id, to_crosswalk_id, "comid", "tocomid")),
     # dag,
     # comid,
-    # id,
+    # crosswalk_id,
     fromnode,
     tonode
   )
@@ -1342,7 +1358,7 @@ internal_get_network_braid_list <- function(
   # crosswalk_id = "comid"
   # # 
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # network <- net2
   # start = NULL
   # verbose      = TRUE
@@ -1521,7 +1537,7 @@ process_braids <- function(network,
   # crosswalk_id = "comid"
   
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   verbose = TRUE
   
   # get a list of braid IDs and comids within each braid
@@ -1675,7 +1691,7 @@ process_braid_list <- function(
   # crosswalk_id = "comid"
   # 
   # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # # crosswalk_id = "id"
+  # # crosswalk_id = "crosswalk_id"
   # verbose = TRUE
   # 
   # # get a list of braid IDs and crosswalk_ids within each braid
@@ -1942,7 +1958,7 @@ process_braid_list <- function(
 #   # crosswalk_id = "comid"
 #   # 
 #   # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-#   # # crosswalk_id = "id"
+#   # # crosswalk_id = "crosswalk_id"
 #   # verbose = TRUE
 #   # 
 #   # # get a list of braid IDs and crosswalk_ids within each braid
@@ -2313,7 +2329,7 @@ is_braided <- function(
   # crosswalk_id = "comid"
   # 
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # recycle     = FALSE
   # verbose      = TRUE
   
@@ -2336,7 +2352,7 @@ is_braided <- function(
     return(FALSE)
   }
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -2481,7 +2497,7 @@ internal_is_braided <- function(
   # crosswalk_id = "comid"
   #
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # start = NULL
   # verbose      = TRUE
   
@@ -2521,7 +2537,7 @@ internal_is_braided <- function(
     # dplyr::any_of(c(crosswalk_id, to_crosswalk_id, "comid", "tocomid")),
     # dag,
     # comid,
-    # id,
+    # crosswalk_id,
     fromnode,
     tonode
   )
@@ -2639,7 +2655,7 @@ internal_is_network_braided <- function(
   # crosswalk_id = "comid"
   #
   # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "id"
+  # crosswalk_id = "crosswalk_id"
   # start = NULL
   # verbose      = TRUE
   
@@ -2656,7 +2672,7 @@ internal_is_network_braided <- function(
     return(FALSE)
   }
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -2707,7 +2723,7 @@ internal_is_network_braided <- function(
     # dplyr::any_of(c(crosswalk_id, to_crosswalk_id, "comid", "tocomid")),
     # dag,
     # comid,
-    # id,
+    # crosswalk_id,
     fromnode,
     tonode
   )
@@ -3305,7 +3321,7 @@ unpack_braids <- function(x,
                           into_list = FALSE
                           ) {
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     crosswalk_id  <- 'hydrofabric_id'
   }

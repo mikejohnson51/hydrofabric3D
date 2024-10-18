@@ -226,7 +226,7 @@ Now let's add cross sections using the algorithm described [here](cross_section_
 ```{r, eval = T, echo = T, message=FALSE}
 transects <- hydrofabric3D::cut_cross_sections(
   net        = net,
-  id         = "comid",
+  crosswalk_id         = "comid",
   cs_widths  = 200,
   num        = 10,
   fix_braids = FALSE,
@@ -435,7 +435,7 @@ comp_id <- braids$component_id[braids$comid == com]
 # other geometries to cut across with transects
 others <- hydrofabric3D:::get_geoms_to_cut(
             x            = braids,
-            id           = com,
+            crosswalk_id           = com,
             braid_id     = braids_of_interest,
             # component    = NULL,
             component    = comp_id,
@@ -584,7 +584,7 @@ make_geoms_to_cut_gif <- function(
     # other geometries to cut across with transects
     others <- hydrofabric3D:::get_geoms_to_cut(
                 x            = braid_flowlines,
-                id           = com,
+                crosswalk_id           = com,
                 braid_id     = braids_of_interest,
                 component    = comp_id,
                 # method       = "neighbor"

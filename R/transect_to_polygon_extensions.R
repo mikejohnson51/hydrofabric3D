@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -837,7 +837,7 @@ get_line_node_pts <- function(
 #   # transect_lines         = transects
 #   # 
 #   # polygons               = fema
-#   # flowlines              = dplyr::rename(flines, hy_id = id)
+#   # flowlines              = dplyr::rename(flines, hy_id = crosswalk_id)
 #   # # flowlines
 #   # crosswalk_id = "hy_id"
 #   # intersect_group_id     = "mainstem" 
@@ -887,8 +887,8 @@ get_line_node_pts <- function(
 #   #     transect_lines <- 
 #   #       transect_lines  %>%
 #   #       dplyr::left_join(
-#   #         dplyr::select(sf::st_drop_geometry(flowlines),id, dplyr::any_of(intersect_group_id)),
-#   #         by = c("hy_id" = "id")
+#   #         dplyr::select(sf::st_drop_geometry(flowlines),crosswalk_id, dplyr::any_of(intersect_group_id)),
+#   #         by = c("hy_id" = "crosswalk_id")
 #   #       )
 #   #     }
 #   #   }
@@ -1142,14 +1142,14 @@ get_line_node_pts <- function(
 #   # format(object.size(flowlines), 'auto')
 #   # profvis::profvis({
 #   
-#   # # TODO: if an intersect group id is given, then pull those columns as vectors to use for intersection checks in loop
+#   # # TODO: if an intersect group crosswalk_id is given, then pull those columns as vectors to use for intersection checks in loop
 #   # if(!is.null(intersect_group_id)) {
 #   #   fline_group_id_array     <- flowlines[[intersect_group_id]]
 #   #   transect_group_id_array  <- transect_lines[[intersect_group_id]]
 #   # }  
 #   
 #   fline_id_array   <- flowlines[[crosswalk_id]]
-#   # fline_id_array   <- flowlines$id
+#   # fline_id_array   <- flowlines$crosswalk_id
 #   
 #   # TODO: next time, change this function to ONLY process transects that have ANY extension distance, right now we iterate through ALL transects,
 #   # TODO: and 'next' the ones with the no extension distance so doesn't really matter much but 

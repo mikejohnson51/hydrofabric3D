@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -53,7 +53,7 @@ utils::globalVariables(
 #' Given a set of transect lines with valid_banks and has_relief columns (derived from DEM extracted cross section points), extend any transects 
 #' by a percentage of the transects length if the transect does NOT have valid banks (valid_banks == FALSE) OR it does NOT have relief (has_relief == FALSE).
 #' @param transects_to_check sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters), "valid_banks", and "has_relief"
-#' @param net sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )
+#' @param net sf linestrings, flowline network that transects were generated from, requires "crosswalk_id" column (where "crosswalk_id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )
 #' @param crosswalk_id character, column name that connects features in transects to net
 #' @param scale numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50% of the transect length)
 #' @param direction character, strategy to take for extending transects. 
@@ -107,7 +107,7 @@ extend_invalid_transect_sides <- function(
   # ----------------------------------------------------------------------------------
   # ----------- Input checking ------
   # ----------------------------------------------------------------------------------
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -1459,7 +1459,7 @@ extend_transects_by_length <- function(
 # # Given a set of transect lines with valid_banks and has_relief columns (derived from DEM extracted cross section points), extend any transects 
 # # by a percentage of the transects length if the transect does NOT have valid banks (valid_banks == FALSE) OR it does NOT have relief (has_relief == FALSE).
 # # @param transects_to_check sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters), "valid_banks", and "has_relief"
-# # @param net sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )
+# # @param net sf linestrings, flowline network that transects were generated from, requires "id" column (where "crosswalk_id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )
 # # @param scale numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50% of the transect length)
 # # @param verbose logical, whether to show a progress bar and progress messages or not. Default is TRUE.
 # # @return sf linestring dataframe containing the the original transects with extensions performed on transects without valid_banks OR has_relief (a "is_extended" flag denotes if the geometry was extended by "scale" % or not)

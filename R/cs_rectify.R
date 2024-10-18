@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -105,7 +105,7 @@ get_improved_cs_pts = function(
   # # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_11.gpkg")
   # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_classified_11.gpkg")
   # net <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_11.gpkg") %>%
-  #   dplyr::rename(hy_id = id)
+  #   dplyr::rename(hy_id = crosswalk_id)
   # # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg")
   # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_transects_11.gpkg")
   # 
@@ -124,7 +124,7 @@ get_improved_cs_pts = function(
   
   # ----------------------------------------
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # net <- add_hydrofabric_id(net) 
     crosswalk_id  <- 'hydrofabric_id'
@@ -266,7 +266,7 @@ get_improved_cs_pts = function(
     pct_of_length_for_relief = pct_of_length_for_relief
   )
   
-  # add tmp id for convenience
+  # add tmp crosswalk_id for convenience
   reclassified_pts <- hydrofabric3D::add_tmp_id(reclassified_pts, x = crosswalk_id)
   
   # Find "validity score" values which just represents a cross sections bank and relief validity as either (0, 1, or 2)
@@ -435,7 +435,7 @@ get_improved_cs_pts = function(
 #   # 
 #   # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
 #   # net <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg") %>%
-#   #   dplyr::rename(hy_id = id)
+#   #   dplyr::rename(hy_id = crosswalk_id)
 #   # # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg")
 #   # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_transects_06.gpkg")
 #   # 
@@ -529,7 +529,7 @@ get_improved_cs_pts = function(
 #   #   # extensions that were made (geometries, cs_lengthm, "is_extended" flag) and keeps all the rest of the remaining data in place
 #   #   extended_geoms2 <- extend_invalid_transects3(
 #   #     transects_to_check  = transects, 
-#   #     net                 = dplyr::rename(net, id = hy_id), 
+#   #     net                 = dplyr::rename(net, crosswalk_id = hy_id), 
 #   #     scale               = scale,
 #   #     verbose             = verbose
 #   #   )
@@ -575,7 +575,7 @@ get_improved_cs_pts = function(
 #     pct_of_length_for_relief = pct_of_length_for_relief
 #   )
   
-#   # add tmp id for convenience
+#   # add tmp crosswalk_id for convenience
 #   reclassified_pts <- hydrofabric3D::add_tmp_id(reclassified_pts)
   
 #   # Find "validity score" values which just represents a cross sections bank and relief validity as either (0, 1, or 2)
@@ -734,7 +734,7 @@ get_improved_cs_pts = function(
 #   # 
 #   # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
 #   # net <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg") %>% 
-#   #   dplyr::rename(hy_id = id)
+#   #   dplyr::rename(hy_id = crosswalk_id)
 #   # # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg")
 #   # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_transects_06.gpkg")
 #   # 
@@ -816,7 +816,7 @@ get_improved_cs_pts = function(
 #   #   # extensions that were made (geometries, cs_lengthm, "is_extended" flag) and keeps all the rest of the remaining data in place
 #   #   extended_geoms2 <- extend_invalid_transects3(
 #   #     transects_to_check  = transects, 
-#   #     net                 = dplyr::rename(net, id = hy_id), 
+#   #     net                 = dplyr::rename(net, crosswalk_id = hy_id), 
 #   #     scale               = scale,
 #   #     verbose             = verbose
 #   #   )
@@ -864,7 +864,7 @@ get_improved_cs_pts = function(
 #     pct_of_length_for_relief = pct_of_length_for_relief
 #   )
 #   
-#   # add tmp id for convenience
+#   # add tmp crosswalk_id for convenience
 #   reclassified_pts <- hydrofabric3D::add_tmp_id(reclassified_pts)
 # 
 #   # Find "validity score" values which just represents a cross sections bank and relief validity as either (0, 1, or 2)
@@ -1023,7 +1023,7 @@ get_improved_cs_pts = function(
 #   # 
 #   # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
 #   # net <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg") %>% 
-#   #   dplyr::rename(hy_id = id)
+#   #   dplyr::rename(hy_id = crosswalk_id)
 #   # # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_flines_06.gpkg")
 #   # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_transects_06.gpkg")
 #   # 
@@ -1140,7 +1140,7 @@ get_improved_cs_pts = function(
 #     pct_of_length_for_relief = pct_of_length_for_relief
 #   )
 #   
-#   # add tmp id for convenience
+#   # add tmp crosswalk_id for convenience
 #   reclassified_pts <- hydrofabric3D::add_tmp_id(reclassified_pts)
 #   
 #   # Find "validity score" values which just represents a cross sections bank and relief validity as either (0, 1, or 2)
@@ -1397,7 +1397,7 @@ get_improved_cs_pts = function(
 #     pct_of_length_for_relief = pct_of_length_for_relief
 #   )
 #   
-#   # add tmp id for convenience
+#   # add tmp crosswalk_id for convenience
 #   classify_pts_again <- hydrofabric3D::add_tmp_id(classify_pts_again)
 # 
 #   # List of unique hy_id/cs_ids (tmp_id) that are STILL bad after attempting to extend and 
@@ -2396,8 +2396,8 @@ rectify_flat_cs = function(
 #     
 #     fline_intersect <- sf::st_intersection(
 #       extended_tran,
-#       net[net$id == to_extend[i, ]$hy_id, ]
-#       # dplyr::filter(net, id == to_extend[i, ]$hy_id)
+#       net[net$crosswalk_id == to_extend[i, ]$hy_id, ]
+#       # dplyr::filter(net, crosswalk_id == to_extend[i, ]$hy_id)
 #     )
 #     
 #     if(nrow(fline_intersect) > 0) {

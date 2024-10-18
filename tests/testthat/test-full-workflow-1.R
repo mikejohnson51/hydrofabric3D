@@ -58,7 +58,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)3", 
   # 
   # transects <- hydrofabric3D::cut_cross_sections(
   #   net               = flowlines,
-  #   id                = ID_COL,
+  #   crosswalk_id                = ID_COL,
   #   cs_widths         = flowlines$bf_width,
   #   num               = NUM_OF_TRANSECTS,
   #   rm_self_intersect = RM_SELF_INTERSECTS
@@ -79,7 +79,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)3", 
   # 
   # cpts <- 
   #   cs_pts %>% 
-  #     hydrofabric3D:::drop_incomplete_cs_pts(id = ID_COL) %>% 
+  #     hydrofabric3D:::drop_incomplete_cs_pts(crosswalk_id = ID_COL) %>% 
   #     hydrofabric3D:::classify_points(
   #       crosswalk_id             = ID_COL, 
   #       pct_of_length_for_relief = PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF
@@ -87,7 +87,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)3", 
   # 
   # cpts2 <- 
   #   cs_pts %>% 
-  #   hydrofabric3D:::drop_incomplete_cs_pts(id = ID_COL) %>% 
+  #   hydrofabric3D:::drop_incomplete_cs_pts(crosswalk_id = ID_COL) %>% 
   #   hydrofabric3D:::classify_points(
   #     crosswalk_id             = ID_COL, 
   #     pct_of_length_for_relief = PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF
@@ -95,7 +95,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)3", 
   # 
   # cpts3 <- 
   #   cs_pts %>% 
-  #   hydrofabric3D:::drop_incomplete_cs_pts(id = ID_COL) %>% 
+  #   hydrofabric3D:::drop_incomplete_cs_pts(crosswalk_id = ID_COL) %>% 
   #   classify_points3(
   #     crosswalk_id             = ID_COL, 
   #     pct_of_length_for_relief = PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF
@@ -409,7 +409,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
 
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowlines,
-    id                = ID_COL,
+    crosswalk_id                = ID_COL,
     cs_widths         = flowlines$bf_width,
     num               = NUM_OF_TRANSECTS,
     rm_self_intersect = RM_SELF_INTERSECTS

@@ -40,7 +40,7 @@ testthat::test_that("'get_bank_attributes' has valid output columns from CLASSIF
 
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,
+    crosswalk_id  = ID_COL,
     num = NUM_OF_TRANSECTS
   ) %>%
     dplyr::select(
@@ -71,7 +71,7 @@ testthat::test_that("'get_bank_attributes' has valid output columns from CLASSIF
     crosswalk_id   = ID_COL
   )
 
-  has_all_required_output_cols <- bank_attrs_has_min_output_cols(bank_attrs = bank_attrs, id = ID_COL)
+  has_all_required_output_cols <- bank_attrs_has_min_output_cols(bank_attrs = bank_attrs, crosswalk_id = ID_COL)
   testthat::expect_true(has_all_required_output_cols)
 
 })

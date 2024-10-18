@@ -61,7 +61,7 @@ testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided",
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id = CROSSWALK_ID,
+    crosswalk_id = CROSSWALK_ID,
     num = NUMBER_OF_TRANSECTS,
     cs_widths  = 5
   )
@@ -89,9 +89,9 @@ testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided",
   testthat::expect_true(check_transect_output_cols(transects, CROSSWALK_ID))
 })
 
-testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided", {
+testthat::test_that("flowlines with correct 'crosswalk_id' column named 'hy_id' provided", {
   
-  CROSSWALK_IDS = c("hy_id", "id")
+  CROSSWALK_IDS = c("hy_id", "crosswalk_id")
   
   for (CROSSWALK_ID in CROSSWALK_IDS) {
     
@@ -106,7 +106,7 @@ testthat::test_that("flowlines with correct 'id' column named 'hy_id' provided",
     
     transects <- cut_cross_sections(
       net = flowlines,
-      id = CROSSWALK_ID,
+      crosswalk_id = CROSSWALK_ID,
       num = NUMBER_OF_TRANSECTS,
       cs_widths  = 5
     )
@@ -150,7 +150,7 @@ testthat::test_that("5 meter long transects distance check", {
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id = CROSSWALK_ID,
+    crosswalk_id = CROSSWALK_ID,
     num = NUMBER_OF_TRANSECTS,
     cs_widths  = EXPECTED_WIDTH
   )
@@ -185,7 +185,7 @@ testthat::test_that("check correct output columns for transects", {
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id = CROSSWALK_ID,
+    crosswalk_id = CROSSWALK_ID,
     num = NUMBER_OF_TRANSECTS,
     cs_widths  = EXPECTED_WIDTH
   )
@@ -269,7 +269,7 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   # 
   # transects <- hydrofabric3D::cut_cross_sections(
   #   net               = flowline
-  #   # id                = NULL,
+  #   # crosswalk_id                = NULL,
   #   # cs_widths         = c(10) 
   # )
   
@@ -285,7 +285,7 @@ testthat::test_that("cut 2 transects on a single flowline", {
   # 
   # transects <- hydrofabric3D::cut_cross_sections(
   #   net               = flowline,
-  #   id                = "id",
+  #   crosswalk_id                = "id",
   #   cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
   #   num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
   #   smooth            = TRUE,                          # smooth lines
@@ -317,7 +317,7 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
   # 
   # transects <- hydrofabric3D::cut_cross_sections(
   #   net               = flowlines,
-  #   id                = "id",
+  #   crosswalk_id                = "id",
   #   cs_widths         = pmax(50, flowlines$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
   #   num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
   #   smooth            = TRUE,                          # smooth lines
@@ -390,9 +390,9 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
   CROSSWALK_ID                = "hy_id"
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowline,
-    id                = CROSSWALK_ID,
-    cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
-    num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+    crosswalk_id                = CROSSWALK_ID,
+    cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "crosswalk_id" linestring ("hy_id")
+    num               = 10,                            # number of cross sections per "crosswalk_id" linestring ("hy_id")
     smooth            = TRUE,                          # smooth lines
     densify           = 3,                             # densify linestring points
     rm_self_intersect = TRUE,                          # remove self intersecting transects
@@ -424,9 +424,9 @@ testthat::test_that("cut 20 transects along single flowline & remove intersects 
   
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowline,
-    id                = CROSSWALK_ID,
-    cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
-    num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+    crosswalk_id                = CROSSWALK_ID,
+    cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "crosswalk_id" linestring ("hy_id")
+    num               = 20,                            # number of cross sections per "crosswalk_id" linestring ("hy_id")
     smooth            = TRUE,                          # smooth lines
     densify           = 3,                             # densify linestring points
     rm_self_intersect = TRUE,                          # remove self intersecting transects
@@ -462,9 +462,9 @@ testthat::test_that("cut 100 transects along single flowline & remove intersects
   
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowline,
-    id                = "hy_id",
-    cs_widths         = 100,     # cross section width of each "id" linestring ("hy_id")
-    num               = 100,                            # number of cross sections per "id" linestring ("hy_id")
+    crosswalk_id                = "hy_id",
+    cs_widths         = 100,     # cross section width of each "crosswalk_id" linestring ("hy_id")
+    num               = 100,                            # number of cross sections per "crosswalk_id" linestring ("hy_id")
     smooth            = TRUE,                          # smooth lines
     densify           = 3,                             # densify linestring points
     rm_self_intersect = TRUE,                          # remove self intersecting transects
@@ -500,9 +500,9 @@ testthat::test_that("huge cs_lengthm with remove intersections)", {
   
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowline,
-    id                = "hy_id",
-    cs_widths         = 2500,     # cross section width of each "id" linestring ("hy_id")
-    num               = 50,                            # number of cross sections per "id" linestring ("hy_id")
+    crosswalk_id                = "hy_id",
+    cs_widths         = 2500,     # cross section width of each "crosswalk_id" linestring ("hy_id")
+    num               = 50,                            # number of cross sections per "crosswalk_id" linestring ("hy_id")
     smooth            = TRUE,                          # smooth lines
     densify           = 3,                             # densify linestring points
     rm_self_intersect = TRUE,                          # remove self intersecting transects
@@ -538,7 +538,7 @@ testthat::test_that("error on invalid num argument)", {
   testthat::expect_error(
   transects <- hydrofabric3D::cut_cross_sections(
     net               = flowline,
-    id                = "hy_id",
+    crosswalk_id                = "hy_id",
     cs_widths         = 50,    
     num               = "bad inputs", 
     smooth            = TRUE,                          # smooth lines
@@ -553,7 +553,7 @@ testthat::test_that("error on invalid net argument)", {
   testthat::expect_error(
     transects <- hydrofabric3D::cut_cross_sections(
       net               = data.frame(),
-      id                = "hy_id",
+      crosswalk_id                = "hy_id",
       cs_widths         = 50,    
       num               = 10, 
       smooth            = TRUE,                          # smooth lines
@@ -564,12 +564,12 @@ testthat::test_that("error on invalid net argument)", {
     )
 })
 
-testthat::test_that("error on invalid 'id' argument value (logical))", {
+testthat::test_that("error on invalid 'crosswalk_id' argument value (logical))", {
   
   testthat::expect_error(
     transects <- hydrofabric3D::cut_cross_sections(
       net               = flowline,
-      id                = FALSE,
+      crosswalk_id                = FALSE,
       cs_widths         = 50,    
       num               = 10, 
       smooth            = TRUE,                          # smooth lines
@@ -584,9 +584,9 @@ testthat::test_that("error on invalid 'id' argument value (logical))", {
 #   
 #   transects <- hydrofabric3D::cut_cross_sections(
 #     net               = flowline,
-#     id                = "hy_id",
-#     cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
-#     num               = 100,                            # number of cross sections per "id" linestring ("hy_id")
+#     crosswalk_id                = "hy_id",
+#     cs_widths         = pmax(50, flowline$bf_width * 11),     # cross section width of each "crosswalk_id" linestring ("hy_id")
+#     num               = 100,                            # number of cross sections per "crosswalk_id" linestring ("hy_id")
 #     smooth            = TRUE,                          # smooth lines
 #     densify           = 3,                             # densify linestring points
 #     rm_self_intersect = TRUE,                          # remove self intersecting transects

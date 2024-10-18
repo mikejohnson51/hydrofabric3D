@@ -41,7 +41,7 @@ testthat::test_that("correct points per cross section on 3 transects from single
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   ) 
   
@@ -102,7 +102,7 @@ testthat::test_that("correct points per cross section on 3 transects from
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   ) 
   
@@ -156,7 +156,7 @@ testthat::test_that("correct points per cross section on 3 transects from
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   ) 
   
@@ -232,7 +232,7 @@ testthat::test_that("dem argument is ignored if a 'points_per_cs' is given", {
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   ) 
   
@@ -325,7 +325,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   ) 
   
@@ -429,7 +429,7 @@ testthat::test_that("error flowline WITHOUT minimum required columns", {
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   ) 
   

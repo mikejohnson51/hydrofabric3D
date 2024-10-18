@@ -43,7 +43,7 @@ testthat::test_that("'has_relief' - (10 flowlines, 3 transects per flowline, def
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,
+    crosswalk_id  = ID_COL,
     num = NUM_OF_TRANSECTS
   ) %>%
     dplyr::select(
@@ -76,10 +76,10 @@ testthat::test_that("'has_relief' - (10 flowlines, 3 transects per flowline, def
     detailed                 = DETAILED
   )
   
-  has_min_output_cols <- relief_has_min_output_cols(relief, id = ID_COL) 
+  has_min_output_cols <- relief_has_min_output_cols(relief, crosswalk_id = ID_COL) 
   testthat::expect_true(has_min_output_cols)
   
-  same_unique_tmp_ids <- has_same_unique_tmp_ids(classified, relief, id = ID_COL)
+  same_unique_tmp_ids <- has_same_unique_tmp_ids(classified, relief, crosswalk_id = ID_COL)
   testthat::expect_true(same_unique_tmp_ids)
   
 })
@@ -114,7 +114,7 @@ testthat::test_that("'has_relief' - (10 flowlines, 3 transects per flowline, def
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,
+    crosswalk_id  = ID_COL,
     num = NUM_OF_TRANSECTS
   ) %>%
     dplyr::select(
@@ -147,10 +147,10 @@ testthat::test_that("'has_relief' - (10 flowlines, 3 transects per flowline, def
     detailed                 = DETAILED
   )
   
-  has_min_output_cols <- relief_detailed_has_min_output_cols(relief, id = ID_COL) 
+  has_min_output_cols <- relief_detailed_has_min_output_cols(relief, crosswalk_id = ID_COL) 
   testthat::expect_true(has_min_output_cols)
   
-  same_unique_tmp_ids <- has_same_unique_tmp_ids(classified, relief, id = ID_COL)
+  same_unique_tmp_ids <- has_same_unique_tmp_ids(classified, relief, crosswalk_id = ID_COL)
   testthat::expect_true(same_unique_tmp_ids)
   
 })

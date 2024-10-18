@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -112,7 +112,7 @@ add_powerlaw_bankful_width <- function(df, total_drainage_area_sqkm_col, min_bf_
 #     bf_width        = pmax(50, bf_width * 11)
 #   ) %>% 
 #   dplyr::select(
-#     hy_id = id, 
+#     hy_id = crosswalk_id, 
 #     # tot_drainage_areasqkm, 
 #     bf_width,
 #     # input_bf_width,

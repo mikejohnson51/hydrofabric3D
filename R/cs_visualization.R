@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -78,7 +78,7 @@ plot_cs_pts <- function(cs_pts,
     stop("Invalid scales argument '", scales, "', must be one of: \n> ", paste0(c("fixed", "free", "free_x", "free_y"), collapse = "\n> "))
     
   }
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'crosswalk_id'

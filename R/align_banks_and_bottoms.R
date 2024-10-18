@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -61,7 +61,7 @@ utils::globalVariables(
 #' @export
 align_banks_and_bottoms <- function(cs_pts, crosswalk_id) {
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'

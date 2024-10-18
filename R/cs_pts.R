@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -70,7 +70,7 @@ cross_section_pts = function(
   ### ### ## ## ### ## ### ##
   
   # cs             = transects2
-  # id             = NULL
+  # crosswalk_id             = NULL
   # points_per_cs  = NULL
   # min_pts_per_cs = 10
   # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
@@ -91,7 +91,7 @@ cross_section_pts = function(
   
   # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # TODO: this might mess things up, assigning a new hydrofabric_id to 
     # TODO: the cross section input and then not giving that back to the user, 
@@ -276,7 +276,7 @@ extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
   
   # TODO: not sure if this is the best way to do this, we just want it so if 
   # TODO: you dont specify an ID (or dont have an ID), then we autogenerate one
-  # default NULL id to the default 'hydrofabric_id' 
+  # default NULL crosswalk_id to the default 'hydrofabric_id' 
   if(is.null(crosswalk_id)) {
     # net <- add_hydrofabric_id(net) 
     crosswalk_id  <- 'hydrofabric_id'
@@ -399,22 +399,22 @@ classify_points <- function(
   # crosswalk_id = "hy_id"
   # pct_of_length_for_relief = 0.01
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'
   }
-  
+
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
-  # REQUIRED_COLS <- c(id, "cs_id")
-  
-  if (!all(REQUIRED_COLS %in% names(cs_pts))) {
-    
-    missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs_pts))]
-    
-    stop("'cs_pts' is missing one or more of the required columns:\n > ", 
-         paste0(missing_cols, collapse = "\n > "))
-  }
+
+  # validate input cs pts
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts") 
+
+  # if (!all(REQUIRED_COLS %in% names(cs_pts))) {
+  #   missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs_pts))]
+  #   stop("'cs_pts' is missing one or more of the required columns:\n > ", 
+  #        paste0(missing_cols, collapse = "\n > "))
+  # }
   
   # type checking
   if (!is.numeric(pct_of_length_for_relief)) {
@@ -435,14 +435,14 @@ classify_points <- function(
   )
   
   # required cols that will be selected from the classified_pts object and in this order
-  req_cols       <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", 
+  output_cols       <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", 
                       "cs_lengthm", "class", "point_type")
   
   # any starting columns in the original data 
   starting_cols  <- names(cs_pts)
   
   # name and order of columns to select with
-  cols_to_select <- c(req_cols, starting_cols[!starting_cols %in% req_cols])
+  cols_to_select <- c(output_cols, starting_cols[!starting_cols %in% output_cols])
   
   # check if we're missing the required points_per_cs column, if so, 
   # we generate one based on the number of points in each cross section
@@ -525,15 +525,14 @@ classify_points <- function(
       deriv_type   = set_right_bank(
         point_types = deriv_type
       ),
-      # deriv_type   = set_channel_surrounded_by_bottom(
-      #   point_types = deriv_type,
-      #   depths      = Z
-      # ),
+      deriv_type   = set_channel_surrounded_by_bottom(
+        depths      = Z,
+        point_types = deriv_type
+      ),
       class        = deriv_type,
       point_type   = deriv_type
       # class      = clean_point_types(class),
       # point_type = class
-      
     ) %>% 
     dplyr::ungroup() %>% 
     dplyr::select(dplyr::any_of(cols_to_select))
@@ -1573,14 +1572,14 @@ set_right_bank <- function(point_types) {
 
 #' Set any channel points that are entirely surrounded by bottom points to bottom points 
 #'
-#' @param point_types character vector 
 #' @param depths numeric vector
+#' @param point_types character vector 
 #'
 #' @return character
 #' @export
 set_channel_surrounded_by_bottom <- function(
-    point_types,
-    depths
+    depths,
+    point_types
     ) {
   
   # point_types <- c('left_bank', 'left_bank', 'left_bank', 'left_bank', 
@@ -1996,7 +1995,7 @@ extract_dem_values3 <- function(cs, crosswalk_id = NULL, dem = NULL) {
   
   # TODO: not sure if this is the best way to do this, we just want it so if 
   # TODO: you dont specify an ID (or dont have an ID), then we autogenerate one
-  # default NULL id to the default 'hydrofabric_id' 
+  # default NULL crosswalk_id to the default 'hydrofabric_id' 
   if(is.null(crosswalk_id)) {
     # net <- add_hydrofabric_id(net) 
     crosswalk_id  <- 'hydrofabric_id'
@@ -2075,14 +2074,14 @@ classify_points2 <- function(
   # crosswalk_id = "hy_id"
   # pct_of_length_for_relief = 0.01
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'
   }
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
-  # REQUIRED_COLS <- c(id, "cs_id")
+  # REQUIRED_COLS <- c(crosswalk_id, "cs_id")
   
   if (!all(REQUIRED_COLS %in% names(cs_pts))) {
     

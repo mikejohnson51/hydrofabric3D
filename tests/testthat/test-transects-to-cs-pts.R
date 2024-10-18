@@ -40,7 +40,7 @@ testthat::test_that("transects_to_cs_pts creates correct number of points for 3 
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -120,7 +120,7 @@ testthat::test_that("transects_to_cs_pts creates points that intersect the input
   # make transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,
+    crosswalk_id  = ID_COL,
     num = NUM_OF_TRANSECTS
     ) %>% 
     dplyr::select(dplyr::any_of(ID_COL),

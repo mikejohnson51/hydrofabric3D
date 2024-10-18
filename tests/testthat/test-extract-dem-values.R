@@ -37,7 +37,7 @@ testthat::test_that("extract values from DEM are correct", {
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -121,7 +121,7 @@ testthat::test_that("extract_dem_values throws errors when transects (cs) input 
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -201,7 +201,7 @@ testthat::test_that("error giving empty geometries", {
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = ID_COL,  
+    crosswalk_id  = ID_COL,  
     num = NUM_OF_TRANSECTS
   ) 
   

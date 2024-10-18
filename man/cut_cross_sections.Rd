@@ -6,7 +6,7 @@
 \usage{
 cut_cross_sections(
   net,
-  id = NULL,
+  crosswalk_id = NULL,
   cs_widths = 100,
   num = 10,
   smooth = TRUE,
@@ -22,7 +22,7 @@ cut_cross_sections(
 \arguments{
 \item{net}{Hydrographic LINESTRING Network}
 
-\item{id}{Unique Identifier in net}
+\item{crosswalk_id}{Unique Identifier in net}
 
 \item{cs_widths}{numeric, Bankfull Widths (length of cross sections for each net element)}
 

@@ -58,7 +58,7 @@ testthat::test_that("partition_transects_for_extension() simple case of a single
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   ) %>% 
     dplyr::select(
@@ -136,7 +136,7 @@ testthat::test_that("partition_transects_for_extension() correct output columns 
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   ) %>% 
     dplyr::select(
@@ -207,7 +207,7 @@ testthat::test_that("partition_transects_for_extension() 1 polygon with a set of
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   ) %>% 
     dplyr::select(

@@ -118,7 +118,7 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
   # transects <- 
   #   flowlines %>% 
   #   hydrofabric3D::cut_cross_sections(
-  #     id = ID_COL,
+  #     crosswalk_id = ID_COL,
   #     num = NUM_OF_TRANSECTS,
   #     cs_widths  = flowlines$bf_width
   #   ) 

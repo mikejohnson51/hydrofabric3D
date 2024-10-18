@@ -31,7 +31,7 @@ testthat::test_that("extend_transects_both_sides() test that both sides of a tra
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = 10
   ) %>% 
     dplyr::filter(cs_id == 4) %>% 
@@ -88,7 +88,7 @@ testthat::test_that("extend_transects_both_sides() test that both neither side o
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = 10
   ) %>% 
     dplyr::filter(cs_id == 4) %>% 
@@ -145,7 +145,7 @@ testthat::test_that("extend_transects_both_sides() test extensions will only go 
   
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = 10
   ) %>% 
     dplyr::filter(cs_id == 1) %>%

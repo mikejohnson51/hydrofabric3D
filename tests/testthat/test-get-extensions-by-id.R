@@ -56,7 +56,7 @@ testthat::test_that("get_extensions_by_id() correct output columns - default inp
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -127,7 +127,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -147,7 +147,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
   )
   
   # hydrofabric3D::
-  all_unique_ids_kept <- has_same_unique_tmp_ids(transects, ext_dists, id = CROSSWALK_ID)
+  all_unique_ids_kept <- has_same_unique_tmp_ids(transects, ext_dists, crosswalk_id = CROSSWALK_ID)
   testthat::expect_true(all_unique_ids_kept)
   
 })
@@ -171,7 +171,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   )
   
@@ -194,7 +194,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
   )
   
   # hydrofabric3D::
-  all_unique_ids_kept <- has_same_unique_tmp_ids(transects, ext_dists, id = CROSSWALK_ID)
+  all_unique_ids_kept <- has_same_unique_tmp_ids(transects, ext_dists, crosswalk_id = CROSSWALK_ID)
   testthat::expect_true(all_unique_ids_kept)
   
   # ALL transects have a corresponding polygon,  still results in all unique crosswalk_id/cs_id IDs being kept
@@ -206,7 +206,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
   )
   
   # hydrofabric3D::
-  all_unique_ids_kept <- has_same_unique_tmp_ids(transects, ext_dists, id = CROSSWALK_ID)
+  all_unique_ids_kept <- has_same_unique_tmp_ids(transects, ext_dists, crosswalk_id = CROSSWALK_ID)
   testthat::expect_true(all_unique_ids_kept)
   
 })
@@ -232,7 +232,7 @@ testthat::test_that("get_extensions_by_id() polygon is farther away than max ext
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS
   ) %>% 
     dplyr::select(
@@ -282,7 +282,7 @@ testthat::test_that("get_extensions_by_id() max extension distance is long enoug
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS,
     cs_widths = CS_WIDTH
   ) %>% 
@@ -334,7 +334,7 @@ testthat::test_that("get_extensions_by_id() transects that are already longer th
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS,
     cs_widths = CS_WIDTH
   ) %>% 
@@ -387,7 +387,7 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS,
     cs_widths = CS_WIDTH
   ) %>% 
@@ -465,7 +465,7 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS,
     cs_widths = CS_WIDTH
   ) %>% 
@@ -544,7 +544,7 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
   # generate transects
   transects <- cut_cross_sections(
     net = flowlines,
-    id  = CROSSWALK_ID,  
+    crosswalk_id  = CROSSWALK_ID,  
     num = NUM_OF_TRANSECTS,
     cs_widths = CS_WIDTH
   ) %>% 

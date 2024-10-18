@@ -18,7 +18,7 @@ extend_invalid_transect_sides(
 \arguments{
 \item{transects_to_check}{sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters), "valid_banks", and "has_relief"}
 
-\item{net}{sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )}
+\item{net}{sf linestrings, flowline network that transects were generated from, requires "crosswalk_id" column (where "crosswalk_id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )}
 
 \item{crosswalk_id}{character, column name that connects features in transects to net}
 

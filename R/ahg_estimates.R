@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -81,7 +81,7 @@ get_ahg_parabolas <- function(
   # depth             = "owp_y_inchan"
   # dingman_r         = "owp_dingman_r"
   
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -795,7 +795,7 @@ add_cs_bathymetry <- function(
   ########################################################## 
   
 
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -2543,16 +2543,16 @@ add_cs_bathymetry <- function(
 #   # tmp_i <- 32771
 #   tmp_i <- 33437
 #   # tmp_i <- 33298
-#   which(aoi$id == "wb-2398332")
-#   # which(aoi$id == "wb-2398289")
+#   which(aoi$crosswalk_id == "wb-2398332")
+#   # which(aoi$crosswalk_id == "wb-2398289")
 # 
 #   mlw <-
 #     ml_widths %>%
 #     dplyr::filter(FEATUREID ==  aoi$hf_id[tmp_i])
-#   # which(aoi$id == "wb-2398284")
+#   # which(aoi$crosswalk_id == "wb-2398284")
 #   # cs_points %>%
 #   cs_pts %>%
-#     dplyr::filter(hy_id == aoi$id[tmp_i]) %>%
+#     dplyr::filter(hy_id == aoi$crosswalk_id[tmp_i]) %>%
 #     ggplot2::ggplot() +
 #     # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = class) )+
 #     ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = class) )+
@@ -2560,7 +2560,7 @@ add_cs_bathymetry <- function(
 # 
 #   cs <-
 #     cs_pts %>%
-#     dplyr::filter(hy_id ==  aoi$id[tmp_i], cs_id == 3)
+#     dplyr::filter(hy_id ==  aoi$crosswalk_id[tmp_i], cs_id == 3)
 # 
 #   bf_width <- mlw$owp_tw_bf
 #   bf_depth <- mlw$owp_y_bf
@@ -2719,16 +2719,16 @@ add_cs_bathymetry <- function(
 # # #   # tmp_i <- 32771
 # # #   tmp_i <- 33437
 # # #   # tmp_i <- 33298
-# # #   which(aoi$id == "wb-2398332")
-# # #   # which(aoi$id == "wb-2398289")
+# # #   which(aoi$crosswalk_id == "wb-2398332")
+# # #   # which(aoi$crosswalk_id == "wb-2398289")
 # # # 
 # # #   mlw <-
 # # #     ml_widths %>%
 # # #     dplyr::filter(FEATUREID ==  aoi$hf_id[tmp_i])
-# # #   # which(aoi$id == "wb-2398284")
+# # #   # which(aoi$crosswalk_id == "wb-2398284")
 # # #   # cs_points %>%
 # # #   cs_pts %>%
-# # #     dplyr::filter(hy_id == aoi$id[tmp_i]) %>%
+# # #     dplyr::filter(hy_id == aoi$crosswalk_id[tmp_i]) %>%
 # # #     ggplot2::ggplot() +
 # # #     # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = class) )+
 # # #     ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = class) )+
@@ -2736,7 +2736,7 @@ add_cs_bathymetry <- function(
 # # # 
 # # #   cs <-
 # # #     cs_pts %>%
-# # #     dplyr::filter(hy_id ==  aoi$id[tmp_i], cs_id == 3)
+# # #     dplyr::filter(hy_id ==  aoi$crosswalk_id[tmp_i], cs_id == 3)
 # # # 
 # # #   bf_width <- mlw$owp_tw_bf
 # # #   bf_depth <- mlw$owp_y_bf
@@ -2910,8 +2910,8 @@ add_cs_bathymetry <- function(
 # # # bottom_distances <-
 # # #   bottom_distances %>%
 # # #   dplyr::left_join(
-# # #     dplyr::select(aoi, id, hf_id),
-# # #     by = c("hy_id" = "id")
+# # #     dplyr::select(aoi, crosswalk_id, hf_id),
+# # #     by = c("hy_id" = "crosswalk_id")
 # # #   )
 # # # 
 # # # bottom_distances <-
@@ -2986,11 +2986,11 @@ add_cs_bathymetry <- function(
 # # # # sf::st_layers("/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg/nextgen_12.gpkg")
 # # # 
 # # # 
-# # # aoi$id %>% unique()
-# # # which(aoi$id == "wb-2398332")
-# # # which(aoi$id == "wb-2408548")
-# # # which(aoi$id == "wb-2408566")
-# # # which(aoi$id == "wb-2398282")
+# # # aoi$crosswalk_id %>% unique()
+# # # which(aoi$crosswalk_id == "wb-2398332")
+# # # which(aoi$crosswalk_id == "wb-2408548")
+# # # which(aoi$crosswalk_id == "wb-2408566")
+# # # which(aoi$crosswalk_id == "wb-2398282")
 # # # 
 # # # tmp <-
 # # #   cs_pts %>%
@@ -3002,20 +3002,20 @@ add_cs_bathymetry <- function(
 # # #   # dplyr::filter(total_rows == 5) %>%
 # # #   dplyr::arrange(-total_rows)
 # # # 
-# # # tmp_i <-which(aoi$id == "wb-2398332")[1]
-# # # tmp_i <-which(aoi$id == "wb-2408548")[1]
-# # # # tmp_i <-which(aoi$id == "wb-2408566")[1]
-# # # tmp_i <-which(aoi$id == "wb-2398282")[1]
-# # # tmp_i <- which(aoi$id == "wb-2429329")[1]
-# # # tmp_i <- which(aoi$id == "wb-2398282")[1]
+# # # tmp_i <-which(aoi$crosswalk_id == "wb-2398332")[1]
+# # # tmp_i <-which(aoi$crosswalk_id == "wb-2408548")[1]
+# # # # tmp_i <-which(aoi$crosswalk_id == "wb-2408566")[1]
+# # # tmp_i <-which(aoi$crosswalk_id == "wb-2398282")[1]
+# # # tmp_i <- which(aoi$crosswalk_id == "wb-2429329")[1]
+# # # tmp_i <- which(aoi$crosswalk_id == "wb-2398282")[1]
 # # # # 2398282
-# # # # tmp_i <- which(aoi$id == "wb-2398686")[1]
+# # # # tmp_i <- which(aoi$crosswalk_id == "wb-2398686")[1]
 # # # 
-# # # tmp_i <- which(aoi$id == "wb-2398687")[1]
-# # # # tmp_i <- which(aoi$id == "wb-2398287")[1]
+# # # tmp_i <- which(aoi$crosswalk_id == "wb-2398687")[1]
+# # # # tmp_i <- which(aoi$crosswalk_id == "wb-2398287")[1]
 # # # 
 # # # # "wb-2408566"
-# # # # which(aoi$id == "wb-2398289")
+# # # # which(aoi$crosswalk_id == "wb-2398289")
 # # # 
 # # # # tmp_i <- 32771
 # # # # tmp_i <- 33437
@@ -3023,25 +3023,25 @@ add_cs_bathymetry <- function(
 # # # # tmp_i <- 1239
 # # # # tmp_i <- 32769
 # # # # tmp_i <- 33298
-# # # # tmp_id <- which(aoi$id == "wb-2398282")
-# # # # aoi$id[32770]
+# # # # tmp_id <- which(aoi$crosswalk_id == "wb-2398282")
+# # # # aoi$crosswalk_id[32770]
 # # # 
 # # # model_widths <-
 # # #   ml_widths %>%
 # # #   dplyr::filter(FEATUREID ==  aoi$hf_id[tmp_i])
 # # #   # dplyr::filter(FEATUREID ==  aoi_vpu11$hf_id[tmp_i])
-# # # # which(aoi$id == "wb-2398284")
+# # # # which(aoi$crosswalk_id == "wb-2398284")
 # # # # cs_points %>%
 # # # 
 # # # cs_pts %>%
-# # #   dplyr::filter(hy_id == aoi$id[tmp_i])
+# # #   dplyr::filter(hy_id == aoi$crosswalk_id[tmp_i])
 # # # cs_pts %>%
-# # #   dplyr::filter(hy_id == aoi$id[tmp_i])  %>%
+# # #   dplyr::filter(hy_id == aoi$crosswalk_id[tmp_i])  %>%
 # # #   .$cs_id %>%
 # # #   unique()
 # # # cs_pts %>%
-# # #   dplyr::filter(hy_id == aoi$id[tmp_i]) %>%
-# # #   # dplyr::filter(hy_id == aoi_vpu11$id[tmp_i]) %>%
+# # #   dplyr::filter(hy_id == aoi$crosswalk_id[tmp_i]) %>%
+# # #   # dplyr::filter(hy_id == aoi_vpu11$crosswalk_id[tmp_i]) %>%
 # # #   ggplot2::ggplot() +
 # # #   # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = class) )+
 # # #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = class) )+
@@ -3049,8 +3049,8 @@ add_cs_bathymetry <- function(
 # # # 
 # # # cs <-
 # # #   cs_pts %>%
-# # #   dplyr::filter(hy_id ==  aoi$id[tmp_i], cs_id == 7)
-# # #   # dplyr::filter(hy_id ==  aoi_vpu11$id[tmp_i], cs_id == 2)
+# # #   dplyr::filter(hy_id ==  aoi$crosswalk_id[tmp_i], cs_id == 7)
+# # #   # dplyr::filter(hy_id ==  aoi_vpu11$crosswalk_id[tmp_i], cs_id == 2)
 # # # cs %>%
 # # #   ggplot2::ggplot() +
 # # #   ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = class)) +
@@ -3864,7 +3864,7 @@ add_cs_bathymetry <- function(
 # # #   sf::st_layers("/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg/nextgen_12.gpkg")
 # # #   fab
 # # #   # aoi$hf_id[1]
-# # #   # aoi$id[1]
+# # #   # aoi$crosswalk_id[1]
 # # # 
 # # #   aoi$hf_id
 # # # 
@@ -3872,18 +3872,18 @@ add_cs_bathymetry <- function(
 # # #   # tmp_i <- 32771
 # # #   tmp_i <- 33437
 # # #   # tmp_i <- 33298
-# # #   which(aoi$id == "wb-2398332")
-# # #   # which(aoi$id == "wb-2398289")
+# # #   which(aoi$crosswalk_id == "wb-2398332")
+# # #   # which(aoi$crosswalk_id == "wb-2398289")
 # # #   # cs_pts %>%
 # # #   # dplyr::filter(cs_lengthm > 100)
 # # #   # which(cs_pts$hy_id == "wb-2398284")
 # # #   mlw <-
 # # #     ml_widths %>%
 # # #     dplyr::filter(FEATUREID ==  aoi$hf_id[tmp_i])
-# # #   # which(aoi$id == "wb-2398284")
+# # #   # which(aoi$crosswalk_id == "wb-2398284")
 # # #   # cs_points %>%
 # # #   cs_pts %>%
-# # #     dplyr::filter(hy_id == aoi$id[tmp_i]) %>%
+# # #     dplyr::filter(hy_id == aoi$crosswalk_id[tmp_i]) %>%
 # # #     ggplot2::ggplot() +
 # # #     # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = class) )+
 # # #     ggplot2::geom_point(ggplot2::aes(x = relative_distance, y = Z, color = class) )+
@@ -3891,7 +3891,7 @@ add_cs_bathymetry <- function(
 # # # 
 # # #   cs_points <-
 # # #     cs_pts %>%
-# # #     dplyr::filter(hy_id ==  aoi$id[tmp_i], cs_id == 3)
+# # #     dplyr::filter(hy_id ==  aoi$crosswalk_id[tmp_i], cs_id == 3)
 # # #   plot(cs_points$Z)
 # # #   mlw
 # # # 
@@ -4321,8 +4321,8 @@ add_cs_bathymetry <- function(
 # # #     dplyr::mutate(
 # # #       bf_width = exp(0.700    + 0.365* log(tot_drainage_areasqkm))
 # # #     ) %>%
-# # #     dplyr::select(hy_id = id, bf_width)
-# # #   # dplyr::select(hy_id = id, tot_drainage_areasqkm, bf_width)
+# # #     dplyr::select(hy_id = crosswalk_id, bf_width)
+# # #   # dplyr::select(hy_id = crosswalk_id, tot_drainage_areasqkm, bf_width)
 # # # 
 # # #   out2 <-
 # # #     out %>%

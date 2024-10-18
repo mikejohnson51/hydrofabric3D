@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -445,7 +445,7 @@ get_cs_sinuosity <- function(
 # # Generate Cross Sections Across Hydrographic Network
 # #
 # # @param net Hydrographic LINESTRING Network
-# # @param id Unique Identifier in net
+# # @param crosswalk_id Unique Identifier in net
 # # @param cs_widths numeric, Bankfull Widths (length of cross sections for each net element)
 # # @param num numeric, Number of transects per Net element
 # # @param smooth logical, whether to smooth linestring geometries or not. Default is TRUE.
@@ -470,7 +470,7 @@ get_cs_sinuosity <- function(
 # # @export
 # cut_cross_sections2 <- function(
 #     net, 
-#     id                = NULL,
+#     crosswalk_id                = NULL,
 #     cs_widths         = 100, 
 #     num               = 10,
 #     smooth            = TRUE,
@@ -487,7 +487,7 @@ get_cs_sinuosity <- function(
 #   
 #   # validate all inputs are valid, throws an error if they are not
 #   validate_cut_cross_section_inputs(net = net, 
-#                                     id = id, 
+#                                     crosswalk_id = crosswalk_id, 
 #                                     cs_widths = cs_widths, 
 #                                     num = num, 
 #                                     smooth = smooth, 
@@ -555,7 +555,7 @@ get_cs_sinuosity <- function(
 #     }
 #     
 #     # assign hy_id from net
-#     trans$hy_id <- net[[id]][j]
+#     trans$hy_id <- net[[crosswalk_id]][j]
 #     trans$cs_widths <- cs_widths[j]
 #     
 #     # insert 'trans' sf dataframe into list
@@ -585,9 +585,9 @@ get_cs_sinuosity <- function(
 #   
 #   message("Formating")
 #   
-#   # # add id column if provided as an input
-#   # if (!is.null(id)) {
-#   #   transects$hy_id = rep(net[[id]], times = ids_length)
+#   # # add crosswalk_id column if provided as an input
+#   # if (!is.null(crosswalk_id)) {
+#   #   transects$hy_id = rep(net[[crosswalk_id]], times = ids_length)
 #   # } else {
 #   #   transects$hy_id = rep(1:nrow(net), times = ids_length)
 #   # }
@@ -618,7 +618,7 @@ get_cs_sinuosity <- function(
 #       dplyr::left_join(
 #         transects,
 #         sf::st_drop_geometry(net),
-#         by = c("hy_id" = id)
+#         by = c("hy_id" = crosswalk_id)
 #         # by = c("hy_id" = "comid")
 #       )
 #   }
@@ -646,9 +646,9 @@ get_cs_sinuosity <- function(
 #   # remove any transect lines that intersect with any flowlines more than 1 time
 #   transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
 #   
-#   # rename "id" column to hy_id if "hy_id" is not already present
+#   # rename "crosswalk_id" column to hy_id if "hy_id" is not already present
 #   if(!"hy_id" %in% names(net)) {
-#     net <- dplyr::rename(net, hy_id = dplyr::all_of(id))
+#     net <- dplyr::rename(net, hy_id = dplyr::all_of(crosswalk_id))
 #   }
 #   
 #   # calculate sinuosity and add it as a column to the cross sections
@@ -690,7 +690,7 @@ get_cs_sinuosity <- function(
 #' Generate Cross Sections Across Hydrographic Network
 #'
 #' @param net Hydrographic LINESTRING Network
-#' @param id Unique Identifier in net
+#' @param crosswalk_id Unique Identifier in net
 #' @param cs_widths numeric, Bankfull Widths (length of cross sections for each net element)
 #' @param num numeric, Number of transects per Net element
 #' @param smooth logical, whether to smooth linestring geometries or not. Default is TRUE.
@@ -714,7 +714,7 @@ get_cs_sinuosity <- function(
 #' @export
 cut_cross_sections <- function(
     net, 
-    id                = NULL,
+    crosswalk_id      = NULL,
     cs_widths         = 100, 
     num               = 10,
     smooth            = TRUE,
@@ -731,7 +731,7 @@ cut_cross_sections <- function(
   # library(sf)
   # net = flowline
   # num = 20
-  # id                = NULL
+  # crosswalk_id                = NULL
   # cs_widths         = 100 
   # smooth            = TRUE
   # densify           = 2
@@ -747,13 +747,13 @@ cut_cross_sections <- function(
   # # crosswalk_id = "comid"
   # # 
   # # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # # # crosswalk_id = "id"
+  # # # crosswalk_id = "crosswalk_id"
   # # # verbose = TRUE
   # # # nested      = TRUE
   # # # verbose     = TRUE
   # # net <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>%
-  # #   dplyr::select(-id)
-  # id = "comid"
+  # #   dplyr::select(-crosswalk_id)
+  # crosswalk_id = "comid"
   # cs_widths = 100
   # num = 5
   # densify=2
@@ -779,7 +779,7 @@ cut_cross_sections <- function(
   
   # validate all inputs are valid, throws an error if they are not
   validate_cut_cross_section_inputs(net = net, 
-                                    id = id, 
+                                    crosswalk_id = crosswalk_id, 
                                     cs_widths = cs_widths, 
                                     num = num, 
                                     smooth = smooth, 
@@ -792,15 +792,20 @@ cut_cross_sections <- function(
                                     add = add 
   )
   
-  # make a unique ID if one is not given (NULL 'id')
-  if (is.null(id)) {
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if (is.null(crosswalk_id)) {
     net <- add_hydrofabric_id(net) 
-    id  <- 'hydrofabric_id'
+    crosswalk_id  <- 'hydrofabric_id'
   }
   
   # standardize geometry name
   net <- hydroloom::rename_geometry(net, "geometry")
-  
+
+  REQUIRED_COLS <- c(crosswalk_id, "geometry")
+
+  # validate input dataframe has correct columns  
+  is_valid <- validate_df(net, REQUIRED_COLS, "net")  
+
   # -----------------------------
   # TODO: Testing out removing forced CRS change
   # -----------------------------
@@ -860,7 +865,7 @@ cut_cross_sections <- function(
     }
     
     # assign hy_id from net
-    trans[[id]]     <- net[[id]][j]
+    trans[[crosswalk_id]]     <- net[[crosswalk_id]][j]
     trans$cs_widths <- cs_widths[j]
     
     # insert 'trans' sf dataframe into list
@@ -894,9 +899,9 @@ cut_cross_sections <- function(
   
   message("Formatting")
   
-  # # add id column if provided as an input
-  # if (!is.null(id)) {
-  #   transects$hy_id = rep(net[[id]], times = ids_length)
+  # # add crosswalk_id column if provided as an input
+  # if (!is.null(crosswalk_id)) {
+  #   transects$hy_id = rep(net[[crosswalk_id]], times = ids_length)
   # } else {
   #   transects$hy_id = rep(1:nrow(net), times = ids_length)
   # }
@@ -909,7 +914,7 @@ cut_cross_sections <- function(
     transects <- 
       rm_self_intersections(transects) %>% 
       # transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
-      dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
       # dplyr::group_by(hy_id) %>% 
       dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
       dplyr::ungroup() %>% 
@@ -917,7 +922,7 @@ cut_cross_sections <- function(
   } else {
     transects <- 
       transects %>% 
-      dplyr::group_by(dplyr::across(dplyr::any_of(id))) %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
       # dplyr::group_by(hy_id) %>% 
       dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
       dplyr::ungroup() %>% 
@@ -930,8 +935,8 @@ cut_cross_sections <- function(
       dplyr::left_join(
         transects,
         sf::st_drop_geometry(net),
-        by = id
-        # by = c("hy_id" = id)
+        by = crosswalk_id
+        # by = c("hy_id" = crosswalk_id)
       )
   }
   
@@ -945,7 +950,7 @@ cut_cross_sections <- function(
     transects <- fix_braided_transects(
       net             = net,
       transect_lines  = transects,
-      crosswalk_id    = id,
+      crosswalk_id    = crosswalk_id,
       braid_threshold = braid_threshold,
       method          = braid_method,
       precision       = precision,
@@ -967,10 +972,10 @@ cut_cross_sections <- function(
   # transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
    
   # TODO: removed this forcing to "hy_id", part of migration of ALL code 
-  # TODO: to rely on an specified "id" and/or "crosswalk_id" 
-  # # rename "id" column to hy_id if "hy_id" is not already present
+  # TODO: to rely on an specified "crosswalk_id" and/or "crosswalk_id" 
+  # # rename "crosswalk_id" column to hy_id if "hy_id" is not already present
   # if (!"hy_id" %in% names(net)) {
-  #   net <- dplyr::rename(net, hy_id = dplyr::all_of(id))
+  #   net <- dplyr::rename(net, hy_id = dplyr::all_of(crosswalk_id))
   # }
   
   # get_cs_sinuosity2(
@@ -984,7 +989,7 @@ cut_cross_sections <- function(
   transects <- get_cs_sinuosity(
     lines          = net, 
     cross_sections = transects, 
-    crosswalk_id   = id,
+    crosswalk_id   = crosswalk_id,
     add            = TRUE
   )
   
@@ -1009,7 +1014,7 @@ cut_cross_sections <- function(
     dplyr::select(
       dplyr::any_of(
         c(
-          id,
+          crosswalk_id,
           # "hy_id",
           "cs_id",
           "cs_lengthm", 
@@ -1159,7 +1164,7 @@ check_intersects <- function(transects, line) {
 
 # #Generate Cross Sections Across Hydrographic Network
 # #@param net Hydrographic LINESTRING Network
-# #@param id Unique Identifier in net
+# #@param crosswalk_id Unique Identifier in net
 # #@param cs_widths Bankfull Widths (length of cross sections for each net element)
 # #@param num Number of transects per Net element
 # #@param smooth logical, whether to smooth linestring geometries or not. Default is TRUE.
@@ -1182,7 +1187,7 @@ check_intersects <- function(transects, line) {
 # #@importFrom wk wk_vertices wk_linestring
 # cut_cross_sections2 <- function(
     #     net, 
-#     id                = NULL,
+#     crosswalk_id                = NULL,
 #     cs_widths         = 100, 
 #     num               = 10,
 #     smooth            = TRUE,
@@ -1286,9 +1291,9 @@ check_intersects <- function(transects, line) {
 #   
 #   message("Formating")
 #   
-#   # add id column if provided as an input
-#   if(!is.null(id)){
-#     ll$hy_id = rep(net[[id]], times = ids_length)
+#   # add crosswalk_id column if provided as an input
+#   if(!is.null(crosswalk_id)){
+#     ll$hy_id = rep(net[[crosswalk_id]], times = ids_length)
 #   } else {
 #     ll$hy_id = rep(1:nrow(net), times = ids_length)
 #   }
@@ -1319,7 +1324,7 @@ check_intersects <- function(transects, line) {
 #       dplyr::left_join(
 #         ll,
 #         sf::st_drop_geometry(net),
-#         by = c("hy_id" = id)
+#         by = c("hy_id" = crosswalk_id)
 #         # by = c("hy_id" = "comid")
 #       )
 #   }
@@ -1359,12 +1364,12 @@ check_intersects <- function(transects, line) {
 
 #Generate Cross Sections Across Hydrographic Network
 #@param net Hydrographic LINESTRING Network
-#@param id  Uniuqe Identifier in net
+#@param crosswalk_id  Uniuqe Identifier in net
 #@param cs_widths Bankfull Widths (length of cross sections for each net element)
 #@param num Number of transects per Net element
 #@return sf object
 #@export
-# cut_cross_sections1 = function(net, id = NULL,
+# cut_cross_sections1 = function(net, crosswalk_id = NULL,
 #                               cs_widths = 100,
 #                               num = 10,
 #                               smooth = TRUE,
@@ -1442,8 +1447,8 @@ check_intersects <- function(transects, line) {
 # 
 #   message("Formating")
 # 
-#   if(!is.null(id)){
-#     ll$hy_id = rep(net[[id]], times = ids_length)
+#   if(!is.null(crosswalk_id)){
+#     ll$hy_id = rep(net[[crosswalk_id]], times = ids_length)
 #   } else {
 #     ll$hy_id = rep(1:nrow(net), times = ids_length)
 #   }
@@ -1468,7 +1473,7 @@ check_intersects <- function(transects, line) {
 
 
 # cut_cross_sections2 = function(net, 
-#                                    id = NULL,
+#                                    crosswalk_id = NULL,
 #                                    cs_widths = 100, 
 #                                    num = 10,
 #                                    smooth = TRUE,
@@ -1480,7 +1485,7 @@ check_intersects <- function(transects, line) {
 #                                    ){
 #   
 #   # net       = net3
-#   # id        = "comid"
+#   # crosswalk_id        = "comid"
 #   # cs_widths = pmax(50, net3$bf_width * 7)
 #   # num       = 10
 #   # add       = TRUE
@@ -1594,9 +1599,9 @@ check_intersects <- function(transects, line) {
 #   
 #   message("Formating")
 #   
-#   # add id column if provided as an input
-#   if(!is.null(id)){
-#     ll$hy_id = rep(net[[id]], times = ids_length)
+#   # add crosswalk_id column if provided as an input
+#   if(!is.null(crosswalk_id)){
+#     ll$hy_id = rep(net[[crosswalk_id]], times = ids_length)
 #   } else {
 #     ll$hy_id = rep(1:nrow(net), times = ids_length)
 #   }
@@ -1627,7 +1632,7 @@ check_intersects <- function(transects, line) {
 #      dplyr::left_join(
 #                   ll,
 #                   sf::st_drop_geometry(net),
-#                   by = c("hy_id" = id)
+#                   by = c("hy_id" = crosswalk_id)
 #                   # by = c("hy_id" = "comid")
 #                   )
 #   }
@@ -1674,7 +1679,7 @@ check_intersects <- function(transects, line) {
 # }
 # 
 # cut_cross_sections3 = function(net, 
-#                                id                = NULL,
+#                                crosswalk_id                = NULL,
 #                                cs_widths         = 100, 
 #                                num               = 10,
 #                                smooth            = TRUE,
@@ -1688,7 +1693,7 @@ check_intersects <- function(transects, line) {
 #                                ){
 #   
 #   # net       = ref_net
-#   # id        = "comid"
+#   # crosswalk_id        = "comid"
 #   # cs_widths = pmax(50, ref_net$bf_width * 7)
 #   # num       = 5
 #   # fix_braids = TRUE
@@ -1837,9 +1842,9 @@ check_intersects <- function(transects, line) {
 #   
 #   message("Formating")
 #   
-#   # add id column if provided as an input
-#   if(!is.null(id)){
-#     ll$hy_id = rep(net[[id]], times = ids_length)
+#   # add crosswalk_id column if provided as an input
+#   if(!is.null(crosswalk_id)){
+#     ll$hy_id = rep(net[[crosswalk_id]], times = ids_length)
 #   } else {
 #     ll$hy_id = rep(1:nrow(net), times = ids_length)
 #   }
@@ -1870,7 +1875,7 @@ check_intersects <- function(transects, line) {
 #       dplyr::left_join(
 #         ll,
 #         sf::st_drop_geometry(net),
-#         by = c("hy_id" = id)
+#         by = c("hy_id" = crosswalk_id)
 #         # by = c("hy_id" = "comid")
 #       )
 #   }

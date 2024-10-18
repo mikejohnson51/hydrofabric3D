@@ -44,7 +44,7 @@ usethis::use_data(transects_missing_depth, overwrite = TRUE)
 # transects <- 
 #   flowlines %>% 
 #   hydrofabric3D::cut_cross_sections(
-#     id = ID_COL,
+#     crosswalk_id = ID_COL,
 #     num = NUM_OF_TRANSECTS,
 #     cs_widths  = flowlines$bf_width
 #   ) %>% 

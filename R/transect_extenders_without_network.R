@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -71,7 +71,7 @@ extend_by_percent <- function(
   # pct = 0.5
   # length_col = "cs_lengthm"
   # ---------------------------
-  # make a unique ID if one is not given (NULL 'id')
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
@@ -87,7 +87,7 @@ extend_by_percent <- function(
   # x <- nhdplusTools::rename_geometry(x, "geom")
   
   
-  # x <- transects %>% dplyr::select(id, cs_id)
+  # x <- transects %>% dplyr::select(crosswalk_id, cs_id)
   # length_col <- "cs_length"
   
   is_null_length_col <- is.null(length_col)
@@ -268,7 +268,7 @@ extend_by_length <- function(
 # #
 # # @param transects_to_extend sf linestrings, set of transects that should be extended (subset of 'transects'). Requires the following columns:  "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters) 
 # # @param transects sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters)
-# # @param net sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_extend' and 'transects' )
+# # @param net sf linestrings, flowline network that transects were generated from, requires "crosswalk_id" column (where "crosswalk_id" equals the "hy_id" columns in 'transects_to_extend' and 'transects' )
 # # @param crosswalk_id character, unique ID column name 
 # # @param scale numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50% of the transect length)
 # # @param verbose logical, whether to print messages or not. Default is TRUE

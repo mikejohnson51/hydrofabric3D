@@ -42,7 +42,7 @@
 #   
 #   transects <- cut_cross_sections(
 #     net = flowlines,
-#     id  = ID_COL,  
+#     crosswalk_id  = ID_COL,  
 #     num = NUM_OF_TRANSECTS
 #   ) %>% 
 #     dplyr::select( 

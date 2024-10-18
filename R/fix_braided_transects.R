@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -282,7 +282,7 @@ utils::globalVariables(
 #     # other geometries to cut across with transects
 #     others <- get_geoms_to_cut(
 #       x            = braids,
-#       id           = com,
+#       crosswalk_id           = com,
 #       braid_id     = braid_of_interest,
 #       component    = comp_id,
 #       method       = method
@@ -293,7 +293,7 @@ utils::globalVariables(
 #       cs_line       = cs_line,
 #       cs_width      = cs_width,
 #       bf_width      = bf_width,
-#       id            = com,
+#       crosswalk_id            = com,
 #       geoms_to_cut  = others$geometry,
 #       geom_ids      = others$comid,
 #       max_distance  = NULL, 
@@ -604,6 +604,9 @@ utils::globalVariables(
 #   
 # }
 
+#
+
+
 # *********************************
 # ------------- LATEST ------------
 # *********************************
@@ -661,7 +664,7 @@ fix_braided_transects <- function(
   #   # dplyr::slice(1) %>%
   #   # dplyr::slice(1:3) %>% 
   #   add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
-  #   dplyr::rename(!!sym(ID_COL) := id) %>% 
+  #   dplyr::rename(!!sym(ID_COL) := crosswalk_id) %>% 
   #   dplyr::select(
   #     dplyr::any_of(ID_COL), 
   #     tot_drainage_areasqkm,
@@ -936,7 +939,7 @@ fix_braided_transects <- function(
     # # other geometries to cut across with transects
     # others <- get_geoms_to_cut(
     #   x            = braids,
-    #   id           = com,
+    #   crosswalk_id           = com,
     #   braid_id     = braid_of_interest,
     #   component    = comp_id,
     #   method       = method
@@ -947,7 +950,7 @@ fix_braided_transects <- function(
     #   cs_line       = cs_line,
     #   cs_width      = cs_width,
     #   bf_width      = bf_width,
-    #   id            = com,
+    #   crosswalk_id            = com,
     #   geoms_to_cut  = others$geometry,
     #   geom_ids      = others$comid,
     #   max_distance  = NULL,
@@ -958,7 +961,7 @@ fix_braided_transects <- function(
     
     extend_maps <- geos_augment_transect2(
       cs_line       = cs_line,
-      id            = com,
+      crosswalk_id            = com,
       geoms_to_cut  = others$geometry,
       geom_ids      = others[[crosswalk_id]],
       max_distance  = max(cs_width * 5), 
@@ -1499,7 +1502,7 @@ fix_braided_transects <- function(
 #     # get neighboring braid ID for our current braid
 #     neighbor_braids <- get_neighbor_braids(x = braids, ids = bids, only_unique = T)
 #     
-#     # braid flowlines other than self that are within our given braid id or are nearby
+#     # braid flowlines other than self that are within our given braid crosswalk_id or are nearby
 #     others <- dplyr::filter(
 #       braids,
 #       braid_id %in% neighbor_braids,
@@ -1800,9 +1803,9 @@ fix_braided_transects <- function(
 # 
 # # Get Geometries to Cut/Get the nearby geometries from a COMID in a braided network
 # # 
-# # Internal function that tries to determine the nearby and/or connected flowlines/COMIDs relative to an origin COMID ('id') in the NHDPlus network dataset ('x'). 
+# # Internal function that tries to determine the nearby and/or connected flowlines/COMIDs relative to an origin COMID ('crosswalk_id') in the NHDPlus network dataset ('x'). 
 # # The return COMIDs are a subset of the main dataset that will be used to extend transects across because they are eligible as they either: part of the same braid_id(s), neighboring braid_id(s), or within the same connected component of the network.
-# # Function requires the NHDPlus sf dataframe and an "id" value and a "method" value.
+# # Function requires the NHDPlus sf dataframe and an "crosswalk_id" value and a "method" value.
 # # 
 # # Geometries can be selected for cutting via 3 methods:
 # # 
@@ -1810,7 +1813,7 @@ fix_braided_transects <- function(
 # # 2. COMIDS of the current COMID's braid_id(s) AND the COMIDs of ANY of the braids that neighbor the origin COMIDs braid_id(s) (method = "neighbor")
 # # 3. Uses the component ID of the origin COMID to only identify COMIDs that have the same component ID AND are not the origin COMID within the current COMIDs braid_id (s) (method = "component")
 # # @param x A data frame containing network data.
-# # @param id integer or character, origin COMID or identifier.
+# # @param crosswalk_id integer or character, origin COMID or identifier.
 # # @param braid_id character, The braid identifier.
 # # @param component character or integer, component ID of the origin COMID identifier.
 # # @param method The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"
@@ -1820,7 +1823,7 @@ fix_braided_transects <- function(
 # # @return sf dataframe containing the subset of nearby geometries to use for cutting.
 # # @importFrom dplyr filter 
 # get_geoms_to_cut3 <- function(x, 
-#                              id          = NULL, 
+#                              crosswalk_id          = NULL, 
 #                              braid_id    = NULL, 
 #                              component   = NULL,
 #                              method      = "comid"
@@ -1831,9 +1834,9 @@ fix_braided_transects <- function(
 #     stop("Invalid 'method' value, must be one of 'comid', 'component', or 'neighbor'")
 #   }
 #   
-#   # stop the function if "id" is missing (NULL)
-#   if(is.null(id)) {
-#     stop("Missing 'id' value, provide an origin COMID")
+#   # stop the function if "crosswalk_id" is missing (NULL)
+#   if(is.null(crosswalk_id)) {
+#     stop("Missing 'crosswalk_id' value, provide an origin COMID")
 #   }
 #   
 #   # If missing 'braid_id' argument (NULL) AND there is a "braid_id" column in "x",
@@ -1841,7 +1844,7 @@ fix_braided_transects <- function(
 #   if(is.null(braid_id) && "braid_id" %in% names(x)) {
 #     
 #     # filter 'x' to comid of interest and get the "component_id"
-#     braid_id <- x$braid_id[x$comid == id]
+#     braid_id <- x$braid_id[x$comid == crosswalk_id]
 #     
 #   }
 #   
@@ -1850,7 +1853,7 @@ fix_braided_transects <- function(
 #   if(is.null(component) && "component_id" %in% names(x)) {
 #     
 #     # filter 'x' to comid of interest and get the "component_id"
-#     component <- x$component_id[x$comid == id]
+#     component <- x$component_id[x$comid == crosswalk_id]
 #     
 #   }
 #   
@@ -1871,9 +1874,9 @@ fix_braided_transects <- function(
 #     )
 #     
 #     # remove self comid
-#     neighbor_comids <- neighbor_comids[neighbor_comids != id]
+#     neighbor_comids <- neighbor_comids[neighbor_comids != crosswalk_id]
 #     
-#     # Filter to braid flowlines other than self that are within our given braid id or
+#     # Filter to braid flowlines other than self that are within our given braid crosswalk_id or
 #     # are a nearby neighboring, flowline of a different (but connected) braid
 #     others <- x[x$comid %in% neighbor_comids, ]
 #     
@@ -1897,8 +1900,8 @@ fix_braided_transects <- function(
 #     }
 #     
 #     # filter 'x' to rows with the same component_id AND that are the origin comid
-#     others <- x[x$component_id %in% component & x$comid != id, ]
-#     # others <- dplyr::filter(x, component_id %in% component, comid != id)
+#     others <- x[x$component_id %in% component & x$comid != crosswalk_id, ]
+#     # others <- dplyr::filter(x, component_id %in% component, comid != crosswalk_id)
 #     
 #     return(others)
 #     
@@ -1913,9 +1916,9 @@ fix_braided_transects <- function(
 #     # # get neighboring braid ID for our current braid
 #     neighbor_braids <- get_neighbor_braids(x = x, ids = bids, only_unique = TRUE)
 #     
-#     # braid flowlines other than self that are within our given braid id or are nearby
-#     others <- x[x$braid_id %in% neighbor_braids & x$comid != id, ]
-#     # others <- dplyr::filter(x, braid_id %in% neighbor_braids,comid != id)
+#     # braid flowlines other than self that are within our given braid crosswalk_id or are nearby
+#     others <- x[x$braid_id %in% neighbor_braids & x$comid != crosswalk_id, ]
+#     # others <- dplyr::filter(x, braid_id %in% neighbor_braids,comid != crosswalk_id)
 #     
 #     return(others)
 #   }
@@ -2061,6 +2064,7 @@ get_geoms_to_cut <- function(x,
   
   return(others)
 }
+
 
 #' Convert SF geometry columns to geos geometrys and return the original dataframe 
 #' Internal function used to switch sf geometry dataframes to geos for processing tasks
@@ -2277,7 +2281,7 @@ geos_extend_transects <- function(
 # function for extending/updating transect cross section linestrings 
 # Description: Specifically to be used for situations where a river network is braided. 
 # x: transect line to try and extend to cover braided river sections 
-# id: unique identifier (COMID/hy_id) of transect line 
+# crosswalk_id: unique identifier (COMID/hy_id) of transect line 
 # geoms_to_cut: (geos_geometry), other lingestrings (flowlines) of network that x should attempt to extend out to, and cut across 
 # geom_ids: vector of unique IDs for each geoms_to_cut
 # cs_width: numeric, cross section width
@@ -2289,7 +2293,7 @@ geos_extend_transects <- function(
 #' @param cs_line geos_geometry, transect line to try and extend to cover braided river sections. 
 #' @param cs_width numeric, cross section width of cs_line (meters) 
 #' @param bf_width numeric, bankful width of cs_line (meters) 
-#' @param id integer or character, unique ID of flowline geometry (i.e. COMID)
+#' @param crosswalk_id integer or character, unique ID of flowline geometry (i.e. COMID)
 #' @param geoms_to_cut geos_geometry, other lingestrings (flowlines) of network that "cross_section" should attempt to extend out to, and to cut across 
 #' @param geom_ids character, unique identifier (comid/hy_id) of transect line 
 #' @param max_distance numeric, maximum distance (meters) to extend line out by
@@ -2304,7 +2308,7 @@ geos_augment_transect <- function(
     cs_line,
     cs_width,
     bf_width,
-    id,
+    crosswalk_id,
     geoms_to_cut, 
     geom_ids,
     max_distance = NULL,
@@ -2321,7 +2325,7 @@ geos_augment_transect <- function(
   # # extract values from cross_section dataframe
   # cs_width <- cross_section$cs_widths
   # bf_width <- cross_section$bf_width
-  # id       <- cross_section$hy_id
+  # crosswalk_id       <- cross_section$hy_id
   
   # # convert cross_section geometry columns to geos_geometry
   # cs_line  <- geos::as_geos_geometry(cross_section$geometry)
@@ -2367,7 +2371,7 @@ geos_augment_transect <- function(
     distances     = dist_vect,
     geoms_to_cut  = geoms_to_cut, 
     geom_ids      = geom_ids,
-    ids           = c(id), 
+    ids           = c(crosswalk_id), 
     dir           = "head",
     final_count   = head_check,
     map           = TRUE
@@ -2381,7 +2385,7 @@ geos_augment_transect <- function(
     distances     = dist_vect,
     geoms_to_cut  = geoms_to_cut, 
     geom_ids      = geom_ids,
-    ids           = c(id), 
+    ids           = c(crosswalk_id), 
     dir           = "tail",
     final_count   = tail_check,
     map           = TRUE
@@ -2491,7 +2495,7 @@ geos_augment_transect <- function(
 #' Internal function that takes a transect line, and a set of nearby geos_geometries that the transect line should be compared against to see how far the given transect line should be
 #' extended in both directions in order to cross over all the avaliable nearby flowline geos_geometries. Specifically to be used for situations where a river network is braided. 
 #' @param cs_line geos_geometry, transect line to try and extend to cover braided river sections. 
-#' @param id integer or character, unique ID of flowline geometry (i.e. COMID)
+#' @param crosswalk_id integer or character, unique ID of flowline geometry (i.e. COMID)
 #' @param geoms_to_cut geos_geometry, other lingestrings (flowlines) of network that "cross_section" should attempt to extend out to, and to cut across 
 #' @param geom_ids character, unique identifier (comid/hy_id) of transect line 
 #' @param max_distance numeric, maximum distance (meters) to extend line out by
@@ -2504,7 +2508,7 @@ geos_augment_transect <- function(
 #' @importFrom fastmap fastmap
 geos_augment_transect2 <- function(
     cs_line,
-    id,
+    crosswalk_id,
     geoms_to_cut, 
     geom_ids,
     max_distance = NULL,
@@ -2521,7 +2525,7 @@ geos_augment_transect2 <- function(
   # # extract values from cross_section dataframe
   # cs_width <- cross_section$cs_widths
   # bf_width <- cross_section$bf_width
-  # id       <- cross_section$hy_id
+  # crosswalk_id       <- cross_section$hy_id
   
   # # convert cross_section geometry columns to geos_geometry
   # cs_line  <- geos::as_geos_geometry(cross_section$geometry)
@@ -2567,7 +2571,7 @@ geos_augment_transect2 <- function(
     distances     = dist_vect,
     geoms_to_cut  = geoms_to_cut, 
     geom_ids      = geom_ids,
-    ids           = c(id), 
+    ids           = c(crosswalk_id), 
     dir           = "head",
     final_count   = head_check,
     map           = TRUE
@@ -2581,7 +2585,7 @@ geos_augment_transect2 <- function(
     distances     = dist_vect,
     geoms_to_cut  = geoms_to_cut, 
     geom_ids      = geom_ids,
-    ids           = c(id), 
+    ids           = c(crosswalk_id), 
     dir           = "tail",
     final_count   = tail_check,
     map           = TRUE
@@ -3619,7 +3623,7 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
 # make_geoms_to_cut_plot <- function(
     #     shp,
 #     x,
-#     id           = NULL,
+#     crosswalk_id           = NULL,
 #     braid_id     = NULL,
 #     component    = NULL,
 #     save_path = NULL
@@ -3627,7 +3631,7 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
 # 
 #   comid_cuts <- get_geoms_to_cut(
 #     x            = x,
-#     id           = id,
+#     crosswalk_id           = crosswalk_id,
 #     braid_id     = braid_id,
 #     component    = component,
 #     method       = "comid"
@@ -3635,7 +3639,7 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
 # 
 #   comp_cuts <-  get_geoms_to_cut(
 #     x            = x,
-#     id           = id,
+#     crosswalk_id           = crosswalk_id,
 #     braid_id     = braid_id,
 #     component    = component,
 #     method       = "component"
@@ -3643,7 +3647,7 @@ get_neighbor_braids <- function(x, ids, split_ids = FALSE, only_unique = FALSE) 
 # 
 #   neigh_cuts <- get_geoms_to_cut(
 #     x            = x,
-#     id           = id,
+#     crosswalk_id           = crosswalk_id,
 #     braid_id     = braid_id,
 #     component    = component,
 #     method       = "neighbor"
@@ -3945,7 +3949,7 @@ plot_braid_geoms_to_cut <- function(
       geoms_to_cut_plot <- make_geoms_to_cut_plot(
         shp          = xs[i, ],
         x            = braids,
-        id           = com,
+        crosswalk_id           = com,
         braid_id     = bid,
         component    = comp_id,
         save_path = paste0(save_path, "geoms_to_cut_component_",
@@ -4040,11 +4044,11 @@ plot_braid_geoms_to_cut <- function(
 # #Reset fastmap containing the extension data for a line
 # #Internal function. Used for when the extension is going to be greater than the max transect length threshold
 # #@param line_map fastmap with the following keys: index, distance, total_distance, cut_ids, count, and is_thresholded
-# #@param id numeric or character ID of the original line to set the "cut_ids" key to. Default is NULL which will use the first id in "cut_ids"
+# #@param crosswalk_id numeric or character ID of the original line to set the "cut_ids" key to. Default is NULL which will use the first crosswalk_id in "cut_ids"
 # #@noRd
 # #@keywords internal
 # #@return 
-# reset_line_map <- function(line_map, id = NULL) {
+# reset_line_map <- function(line_map, crosswalk_id = NULL) {
 #   
 #   # set index to 1
 #   line_map$set("index", 1)
@@ -4053,11 +4057,11 @@ plot_braid_geoms_to_cut <- function(
 #   line_map$set("distance", 0)
 #   line_map$set("total_distance", 0)
 #   
-#   # if id is NULL (not provided in function call), then use the FIRST id in 'cut_ids' key
-#   if(is.null(id)) {
+#   # if crosswalk_id is NULL (not provided in function call), then use the FIRST crosswalk_id in 'cut_ids' key
+#   if(is.null(crosswalk_id)) {
 #     line_map$set("cut_ids", line_map$get("cut_ids")[1])
 #   } else {
-#     line_map$set("cut_ids", id)
+#     line_map$set("cut_ids", crosswalk_id)
 #   }
 #   # set count to 0
 #   line_map$set("count", 0)
@@ -4106,7 +4110,7 @@ plot_braid_geoms_to_cut <- function(
 #   # extract values from cross_section dataframe
 #   cs_width <- cross_section$cs_widths
 #   bf_width <- cross_section$bf_width
-#   id       <- cross_section$hy_id
+#   crosswalk_id       <- cross_section$hy_id
 #   
 #   # convert cross section line to geos_geometry
 #   cs_line  <- geos::as_geos_geometry(cross_section$geometry)
@@ -4157,7 +4161,7 @@ plot_braid_geoms_to_cut <- function(
 #     distances     = dist_vect,
 #     geoms_to_cut  = geoms_to_cut,
 #     geom_ids      = geom_ids,
-#     ids           = c(id),
+#     ids           = c(crosswalk_id),
 #     threshold     = max_distance,
 #     dir           = "head",
 #     map           = TRUE
@@ -4167,7 +4171,7 @@ plot_braid_geoms_to_cut <- function(
 #   # head_map$get("is_thresholded")
 #   
 #   if(head_map$get("is_thresholded")) {
-#     message("----> id: ", id, " was thresholded in HEAD direction")
+#     message("----> crosswalk_id: ", crosswalk_id, " was thresholded in HEAD direction")
 #   }
 #   
 #   # extend line out from TAIL side of line
@@ -4178,7 +4182,7 @@ plot_braid_geoms_to_cut <- function(
 #     distances     = dist_vect,
 #     geoms_to_cut  = geoms_to_cut,
 #     geom_ids      = geom_ids,
-#     ids           = c(id),
+#     ids           = c(crosswalk_id),
 #     threshold     = max_distance,
 #     dir           = "tail",
 #     map           = TRUE
@@ -4188,7 +4192,7 @@ plot_braid_geoms_to_cut <- function(
 #   # tail_map$get("is_thresholded")
 #   
 #   if(tail_map$get("is_thresholded")) {
-#     message("----> id: ", id, " was thresholded in TAIL direction")
+#     message("----> crosswalk_id: ", crosswalk_id, " was thresholded in TAIL direction")
 #   }
 #   
 #   head_map$as_list()
@@ -4205,7 +4209,7 @@ plot_braid_geoms_to_cut <- function(
 #     
 #     # head_map$as_list()
 #     # tail_map$as_list()
-#     message("==== id: ", id, " ====")
+#     message("==== crosswalk_id: ", crosswalk_id, " ====")
 #     message("==== THRESHOLDING LINE ====")
 #     # reset the values in the head and tail maps to make it so the line is NOT going to be extended,
 #     # because extending the line will make it longer than the maximum transect distance threshold

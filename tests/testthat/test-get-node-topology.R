@@ -7,6 +7,7 @@ source("testing_utils.R")
 # source("tests/testthat/testing_utils.R")
 # devtools::load_all()
 
+#
 
 # -------------------------------------------------------------------
 # ---- hydrofabric::get_node_topology() ----
@@ -569,6 +570,7 @@ testthat::test_that("508 flowlines with 17 braid (17 loops) in the middle (SF li
 })
 
 testthat::test_that("Node topology with braided flowlines removed from network (0 braids / loops) (SF linestrings)", {
+  
   ID_COL         <- "comid"
   TO_ID_COL      <- hydrofabric3D:::as_to_id(ID_COL)
   NUM_OF_BRAIDS  <- 17
@@ -662,6 +664,8 @@ testthat::test_that("Node topology with braided flowlines removed from network (
   testthat::expect_true(correct_node_ids)
   
 })
+
+
 
 
 

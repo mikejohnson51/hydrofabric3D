@@ -114,7 +114,7 @@ library(sf)
 #     
 #     transects <- cut_cross_sections(
 #       net = flowlines,
-#       id = id_col,
+#       crosswalk_id = id_col,
 #       num = NUMBER_OF_TRANSECTS,
 #       cs_widths  = 5
 #     )
@@ -158,7 +158,7 @@ library(sf)
 #     
 #     transects <- cut_cross_sections(
 #       net = flowlines,
-#       id = id_col,
+#       crosswalk_id = id_col,
 #       num = NUMBER_OF_TRANSECTS,
 #       cs_widths  = EXPECTED_WIDTH
 #     )
@@ -193,7 +193,7 @@ library(sf)
 #     
 #     transects <- cut_cross_sections(
 #       net = flowlines,
-#       id = id_col,
+#       crosswalk_id = id_col,
 #       num = NUMBER_OF_TRANSECTS,
 #       cs_widths  = EXPECTED_WIDTH
 #     )
