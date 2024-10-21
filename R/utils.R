@@ -2046,6 +2046,30 @@ is_sf_linestring <- function(data) {
   return(is_sf && is_linestring)
 }
 
+
+#' Convert an sf dataframe with a point geometry column to non spatial with XY columns
+#'
+#' @param pts sf dataframe of points
+#' 
+#' @importFrom sf st_coordinates st_drop_geometry
+#' @importFrom dplyr mutate 
+#' @return
+pts_to_XY <- function(pts) {
+  
+  pts <- 
+    pts %>% 
+    dplyr::mutate(
+      X = sf::st_coordinates(.)[,1],
+      Y = sf::st_coordinates(.)[,2]
+    ) 
+  
+  pts <- sf::st_drop_geometry(pts)
+  
+  return(pts)
+  
+}
+
+
 #' Make a progress bar and return an "make_progress()" function to update the progress bar.
 #' Credit to the exactextractr team: https://github.com/isciences/exactextractr/blob/5fd17dcf02717332b125345aea586304f668cf12/R/exact_extract_helpers.R#L361
 #' @param progress logical, whether to make a progress bar or not (FALSE)
