@@ -2053,7 +2053,7 @@ is_sf_linestring <- function(data) {
 #' 
 #' @importFrom sf st_coordinates st_drop_geometry
 #' @importFrom dplyr mutate 
-#' @return
+#' @return data.frame or tibble with added X and Y columns
 pts_to_XY <- function(pts) {
   
   pts <- 

@@ -883,6 +883,7 @@ extend_transects_both_sides <- function(
       
       # TODO: this is dumb, TRUE if TRUE ELSE FALSE 
       used_half_of_extension <- ifelse(use_extension, TRUE,  FALSE)
+      
     } 
     
     # set is extended flag
@@ -986,11 +987,12 @@ extend_transects_by_distances <- function(
   # crosswalk_id = "hy_id"
   # cs_id = "cs_id"
   # grouping_id = 'mainstem'
+  
   # transects    = transect_lines
   # flowlines    = flowlines
   # crosswalk_id = crosswalk_id
   # cs_id        = "cs_id"
-  # grouping_id  = grouping_id 
+  # grouping_id  = grouping_id
   
   # ---------------------------------------
   
@@ -1085,11 +1087,17 @@ extend_transects_by_distances <- function(
   
   make_progress <- make_progress_bar(TRUE, length(transect_crosswalk_id_array))
   
+  # which(transect_crosswalk_id_array == "wb-1002059")
+  # which(transect_crosswalk_id_array == "wb-1002059" & transect_cs_id_array == 4)
+  # which(transect_crosswalk_id_array == "wb-1012096")
+  # which(transect_crosswalk_id_array == "wb-1012096" & transect_cs_id_array == 3)
   # profvis::profvis({
-  
+ 
   for (i in seq_along(transect_crosswalk_id_array)) {
-    
+
     make_progress()
+    
+    # message("i: ", i)
     
     # # Check if the iteration is a multiple of 100
     # if (message_interval != 0 && i %% message_interval == 0) {
@@ -1104,31 +1112,35 @@ extend_transects_by_distances <- function(
     current_hy_id <- transect_crosswalk_id_array[i]
     current_cs_id <- transect_cs_id_array[i]
     
+    
+    # TODO: set any NA, NULL, or negative distance values to 0
+    # TODO: outside of loop
     # distances to try extending
     left_distance_to_extend  <- left_distances[i]
     right_distance_to_extend <- right_distances[i]
     
-    # skip the iteration if no extension required
-    no_extension_required <- (left_distance_to_extend == 0 && right_distance_to_extend == 0)
+    # skip the iteration if no extension required (left AND right distance are both 0 or NA)
+    no_extension_required <- (
+                            left_distance_to_extend == 0 || is.na(left_distance_to_extend)
+                            ) && (
+                            right_distance_to_extend == 0 || is.na(right_distance_to_extend)
+                            ) 
+    # no_extension_required <- (left_distance_to_extend == 0 && right_distance_to_extend == 0)
     
     # TODO: use this if we switch from using 0s to NAs
     # no_extension_required <- (is.na(left_distance_to_extend) && is.na(right_distance_to_extend))
-    
     # current_intersect_group_id <- transect_group_id_array[i]
-    
     # TODO: might need this in case I do the is_valid_transect() check on just the single flowline
     # current_fline      <- flowlines_geos[fline_id_array == current_hy_id]
-    
     # TODO: these are the rest of the transects for this flowline
     # neighbor_transects <- transects_geos[transect_crosswalk_id_array == current_hy_id & transect_cs_id_array != current_cs_id]
-    
     # mapview::mapview(sf::st_as_sf(transects_geos[transect_crosswalk_id_array == current_hy_id & transect_cs_id_array != current_cs_id]), color = "red") +
     #   mapview::mapview(sf::st_as_sf(current_trans), color = "green")
     
     # Skip the iteration if NO extension distance in either direction
     if(no_extension_required) {
       # message("Skipping -left/right extension are both 0")
-      number_of_skips = number_of_skips + 1
+      number_of_skips <- number_of_skips + 1
       
       next
     }
@@ -1138,15 +1150,16 @@ extend_transects_by_distances <- function(
     # extend the transects by the prescribed distances
     left_extended_trans  <- hydrofabric3D::geos_extend_line(current_trans, 
                                                             left_distance_to_extend, "head")
+    
     right_extended_trans <- hydrofabric3D::geos_extend_line(current_trans, 
                                                             right_distance_to_extend, "tail")
     
-    # initial check to make sure the extended versions of the transects are valid
+    # # initial check to make sure the extended versions of the transects are valid
     # mapview::mapview(sf::st_as_sf(flowlines_geos[fline_group_id_array == transect_group_id_array[i]])) +
     #     mapview::mapview(sf::st_as_sf(transects_geos[transect_group_id_array == transect_group_id_array[i]]), color = "red") +
-    #   mapview::mapview(sf::st_as_sf(left_extended_trans), color = "green") + 
-    # mapview::mapview(sf::st_as_sf(right_extended_trans), color = "green") + 
-    # mapview::mapview(sf::st_as_sf(current_trans), color = "red") 
+    #   mapview::mapview(sf::st_as_sf(left_extended_trans), color = "green") +
+    # mapview::mapview(sf::st_as_sf(right_extended_trans), color = "green") +
+    # mapview::mapview(sf::st_as_sf(current_trans), color = "red")
     
     # TODO version 2:
     # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
@@ -1185,7 +1198,11 @@ extend_transects_by_distances <- function(
         flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
       ) 
       
+      # this is dumb, true if true else false
+      # this flag is just helpful for reading, whether the half distance was used or not further down in the loop
       used_half_of_left <- ifelse(use_left_extension, TRUE,  FALSE)
+      # used_half_of_left <- use_left_extension
+      
     }
     
     # if we CAN'T use the original RIGHT extension distance, 
@@ -1202,7 +1219,10 @@ extend_transects_by_distances <- function(
         flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
       )
       
+      # this is dumb, true if true else false
+      # this flag is just helpful for reading, whether the half distance was used or not further down in the loop
       used_half_of_right  <- ifelse(use_right_extension, TRUE,  FALSE)
+      # used_half_of_right  <- use_right_extension
       
     }
     
@@ -1221,30 +1241,54 @@ extend_transects_by_distances <- function(
     # create the new transect line
     updated_trans  <- make_line_from_start_and_end_pts(start, end, line_crs)
     
+    # mapview::mapview(sf::st_as_sf(flowlines_geos[fline_group_id_array == transect_group_id_array[i]])) +
+    #   mapview::mapview(sf::st_as_sf(transects_geos[transect_group_id_array == transect_group_id_array[i]]), color = "red") +
+    #   mapview::mapview(sf::st_as_sf(left_extended_trans), color = "green") +
+    #   mapview::mapview(sf::st_as_sf(right_extended_trans), color = "green") +
+    #   mapview::mapview(sf::st_as_sf(updated_trans), color = "yellow") +
+    #   mapview::mapview(sf::st_as_sf(current_trans), color = "red")
+    
     # TODO: in case the above code is making a copy, below should NOT ( i dont think creating start/end is a copy but just a pointer to the data)
     # updated_trans  <- make_line_from_start_and_end_pts(extension_pts[1], extension_pts[2], line_crs) 
     
-    # flag if left extension happened
-    if(use_left_extension) {
-      left_extended_flag[i]  <- TRUE
-    }
+    # flag if left extension happened AND it was greater than 0 
+    left_extended_flag[i]   <-  use_left_extension && left_distance_to_extend > 0
+    # if(use_left_extension) {
+      # left_extended_flag[i]  <- TRUE
+    # }
     
-    # flag if right extension happened
-    if(use_right_extension) {
-      right_extended_flag[i] <- TRUE
-    }
+    # flag if right extension happened AND it was greater than 0 
+    right_extended_flag[i]  <-  use_right_extension && right_distance_to_extend > 0
+    # if(use_right_extension) {
+      # right_extended_flag[i] <- TRUE
+    # }
     
+    # get the updated extension distances (left and right, they might have been cut in half), if no extension happened, then distance is 0
+    updated_left_distance   <- ifelse(use_left_extension, 
+                                  ifelse(used_half_of_left, half_left_distance, left_distance_to_extend),
+                                  0
+                                  )
+    
+    updated_right_distance  <- ifelse(use_right_extension, 
+                                  ifelse(used_half_of_right, half_right_distance, right_distance_to_extend),
+                                  0
+                                  )
+    
+    # update the left extension distance 
+    left_distances[i]   <- updated_left_distance 
+   
+    # update the right extension distance 
+    right_distances[i]  <- updated_right_distance
+     
     # update the left extension distance if half the original distance was used
-    if (used_half_of_left) {
-      left_distances[i]  <- half_left_distance 
-      # updated_left_distances[i]  <- half_left_distance 
-    }
+    # if (used_half_of_left) {
+    #   left_distances[i]  <- half_left_distance 
+    # }
     
-    # update the right extension distance if half the original distance was used   
-    if (used_half_of_right) {
-      right_distances[i] <- half_right_distance
-      # updated_right_distances[i] <- half_right_distance 
-    }
+    # update the right extension distance if half the original distance was us
+    # if (used_half_of_right) {
+    #   right_distances[i] <- half_right_distance
+    # }
     
     # last step is to replace the original transect with the updated transect (extended)
     transects_geos[i] <- updated_trans

@@ -95,6 +95,16 @@ extend_transects_to_polygons <- function(
     grouping_id = 'mainstem',
     max_extension_distance = 3000
 ) {
+  # ----------------------------------------------------------------------------------
+  # ----------- TEST DATA  ------
+  # ----------------------------------------------------------------------------------
+  
+  # transect_lines          = transects
+  # polygons                = fema
+  # flowlines               = flines
+  # crosswalk_id            = "hy_id"
+  # grouping_id             = "mainstem"
+  # max_extension_distance  = 3000
   
   # ----------------------------------------------------------------------------------
   # ----------- Input checking ------
@@ -130,12 +140,20 @@ extend_transects_to_polygons <- function(
   # get a dataframe that tells you how far to extend each line in either direction
   extensions_by_id  <- get_extensions_by_id(transect_subset, polygons_subset, crosswalk_id, max_extension_distance)
   
+  # pid <- "wb-1002059"
+  # pcsid <- 4
+  # mapview::mapview(polygons_subset) +
+  #   mapview::mapview(pt, color = "green") +
+  #   mapview::mapview(pt_ext, color = "red")
+  
   # TODO: Add left/right extension distancces to transect data
   # TODO: this can ultimately just be the "transects" variable, dont need to make new "transects_with_distances" variable
   transect_lines <-
     transect_lines %>% 
     dplyr::left_join(
-      extensions_by_id,
+      dplyr::select(extensions_by_id, 
+                    dplyr::any_of(crosswalk_id), cs_id, left_distance, right_distance),
+      # extensions_by_id,
       by = c(crosswalk_id, "cs_id")
     ) %>% 
     # TODO: I think i want to keep the NAs and NOT fill w/ 0 
@@ -174,6 +192,11 @@ extend_transects_to_polygons <- function(
     # dplyr::group_by(hy_id) 
     dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
     dplyr::ungroup()
+  
+  # remove added tmp_id column
+  transect_lines <- 
+    transect_lines %>% 
+    dplyr::select(-tmp_id)
   
   return(transect_lines)
 
@@ -466,6 +489,7 @@ partition_transects_for_extension <- function(transects, polygons_subset, dir = 
 #' @export
 get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extension_distance) {
   
+  # split transects into left and right partitions
   left_partition <- partition_transects_for_extension(
     transects, 
     polygons, 
@@ -509,41 +533,57 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
     max_extension_distance = max_extension_distance
   )
   
-  left_partition$left_distance <- left_distances
-  right_partition$right_distance <- right_distances
+  left_partition$left_distance    <- left_distances
+  right_partition$right_distance  <- right_distances
   
   # Distance to extend LEFT and/or RIGHT for each hy_id/cs_id
   extensions_by_id <- dplyr::left_join(
-    sf::st_drop_geometry(
-      dplyr::select(left_partition, 
-                    dplyr::any_of(crosswalk_id),
-                    cs_id,
-                    left_distance
-      )
-    ),
-    sf::st_drop_geometry(
-      dplyr::select(right_partition, 
-                    dplyr::any_of(crosswalk_id),
-                    cs_id, 
-                    right_distance
-      )
-    ),
-    by = c(crosswalk_id, "cs_id")
-  )
+                        sf::st_drop_geometry(
+                          dplyr::select(left_partition, 
+                                        dplyr::any_of(crosswalk_id),
+                                        cs_id,
+                                        left_distance
+                          )
+                        ),
+                        sf::st_drop_geometry(
+                          dplyr::select(right_partition, 
+                                        dplyr::any_of(crosswalk_id),
+                                        cs_id, 
+                                        right_distance
+                          )
+                        ),
+                        by = c(crosswalk_id, "cs_id")
+                      )
   
-  # add any missing crosswalk_id/cs_id that didnt have any extension distance w/ values of 0
+  # add any missing crosswalk_id/cs_id that DID NOT have any extension distance w/ values of 0
   extensions_by_id <- dplyr::bind_rows(
                           extensions_by_id, 
                           transects %>% 
                             sf::st_drop_geometry() %>% 
                             hydrofabric3D::add_tmp_id(x = crosswalk_id) %>% 
                             dplyr::filter(!tmp_id %in% hydrofabric3D::add_tmp_id(extensions_by_id, x = crosswalk_id)$tmp_id) %>% 
-                            dplyr::select(-tmp_id) %>% 
                             dplyr::mutate(
                               left_distance  = 0,
                               right_distance = 0
-                            )
+                            ) %>% 
+                            dplyr::select(
+                              dplyr::any_of(crosswalk_id), cs_id, 
+                              left_distance, right_distance
+                            ) 
                         ) 
+  # # TODO: i want to make any NA left/right distances set to 0 instead of having both NAs AND 0 values, need to fix tests for this function first
+  # extensions_by_id <- 
+  #   extensions_by_id %>% 
+  #   dplyr::mutate(
+  #     left_distance = dplyr::case_when(
+  #       is.na(left_distance) ~ 0,
+  #       TRUE                 ~ left_distance
+  #     ),
+  #     right_distance = dplyr::case_when(
+  #       is.na(right_distance) ~ 0,
+  #       TRUE                  ~ right_distance
+  #     )
+  #   ) 
   
   return(extensions_by_id)
 }
