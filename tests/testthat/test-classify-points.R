@@ -32,120 +32,475 @@ testthat::test_that("cross section points plot test", {
   # PCT_OF_LENGTH_FOR_RELIEF <- 0.01
   # 
   # cs_pts <-
-  #   flowlines %>% 
-  #   dplyr::rename(!!sym(ID_COL) := id) %>% 
+  #   flowlines %>%
+  #   dplyr::rename(!!sym(ID_COL) := id) %>%
   #   dplyr::select(
   #     dplyr::any_of(ID_COL)
-  #   ) %>% 
-  #   cut_cross_sections(
+  #   ) %>%
+  #   hydrofabric3D::cut_cross_sections(
   #     net = .,
-  #     id  = ID_COL,  
-  #     num = 3 
-  #   ) %>% 
+  #     crosswalk_id  = ID_COL,
+  #     num = 3
+  #   ) %>%
   #   dplyr::select(
-  #     dplyr::any_of(ID_COL), 
+  #     dplyr::any_of(ID_COL),
   #     cs_lengthm,
   #     cs_id
-  #   ) %>% 
+  #   ) %>%
   #   hydrofabric3D::cross_section_pts(
   #     cs              = .,
   #     crosswalk_id    = ID_COL,
-  #     points_per_cs   = NULL,
+  #     points_per_cs   = 30,
   #     min_pts_per_cs  = 10,
   #     dem             = DEM_PATH
-  #   ) %>% 
-  #   hydrofabric3D::classify_points(crosswalk_id = ID_COL) %>% 
-  #   dplyr::mutate(
-  #     pt_bin = dplyr::case_when(
-  #       has_relief & valid_banks    ~ "valid banks + relief",
-  #       !has_relief & valid_banks   ~ "valid banks + NO relief",
-  #       has_relief & !valid_banks   ~ "NO valid banks + relief",
-  #       !has_relief & !valid_banks  ~ "NO valid banks + NO relief",
-  #       TRUE                        ~ NA
-  #     )
-  #   ) %>% 
-  #   hydrofabric3D::add_tmp_id(x = ID_COL)
-  # 
-  # # cs_pts %>% 
-  # #   ggplot2::ggplot() +
-  # #   ggplot2::geom_point(
-  # #     ggplot2::aes(x = pt_id, 
-  # #                  y = Z,
-  # #                  color = pt_bin
-  # #                  ),
-  # #     size = 4
-  # #     ) +
-  # #   ggplot2::facet_wrap(hy_id~cs_id, scales = "free")
-  # 
-  # 
-  # # cs_pts %>% 
-  # #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4)
-  # 
-  # cs_pts %>% 
-  #   dplyr::filter(has_relief, valid_banks) %>% 
-  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
-  #   ggplot2::labs(title = "valid banks + relief")
-  # 
-  # cs_pts %>% 
-  #   dplyr::filter(!has_relief, valid_banks) %>% 
-  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
-  #   ggplot2::labs(title = "valid banks + NO relief")
-  # 
-  # cs_pts %>% 
-  #   dplyr::filter(has_relief, !valid_banks) %>% 
-  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
-  #   ggplot2::labs(title = "NO valid banks + relief")
-  # 
-  # cs_pts %>% 
-  #   dplyr::filter(!has_relief, !valid_banks) %>% 
-  #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
-  #   ggplot2::labs(title = "NO valid banks + NO relief")
-  # 
-  # cs_pts
-  # 
-  # adjust <- function(v){
-  #   if(length(v) == 1){ 
-  #     return(v)
-  #   }
-  #   for(i in 2:length(v)){ 
-  #     v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) 
-  #   }
-  #   v
-  # }
-  # 
-  # slope <- 
-  #   cs_pts %>% 
-  #   sf::st_drop_geometry() %>% 
-  #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-  #   # dplyr::group_by(hy_id, cs_id) %>% 
-  #   dplyr::summarise(min_ch = min(Z[point_type == "channel"])) %>% 
-  #   dplyr::mutate(
-  #     a = adjust(min_ch),
-  #     adjust = adjust(min_ch) - min_ch
-  #     ) %>% 
-  #   dplyr::ungroup() %>% 
-  #   dplyr::select(
-  #     dplyr::any_of(crosswalk_id),
-  #     cs_id, 
-  #     adjust
   #   )
-  # # dplyr::select(hy_id, cs_id, adjust)
   # 
-  # cs_pts <-  
-  #   dplyr::left_join(
-  #     cs_pts, 
-  #     slope, 
-  #     by = c(crosswalk_id, "cs_id") 
-  #     # by = c("hy_id", "cs_id")
-  #   ) %>% 
-  #   dplyr::mutate(
-  #     Z = dplyr::case_when(
-  #       point_type  == "channel" ~ Z + adjust, 
-  #       TRUE ~ Z
+  # cs <-
+  #   data.frame(
+  #     hy_id      = c("A", "A", "A", "A", "A", "A", "A", "A", "A", "A"),
+  #     cs_id      = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1),
+  #     pt_id             = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+  #     cs_lengthm        = c(100, 100, 100, 100, 100, 100, 100, 100, 100, 100),
+  #     relative_distance = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9),
+  #     # point_type = c('left_bank', 'left_bank', 'channel', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank'),
+  #     Z          = c(5, 8, 10, 5, 2, 2, 4, 6, 7, 8,  9, 9, 10, 11, 10, 12, 14,13, 12, 8)
+  #   )
+  # 
+  #   length( 
+  #     c(5, 8, 10, 5, 2, 2, 4, 6, 7, 8, 8,  9, 9, 10, 11, 10, 12, 13, 14,13, 12, 11, 10, 9)
+  #           )
+  #   
+  #   plot(      c(5, 8, 10, 5, 2, 2, 4, 6, 7, 8, 8,  9, 9, 10, 11, 10, 12, 13, 14,13, 12, 11, 10, 9))
+  #   plot(cs$Z)
+  #   
+  #   # ID_COL       <- "hy_id"
+  #   # NUM_CS_PTS   <- 26
+  #   # CS_LENGTH    <- 100
+  #   # REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  #   # Z_VALS       <- c(5, 8, 10, 5, 2, 2, 4, 6, 7, 8, 8,  9, 9, 10, 11, 10, 12, 12, 13, 14,13, 12, 11, 10, 11, 9)
+  #   
+  #   ID_COL       <- "hy_id"
+  #   # NUM_CS_PTS   <- 35
+  #   # CS_LENGTH    <- 100
+  #   # REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  #   Z_VALS       <- c(5, 8, 10, 5, 3, 2, 1, 4, 6, 8, 9, 10, 12, 11, 12, 13, 13,  13, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+  #                    15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 12, 12, 11, 11, 11, 10, 10, 10, 10, 6, 10, 10, 15, 16, 17, 17, 17)
+  #   
+  #   Z_VALS       <- c(5, 8, 10, 5, 3, 2, 1, 4, 6, 8, 9, 10, 12, 11, 12, 13, 13,  13, 14, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+  #                     15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 12, 12, 12, 11, 11, 11, 10, 10, 10, 10, 6, 6, 6, 6, 6, 6, 10, 10, 15, 16, 17, 17, 17)
+  #   
+  #   NUM_CS_PTS   <- length(Z_VALS)
+  #   CS_LENGTH    <- 100
+  #   REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  #   # length(Z_VALS)
+  #   
+  #   cs_pts <- data.frame(
+  #     hy_id             = rep("A", NUM_CS_PTS),
+  #     cs_id             = rep(1, NUM_CS_PTS),
+  #     pt_id             = 1:NUM_CS_PTS,
+  #     cs_lengthm        = rep(CS_LENGTH, NUM_CS_PTS),
+  #     relative_distance = REL_DIST,
+  #     Z                 = Z_VALS
+  #   )
+  #   plot(cs_pts$Z)
+  #   
+  #   
+  #   
+  #   classified_pts <-     
+  #     cs_pts %>% 
+  #     hydrofabric3D::classify_points(crosswalk_id = ID_COL)
+  #   
+  #   classified_pts %>% 
+  #     hydrofabric3D::plot_cs_pts(
+  #       crosswalk_id = "hy_id",
+  #       color = "point_type",
+  #       size = 4
   #     )
-  #   ) %>% 
-  #   dplyr::select(-adjust)
+  #   
+  #   # cs_pts %>% 
+  #   # hydrofabric3D::classify_points(crosswalk_id = ID_COL) %>% 
+  #   # hydrofabric3D::plot_cs_pts(
+  #   #   crosswalk_id = "hy_id",
+  #   #   color = "point_type",
+  #   #   size = 4
+  #   # )
+  #   crosswalk_id = "hy_id"
+  #   
+  #   # # remove any columns that already exist
+  #   cs_pts <- dplyr::select(cs_pts, 
+  #                           !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", 
+  #                                            "right_bank", "valid_banks", "has_relief"))
+  #   )
+  #   
+  #   # required cols that will be selected from the classified_pts object and in this order
+  #   output_cols       <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", 
+  #                          "cs_lengthm", "class", "point_type")
+  #   
+  #   # any starting columns in the original data 
+  #   starting_cols  <- names(cs_pts)
+  #   
+  #   # name and order of columns to select with
+  #   cols_to_select <- c(output_cols, starting_cols[!starting_cols %in% output_cols])
+  #   
+  #   # check if we're missing the required points_per_cs column, if so, 
+  #   # we generate one based on the number of points in each cross section
+  #   is_missing_points_per_cs <- !"point_per_cs" %in% names(cs_pts)
+  #   
+  #   if (is_missing_points_per_cs) {
+  #     cs_pts <- 
+  #       cs_pts %>% 
+  #       dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+  #       dplyr::mutate(points_per_cs = dplyr::n()) %>% 
+  #       dplyr::ungroup()
+  #   } 
+  #   
+  #   classify_banks_and_bottoms2 <- function(
+  #     num_of_pts, 
+  #     pt_ids, 
+  #     depths
+  #     ) {
+  #     
+  #     num_of_pts <- cs_pts$points_per_cs[1]
+  #     pt_ids <- cs_pts$pt_id
+  #     depths <- cs_pts$Z
+  #     depths
+  #     num_of_pts
+  #     
+  #     library(glue)
+  #     
+  #     local_mins <- list()
+  #     local_maxs <- list()
+  #     
+  #     for (i in 2:(length(depths)-1)) {
+  #       # i = 2
+  #       depths[14]
+  #      
+  #       depth      <- depths[i]
+  #       prev_depth <- depths[i-1]
+  #       next_depth <- depths[i + 1]
+  #       
+  #       
+  #       message( glue::glue("({i}):\n {prev_depth} -> {depth} -> {next_depth}"))
+  #       
+  #       is_local_min <- depth < prev_depth && depth < next_depth
+  #       is_local_max <- depth > prev_depth && depth > next_depth
+  #       
+  #       message( glue::glue(" > Local min? {is_local_min}"))
+  #       message( glue::glue(" > Local max? {is_local_max}"))
+  #       # local_mins
+  #       if(is_local_min) {
+  #         local_mins[[i]] <- i
+  #         
+  #       }
+  #       
+  #     }
+  #     
+  #     # calc the 
+  #     # - number of points in a third of the cross section (third)
+  #     quarter              <- ceiling(num_of_pts / 4)
+  #     
+  #     # num_of_pts
+  #     
+  #     # 7 * 4
+  #     
+  #     first_quarter_left_idx    <- quarter
+  #     second_quarter_right_idx  <- ((3 * quarter) - 1)
+  #     
+  #     mid_quarters_idxs    <- first_quarter_left_idx:second_quarter_right_idx
+  #     mid_quarters_low_pt  <- min(depths[mid_quarters_idxs])
+  #     
+  #     # logic for determining if its a bottom point (at lowest depth AND in middle third)
+  #     is_at_bottom_Z         <- depths <= mid_quarters_low_pt
+  #     is_in_middle_quarters  <- dplyr::between(pt_ids, 
+  #                                              first_quarter_left_idx, 
+  #                                              second_quarter_right_idx
+  #     )
+  #     
+  #     point_type <- ifelse(is_at_bottom_Z & is_in_middle_quarters, "bottom", "bank")
+  #     
+  #     return(point_type)
+  #   }
+  #   find_anchor_pts2 <- function(depths, 
+  #                               num_of_pts,
+  #                               cs_length, 
+  #                               relative_distance, 
+  #                               point_types
+  #   ) {
+  #     
+  #     
+  #     # ------------------------------
+  #     # depths            = depths
+  #     # num_of_pts        = num_of_pts
+  #     # relative_distance = relative_distances
+  #     # cs_length         = cs_length
+  #     # point_types       = point_types
+  #     
+  #     # num_of_pts <- tmp$points_per_cs[1]
+  #     # pt_ids <- tmp$pt_id
+  #     # depths <- tmp$Z
+  #     # point_types = tmp$class
+  #     # cs_length <- tmp$cs_lengthm[1]
+  #     # relative_distance <- tmp$relative_distance
+  #     
+  #     # ------------------------------
+  #     third          = ceiling(num_of_pts / 3)
+  #     # quarter          = ceiling(num_of_pts / 4) 
+  #     
+  #     dist_between_pts   <- mean(diff(relative_distance))
+  #     in_channel_pts     <- ceiling(cs_length / dist_between_pts)
+  #     
+  #     b1  <- ceiling(in_channel_pts / 2) # b1
+  #     b2  <- in_channel_pts - b1 # b2
+  #     
+  #     # bank_idxs      <- find_in_channel_pts(relative_distances, cs_length)
+  #     # 
+  #     # left_bank      <- bank_idxs[1] 
+  #     # right_bank     <- bank_idxs[2]
+  #     
+  #     bottom_idxs <- which(point_types == "bottom")
+  #     # point_type_is_bottom = which(point_types == "bottom")
+  #     
+  #     min_bottom  <- bottom_idxs[1]
+  #     mid_bottom  <- bottom_idxs[ceiling(length(bottom_idxs) / 2)]
+  #     max_bottom  <- bottom_idxs[length(bottom_idxs)]
+  #     # min_bottom     = which(point_types == "bottom")[1]
+  #     # mid_bottom     = which(point_types == "bottom")[ceiling(length(which(point_types == "bottom"))/2)]
+  #     # max_bottom     = which(point_types == "bottom")[length(which(point_types == "bottom"))]
+  #     
+  #     L1             = pmax(1, mid_bottom - b1)
+  #     L2             = pmax(1, mid_bottom - b2)
+  #     
+  #     R1             = pmin(mid_bottom + b2, num_of_pts)
+  #     R2             = pmin(mid_bottom + b1, num_of_pts)
+  #     
+  #     anchor         = ifelse(depths[R2] < depths[L1], 2, 1)
+  #     
+  #     LEFT           = pmax(third, ifelse(anchor == 1, L1, L2))
+  #     RIGHT          = pmin(2 * third, ifelse(anchor == 1, R1, R2))
+  #     
+  #     # LEFT           = pmax(quarter, ifelse(anchor == 1, L1, L2))
+  #     # RIGHT          = pmin(3 * quarter, ifelse(anchor == 1, R1, R2))
+  #     
+  #     count_left     = min_bottom - LEFT
+  #     count_right    = RIGHT - max_bottom
+  #     
+  #     LEFT           = ifelse(count_left == 0, LEFT - count_right, LEFT)
+  #     RIGHT          = ifelse(count_right == 0, RIGHT + count_left, RIGHT)
+  #     
+  #     return(
+  #       c(LEFT, mid_bottom, RIGHT)
+  #       )
+  #     
+  #   }
+  #   # cs_pts2 <- cs_pts
+  #   tmp <- 
+  #     dplyr::filter(cs_pts) %>% 
+  #     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+  #     # dplyr::group_by(hy_id, cs_id) %>%
+  #     dplyr::mutate(
+  #       class       = classify_banks_and_bottoms2(
+  #         num_of_pts = points_per_cs[1],
+  #         pt_ids     = pt_id,
+  #         depths     = Z
+  #       ),
+  #         Z           = use_smoothed_depths(
+  #           start_depths    = Z, 
+  #           smoothed_depths = smooth_depths(Z, window = 3), 
+  #           point_types     = class
+  #         ),
+  #         anchors     = list(
+  #           find_anchor_pts(
+  #             depths             = Z,
+  #             num_of_pts         = points_per_cs[1],
+  #             cs_length          = cs_lengthm[1],
+  #             relative_distance  = relative_distance,
+  #             point_types        = class
+  #           )
+  #         ),
+  #         L              = anchors[[1]][1],
+  #         R              = anchors[[1]][3],
+  #         class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+  #         class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+  #         class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class),
+  #         
+  #         # get classification of concavity based on 1st and 2nd derivatives of depth points
+  #         deriv_type   = classify_derivatives(Z)
+  #       
+  #     )
+  #   
+  #   # create classifications for points
+  #   # classified_pts <-
+  #     dplyr::filter(cs_pts) %>% 
+  #     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+  #     # dplyr::group_by(hy_id, cs_id) %>%
+  #     dplyr::mutate(
+  #       class       = classify_banks_and_bottoms2(
+  #         num_of_pts = points_per_cs[1],
+  #         pt_ids     = pt_id,
+  #         depths     = Z
+  #       ),
+  #       Z           = use_smoothed_depths(
+  #         start_depths    = Z, 
+  #         smoothed_depths = smooth_depths(Z, window = 3), 
+  #         point_types     = class
+  #       ),
+  #       anchors     = list(
+  #         find_anchor_pts(
+  #           depths             = Z,
+  #           num_of_pts         = points_per_cs[1],
+  #           cs_length          = cs_lengthm[1],
+  #           relative_distance  = relative_distance,
+  #           point_types        = class
+  #         )
+  #       ),
+  #       L              = anchors[[1]][1],
+  #       R              = anchors[[1]][3],
+  #       class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+  #       class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+  #       class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class),
+  #       
+  #       # get classification of concavity based on 1st and 2nd derivatives of depth points
+  #       deriv_type   = classify_derivatives(Z),
+  #       deriv_type   = dplyr::case_when(
+  #         (grepl("concave", deriv_type) | deriv_type == "linear") & class != "bottom" ~ "channel",
+  #         TRUE                         ~ class
+  #       ),
+  #       # side = dplyr::case_when(
+  #       #   pt_id >= R[1] ~ "right_side",
+  #       #   pt_id <= L[1] ~ "left_side",
+  #       #   TRUE          ~ "middle"
+  #       # ),
+  #       # # max_left      = which.max(Z[1:L[1]]),
+  #       # # max_right     = which.max(Z[R[1]:length(Z)]) + R[1],
+  #       # max_left      = pmax(which.max(Z[1:L[1]]), 1),
+  #       # max_right     = pmin(which.max(Z[R[1]:length(Z)]) + R[1], points_per_cs[1]),
+  #       
+  #       deriv_type   = clean_point_types(deriv_type),
+  #       # deriv_type   = set_missing_bottom(
+  #       #                                 depths      = Z, 
+  #       #                                 point_types = deriv_type
+  #       #                                 ),
+  #       deriv_type   = set_channel_anchors(deriv_type),
+  #       deriv_type   = set_bank_anchors2(
+  #         depths = Z,
+  #         point_types = deriv_type,
+  #         L = L[1],
+  #         R = R[1]
+  #       ),
+  #       deriv_type   = set_missing_bottom(
+  #         depths      = Z, 
+  #         point_types = deriv_type
+  #       ),
+  #       deriv_type   = set_left_bank(
+  #         point_types = deriv_type
+  #       ),
+  #       deriv_type   = set_right_bank(
+  #         point_types = deriv_type
+  #       ),
+  #       deriv_type   = set_channel_surrounded_by_bottom(
+  #         depths      = Z,
+  #         point_types = deriv_type
+  #       ),
+  #       class        = deriv_type,
+  #       point_type   = deriv_type
+  #       # class      = clean_point_types(class),
+  #       # point_type = class
+  #     ) %>% 
+  #     dplyr::ungroup() %>% 
+  #     dplyr::select(dplyr::any_of(cols_to_select))  %>% 
+  #       hydrofabric3D::plot_cs_pts("hy_id", size = 4, color = "point_type")
+  #   # hydrofabric3D::classify_points(crosswalk_id = ID_COL) %>%
+  #   # dplyr::mutate(
+  #   #   pt_bin = dplyr::case_when(
+  #   #     has_relief & valid_banks    ~ "valid banks + relief",
+  #   #     !has_relief & valid_banks   ~ "valid banks + NO relief",
+  #   #     has_relief & !valid_banks   ~ "NO valid banks + relief",
+  #   #     !has_relief & !valid_banks  ~ "NO valid banks + NO relief",
+  #   #     TRUE                        ~ NA
+  #   #   )
+  #   # ) %>%
+  #   # hydrofabric3D::add_tmp_id(x = ID_COL)
   # 
+  # # # cs_pts %>%
+  # # #   ggplot2::ggplot() +
+  # # #   ggplot2::geom_point(
+  # # #     ggplot2::aes(x = pt_id,
+  # # #                  y = Z,
+  # # #                  color = pt_bin
+  # # #                  ),
+  # # #     size = 4
+  # # #     ) +
+  # # #   ggplot2::facet_wrap(hy_id~cs_id, scales = "free")
+  # # 
+  # # 
+  # # # cs_pts %>%
+  # # #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4)
+  # # 
+  # # cs_pts %>%
+  # #   dplyr::filter(has_relief, valid_banks) %>%
+  # #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  # #   ggplot2::labs(title = "valid banks + relief")
+  # # 
+  # # cs_pts %>%
+  # #   dplyr::filter(!has_relief, valid_banks) %>%
+  # #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  # #   ggplot2::labs(title = "valid banks + NO relief")
+  # # 
+  # # cs_pts %>%
+  # #   dplyr::filter(has_relief, !valid_banks) %>%
+  # #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  # #   ggplot2::labs(title = "NO valid banks + relief")
+  # # 
+  # # cs_pts %>%
+  # #   dplyr::filter(!has_relief, !valid_banks) %>%
+  # #   hydrofabric3D::plot_cs_pts(color = "point_type", size =4) +
+  # #   ggplot2::labs(title = "NO valid banks + NO relief")
+  # # 
+  # # cs_pts
+  # # 
+  # # adjust <- function(v){
+  # #   if(length(v) == 1){
+  # #     return(v)
+  # #   }
+  # #   for(i in 2:length(v)){
+  # #     v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i])
+  # #   }
+  # #   v
+  # # }
+  # # 
+  # # slope <-
+  # #   cs_pts %>%
+  # #   sf::st_drop_geometry() %>%
+  # #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
+  # #   # dplyr::group_by(hy_id, cs_id) %>%
+  # #   dplyr::summarise(min_ch = min(Z[point_type == "channel"])) %>%
+  # #   dplyr::mutate(
+  # #     a = adjust(min_ch),
+  # #     adjust = adjust(min_ch) - min_ch
+  # #     ) %>%
+  # #   dplyr::ungroup() %>%
+  # #   dplyr::select(
+  # #     dplyr::any_of(crosswalk_id),
+  # #     cs_id,
+  # #     adjust
+  # #   )
+  # # # dplyr::select(hy_id, cs_id, adjust)
+  # # 
+  # # cs_pts <-
+  # #   dplyr::left_join(
+  # #     cs_pts,
+  # #     slope,
+  # #     by = c(crosswalk_id, "cs_id")
+  # #     # by = c("hy_id", "cs_id")
+  # #   ) %>%
+  # #   dplyr::mutate(
+  # #     Z = dplyr::case_when(
+  # #       point_type  == "channel" ~ Z + adjust,
+  # #       TRUE ~ Z
+  # #     )
+  # #   ) %>%
+  # #   dplyr::select(-adjust)
+  # # 
 })
 
 
