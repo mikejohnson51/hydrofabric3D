@@ -30,7 +30,7 @@ find_plateaus <- function(x) {
          )
 }
 
-# Function to find local minima indices using plateau midpoints
+# find local minima indices using plateau midpoints
 find_local_minima <- function(x) {
   # x = c(1, 1, 1, 1)
   n <- length(x)
@@ -52,7 +52,7 @@ find_local_minima <- function(x) {
     indices <- c(indices, 1)
   }
   
-  # Check interior points and plateaus
+  # interior points and plateaus
   i <- 2
   while (i < n) {
     
@@ -73,7 +73,9 @@ find_local_minima <- function(x) {
         indices <- c(indices, floor((i + plateau_end) / 2))
         
       }
+      
       i <- plateau_end + 1
+      
     } else {
       
       # case when its just a single point minimum (simple case actually)
@@ -183,7 +185,7 @@ find_local_maxima <- function(x) {
 }
 
 # finds local minimas and then the neighboring local maximas, returns a list of the index values for those poitnts
-find_minima_with_neighbors <- function(x, index_only = TRUE) {
+find_bottom_candidates <- function(x, index_only = TRUE) {
   
   # x = Z_VALS
   # index_only    <- T
@@ -221,7 +223,7 @@ find_minima_with_neighbors <- function(x, index_only = TRUE) {
       )
     }
     
-    left_maximum <- if (!is.na(left_max_idx)) {
+    left_max <- if (!is.na(left_max_idx)) {
       if(index_only) {
         left_max_idx
       } else {
@@ -234,7 +236,7 @@ find_minima_with_neighbors <- function(x, index_only = TRUE) {
       NULL
     }
     
-    right_maximum <- if (!is.na(right_max_idx)) {
+    right_max <- if (!is.na(right_max_idx)) {
       if(index_only) {
         right_max_idx
       } else {
@@ -254,8 +256,8 @@ find_minima_with_neighbors <- function(x, index_only = TRUE) {
     # Create entry in result list
     result[[length(result) + 1]] <- list(
       minimum       = minimum,
-      left_maximum  = left_maximum,
-      right_maximum = right_maximum,
+      left_max      = left_max,
+      right_max     = right_max,
       width         = width,
       depth         = depth
     )
@@ -274,12 +276,12 @@ find_minima_with_neighbors <- function(x, index_only = TRUE) {
 
 # bucket_indexes <- 
 #   x %>% 
-#   find_minima_with_neighbors() %>% 
+#   find_bottom_candidates() %>% 
 #   rm_edge_buckets() %>% 
 #   anchor_picker()
 
 # anchor_pts <- list(
-#   L = bucket_indexes$left_maximum,
+#   L = bucket_indexes$left_max,
 #   M = bucket_indexes$minimum,
 #   R = bucket_indexes$right_maxixum
 # )
@@ -304,13 +306,13 @@ anchor_picker <- function(bucket_indexes) {
   return(list())
 }
 
-# min_indexes <- find_minima_with_neighbors(Z_VALS)
+# min_indexes <- find_bottom_candidates(Z_VALS)
 # min_indexes <- rm_edge_buckets(min_indexes)
 
 # removes buckets on the edges of the set of points
 rm_edge_buckets <- function(bucket_indexes) {
   if (length(bucket_indexes) > 0) {
-    bucket_indexes <- bucket_indexes[sapply(bucket_indexes, function(i) { !is.null(i$left_maximum) & !is.null(i$right_maximum) })]
+    bucket_indexes <- bucket_indexes[sapply(bucket_indexes, function(i) { !is.null(i$left_max) & !is.null(i$right_max) })]
   }
   
   return(bucket_indexes)

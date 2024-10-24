@@ -65,7 +65,7 @@ testthat::test_that("cross section points plot test", {
   #     # point_type = c('left_bank', 'left_bank', 'channel', 'channel', 'bottom', 'bottom', 'channel', 'channel', 'right_bank', 'right_bank'),
   #     Z          = c(5, 8, 10, 5, 2, 2, 4, 6, 7, 8,  9, 9, 10, 11, 10, 12, 14,13, 12, 8)
   #   )
-  # 
+
   #   length( 
   #     c(5, 8, 10, 5, 2, 2, 4, 6, 7, 8, 8,  9, 9, 10, 11, 10, 12, 13, 14,13, 12, 11, 10, 9)
   #           )
@@ -328,86 +328,299 @@ testthat::test_that("cross section points plot test", {
   #       
   #     )
   #   
+  depths <- c(1, 1, 1, 2, 1)
+  cs_pts <-
+    data.frame(
+      # Z          = c(5, 8, 10, 5, 2, 2, 4, 6, 7, 8,  9, 9, 10, 11, 10, 12, 14,13, 12, 8)
+      Z          = c(1, 1, 1, 2, 1)
+    ) %>% 
+    dplyr::mutate(
+      hy_id          = "A",
+      cs_id          = 1,
+      cs_lengthm     = 100,
+      points_per_cs  = dplyr::n(),
+      pt_id          = 1:dplyr::n()
+    )
+  
+  NUM_CS_PTS   <- nrow(cs_pts)
+  REL_DIST     <- seq(0, 1, length.out=NUM_CS_PTS+1)[2:(NUM_CS_PTS+1)]
+  cs_pts$relative_distance <- REL_DIST
+  
+  cs_pts <- 
+    cs_pts %>% 
+    dplyr::relocate(hy_id, cs_id, pt_id, cs_lengthm, points_per_cs, relative_distance, Z)
+  
+  cs_pts
+  
+  # find_bottom_candidates()
+  plot(cs_pts$Z)
+  
+  crosswalk_id = "hy_id"
+  cs_pts
   #   # create classifications for points
-  #   # classified_pts <-
-  #     dplyr::filter(cs_pts) %>% 
-  #     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-  #     # dplyr::group_by(hy_id, cs_id) %>%
-  #     dplyr::mutate(
-  #       class       = classify_banks_and_bottoms2(
-  #         num_of_pts = points_per_cs[1],
-  #         pt_ids     = pt_id,
-  #         depths     = Z
-  #       ),
-  #       Z           = use_smoothed_depths(
-  #         start_depths    = Z, 
-  #         smoothed_depths = smooth_depths(Z, window = 3), 
-  #         point_types     = class
-  #       ),
-  #       anchors     = list(
-  #         find_anchor_pts(
-  #           depths             = Z,
-  #           num_of_pts         = points_per_cs[1],
-  #           cs_length          = cs_lengthm[1],
-  #           relative_distance  = relative_distance,
-  #           point_types        = class
-  #         )
-  #       ),
-  #       L              = anchors[[1]][1],
-  #       R              = anchors[[1]][3],
-  #       class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
-  #       class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
-  #       class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class),
-  #       
-  #       # get classification of concavity based on 1st and 2nd derivatives of depth points
-  #       deriv_type   = classify_derivatives(Z),
-  #       deriv_type   = dplyr::case_when(
-  #         (grepl("concave", deriv_type) | deriv_type == "linear") & class != "bottom" ~ "channel",
-  #         TRUE                         ~ class
-  #       ),
-  #       # side = dplyr::case_when(
-  #       #   pt_id >= R[1] ~ "right_side",
-  #       #   pt_id <= L[1] ~ "left_side",
-  #       #   TRUE          ~ "middle"
-  #       # ),
-  #       # # max_left      = which.max(Z[1:L[1]]),
-  #       # # max_right     = which.max(Z[R[1]:length(Z)]) + R[1],
-  #       # max_left      = pmax(which.max(Z[1:L[1]]), 1),
-  #       # max_right     = pmin(which.max(Z[R[1]:length(Z)]) + R[1], points_per_cs[1]),
-  #       
-  #       deriv_type   = clean_point_types(deriv_type),
-  #       # deriv_type   = set_missing_bottom(
-  #       #                                 depths      = Z, 
-  #       #                                 point_types = deriv_type
-  #       #                                 ),
-  #       deriv_type   = set_channel_anchors(deriv_type),
-  #       deriv_type   = set_bank_anchors2(
-  #         depths = Z,
-  #         point_types = deriv_type,
-  #         L = L[1],
-  #         R = R[1]
-  #       ),
-  #       deriv_type   = set_missing_bottom(
-  #         depths      = Z, 
-  #         point_types = deriv_type
-  #       ),
-  #       deriv_type   = set_left_bank(
-  #         point_types = deriv_type
-  #       ),
-  #       deriv_type   = set_right_bank(
-  #         point_types = deriv_type
-  #       ),
-  #       deriv_type   = set_channel_surrounded_by_bottom(
-  #         depths      = Z,
-  #         point_types = deriv_type
-  #       ),
-  #       class        = deriv_type,
-  #       point_type   = deriv_type
-  #       # class      = clean_point_types(class),
-  #       # point_type = class
-  #     ) %>% 
-  #     dplyr::ungroup() %>% 
-  #     dplyr::select(dplyr::any_of(cols_to_select))  %>% 
+    # classified_pts <-
+      # dplyr::filter(cs_pts) %>%
+  classify_banks_and_bottoms2 <- function(
+    pt_ids,
+    depths
+  ) {
+    
+    # pt_ids <- cs_pts$pt_id
+    # depths <- cs_pts$Z
+    
+    # find_bottom_candidates(depths)
+    bottom_candidates <- 
+      depths %>% 
+      find_bottom_candidates() 
+      # rm_edge_buckets() 
+      # anchor_picker()
+
+    # bottom_candidates
+    # bottom_candidates[[1]]$left_maximum
+    
+    # point_type_list <- vector(mode = "character", length = length(pt_ids))
+    point_types <- rep("bank", length(pt_ids))
+    
+    for (i in seq_along(bottom_candidates)) {
+      
+      candidate <- bottom_candidates[[i]]
+      
+      # L  <- ifelse(is.null(candidate$left_max), 1, candidate$left_max)
+      # R  <- ifelse(is.null(candidate$right_max), length(depths), candidate$right_max)
+      
+      L   <- candidate$left_max
+      R   <- candidate$right_max
+      
+      L   <- ifelse(is.null(L), 1, L)
+      R   <- ifelse(is.null(R), length(depths), R)
+      
+      bottom_range     <- L:R
+      
+      bottom_min       <- min(depths[bottom_range])
+      is_at_bottom_Z   <- depths <= bottom_min
+      # is_at_bottom_Z   <- depths[bottom_range] <= bottom_min
+      
+      is_in_bucket     <- dplyr::between(pt_ids, 
+                                         L, 
+                                         R 
+                                         )
+      
+      point_types[which(is_at_bottom_Z & is_in_bucket)] <- "bottom"
+      
+    }
+    
+    # bottom_ranges   <- lapply(bottom_candidates, function(i) { i$left_max:i$right_max  }) 
+    # point_type_list <- lapply(bottom_candidates, function(i) { 
+    #   bottom_range     <- i$left_max:i$right_max 
+    #   bottom_min       <- min(depths[bottom_range])
+    #   is_at_bottom_Z   <- depths[bottom_range] <= bottom_min
+    #   is_in_bucket     <- dplyr::between(pt_ids[bottom_range], 
+    #                                      i$left_max, 
+    #                                      i$right_max 
+    #                                      )
+    #   ifelse(is_at_bottom_Z & is_in_bucket, "bottom", "bank") 
+    #   })
+
+    return(point_types)
+  }
+  
+  
+  find_anchor_pts2 <- function(
+    depths,
+    num_of_pts,
+    cs_length, 
+    relative_distance, 
+    point_types
+  ) {
+    
+    # pt_ids        <- cs_pts2$pt_id
+    # depths        <- cs_pts2$Z
+    # num_of_pts         = cs_pts2$points_per_cs[1]
+    # cs_length          = cs_pts2$cs_lengthm[1]
+    # relative_distance  = cs_pts2$relative_distance
+    # point_types        <- cs_pts2$class
+    
+    # backup_anchor <- find_anchor_pts(
+    #   depths             = depths,
+    #   num_of_pts         = num_of_pts,
+    #   cs_length          = cs_length,
+    #   relative_distance  = relative_distance,
+    #   point_types        = point_types
+    # ) 
+    # 
+    # backup_anchor <- list(
+    #                     L = backup_anchor[1],
+    #                     M = backup_anchor[2],
+    #                     R = backup_anchor[3]
+    #                   )
+    # depths <- c(1, 1, 1, 2, 1)
+    
+    # find_bottom_candidates(depths)
+    anchor_pts <- 
+      depths %>% 
+      find_bottom_candidates() %>%
+      rm_edge_buckets() %>%
+      anchor_picker() 
+    
+    if (length(anchor_pts) > 0) {
+      
+      L <- ifelse(is.null(anchor_pts[[1]]$left_max), 1, anchor_pts[[1]]$left_max)
+      R <- ifelse(is.null(anchor_pts[[1]]$right_max), length(depths), anchor_pts[[1]]$right_max)
+      
+      return (
+          list(
+            L = L,
+            M = anchor_pts[[1]]$minimum,
+            R = R
+            # L = anchor_pts[[1]]$left_max,
+            # M = anchor_pts[[1]]$minimum,
+            # R = anchor_pts[[1]]$right_max
+          )
+        )
+    }
+    
+    # if other anchor picker returns no results, then fall back on using the middle third based anchor pts
+    backup_anchor <- find_anchor_pts(
+      depths             = depths,
+      num_of_pts         = num_of_pts,
+      cs_length          = cs_length,
+      relative_distance  = relative_distance,
+      point_types        = point_types
+    ) 
+    
+    return(
+      list(
+        L = backup_anchor[1],
+        M = backup_anchor[2],
+        R = backup_anchor[3]
+      )
+    )
+      
+  }
+  # cs_pts2 <-
+    cs_pts %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
+    # dplyr::group_by(hy_id, cs_id) %>%
+    dplyr::mutate(
+      # class       = classify_banks_and_bottoms(
+      #   num_of_pts = points_per_cs[1],
+      #   pt_ids     = pt_id,
+      #   depths     = Z
+      # ),
+      class       = classify_banks_and_bottoms2(
+        pt_ids     = pt_id,
+        depths     = Z
+      ),
+      Z           = use_smoothed_depths(
+        start_depths    = Z,
+        smoothed_depths = smooth_depths(Z, window = 3),
+        point_types     = class
+      ),
+      # anchors     = list(
+      #   find_anchor_pts2(
+      #     depths             = Z,
+      #     num_of_pts         = points_per_cs[1],
+      #     cs_length          = cs_lengthm[1],
+      #     relative_distance  = relative_distance,
+      #     point_types        = class
+      #   )
+      # ),
+      # L = anchors[[1]]$L,
+      # R = anchors[[1]]$R
+      anchors     = list(
+        find_anchor_pts(
+          depths             = Z,
+          num_of_pts         = points_per_cs[1],
+          cs_length          = cs_lengthm[1],
+          relative_distance  = relative_distance,
+          point_types        = class
+        )
+      ),
+      L = anchors[[1]][1],
+      R = anchors[[1]][3]
+    )
+  
+    # .$Z %>%
+    # plot()
+  
+  cs_pts %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
+      # dplyr::group_by(hy_id, cs_id) %>%
+      dplyr::mutate(
+        class       = classify_banks_and_bottoms2(
+          num_of_pts = points_per_cs[1],
+          pt_ids     = pt_id,
+          depths     = Z
+        ),
+        Z           = use_smoothed_depths(
+          start_depths    = Z,
+          smoothed_depths = smooth_depths(Z, window = 3),
+          point_types     = class
+        ),
+        anchors     = list(
+          find_anchor_pts(
+            depths             = Z,
+            num_of_pts         = points_per_cs[1],
+            cs_length          = cs_lengthm[1],
+            relative_distance  = relative_distance,
+            point_types        = class
+          )
+        ),
+        L              = anchors[[1]][1],
+        R              = anchors[[1]][3],
+        class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+        class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+        class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class),
+
+        # get classification of concavity based on 1st and 2nd derivatives of depth points
+        deriv_type   = classify_derivatives(Z),
+        deriv_type   = dplyr::case_when(
+          (grepl("concave", deriv_type) | deriv_type == "linear") & class != "bottom" ~ "channel",
+          TRUE                         ~ class
+        ),
+        # side = dplyr::case_when(
+        #   pt_id >= R[1] ~ "right_side",
+        #   pt_id <= L[1] ~ "left_side",
+        #   TRUE          ~ "middle"
+        # ),
+        # # max_left      = which.max(Z[1:L[1]]),
+        # # max_right     = which.max(Z[R[1]:length(Z)]) + R[1],
+        # max_left      = pmax(which.max(Z[1:L[1]]), 1),
+        # max_right     = pmin(which.max(Z[R[1]:length(Z)]) + R[1], points_per_cs[1]),
+
+        deriv_type   = clean_point_types(deriv_type),
+        # deriv_type   = set_missing_bottom(
+        #                                 depths      = Z,
+        #                                 point_types = deriv_type
+        #                                 ),
+        deriv_type   = set_channel_anchors(deriv_type),
+        deriv_type   = set_bank_anchors2(
+          depths = Z,
+          point_types = deriv_type,
+          L = L[1],
+          R = R[1]
+        ),
+        deriv_type   = set_missing_bottom(
+          depths      = Z,
+          point_types = deriv_type
+        ),
+        deriv_type   = set_left_bank(
+          point_types = deriv_type
+        ),
+        deriv_type   = set_right_bank(
+          point_types = deriv_type
+        ),
+        deriv_type   = set_channel_surrounded_by_bottom(
+          depths      = Z,
+          point_types = deriv_type
+        ),
+        class        = deriv_type,
+        point_type   = deriv_type
+        # class      = clean_point_types(class),
+        # point_type = class
+      ) %>%
+      dplyr::ungroup() %>%
+      dplyr::select(dplyr::any_of(cols_to_select))  
   #       hydrofabric3D::plot_cs_pts("hy_id", size = 4, color = "point_type")
   #   # hydrofabric3D::classify_points(crosswalk_id = ID_COL) %>%
   #   # dplyr::mutate(
