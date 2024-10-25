@@ -190,20 +190,28 @@ find_bottom_candidates <- function(x, index_only = TRUE) {
   # x = Z_VALS
   # index_only    <- T
   # x = c(1, 1, 3,  1)
-  # x = c(1, 2, 1, 2, 3, 4, 5, 5, 3, 2, 4, 6, 8) 
-  # plot(x) 
+  # x = c(1, 1, 3)
+  # x = c(1, 2, 1, 2, 3, 4, 5, 5, 3, 2, 4, 6, 8)
+  # x = c(1, 2, 1, 2, 3, 4, 5, 5, 3, 2, 4, 6)
+  # plot(x)
+  
+  # get the middle of the vector 
+  midpoint  <- (length(x) + 1) / 2
+  # midpoint  <- (length(x) + 1) %/% 2
+  # midpoint  <- length(x) / 2
+  # midpoint  <- length(x) %/% 2
+  # midpoint
   
   # get pts of local mins and maxs
   minima_idx <- find_local_minima(x)
   maxima_idx <- find_local_maxima(x)
-  
-  # minima_idx
   
   #  result list
   result <- list()
   
   # process each minimum pt
   for (current_min_idx in minima_idx) {
+    # message(current_min_idx) 
     
     # current_min_idx <- minima_idx[1]
     
@@ -214,7 +222,8 @@ find_bottom_candidates <- function(x, index_only = TRUE) {
     # Find maxima to the right
     right_maxima  <- maxima_idx[maxima_idx > current_min_idx]
     right_max_idx <- if (length(right_maxima) > 0) min(right_maxima) else NA
-    index_only    <- TRUE
+    
+    # index_only    <- TRUE
     
     minimum <- if(index_only) { current_min_idx } else {
       list(
@@ -253,13 +262,17 @@ find_bottom_candidates <- function(x, index_only = TRUE) {
     width     <- (right_max_idx - left_max_idx) + 1
     depth     <- min(x[left_max_idx], x[right_max_idx]) - x[current_min_idx]
     
+    # distance from the middle of the vector
+    distance_to_center <- abs(current_min_idx - midpoint)
+    
     # Create entry in result list
     result[[length(result) + 1]] <- list(
-      minimum       = minimum,
-      left_max      = left_max,
-      right_max     = right_max,
-      width         = width,
-      depth         = depth
+      minimum        = minimum,
+      left_max       = left_max,
+      right_max      = right_max,
+      width          = width,
+      depth          = depth,
+      distance_to_center = distance_to_center
     )
   }
   
@@ -294,9 +307,16 @@ anchor_picker <- function(bucket_indexes) {
   
   if(length(bucket_indexes) > 0) {
     sort_order <- order( 
-      -sapply(bucket_indexes, `[[`, "width"),
-      -sapply(bucket_indexes, `[[`, "depth")
+      -sapply(bucket_indexes, `[[`, "depth"),
+      sapply(bucket_indexes, `[[`, "distance_to_center"),
+      -sapply(bucket_indexes, `[[`, "width")
     )
+    
+    # sort_order <- order(
+    #   -sapply(bucket_indexes, `[[`, "width"),
+    #   -sapply(bucket_indexes, `[[`, "depth"),
+    #   sapply(bucket_indexes, `[[`, "distance_to_center")
+    # )
     
     anchor <- bucket_indexes[sort_order[1]]
     

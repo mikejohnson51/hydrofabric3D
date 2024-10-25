@@ -659,10 +659,10 @@ classify_points <- function(
 
 #' Classify banks and bottoms
 #'
-#' @param num_of_pts 
-#' @param pt_ids 
-#' @param depths 
-#'
+#' @param num_of_pts integer
+#' @param pt_ids numeric vector
+#' @param depths numeric vector
+#' @importFrom dplyr between
 #' @return character vector
 #' @export
 classify_banks_and_bottoms <- function(
@@ -1140,7 +1140,9 @@ clean_point_types <- function(point_types) {
 #' @return character vector
 #' @export
 set_channel_anchors <- function(point_types) {
-  
+
+  # point_types <- cs_pts2$deriv_type
+  # point_types[15] <- "bottom"
   
   # point_types <- classified_pts$deriv_type
   # point_types <- c("left_bank", "left_bank", "channel", "bottom", "bottom", "channel", "channel", "right_bank", "right_bank")
@@ -1193,6 +1195,7 @@ set_channel_anchors <- function(point_types) {
     
     # get the point type of the start of the left group
     left_type = point_types[L]
+    
     while(
       point_types[L] == left_type & !is.na(point_types[L])
     ) {

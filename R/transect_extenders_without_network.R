@@ -58,6 +58,7 @@ utils::globalVariables(
 #' @importFrom sf st_length st_geometry st_drop_geometry st_as_sf st_crs
 #' @importFrom hydroloom rename_geometry
 #' @return sf dataframe with extended linestring geometries
+#' @export
 extend_by_percent <- function(
     x, 
     crosswalk_id = NULL,
@@ -191,6 +192,7 @@ extend_by_percent <- function(
 #' @importFrom sf st_length st_geometry st_drop_geometry st_as_sf st_crs
 #' @importFrom hydroloom rename_geometry
 #' @return sf dataframe with extended linestring geometries
+#' @export
 extend_by_length <- function(
     x, 
     crosswalk_id = NULL,
@@ -198,11 +200,16 @@ extend_by_length <- function(
     length_col = NULL
 ) {
   
+  # x = update_transect_lines
+  # crosswalk_id  = crosswalk_id
+  # length_vector = update_transect_lines$distance_to_extend
+  # length_col = NULL
+  
   # rename the geometry to "geom"
   x <- hydroloom::rename_geometry(x, "geometry")
   
   # length_col is NULL then set it to "cs_lengthm"
-  if(is.null(length_col)) {
+  if (is.null(length_col)) {
     length_col = "cs_lengthm"
   }
   
@@ -226,7 +233,7 @@ extend_by_length <- function(
     # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       extended_geom = geos_extend_line(
-        geom, 
+        geometry, 
         distance = length_vector_col,
         # distance = (pct)*(!!dplyr::sym(length_col)),
         dir      = "both"

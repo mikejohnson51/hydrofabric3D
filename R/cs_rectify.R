@@ -95,12 +95,44 @@ get_improved_cs_pts = function(
     verbose        = TRUE
 ) {
   # ----------------------------------------
-  
+ 
   # library(sf)
   # library(dplyr)
   # library(geos)
   # library(terra)
   # 
+  # net <- sf::read_sf("/Users/anguswatters/Desktop/test_flines.gpkg")
+  # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_ext_trans.gpkg")
+  # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_cs_pts.gpkg")
+  # crosswalk_id   = "id"
+  # points_per_cs  = NULL
+  # min_pts_per_cs = 10
+  # dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  # scale          = 0.5
+  # pct_of_length_for_relief = 0.01
+  # fix_ids        = FALSE
+  # verbose        = TRUE
+
+  # sf::write_sf(
+  #   test_flines,
+  #   "/Users/anguswatters/Desktop/test_flines.gpkg"
+  # )
+  # 
+  # sf::write_sf(
+  #   test_trans,
+  #   "/Users/anguswatters/Desktop/test_start_trans.gpkg"
+  # )
+  # 
+  # sf::write_sf(
+  #   ext_transects,
+  #   "/Users/anguswatters/Desktop/test_ext_trans.gpkg"
+  # )
+  # 
+  # sf::write_sf(
+  #   cs_pts,
+  #   "/Users/anguswatters/Desktop/test_cs_pts.gpkg"
+  # )
+  
   # # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_06.gpkg")
   # # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_11.gpkg")
   # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_improve_cs_pts_classified_11.gpkg")
@@ -146,7 +178,7 @@ get_improved_cs_pts = function(
   }
   
   # add a "tmp_id" column to easily index transects by hy_id and cs_id 
-  transects <- hydrofabric3D::add_tmp_id(transects, x = crosswalk_id)
+  transects  <- hydrofabric3D::add_tmp_id(transects, x = crosswalk_id)
   
   # rename geometry column to "geom" 
   cs_pts     <- hydroloom::rename_geometry(cs_pts, "geometry")
@@ -219,6 +251,13 @@ get_improved_cs_pts = function(
     verbose             = verbose
   )
   
+  
+  # mapview::mapview(net, color = "dodgerblue") +
+  # mapview::mapview(transects, color = "red") +
+  # mapview::mapview(extended_transects, color = "green") +
+  # mapview::mapview(cs_pts,col.regions = "red") + final_pts
+
+  
   # })
   
   # all(hydrofabric3D::add_tmp_id(extended_transects)$tmp_id %in% hydrofabric3D::add_tmp_id(transects)$tmp_id)
@@ -276,14 +315,18 @@ get_improved_cs_pts = function(
   # ---> We get this score for the old and the new set of extended cross sections and 
   # then take the points in the new data that showed improvement from the original cross section. 
   # The cross section points that did NOT show improvment remain untouched in the original data
-  old_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_to_validate = cs_pts, 
-                                                                        crosswalk_id = crosswalk_id, 
-                                                                        validity_col_name = "old_validity_score"
-                                                                        ), x = crosswalk_id)
-  new_validity_scores <- hydrofabric3D::add_tmp_id(calc_validity_scores(cs_to_validate = reclassified_pts,   
-                                                                        crosswalk_id = crosswalk_id, 
-                                                                        validity_col_name = "new_validity_score"
-                                                                        ), x = crosswalk_id)
+  old_validity_scores <- hydrofabric3D::add_tmp_id(
+                                        calc_validity_scores(cs_to_validate = cs_pts, 
+                                                            crosswalk_id = crosswalk_id, 
+                                                            validity_col_name = "old_validity_score"
+                                                            ), 
+                                        x = crosswalk_id)
+  new_validity_scores <- hydrofabric3D::add_tmp_id(
+                                        calc_validity_scores(cs_to_validate = reclassified_pts,   
+                                                            crosswalk_id = crosswalk_id, 
+                                                            validity_col_name = "new_validity_score"
+                                                            ), 
+                                        x = crosswalk_id)
   
   # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
   check_for_improvement <- dplyr::left_join(
@@ -369,6 +412,9 @@ get_improved_cs_pts = function(
   
   # rename geometry column to "geom" 
   final_pts <- hydroloom::rename_geometry(final_pts, "geometry")
+ 
+  # all(hydrofabric3D::get_unique_tmp_ids(cs_pts, "id")  %in%   hydrofabric3D::get_unique_tmp_ids(final_pts, "id")) 
+  # all(hydrofabric3D::get_unique_tmp_ids(final_pts, "id")  %in%   hydrofabric3D::get_unique_tmp_ids(cs_pts, "id")) 
   
   # TODO: this should probably be removed and just kept as its own separete function and use outside of this function
   # If TRUE then the cs_ids are renumbered to make sure each hy_id has cross sections
@@ -2303,6 +2349,217 @@ rectify_flat_cs = function(
   return(final_pts)
 }
 
+#' Helper function for taking extended cross section points and extending transects to match CS points
+#'
+#' @param transect_lines sf dataframe
+#' @param fixed_cs_pts sf dataframe
+#' @param crosswalk_id character
+#' @importFrom sf st_drop_geometry 
+#' @importFrom hydroloom rename_geometry
+#' @importFrom dplyr filter left_join select any_of distinct mutate bind_rows ungroup group_by slice across
+#' @return transect lines sf dataframe extended to match CS points
+#' @noRd
+#' @keywords internal
+match_transects_to_extended_cs_pts <- function(transect_lines, 
+                                               fixed_cs_pts,
+                                               crosswalk_id
+                                               ) {
+  # library(dplyr)
+  # library(sf)
+  # net <- sf::read_sf("/Users/anguswatters/Desktop/test_flines.gpkg")
+  # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_ext_trans.gpkg")
+  # cs_pts <- sf::read_sf("/Users/anguswatters/Desktop/test_cs_pts.gpkg")
+  # 
+  # fixed_cs_pts <- get_improved_cs_pts(
+  #   net= net,
+  #   transects =transects,
+  #   cs_pts =cs_pts,
+  #   crosswalk_id   = "id",
+  #   points_per_cs  = NULL,
+  #   min_pts_per_cs = 10,
+  #   dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
+  #   scale          = 0.5,
+  #   pct_of_length_for_relief = 0.01,
+  #   fix_ids        = FALSE,
+  #   verbose        = TRUE
+  # )
+  # # 
+  # transect_lines = transects
+  # fixed_cs_pts   = fixed_cs_pts
+  # crosswalk_id   = "id"
+  
+  fixed_cs_pts      <- hydroloom::rename_geometry(fixed_cs_pts, "geometry")
+  transect_lines    <- hydroloom::rename_geometry(transect_lines, "geometry")
+  
+  # get the counts of each point type to add this data to the transect_lines dataset
+  point_type_counts <- get_point_type_counts(classified_pts = fixed_cs_pts, 
+                                                            crosswalk_id = crosswalk_id)
+  # Check the number of cross sections that were extended
+  message("Subsetting cross section points generated after extending transect_lines...")
+  
+  # extract cross section points that have an "is_extended" value of TRUE
+  extended_pts <- 
+    fixed_cs_pts %>%
+    dplyr::filter(is_extended) %>%
+    add_tmp_id(x = crosswalk_id)
+  
+  # extended_pts %>% 
+  #   get_unique_tmp_ids() %>% 
+  #   length()
+  
+  # extract transect_lines that have a "crosswalk_id" in the "extended_pts" dataset
+  update_transect_lines <- 
+    transect_lines %>%
+    add_tmp_id(x = crosswalk_id) %>%
+    dplyr::filter(tmp_id %in% unique(extended_pts$tmp_id))
+  
+  update_transect_lines <- 
+    update_transect_lines %>% 
+    dplyr::left_join(
+        extended_pts %>% 
+        sf::st_drop_geometry() %>% 
+        dplyr::select(dplyr::any_of(crosswalk_id), cs_id, extended_length = cs_lengthm) %>% 
+        dplyr::distinct(.data[[crosswalk_id]], cs_id, .keep_all = TRUE),
+      by = c(crosswalk_id, "cs_id")
+    ) %>% 
+    dplyr::mutate(
+      distance_to_extend = (extended_length - cs_lengthm) / 2
+    ) %>% 
+    dplyr::select(-extended_length)
+  
+  
+  cs_pt_uids    <- unique(add_tmp_id(fixed_cs_pts, x = crosswalk_id)$tmp_id)
+  
+  # If any transect_lines were extended, update the transect_lines dataset, and overwrite local and S3 transect_lines geopackages
+  if (nrow(update_transect_lines) > 0) {
+    
+    message("Updating ", nrow(update_transect_lines), " transect_lines")
+    
+    
+    # update_transect_lines <- 
+    #   update_transect_lines %>% 
+    #   dplyr::rename(hy_id := !!sym(crosswalk_id)) 
+    # 
+    
+    # update_transect_lines$cs_lengthm
+    
+    # hydrofabric3D:::extend_by_length(    update_transect_lines
+    #                                      crosswalk_id = crosswalk_id
+    #                                      pct        = extension_pct
+    #                                      length_col = "cs_lengthm")
+    # hydrofabric3D::extend_transects_by_length(
+    #   
+    # )
+    # update_transect_lines
+    # crosswalk_id  = crosswalk_id
+    # length_vector = update_transect_lines$distance_to_extend
+    # update_transect_lines
+    # crosswalk_id = crosswalk_id
+    # pct        = extension_pct
+    # length_col = "cs_lengthm"
+    
+    update_transect_lines <- 
+      update_transect_lines %>%
+      # apply extend_by_percent function to each transect line:
+      extend_by_length(
+        crosswalk_id  = crosswalk_id,
+        length_vector = update_transect_lines$distance_to_extend
+        # length_col    = "distance_to_extend"
+      ) %>% 
+      dplyr::select(-distance_to_extend)
+    
+    # update_transect_lines2 <- 
+    #   update_transect_lines %>%
+    #   # apply extend_by_percent function to each transect line:
+    #   extend_by_percent(
+    #     crosswalk_id = crosswalk_id,
+    #     pct        = extension_pct,
+    #     length_col = "cs_lengthm"
+    #   )
+    
+    # mapview::mapview(transect_lines, color = "red") +
+    # mapview::mapview(update_transect_lines2, color = "green") + 
+    #   update_transect_lines
+    
+    update_transect_lines <- hydroloom::rename_geometry(update_transect_lines, "geometry")
+    
+    # update_transect_lines <- 
+    #   update_transect_lines %>%  
+    #   dplyr::rename(!!sym(crosswalk_id) := hy_id)
+    
+    # cs_pt_uids    <- unique(hydrofabric3D::add_tmp_id(fixed_cs_pts, x = get(crosswalk_id))$tmp_id)
+    # transect_uids <- unique(hydrofabric3D::add_tmp_id(transect_lines, x = get(crosswalk_id))$tmp_id)
+    
+    # Filter down to ONLY points that were finalized and rectified from rectify_cs_pts()
+    # Remove old transect_lines that have "tmp_id" in "extended_pts" (transect_lines that were unchanged and are "good_to_go")
+    # and then replace with old transect_lines with the "update_transect_lines"
+    out_transect_lines <-
+      transect_lines %>%
+      hydrofabric3D::add_tmp_id(x = crosswalk_id) %>%
+      dplyr::filter(tmp_id %in% cs_pt_uids) %>% 
+      dplyr::filter(!tmp_id %in% unique(extended_pts$tmp_id)) %>%
+      dplyr::bind_rows(
+        dplyr::mutate(update_transect_lines, is_extended = TRUE)
+      )
+    
+    # transect_lines %>% 
+    #   hydrofabric3D::add_tmp_id(x = "hy_id") %>%
+    #   # dplyr::filter(!tmp_id %in% unique(extended_pts$tmp_id)) %>%
+    #   dplyr::filter(tmp_id %in% unique(hydrofabric3D::add_tmp_id(fixed_pts, x = "hy_id")$tmp_id)) %>% # Subset down to the remaining tmp_ids in the fixed points
+    #   dplyr::filter(!tmp_id %in% unique(extended_pts$tmp_id)) %>% # remove the tmp_ids that we are going add back in with the extended versions of those tmp_ids
+    #   dplyr::bind_rows( # bring in the new updated extended transect_lines
+    #     dplyr::mutate(
+    #       update_transect_lines,
+    #       is_extended = TRUE
+    #     )
+    #   )  
+  } else {
+    # If no transect_lines were extended
+    out_transect_lines <- 
+      transect_lines %>%
+      hydrofabric3D::add_tmp_id(x = crosswalk_id) %>%
+      dplyr::filter(tmp_id %in% cs_pt_uids) %>% 
+      # dplyr::filter(tmp_id %in% unique(hydrofabric3D::add_tmp_id(fixed_cs_pts, x = get(crosswalk_id))$tmp_id)) %>%
+      dplyr::filter(!tmp_id %in% unique(extended_pts$tmp_id))
+  }
+
+  # Finalize new transect_lines
+  out_transect_lines <- 
+    out_transect_lines %>%
+    dplyr::left_join(
+      point_type_counts, 
+      by = c(crosswalk_id, "cs_id")
+    ) %>%
+    dplyr::left_join(
+      dplyr::ungroup(
+        dplyr::slice(
+          dplyr::group_by(
+            dplyr::select(sf::st_drop_geometry(fixed_cs_pts),
+                          dplyr::any_of(crosswalk_id), 
+                          cs_id, bottom, left_bank, right_bank, valid_banks, has_relief
+            ),
+            dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))
+          ),
+          1
+        )
+      ),
+      by = c(crosswalk_id, "cs_id")
+    ) %>%
+    dplyr::select(
+      dplyr::any_of(crosswalk_id),
+      cs_source, cs_id, cs_measure, cs_lengthm,
+      # sinuosity,
+      is_extended,
+      left_bank_count, right_bank_count, channel_count, bottom_count,
+      bottom, left_bank, right_bank, valid_banks, has_relief,
+      geometry
+    ) %>% 
+    dplyr::mutate(
+      is_extended = ifelse(is.na(is_extended), FALSE, is_extended)
+    )  
+  
+  return(out_transect_lines)
+}
 
 #Check for flat cross sections and try to update these values by extending the original cross sections and reextracting DEM values
 #(Deprecated version 1)

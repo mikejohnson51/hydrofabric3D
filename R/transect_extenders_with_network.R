@@ -81,6 +81,13 @@ extend_invalid_transect_sides <- function(
   
   # transects_to_check  = transects
   # net                 = net
+  # crosswalk_id        = crosswalk_id
+  # scale               = scale
+  # direction           = "both"
+  # verbose             = verbose
+  
+  # transects_to_check  = transects
+  # net                 = net
   # crosswalk_id          = "hy_id"
   # 
   # scale               = scale
@@ -104,9 +111,18 @@ extend_invalid_transect_sides <- function(
   # ----------------------------------------
   # ----------------------------------------
   
+  # transects_to_check  = transects
+  # net                 = net
+  # crosswalk_id        = crosswalk_id
+  # scale               = scale
+  # direction           = "both"
+  # verbose             = verbose
+  
+  
   # ----------------------------------------------------------------------------------
   # ----------- Input checking ------
   # ----------------------------------------------------------------------------------
+  
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
@@ -116,15 +132,13 @@ extend_invalid_transect_sides <- function(
   # set geometry column names at beginning 
   net                 <- hydroloom::rename_geometry(net, "geometry") 
   transects_to_check  <- hydroloom::rename_geometry(transects_to_check, "geometry") 
-  
-  is_net_valid <- validate_df(net, c(crosswalk_id, "geometry"), "net")
-  
-  # validate input graph
-  is_transects_valid <- validate_df(transects_to_check, c(crosswalk_id, "cs_id", "cs_lengthm", 
+ 
+  # validate input datas 
+  is_net_valid        <- validate_df(net, c(crosswalk_id, "geometry"), "net")
+  is_transects_valid  <- validate_df(transects_to_check, c(crosswalk_id, "cs_id", "cs_lengthm", 
                                                           "valid_banks", "has_relief", "geometry"), 
                                     "transects_to_check")
-  
-  start_cols  <- names(transects_to_check)
+  start_cols          <- names(transects_to_check)
   
   # if(!crosswalk_id %in% names(net)) {
   #   stop("crosswalk_id '", crosswalk_id, "' is not a column in 'net' input,\n", 
@@ -723,6 +737,7 @@ extend_transects_both_sides <- function(
   # ----------------------------------------------------------------------------------
   # ----------- Input checking ------
   # ----------------------------------------------------------------------------------
+  
   flowlines  <- hydroloom::rename_geometry(flowlines, "geometry") 
   transects  <- hydroloom::rename_geometry(transects, "geometry") 
   
@@ -807,10 +822,15 @@ extend_transects_both_sides <- function(
   # TODO: Dev variables to track how often the "half distance extensions" happen
   # half_extension_count            <- 0
   # successful_half_extension_count <- 0
+  # which(transect_crosswalk_id_array == "wb-2425750")
+  # transect_crosswalk_id_array[transect_crosswalk_id_array == "wb-2425750"]
+  # which(transect_crosswalk_id_array == "wb-2425750" & transect_cs_id_array == 7)
+  # transect_cs_id_array[transect_crosswalk_id_array == "wb-2425750" & transect_cs_id_array == 7]
   
   for (i in seq_along(transect_crosswalk_id_array)) {
     
     make_progress()
+    # i = 69
     
     # get the current transect, hy_id, cs_id, flowline, and extension distances
     current_trans <- transects_geos[i]
@@ -838,12 +858,14 @@ extend_transects_both_sides <- function(
       dir = "both"
     )
     
-    # NOTE: plotting during developoment / testing 
+    # # NOTE: plotting during developoment / testing 
     # plot(extended_trans, add = F, col = "red")
     # plot(current_trans, add = T, col = "green")
+    # 
     # mapview::mapview(sf::st_as_sf(flowlines_geos[fline_group_id_array == transect_group_id_array[i]])) +
     # mapview::mapview(sf::st_as_sf(transects_geos[transect_group_id_array == transect_group_id_array[i]]), color = "red") +
-    # mapview::mapview(sf::st_as_sf(current_trans), color = "red") 
+    # mapview::mapview(sf::st_as_sf(current_trans), color = "red") + 
+    # mapview::mapview(sf::st_as_sf(extended_trans), color = "green")
     
     # check whether the extension is valid and should be used 
     # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 

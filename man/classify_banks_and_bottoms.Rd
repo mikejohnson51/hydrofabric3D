@@ -7,11 +7,11 @@
 classify_banks_and_bottoms(num_of_pts, pt_ids, depths)
 }
 \arguments{
-\item{num_of_pts}{}
+\item{num_of_pts}{integer}
 
-\item{pt_ids}{}
+\item{pt_ids}{numeric vector}
 
-\item{depths}{}
+\item{depths}{numeric vector}
 }
 \value{
 character vector
