@@ -1540,6 +1540,61 @@ get_improved_cs_pts = function(
 #' @importFrom dplyr select group_by slice ungroup mutate n left_join rename relocate
 #' @importFrom sf st_drop_geometry
 renumber_cs_ids <- function(df, crosswalk_id = NULL) {
+  # df <- out_transect_lines
+  # df <- fixed_cs_pts
+  # df <- 
+  #   df %>% 
+  #   sf::st_drop_geometry() %>%
+  #   dplyr::filter(id %in% c("wb-2415765", "wb-2416657")) %>% 
+  #   # dplyr::filter(id %in% c("wb-2416492", "wb-2414869")) %>% 
+  #   dplyr::select(id, cs_id, pt_id, cs_measure)
+    
+  # seq(0, 100, length.out = 10)
+  # c(seq(0, 100, length.out = 10),   
+  #   seq(0, 100, length.out = 10))
+  # c(rep("A", 10), rep("B", 10))
+  # 
+  # df <- data.frame(
+  #   id =   c(rep("A", 10), 
+  #            rep("B", 10)),
+  #   cs_id = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+  #             1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+  #             ),
+  #   cs_measure =   c(seq(0, 100, length.out = 10),   
+  #                    seq(0, 100, length.out = 10))
+  #   )
+  
+  # df <- data.frame(
+  #   id =   c(rep("A", 10), 
+  #            rep("B", 9)),
+  #   cs_id = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+  #             1, 2, 3, 4, 5, 6, 7, 9, 10
+  #   ),
+  #   cs_measure =   c(seq(0, 100, length.out = 10),   
+  #                    seq(0, 100, length.out = 9))
+  # )
+  
+  # df <- data.frame(
+  #   id =   c(rep("A", 10), 
+  #            rep("B", 8)),
+  #   cs_id = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+  #             1, 3, 4, 5, 6, 7, 9, 10
+  #   ),
+  #   cs_measure =   c(seq(0, 100, length.out = 10),   
+  #                    seq(0, 100, length.out = 8))
+  # )
+  # 
+  # df <- data.frame(
+  #   id =   c(rep("A", 10), 
+  #            rep("B", 8)),
+  #   cs_id = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+  #             1, 3, 4, 5, 6, 9, 7, 10
+  #   ),
+  #   cs_measure =   c(seq(0, 100, length.out = 10),   
+  #                    c(0.00000 , 14.2857, 28.57143, 42.85714, 57.14286, 85.7142, 71.42857, 100.00000)
+  #                    # seq(0, 100, length.out = 8)
+  #                    )
+  # )
   
   # set to the default unique crosswalk ID if NULL is given 
   if(is.null(crosswalk_id)) {
@@ -1581,26 +1636,32 @@ renumber_cs_ids <- function(df, crosswalk_id = NULL) {
     dplyr::select(
       # hy_id, 
       dplyr::any_of(crosswalk_id),
-      cs_id, cs_measure
+      cs_id, 
+      cs_measure
       # cs_id, pt_id, cs_measure
       ) %>%
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     # dplyr::group_by(hy_id, cs_id) %>%
+    # dplyr::arrange(cs_measure, .by_group = TRUE) %>%
     dplyr::slice(1) %>%
     dplyr::ungroup() %>%
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id)))) %>% 
     # dplyr::group_by(hy_id) %>%
+    dplyr::arrange(cs_measure, .by_group = TRUE) %>%
     dplyr::mutate(
       new_cs_id = 1:dplyr::n()
       # tmp_id = paste0(hy_id, "_", cs_id)
     ) %>%
-    add_tmp_id(x = crosswalk_id) %>% 
+    add_tmp_id(x = crosswalk_id, y = "cs_id") %>% 
     dplyr::ungroup() %>%
     dplyr::select(new_cs_id, tmp_id)
-  
+  # 
+  # renumbered_ids %>%
+  #   dplyr::filter(new_cs_id != cs_id)
+
   # Join the new cs_ids back with the final output data to replace the old cs_ids
   df <- dplyr::left_join(
-    add_tmp_id(df, x = crosswalk_id),
+    add_tmp_id(df, x = crosswalk_id, y = "cs_id"),
     # dplyr::mutate(df,tmp_id = paste0(hy_id, "_", cs_id)),
     renumbered_ids,
     by = "tmp_id"
@@ -1609,6 +1670,12 @@ renumber_cs_ids <- function(df, crosswalk_id = NULL) {
     dplyr::rename("cs_id" = "new_cs_id") %>%
     dplyr::relocate(dplyr::any_of(crosswalk_id), cs_id)
     # dplyr::relocate(hy_id, cs_id)
+  
+  # df %>% 
+  #   # dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) 
+  #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id)))) %>% 
+  #   dplyr::arrange(cs_measure, .by_group = TRUE)
+  
   
   return(df)
 }
@@ -2364,6 +2431,7 @@ match_transects_to_extended_cs_pts <- function(transect_lines,
                                                fixed_cs_pts,
                                                crosswalk_id
                                                ) {
+  
   # library(dplyr)
   # library(sf)
   # net <- sf::read_sf("/Users/anguswatters/Desktop/test_flines.gpkg")
@@ -2383,7 +2451,7 @@ match_transects_to_extended_cs_pts <- function(transect_lines,
   #   fix_ids        = FALSE,
   #   verbose        = TRUE
   # )
-  # # 
+  # #
   # transect_lines = transects
   # fixed_cs_pts   = fixed_cs_pts
   # crosswalk_id   = "id"
@@ -2558,7 +2626,40 @@ match_transects_to_extended_cs_pts <- function(transect_lines,
       is_extended = ifelse(is.na(is_extended), FALSE, is_extended)
     )  
   
+  has_same_ids <- has_same_unique_tmp_ids(x = out_transect_lines, 
+                                          y = fixed_cs_pts, 
+                                          crosswalk_id = crosswalk_id
+                                          )
+  
+  if(!has_same_ids) {
+    stop("Mismatch / Missing ", crosswalk_id, "/cs_id combinations in either input 'transect_lines' and input 'fixed_cs_pts'")
+  }
+  
   return(out_transect_lines)
+}
+
+#' Check if dataset X has all the same unique tmp_ids as dataset Y
+#' Internal helper function for keeping track of IDs when they should be identical between 2 datasets
+#' @param x tibble, dataframe, or sf dataframe
+#' @param y tibble, dataframe, or sf dataframe
+#' @param crosswalk_id character, unique ID column
+#'
+#' @return logical, TRUE if all id / cs_id combos are contained in both dataset x and y
+#' @noRd
+#' @keywords internal
+has_same_unique_tmp_ids <- function(x, y, crosswalk_id = NULL) {
+  
+  if(is.null(crosswalk_id)) {
+    crosswalk_id = "hydrofabric_id"
+  }
+  
+  start_ids <- get_unique_tmp_ids(df = x, x = crosswalk_id, y = "cs_id")
+  end_ids   <- get_unique_tmp_ids(df = y, x = crosswalk_id, y = "cs_id")
+  
+  # all IDs are in x AND y and same number of ids
+  same_unique_ids <- all(start_ids %in% end_ids) && all(end_ids %in% start_ids) && length(start_ids) == length(end_ids)
+  
+  return(same_unique_ids)
 }
 
 #Check for flat cross sections and try to update these values by extending the original cross sections and reextracting DEM values
