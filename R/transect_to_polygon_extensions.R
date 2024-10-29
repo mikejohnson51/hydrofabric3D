@@ -106,6 +106,40 @@ extend_transects_to_polygons <- function(
   # grouping_id             = "mainstem"
   # max_extension_distance  = 3000
   
+  # library(dplyr)
+  # library(sf)
+  # 
+  # flines <- sf::read_sf( paste0("/Users/anguswatters/Desktop/tmp_flines.gpkg"))
+  # transects <- sf::read_sf(paste0("/Users/anguswatters/Desktop/tmp_trans.gpkg"))
+  # fema <- sf::read_sf( paste0("/Users/anguswatters/Desktop/tmp_fema.gpkg"))
+  # bb <- 
+  #   dplyr::filter(transects, id == "wb-10813") %>% 
+  #   sf::st_buffer(10000) %>% 
+  #   sf::st_bbox() %>% 
+  #   sf::st_as_sfc() %>% 
+  #   sf::st_sf()
+  # 
+  # # mapview::mapview(bb)
+  # 
+  # transects <- sf::st_filter(transects, bb) 
+  # flines <- sf::st_filter(flines, bb) 
+  # fema <- sf::st_filter(fema, bb) 
+  # 
+  # mapview::mapview(fema) + transects + flines
+  # # 
+  # transect_lines <- transects
+  # polygons <- fema
+  # flowlines <- flines
+  # 
+  # 
+  # crosswalk_id           = "id"
+  # grouping_id            = "mainstem"
+  # max_extension_distance = 3000
+  # 
+  # bad_id   <- "wb-10813"
+  # mainstem <- "1977479"
+  
+  
   # ----------------------------------------------------------------------------------
   # ----------- Input checking ------
   # ----------------------------------------------------------------------------------
@@ -176,6 +210,14 @@ extend_transects_to_polygons <- function(
     cs_id        = "cs_id",
     grouping_id  = grouping_id 
   ) 
+    
+    # mapview::mapview(fema) + 
+    # mapview::mapview(transects, color = "red") +
+    # mapview::mapview(transect_lines, color = "green") +
+    #   mapview::mapview(transect_lines2, color = "green") +
+    # flines
+  
+  # lengths(sf::st_intersects(transect_lines))  %>% order()
   
   # remove transects that intersect with OTHER TRANSECTS
   transect_lines <-

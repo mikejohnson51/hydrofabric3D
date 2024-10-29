@@ -26,6 +26,7 @@ visual_utils.R
 paper.R
 validity_scoring.R
 transect_extensions_viz.R
+ras_comp.R
 
 scrap.R
 braids_tmp.R

@@ -1719,6 +1719,8 @@ validate_df <- function(x, cols, obj_name = NULL) {
 #' @param type_map list, argument names as the keys and a vector of values representing the valid types
 #'
 #' @return logical, TRUE if no error, otherwise raises an error 
+#' @noRd
+#' @keywords internal
 validate_arg_types <- function(..., type_map) {
   args <- list(...)
   
@@ -1987,6 +1989,80 @@ drop_incomplete_cs_pts <- function(cross_section_pts, crosswalk_id = NULL) {
   
   return(cross_section_pts)
   
+}
+
+#' Select standard cross section point columns 
+#' Internal helper function for selecting cross section point columns aligning with standard data model for cross section points
+#' @param cs_pts dataframe, tibble, or sf dataframe 
+#' @param crosswalk_id character, unique ID column
+#' @importFrom dplyr select any_of 
+#' @return dataframe, tibble, or sf dataframe with only relavent cross section point columns
+#' @noRd
+#' @keywords internal
+select_cs_pts <- function(cs_pts, crosswalk_id = NULL) {
+  
+  if(is.null(crosswalk_id)) {
+    # crosswalk_id  <- 'hydrofabric_id'
+    stop("Please provide a valid 'crosswalk_id' which uniquely identifies each cross section in 'cs_pts'")
+  }
+  
+  cs_pts <- 
+    cs_pts %>% 
+    dplyr::select(
+      dplyr::any_of(c(
+        crosswalk_id,
+        "cs_id",
+        "pt_id",
+        "relative_distance",
+        "cs_lengthm",
+        "X", 
+        "Y",
+        "Z",
+        "Z_source",
+        "class", 
+        "point_type",
+        "valid_banks",
+        "has_relief"
+      )
+      )
+    )
+  
+  return(cs_pts)
+}
+
+#' Select standard transect columns 
+#' Internal helper function for selecting transect columns aligning with standard data model for transect
+#' @param transects dataframe, tibble, or sf dataframe 
+#' @param crosswalk_id character, unique ID column
+#' @importFrom dplyr select any_of 
+#' @importFrom hydroloom rename_geometry 
+#' @return dataframe, tibble, or sf dataframe with only relavent transects columns
+#' @noRd
+#' @keywords internal
+select_transects <- function(transects, crosswalk_id = NULL) {
+  
+  if(is.null(crosswalk_id)) {
+    # crosswalk_id  <- 'hydrofabric_id'
+    stop("Please provide a valid 'crosswalk_id' which uniquely identifies the flowline associated with each transect in 'transects'")
+  }
+  
+  transects <- hydroloom::rename_geometry(transects, "geometry")
+  
+  transects <- 
+    transects %>% 
+    dplyr::select(
+      dplyr::any_of(c(
+        crosswalk_id,
+        "cs_source",
+        "cs_id",
+        "cs_measure",
+        "cs_lengthm",
+        "geometry"
+      )
+      )
+    )
+  
+  return(transects)
 }
 
 #' Calculates a validity score column based on valid_banks and has_relief columns in a set of cross section points
