@@ -749,9 +749,9 @@ testthat::test_that("extend_transects_any_side() test that only 1 side will be e
                                           grouping_id  = CROSSWALK_ID
   )
   
-  # # plot(flowlines$geometry)
-  # # plot(extensions$geometry, col = "black", lwd = 4, add = T)
-  # # plot(transects$geometry, col = "green", lwd = 2, add = T)
+  # plot(flowlines$geometry)
+  # plot(extensions$geometry, col = "black", lwd = 4, add = T)
+  # plot(transects$geometry, col = "green", lwd = 2, add = T)
   # # 
   
   # mapview::mapview(flowlines) +

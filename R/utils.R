@@ -1680,6 +1680,46 @@ get_relief <- function(
   return(relief)
 }
 
+#' Join 'valid_banks' and 'has_relief' columns to transects dataset from corresponding cross section points 
+#'
+#' @param transects dataframe or sf dataframe of transects
+#' @param cs_pts dataframe or sf dataframe cross section points corresponding to transects
+#' @param crosswalk_id character, unique ID column
+#' @importFrom dplyr left_join select group_by across any_of slice ungroup 
+#' @importFrom sf st_drop_geometry 
+#' @return dataframe or sf dataframe
+#' @noRd
+#' @keywords internal
+add_cs_attributes_to_transects <- function(transects, 
+                                           cs_pts, 
+                                           crosswalk_id = NULL) {
+  # validate input datas
+  is_transects_valid  <- validate_df(transects, 
+                                     c(crosswalk_id, "cs_id"),
+                                     "transects")
+  
+  is_cs_pts_valid        <- validate_df(cs_pts, 
+                                        c(crosswalk_id, "cs_id", "valid_banks", "has_relief"), 
+                                        "cs_pts")
+  
+  # join 'valid_banks' and 'has_relief' columns to transects from cs_pts
+  transects <- 
+    transects %>% 
+    dplyr::left_join(
+      cs_pts %>%
+        sf::st_drop_geometry() %>%
+        dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
+        dplyr::slice(1) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(dplyr::any_of(crosswalk_id), cs_id, valid_banks, has_relief),
+      by = c(crosswalk_id, "cs_id")
+    )
+  
+  return(transects)
+  
+}
+
+
 #' Validate that a dataframe is valid type (inherits from a dataframe) and has the given required columns
 #'
 #' @param x dataframe, sf, or tibble

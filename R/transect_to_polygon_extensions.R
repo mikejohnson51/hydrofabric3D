@@ -361,7 +361,6 @@ make_line_from_start_and_end_pts <- function(start, end, line_crs) {
 is_valid_transect_line <- function(transect_to_check, trans, flines) {
   
   # ###   ##   ##   ##   ##   ##   ##   ##   ##   ##  
-  
   # Define conditions to decide which version of the transect to use
   
   # 1. Use transect with extension in BOTH directions
@@ -390,6 +389,69 @@ is_valid_transect_line <- function(transect_to_check, trans, flines) {
   
   # check that the extended transect line does NOT intersect other transect lines (other than SELF)
   intersects_other_transects <- lengths(geos::geos_intersects_matrix(transect_to_check,  trans)) > 1
+  # intersects_other_transects <- sum(geos::geos_intersects(transect_to_check, trans)) > 1
+  
+  # TRUE == Only one flowline is intersected a single time AND no other transect lines are intersected
+  use_transect <- intersects_flowline_only_once  && !intersects_other_transects
+  
+  return(use_transect)
+}
+
+#' Check if an updated transect line is valid relative to the other transects and flowlines in the network (v2)
+#' The 'transect_to_check' should be 'used' (i.e. function returns TRUE) if 
+#' the 'transect_to_check' does NOT interesect any other transects ('transect_lines') AND it only intersects a single flowline ONCE.
+#' If the 'transect_to_check' intersects ANY other transects OR intersects a flowline more
+#' than once (OR more than one flowline in the network) then the function returns FALSE.
+#' @param transect_to_check geos_geometry, linestring
+#' @param trans geos_geometry, linestring
+#' @param flines geos_geometry, linestring
+#'
+#' @return TRUE if the extension should be used, FALSE if it shouldn't be used
+#' @importFrom geos geos_intersection geos_type geos_intersects
+#' @noRd
+#' @keywords internal
+is_valid_transect_line2 <- function(transect_to_check, trans, flines) {
+  
+  # ###   ##   ##   ##   ##   ##   ##   ##   ##   ##  
+  # transect_to_check = extended_trans
+  # # trans = transects_geos[transect_group_id_array == transect_group_id_array[i]]
+  # trans <-    transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid]
+  # flines <- flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
+
+  # transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid]
+  # transects_geos[transect_group_id_array == transect_group_id_array[i]]
+  # flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
+  
+  # Define conditions to decide which version of the transect to use
+  
+  # 1. Use transect with extension in BOTH directions
+  # 2. Use transect with LEFT extension only
+  # 3. Use transect with RIGHT extension only
+  
+  # check for NULL / empty geometries
+  if (is.null(transect_to_check) || is.null(trans) || is.null(flines)) {
+    stop("invalid geometry: geometries cannot be NULL")
+  }
+  
+  # Check that the extended transect lines only intersect a single flowline in the network only ONCE
+  intersects_with_flowlines <- geos::geos_intersection(
+    transect_to_check,
+    flines
+  )
+  
+  intersects_flowline_only_once <- sum(geos::geos_type(intersects_with_flowlines) == "point") == 1 && 
+    sum(geos::geos_type(intersects_with_flowlines) == "multipoint") == 0 
+  
+  # NOTE: return early if if the transects does NOT intersect the flowline ONLY once
+  # little optimization, avoids extra geos_intersects() calls 
+  if (!intersects_flowline_only_once) {
+    return(FALSE)
+  }
+  
+  # check that the extended transect line does NOT intersect other transect lines (other than SELF)
+  intersects_other_transects <- lengths(
+    geos::geos_intersects_matrix(transect_to_check,  trans)
+    ) > 0
   # intersects_other_transects <- sum(geos::geos_intersects(transect_to_check, trans)) > 1
   
   # TRUE == Only one flowline is intersected a single time AND no other transect lines are intersected

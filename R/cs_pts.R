@@ -428,6 +428,9 @@ classify_points <- function(
          pct_of_length_for_relief, ", 'pct_of_length_for_relief' must be greater than or equal to 0")
   } 
   
+  # cs_pts <- r_cs_pts2 
+  # crosswalk_id = "hy_id"
+  
   # # remove any columns that already exist
   cs_pts <- dplyr::select(cs_pts, 
                           !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", 
