@@ -850,7 +850,7 @@ extend_transects_both_sides <- function(
   
   for (i in seq_along(transect_crosswalk_id_array)) {
     
-    # make_progress()
+    make_progress()
     # i = 69
     # i = 8
     # i
@@ -1714,6 +1714,352 @@ extend_transects_by_distances <- function(
   transects <- move_geometry_to_last(transects)
   
   return(transects)
+  
+}
+
+#' Extend transects for any transects with invalid cross section attributes
+#'
+#' @param transects sf dataframe of transect LINESTRING geometries
+#' @param flowlines sf dataframe of flowline LINESTRING geometries
+#' @param crosswalk_id character
+#' @param scale numeric percent of original transect length to extend (in both directions). Default is 0.5 or 50% of transects length (i.e. 25% increase in length in both directions).
+#' @param keep_lengths logical whether to keep a record of the original transect lengths or not, default is FALSE, original lengths are not kept 
+#' @param reindex_cs_ids logical, whether to reindex the cs_ids to ensure each crosswalk_id has cs_ids of 1-number of transects. Default is FALSE, which guarantees 
+#' crosswalk_id/cs_ids remain untouched as they were given in the input data. Setting this to TRUE will make sure if any cross sections were removed from a crosswalk_id, then the cs_ids are renumbered so there are no gaps between cs_ids within a crosswalk_id 
+#' @param verbose logical
+#'
+#' @return dataframe or sf dataframe of extended transects
+#' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
+#' @importFrom sf st_geometry st_as_sf st_intersects
+#' @importFrom dplyr filter bind_rows mutate case_when ungroup across any_of group_by select
+#' @importFrom hydroloom rename_geometry 
+#' @export
+extend_transects_by_cs_attributes = function(
+    transects      = NULL,
+    flowlines      = NULL,
+    crosswalk_id   = NULL,
+    scale          = 0.5,
+    keep_lengths   = FALSE,
+    reindex_cs_ids = FALSE,
+    verbose        = TRUE
+) {
+  # ----------------------------------------
+  
+  # library(sf)
+  # library(dplyr)
+  # library(geos)
+  # library(terra)
+  # 
+  # crosswalk_id = "id"
+  # scale          = 0.5
+  # keep_lengths   = TRUE
+  # verbose        = TRUE
+  #  net <- sf::read_sf("/Users/anguswatters/Desktop/test_flines.gpkg") %>%
+  #    # dplyr::filter(id == "wb-2414869")
+  #    dplyr::filter(id == "wb-2415479")
+  # 
+  # # c(600,  rep(net$bf_width, 39))
+  # 
+  # keep_lengths <- TRUE
+  #  transects <- hydrofabric3D::cut_cross_sections(
+  #    net = net,
+  #    crosswalk_id = "id",
+  #    cs_widths = net$bf_width,
+  #    # cs_widths =  c(600,  rep(net$bf_width, 39)),
+  #    num = 40,
+  #    densify = 10,
+  #    rm_self_intersect = TRUE
+  #  )
+  # 
+  #  START_CRS <- sf::st_crs(transects)
+  # 
+  #  # extended_df <-
+  #  transects <-
+  #    transects %>%
+  #    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
+  #    # dplyr::group_by(hy_id, cs_id) %>%
+  #    dplyr::mutate(
+  #      extended_geom = dplyr::case_when(
+  # 
+  #        cs_id == 1 ~ geos_extend_line(
+  #                            geometry,
+  #                            distance = 350,
+  #                            dir      = "both"
+  #                          ),
+  #        TRUE       ~ geos::as_geos_geometry(geometry)
+  #      )
+  #    ) %>%
+  #    dplyr::ungroup()
+  # 
+  #  # drop original geometry column
+  #  transects <-  sf::st_drop_geometry(transects)
+  # 
+  #  # set the extended geometry as the new geometry
+  #  transects$extended_geom <- sf::st_geometry(sf::st_as_sf(transects$extended_geom))
+  #  # make extended_df an sf object
+  #  transects <- sf::st_as_sf(
+  #    transects,
+  #    crs = START_CRS
+  #  )
+  # 
+  #  # rename "extended_geom" col to "geom"
+  #  transects <- hydroloom::rename_geometry(transects, "geometry")
+  #  # extended_df <- dplyr::rename(extended_df, "geometry" = "extended_geom")
+  # 
+  #  # # recalculate length of linestring and update length_col value
+  #  # extended_df[[length_col]] <- as.numeric(sf::st_length(extended_df$geometry))
+  # 
+  #  # add length column if specified w/ updated geometry lengths
+  #  transects <- add_length_col(x = transects, length_col = "cs_lengthm")
+  # 
+  # 
+  #  transects
+  #  net
+  #  # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_ext_trans.gpkg")
+  #  # transects
+  #  mapview::mapview(net) + transects
+  #  #
+  # 
+  #  cs_pts <- hydrofabric3D::cross_section_pts(
+  #    cs = transects,
+  #    crosswalk_id = "id",
+  #    min_pts_per_cs = 10
+  #  )
+  # 
+  #  cs_pts <-
+  #    cs_pts %>%
+  #    hydrofabric3D::classify_points("id")
+  # 
+  #  cs_pts %>%
+  #    sf::st_drop_geometry() %>%
+  #    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
+  #    dplyr::slice(1) %>%
+  #    dplyr::ungroup() %>%
+  #    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, valid_banks, has_relief)
+  # 
+  
+  # ----------------------------------------------------------------------------------
+  # TEST DATA
+  # ----------------------------------------------------------------------------------
+  # library(sf)
+  # library(dplyr)
+  # library(geos)
+  # library(terra)
+  # 
+  # crosswalk_id = "hy_id"
+  # scale          = 0.5
+  # keep_lengths   = TRUE
+  # verbose        = TRUE
+  # 
+  # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_flowlines_test.gpkg")
+  # transects <- sf::read_sf("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_transects_test.gpkg")
+  # cs_pts <- arrow::read_parquet("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_cs_pts2_test.parquet")
+  # cs_pts <- arrow::read_parquet("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_cs_pts_test.parquet")
+  
+  # transects = transects
+  # flowlines = flowlines
+  # crosswalk_id = CROSSWALK_ID
+  # scale = 0.5
+  # keep_lengths = TRUE
+  # reindex_cs_ids = FALSE
+  # verbose =T
+  
+  # ----------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------------
+  
+  # ----------------------------------------------------------------------------------
+  # ----------- Input checking ------
+  # ----------------------------------------------------------------------------------
+  
+  # stash the original starting transect line lengths
+  starting_lengths <- 
+    transects %>%  
+    add_length_col(length_col = "starting_length") %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, starting_length)
+  
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  # set geometry column names at beginning
+  flowlines    <- hydroloom::rename_geometry(flowlines, "geometry")
+  transects    <- hydroloom::rename_geometry(transects, "geometry")
+  
+  # validate input datas
+  is_flowlines_valid        <- validate_df(flowlines, 
+                                           c(crosswalk_id, "geometry"), 
+                                           "flowlines")
+  
+  is_transects_valid  <- validate_df(transects, 
+                                     c(crosswalk_id, "cs_id", "cs_lengthm", "valid_banks", "has_relief", "geometry"),
+                                     "transects")
+  
+  # start_cols          <- names(transects)
+  
+  # Create an "is_extended" flag to identify which transects were extended and updated
+  transects$is_extended <- FALSE
+  
+  # keep track of any transects that having missing values in either valid_banks/has_relief columns,
+  # these get added back to the updated data at the end
+  missing_bank_or_relief_data <-
+    transects %>%
+    dplyr::filter(is.na(valid_banks) | is.na(has_relief))
+  
+  # TODO: Probably remove this
+  count_check <- nrow(dplyr::filter(transects, valid_banks & has_relief)) +
+    nrow(dplyr::filter(transects, !valid_banks | !has_relief)) ==
+    nrow(transects) - nrow(missing_bank_or_relief_data)
+  
+  # count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check)
+  # count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check) - nrow(missing_bank_or_relief_data)
+  
+  if(!count_check) {
+    warning(paste0(nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
+    # warning(paste0("Different number of transects after splitting data by 'valid_banks' and 'has_relief' columns, ", nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
+    # stop("Mismatch in number of points after splitting data by the 'valid_banks' and 'has_relief' columns, likely a missing value in either 'valid_banks' or 'has_relief' columns")
+  }
+  
+  # add distances to extend for the left and right side of a transect
+  # for any of the the already "valid transects", we just set an extension distance of 0
+  # on both sides and these transects will be KEPT AS IS
+  # also set any missing valid_banks or has_relief values to 0
+  transects <- add_attribute_based_extension_distances(transects = transects,
+                                                       scale = scale,
+                                                       length_col = "cs_lengthm"
+  )
+  
+  # count of transects to improve
+  invalid_count <-
+    transects %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::select(valid_banks, has_relief) %>% 
+    dplyr::summarise(
+      count = sum(!valid_banks | !has_relief, na.rm = T)
+    ) %>%
+    dplyr::pull(count)
+  
+  if(verbose) { message(paste0("Extending ", 
+                               invalid_count,
+                               " transects without valid banks or relief by ",
+                               scale * 100, "%...")) }
+  
+  # extend the transects based on the 'extension_distance' column (meters)
+  extended_transects <- extend_transects_sides(
+    transects    = transects,
+    flowlines    = flowlines,
+    crosswalk_id = crosswalk_id,
+    cs_id        = "cs_id",
+    grouping_id  = crosswalk_id,
+    direction    = "both"
+  )
+  
+  # Set the is_extended flag based on if either the left OR the right side were extended
+  extended_transects <-
+    extended_transects %>%
+    hydroloom::rename_geometry("geometry") %>%
+    dplyr::mutate(
+      is_extended = dplyr::case_when(
+        left_is_extended | right_is_extended ~ TRUE,
+        TRUE                                 ~ FALSE
+      )
+    ) %>%
+    dplyr::select(
+      # -left_distance,
+      # -right_distance,
+      # -extension_distance,
+      -left_is_extended,
+      -right_is_extended
+    ) 
+  
+  
+  # tmp_trans <- 
+  #   extended_transects %>% 
+  #   dplyr::filter(
+  #     hy_id %in% c("wb-778430", "wb-1060460")
+  #                 )
+  # mapview::mapview(tmp_trans) + 
+  # mapview::mapview(  rm_self_intersections(tmp_trans) , color = "red") +
+  # mapview::mapview(  rm_multi_intersects(tmp_trans) , color = "green")
+  
+  # extended_transects2  <- extended_transects
+  
+  # shorten any transects that intersect multiple transects back to their original lengths
+  extended_transects  <- shorten_multi_intersecting_transects(transects = extended_transects, 
+                                                              crosswalk_id = crosswalk_id)
+  
+  # shorten any transects that intersect multiple flowlines (or a flowline more than once) back to their original lengths
+  extended_transects  <- shorten_multi_flowline_intersecting_transects(transects = extended_transects, 
+                                                                       flowlines = flowlines,
+                                                                       crosswalk_id = crosswalk_id)
+  
+  # remove self intersections and flowline multi intersections
+  extended_transects <-
+    extended_transects %>% 
+    rm_multi_intersects() %>% 
+    rm_self_intersections() %>%
+    rm_multiflowline_intersections(flowlines)
+  
+  # select relevant IDs
+  extended_transects <- 
+    extended_transects %>% 
+    dplyr::select(
+      dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
+      cs_lengthm, cs_measure,
+      valid_banks, has_relief,
+      geometry
+    )
+  
+  # extended_transects3 <-
+  #   extended_transects %>% 
+  #   rm_self_intersections() %>%
+  #   rm_multiflowline_intersections(flowlines)
+  
+  # mapview::mapview(transects, color = "cyan") +
+  # mapview::mapview(extended_transects , color = "red") +
+  # mapview::mapview(extended_transects2, color = "green") + 
+  # mapview::mapview(extended_transects3, color = "red")
+  
+  # check to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT,
+  # and raise an error if they're are missing hy_id/cs_ids
+  input_uids    <- get_unique_tmp_ids(transects, x = crosswalk_id)
+  output_uids   <- get_unique_tmp_ids(extended_transects, x = crosswalk_id)
+  
+  # check all of the output_uids exist in the input UIDs
+  has_all_uids           <- all(output_uids %in% input_uids)
+  # has_all_original_uids  <- all(input_uids %in% output_uids)
+  # no_extra_output_uids <- length(output_uids[!output_uids %in% input_uids]) == 0
+  
+  # throw an error if NOT all crosswalk_id/cs_ids are the same in the input and output data
+  if (!has_all_uids) {
+    stop("Missing unique crosswalk_id/cs_id UIDs from input transects in the output transects")
+  }
+  
+  if (keep_lengths) {
+    extended_transects <- 
+      extended_transects %>% 
+      dplyr::left_join(
+        starting_lengths,
+        by = c(crosswalk_id, "cs_id")
+      ) %>% 
+      dplyr::select(
+        dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
+        cs_lengthm, cs_measure,
+        valid_banks, has_relief,
+        starting_length,
+        geometry
+      )
+  }
+  
+  # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
+  if (reindex_cs_ids) {
+    warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in input 'transects' and the output unique crosswalk_id/cs_ids")
+    extended_transects <- renumber_cs_ids(extended_transects, crosswalk_id = crosswalk_id)
+  }
+  
+  return(extended_transects)
   
 }
 

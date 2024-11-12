@@ -2105,13 +2105,39 @@ select_transects <- function(transects, crosswalk_id = NULL) {
   return(transects)
 }
 
+#' Get a total count of the validity attributes
+#'
+#' @param x dataframe or sf dataframe with crosswalk_id, has_relief, and valid_banks columns
+#' @param crosswalk_id character unique ID column
+#'
+#' @importFrom sf st_drop_geometry 
+#' @importFrom dplyr select any_of group_by across slice ungroup count 
+#' @return dataframe or tibble
+#' @export
+get_validity_tally <- function(x, crosswalk_id = NULL) {
+  # x <- classified_pts
+  # crosswalk_id = "hy_id"
+  
+  validity_tally <-
+    x %>%
+    sf::st_drop_geometry() %>%
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, valid_banks, has_relief) %>%
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
+    dplyr::slice(1) %>%
+    dplyr::ungroup() %>%
+    dplyr::count(valid_banks, has_relief)
+  
+  return(validity_tally)
+  
+}
+
 #' Calculates a validity score column based on valid_banks and has_relief columns in a set of cross section points
 #'
 #' @param cs_to_validate dataframe
 #' @param crosswalk_id character, ID column
 #' @param validity_col_name name of the output validity score column
 #' @importFrom sf st_drop_geometry
-#' @importFrom dplyr group_by slice ungroup mutate select
+#' @importFrom dplyr group_by slice ungroup mutate select any_of
 #' @return dataframe with added validity_score column
 calc_validity_scores <- function(cs_to_validate, 
                                  crosswalk_id = NULL, 
@@ -2138,6 +2164,70 @@ calc_validity_scores <- function(cs_to_validate,
   
 }
 
+#' Compare valid_banks and has_relief between 2 sets of cross section points 
+#'
+#' @param cs_pts1 dataframe or sf dataframe of CS pts
+#' @param cs_pts2 dataframe or sf dataframe of CS pts
+#' @param crosswalk_id character unique ID
+#' @importFrom dplyr rename filter any_of mutate select left_join case_when
+#' @return
+#' @export
+compare_cs_validity <- function(cs_pts1, 
+                                cs_pts2, 
+                                crosswalk_id = NULL
+) {
+  
+  
+  validity_scores1 <- 
+    cs_pts1 %>% 
+    calc_validity_scores(crosswalk_id) %>% 
+    add_tmp_id(crosswalk_id) %>% 
+    dplyr::rename(score1 = validity_score)
+  
+  validity_scores2 <-
+    cs_pts2 %>% 
+    calc_validity_scores(crosswalk_id) %>% 
+    add_tmp_id(crosswalk_id) %>% 
+    dplyr::rename(score2 = validity_score)
+  
+  # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
+  check_for_improvement <- dplyr::left_join(
+    # OLD SCORES
+    validity_scores1 %>%
+      dplyr::filter(
+        tmp_id %in% unique(validity_scores2$tmp_id)
+      ) %>% 
+      dplyr::select(dplyr::any_of(crosswalk_id), cs_id, score1),
+    
+    # NEW SCORES
+    validity_scores2 %>% 
+      dplyr::select(dplyr::any_of(crosswalk_id), cs_id, score2),
+    by = c(crosswalk_id, "cs_id")
+  ) %>% 
+    dplyr::mutate(
+      is_improved = dplyr::case_when(
+        score2 > score1  ~ TRUE,
+        TRUE                     ~ FALSE
+      )
+    ) %>%
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, 
+                  score1, score2, 
+                  is_improved
+    )
+  
+  return(check_for_improvement)
+  
+}
+
+has_same_uids <- function(x, y, crosswalk_id = NULL) {
+  x_uids <- get_unique_tmp_ids(x, x = crosswalk_id)
+  y_uids <- get_unique_tmp_ids(y, x = crosswalk_id)
+  
+  return(
+    all(x_uids %in% y_uids) && all(y_uids %in% x_uids)
+  )
+  
+}
 
 #' Check if data is an SF linestring / multilinestring
 #'

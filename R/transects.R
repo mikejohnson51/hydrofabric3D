@@ -1067,6 +1067,15 @@ rm_self_intersections <- function(x) {
   
 }
 
+
+# reindex_cs_id  <- function(transects, crosswalk_id = NULL) {
+#   
+#   
+# }
+
+
+
+
 #' Remove transect lines that cross their given flowline more than once
 #' Internal function used in get_transects2(), a slightly faster method over get_transects() but yields slightly different outputs. 
 #' More efficient checking of all the transect lines on a given linestring, by removing some of the extraneous calls to geos_intersection() and geos_intersects()
@@ -1160,6 +1169,35 @@ check_intersects <- function(transects, line) {
   # to_keep <- rev(to_keep)
   
   return(to_keep)
+  
+}
+
+
+# attempts to remove transects intersecting other transects by first removing transects 
+# that interesect the most other transects, then re checking intersection condition,
+# and doing this until there are no multi intersections
+# this gives the benefit of removing a transect line that intersects many other transects, potentially leaving those other transects 
+# with no extraneous intersections ONCE the MULTI intersecting transect is removed
+rm_multi_intersects <- function(x) {
+  
+  # x <- tmp_trans
+  # x
+  
+  while (any(lengths(sf::st_intersects(x)) > 1)) {
+    
+    intersect_counts <- lengths(sf::st_intersects(x))
+    max_crossings    <- which(intersect_counts == max(intersect_counts))
+    x                <- x[-max_crossings, ]
+    
+    # message("# intersects > 1 intersect_counts: ",       sum(intersect_counts > 1))
+    # message("Removing ", length(max_crossings), " from x")
+    # message(nrow(x), " rows in x remain...\n")
+    # mapview::mapview(x, color = "red") + 
+    # mapview::mapview(tmp_trans, color = "green") 
+    
+  }
+  
+  return(x)
   
 }
 
