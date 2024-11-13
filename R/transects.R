@@ -1172,12 +1172,13 @@ check_intersects <- function(transects, line) {
   
 }
 
-
-# attempts to remove transects intersecting other transects by first removing transects 
-# that interesect the most other transects, then re checking intersection condition,
-# and doing this until there are no multi intersections
-# this gives the benefit of removing a transect line that intersects many other transects, potentially leaving those other transects 
-# with no extraneous intersections ONCE the MULTI intersecting transect is removed
+#' Selectively removes intersecting transect lines
+#' Attempts to remove transects intersecting other transects by first removing transects that interesect the most other transects, then re checking intersection condition,  and doing this until there are no multi intersections
+#' this gives the benefit of removing a transect line that intersects many other transects, potentially leaving those other transects with no extraneous intersections ONCE the MULTI intersecting transect is removed
+#' @param x sf dataframe of linestrings
+#' @importFrom sf st_intersects
+#'
+#' @return sf dataframe
 rm_multi_intersects <- function(x) {
   
   # x <- tmp_trans

@@ -378,7 +378,7 @@ validate_cs_pts <- function(
     cs_pts,  
     crosswalk_id = NULL
 ) {
-  
+  # cs_pts <- final_cs_pts
   # # standardize geometry name
   # transects <- hydroloom::rename_geometry(transects, "geometry")
   

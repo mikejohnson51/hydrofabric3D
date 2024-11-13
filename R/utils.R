@@ -2170,13 +2170,17 @@ calc_validity_scores <- function(cs_to_validate,
 #' @param cs_pts2 dataframe or sf dataframe of CS pts
 #' @param crosswalk_id character unique ID
 #' @importFrom dplyr rename filter any_of mutate select left_join case_when
-#' @return
+#' @return dataframe, tibble
 #' @export
 compare_cs_validity <- function(cs_pts1, 
                                 cs_pts2, 
                                 crosswalk_id = NULL
 ) {
   
+  # cs_pts1 <- x 
+  # cs_pts2 <- new_cs_pts
+  
+  # validity_scores1$tmp_id[!validity_scores1$tmp_id %in% validity_scores2$tmp_id]
   
   validity_scores1 <- 
     cs_pts1 %>% 

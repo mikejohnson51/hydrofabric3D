@@ -302,78 +302,286 @@ extend_by_length <- function(
   
 }
 
-#' Takes any transects with multiple intersections, and shortens them by the distance specified in the "extension_distance" column
+
+# TODO: Change this function name to "adjust_transect_lengths()"
+
+#' @title Extend/shrink an sf linestring dataframe by a specified lengths vector
 #'
-#' @param transects sf dataframe of transects, requires a crosswalk_id, cs_id, cs_lengthm, extension_distance, and geometry column
+#' @param x linestring sf dataframe, requires an 
+#' @param crosswalk_id character, unique ID column name 
+#' @param dir direction to extend/shrink transect from, either "left" or "right". Default is "left". 
+#' @param length_col character, name of the column in "x" that has the length of the linestring (meters)
+#' @importFrom dplyr group_by mutate ungroup rename
+#' @importFrom sf st_length st_geometry st_drop_geometry st_as_sf st_crs
+#' @importFrom hydroloom rename_geometry
+#' @return sf dataframe with extended linestring geometries
+#' @export
+adjust_transect_lengths <- function(
+    x, 
+    crosswalk_id = NULL,
+    dir = "left",
+    length_col = NULL
+) {
+  
+  # x
+  # # length_vector <- x$left_distance
+  # dir = "left"
+  
+  direction <- switch(
+    dir,
+    "left"  = "head",
+    "right" = "tail",
+    "both" = "both"
+  )
+  
+  extension_col_name <- switch(
+    dir,
+    "left"  = "left_distance",
+    "right" = "right_distance",
+    "both"  = "extension_distance"
+  )
+  
+  # length_col = "cs_lengthm"
+
+  # x = update_transect_lines
+  # crosswalk_id  = crosswalk_id
+  # length_vector = update_transect_lines$distance_to_extend
+  # length_col = NULL
+  
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", extension_col_name)
+  
+  # validate input graph
+  is_valid <- validate_df(x, REQUIRED_COLS, "x")
+  
+  # rename the geometry to "geom"
+  x <- hydroloom::rename_geometry(x, "geometry")
+  
+  is_null_length_col <- is.null(length_col)
+  
+  if(is_null_length_col) {
+    length_col      <- "geom_length"
+  }
+  
+  # length_col is NULL then set it to "cs_lengthm"
+  x <- add_length_col(x = x, length_col = length_col)
+  
+  # extend linestrings by pct * length of line
+  extended_df <-
+    x %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      extended_geom = geos_extend_line(
+        geometry, 
+        distance = !!dplyr::sym(extension_col_name),
+        # distance = (pct)*(!!dplyr::sym(length_col)),
+        dir      = direction
+      ) 
+    ) %>% 
+    dplyr::ungroup()
+  
+  # drop original geometry column
+  extended_df <-  sf::st_drop_geometry(extended_df)
+  
+  # set the extended geometry as the new geometry
+  extended_df$extended_geom <- sf::st_geometry(sf::st_as_sf(extended_df$extended_geom))
+  
+  # make extended_df an sf object
+  extended_df <- sf::st_as_sf(
+    extended_df, 
+    crs = sf::st_crs(x)
+  )
+  
+  # rename the geometry to "geom"
+  extended_df <- hydroloom::rename_geometry(extended_df, "geometry")
+  
+  # add length column if specified w/ updated geometry lengths
+  extended_df <- add_length_col(x = extended_df, length_col = length_col)
+  
+  return(extended_df)
+  
+}
+
+
+
+
+#' Takes any transects with multiple intersections that was extended, and shortens them by the distance specified in the "extension_distance" column
+#'
+#' @param x sf dataframe of transects, requires a crosswalk_id, cs_id, cs_lengthm, extension_distance, and geometry column
 #' @param crosswalk_id character, unique ID column
 #' 
 #' @importFrom sf st_intersects st_geometry
 #' @return sf dataframe of transects with any transects that intersect multiple other transects being shortened by -extension_distance
-shorten_multi_intersecting_transects <- function(transects, crosswalk_id = NULL) {
+shorten_multi_intersecting_transects <- function(x, crosswalk_id = NULL) {
+  
+  # x = extended_transects
+  # crosswalk_id = crosswalk_id
+  # x
+  
   # x <-
   #   extended_transects[is_multi_intersecting, ] %>% 
   #   dplyr::left_join(
   #     starting_lengths,
   #     by = c(crosswalk_id, "cs_id")
   #   ) %>% 
-  #   # dplyr::relocate(starting_length, cs_lengthm)
+  #   # dplyr::relocate(initial_length, cs_lengthm)
   #   dplyr::mutate(
-  #     distance_to_shorten = -((cs_lengthm - starting_length) / 2)
+  #     distance_to_shorten = -((cs_lengthm - initial_length) / 2)
   #   )
   # # 
   # x$distance_to_shorten
   # x <- extended_transects
+  # x = extended_transects 
+  # crosswalk_id = crosswalk_id 
+  # message("intersect change2")
   
   suppressWarnings({
     
-    is_valid_df <- validate_df(transects, 
-                               c(crosswalk_id, "cs_id", "cs_lengthm", "extension_distance", "geometry"), 
-                               "transects")
+    is_valid_df <- validate_df(x, 
+                               c(crosswalk_id, "cs_id", "cs_lengthm", 
+                               "is_extended", 
+                               "left_distance", "right_distance",
+                               "geometry"), 
+                               "x")
     
-    # Try and fix any transects that cross multiple
-    is_multi_intersecting <- lengths(sf::st_intersects(transects)) != 1
-    
+    # Try and fix any transects that cross multiple transects AND were extended
+    is_multi_intersecting <- (lengths(sf::st_intersects(x)) != 1) & x$is_extended
+    # is_multi_intersecting <- lengths(sf::st_intersects(transects)) != 1
     
     has_no_multi_intersects <- !any(is_multi_intersecting)
     
     # return early if NO multi intersections exist
     if (has_no_multi_intersects) {
-      return(transects)
+      return(x)
     }
     
-    # reduce the length of each transect by extension_distance (from BOTH sides)
-    shortened_transects  <- extend_by_length(
-      x             = transects[is_multi_intersecting, ], 
-      crosswalk_id  = crosswalk_id, 
-      length_vector = -transects[is_multi_intersecting, ]$extension_distance, 
-      length_col    = "cs_lengthm"
-      ) 
+    # x[is_multi_intersecting, ]$left_distance
+    shortened_transects <- x[is_multi_intersecting, ] %>% 
+                                    dplyr::mutate(
+                                      left_distance = -abs(left_distance),
+                                      right_distance = -abs(right_distance)
+                                    )
+    
+    # shorten the left side
+    shortened_transects  <- adjust_transect_lengths(
+                                      x             = shortened_transects, 
+                                      crosswalk_id  = crosswalk_id, 
+                                      dir           = "left",
+                                      length_col    = "cs_lengthm"
+                                    )
+    # shorten the right side
+    shortened_transects  <- adjust_transect_lengths(
+                                      x             = shortened_transects, 
+                                      crosswalk_id  = crosswalk_id, 
+                                      dir           = "right",
+                                      length_col    = "cs_lengthm"
+                                    )
+    
+    # mapview::mapview(shortened_transects, color = "red") +
+    #   mapview::mapview(x, color = "green")
     
     # set is_extended to FALSE for clarity  
     shortened_transects$is_extended <- FALSE 
     
     # replace the geometries with the shorter transects
-    sf::st_geometry(transects[is_multi_intersecting, ])  <- sf::st_geometry(shortened_transects)
+    sf::st_geometry(x[is_multi_intersecting, ])  <- sf::st_geometry(shortened_transects)
     
     # update the lengths and is_extended flag to align with the above replacement of geometries
-    transects <- add_length_col(transects, "cs_lengthm") 
-    # transects[is_multi_intersecting, ]$cs_lengthm        <- shortened_transects$cs_lengthm
-    transects[is_multi_intersecting, ]$is_extended       <- shortened_transects$is_extended
+    x <- add_length_col(x, "cs_lengthm") 
     
-    return(transects)
+    # transects[is_multi_intersecting, ]$cs_lengthm        <- shortened_transects$cs_lengthm
+    x[is_multi_intersecting, ]$is_extended       <- shortened_transects$is_extended
+    
+    return(x)
     
   })
 }
 
-#' Takes any transects with multiple flowline intersections, and shortens them by the distance specified in the "extension_distance" column
+# TODO Delete this (shorten_multi_intersecting_transects2()) once testing with new version is complete
+
+# # Takes any transects with multiple intersections that was extended, and shortens them by the distance specified in the "extension_distance" column
+# # (Old version that uses extend_by_length())
+# # @param transects sf dataframe of transects, requires a crosswalk_id, cs_id, cs_lengthm, extension_distance, and geometry column
+# # @param crosswalk_id character, unique ID column
+# # @importFrom sf st_intersects st_geometry
+# # @return sf dataframe of transects with any transects that intersect multiple other transects being shortened by -extension_distance
+# shorten_multi_intersecting_transects2 <- function(transects, crosswalk_id = NULL) {
+#   # x <-
+#   #   extended_transects[is_multi_intersecting, ] %>% 
+#   #   dplyr::left_join(
+#   #     starting_lengths,
+#   #     by = c(crosswalk_id, "cs_id")
+#   #   ) %>% 
+#   #   # dplyr::relocate(initial_length, cs_lengthm)
+#   #   dplyr::mutate(
+#   #     distance_to_shorten = -((cs_lengthm - initial_length) / 2)
+#   #   )
+#   # # 
+#   # x$distance_to_shorten
+#   # x <- extended_transects
+#   # x = extended_transects 
+#   # crosswalk_id = crosswalk_id 
+#   # message("intersect change2")
+#   
+#   suppressWarnings({
+#     
+#     is_valid_df <- validate_df(transects, 
+#                                c(crosswalk_id, "cs_id", "cs_lengthm", 
+#                                  "is_extended", "extension_distance",
+#                                  "geometry"), 
+#                                "transects")
+#     
+#     # Try and fix any transects that cross multiple transects AND were extended
+#     is_multi_intersecting <- (lengths(sf::st_intersects(transects)) != 1) & transects$is_extended
+#     # is_multi_intersecting <- lengths(sf::st_intersects(transects)) != 1
+#     
+#     has_no_multi_intersects <- !any(is_multi_intersecting)
+#     
+#     # return early if NO multi intersections exist
+#     if (has_no_multi_intersects) {
+#       return(transects)
+#     }
+#     
+#     # reduce the length of each transect by extension_distance (from BOTH sides)
+#     shortened_transects  <- extend_by_length(
+#       x             = transects[is_multi_intersecting, ], 
+#       crosswalk_id  = crosswalk_id, 
+#       length_vector = -transects[is_multi_intersecting, ]$extension_distance, 
+#       length_col    = "cs_lengthm"
+#     ) 
+#     
+#     # set is_extended to FALSE for clarity  
+#     shortened_transects$is_extended <- FALSE 
+#     
+#     # replace the geometries with the shorter transects
+#     sf::st_geometry(transects[is_multi_intersecting, ])  <- sf::st_geometry(shortened_transects)
+#     
+#     # update the lengths and is_extended flag to align with the above replacement of geometries
+#     transects <- add_length_col(transects, "cs_lengthm") 
+#     # transects[is_multi_intersecting, ]$cs_lengthm        <- shortened_transects$cs_lengthm
+#     transects[is_multi_intersecting, ]$is_extended       <- shortened_transects$is_extended
+#     
+#     return(transects)
+#     
+#   })
+# }
+
+
+#' Takes any transects that was extended and with multiple flowline intersections, and shortens them by the distance specified in the "extension_distance" column
 #'
-#' @param transects sf dataframe of transects, requires a crosswalk_id, cs_id, cs_lengthm, extension_distance, and geometry column
+#' @param x sf dataframe of transects, requires a crosswalk_id, cs_id, cs_lengthm, extension_distance, and geometry column
 #' @param flowlines sf dataframe of flowline LINESTRINGS to compare to  
 #' @param crosswalk_id character, unique ID column
 #' 
 #' @importFrom sf st_intersects st_geometry
 #' @return sf dataframe of transects with any transects that intersect multiple other transects being shortened by -extension_distance
-shorten_multi_flowline_intersecting_transects <- function(transects, 
+shorten_multi_flowline_intersecting_transects <- function(x, 
                                                           flowlines, 
                                                           crosswalk_id = NULL) {
   # x <-
@@ -382,23 +590,26 @@ shorten_multi_flowline_intersecting_transects <- function(transects,
   #     starting_lengths,
   #     by = c(crosswalk_id, "cs_id")
   #   ) %>% 
-  #   # dplyr::relocate(starting_length, cs_lengthm)
+  #   # dplyr::relocate(initial_length, cs_lengthm)
   #   dplyr::mutate(
-  #     distance_to_shorten = -((cs_lengthm - starting_length) / 2)
+  #     distance_to_shorten = -((cs_lengthm - initial_length) / 2)
   #   )
   # # 
+  # message("multiflowline change2")
   # x$distance_to_shorten
   # transects <- extended_transects
   # flowlines 
   suppressWarnings({
     
-    is_valid_df <- validate_df(transects, 
-                               c(crosswalk_id, "cs_id", "cs_lengthm", "extension_distance", "geometry"), 
-                               "transects")
+    is_valid_df <- validate_df(x, 
+                               c(crosswalk_id, "cs_id", "cs_lengthm", 
+                               "is_extended", "left_distance", "right_distance", "extension_distance", "geometry"), 
+                               "x")
     
     # Try and fix any transects that cross multiple
-    is_multi_intersecting_flowlines <- lengths(sf::st_intersects(transects, flowlines)) != 1
-    
+    is_multi_intersecting_flowlines <- (lengths(sf::st_intersects(x, flowlines)) != 1) & x$is_extended 
+    # is_multi_intersecting_flowlines <- lengths(sf::st_intersects(x, flowlines)) != 1
+
     # mapview::mapview(flowlines, color = "dodgerblue") +
     #   mapview::mapview(extended_transects, color = "green") +
     #   mapview::mapview(extended_transects[is_multi_intersecting_flowlines, ], color = "red")
@@ -407,16 +618,38 @@ shorten_multi_flowline_intersecting_transects <- function(transects,
     
     # return early if NO multi intersections exist
     if (has_no_multi_intersects) {
-      return(transects)
+      return(x)
     }
     
-    # reduce the length of each transect by extension_distance (from BOTH sides)
-    shortened_transects  <- extend_by_length(
-      x             = transects[is_multi_intersecting_flowlines, ], 
+    # # reduce the length of each transect by extension_distance (from BOTH sides)
+    # shortened_transects  <- extend_by_length(
+    #   x             = x[is_multi_intersecting_flowlines, ], 
+    #   crosswalk_id  = crosswalk_id, 
+    #   length_vector = -x[is_multi_intersecting_flowlines, ]$extension_distance, 
+    #   length_col    = "cs_lengthm"
+    # ) 
+    
+    # x[is_multi_intersecting, ]$left_distance
+    shortened_transects <- x[is_multi_intersecting_flowlines, ] %>% 
+      dplyr::mutate(
+        left_distance = -abs(left_distance),
+        right_distance = -abs(right_distance)
+      )
+    
+    # shorten the left side
+    shortened_transects  <- adjust_transect_lengths(
+      x             = shortened_transects, 
       crosswalk_id  = crosswalk_id, 
-      length_vector = -transects[is_multi_intersecting_flowlines, ]$extension_distance, 
+      dir           = "left",
       length_col    = "cs_lengthm"
-    ) 
+    )
+    # shorten the right side
+    shortened_transects  <- adjust_transect_lengths(
+      x             = shortened_transects, 
+      crosswalk_id  = crosswalk_id, 
+      dir           = "right",
+      length_col    = "cs_lengthm"
+    )
     
     # mapview::mapview(flowlines, color = "dodgerblue") +
     #   mapview::mapview(extended_transects, color = "green") +
@@ -427,15 +660,15 @@ shorten_multi_flowline_intersecting_transects <- function(transects,
     shortened_transects$is_extended <- FALSE 
     
     # replace the geometries with the shorter transects
-    sf::st_geometry(transects[is_multi_intersecting_flowlines, ]) <- sf::st_geometry(shortened_transects)
+    sf::st_geometry(x[is_multi_intersecting_flowlines, ]) <- sf::st_geometry(shortened_transects)
     
     
     # update the lengths and is_extended flag to align with the above replacement of geometries
-    transects <- add_length_col(transects, "cs_lengthm") 
-    # transects[is_multi_intersecting_flowlines, ]$cs_lengthm       <- shortened_transects$cs_lengthm
-    transects[is_multi_intersecting_flowlines, ]$is_extended      <- shortened_transects$is_extended
+    x <- add_length_col(x, "cs_lengthm") 
     
-    return(transects)
+    x[is_multi_intersecting_flowlines, ]$is_extended      <- shortened_transects$is_extended
+    
+    return(x)
     
   })
 }
@@ -450,6 +683,14 @@ shorten_multi_flowline_intersecting_transects <- function(transects,
 #' @return sf dataframe of transects with shortened transects where flagged is TRUE 
 shorten_flagged_transects <- function(transects, crosswalk_id = NULL) {
   
+  # transects = x
+  # crosswalk_id = crosswalk_id
+  # extend_by_length(
+  #   x             = transects[is_flagged, ], 
+  #   crosswalk_id  = crosswalk_id, 
+  #   length_vector = -x[x$flagged, ]$extension_distance, 
+  #   length_col    = "cs_lengthm"
+  # ) 
   suppressWarnings({
     
     is_valid_df <- validate_df(transects, 

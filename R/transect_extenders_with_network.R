@@ -1743,100 +1743,6 @@ extend_transects_by_cs_attributes = function(
     reindex_cs_ids = FALSE,
     verbose        = TRUE
 ) {
-  # ----------------------------------------
-  
-  # library(sf)
-  # library(dplyr)
-  # library(geos)
-  # library(terra)
-  # 
-  # crosswalk_id = "id"
-  # scale          = 0.5
-  # keep_lengths   = TRUE
-  # verbose        = TRUE
-  #  net <- sf::read_sf("/Users/anguswatters/Desktop/test_flines.gpkg") %>%
-  #    # dplyr::filter(id == "wb-2414869")
-  #    dplyr::filter(id == "wb-2415479")
-  # 
-  # # c(600,  rep(net$bf_width, 39))
-  # 
-  # keep_lengths <- TRUE
-  #  transects <- hydrofabric3D::cut_cross_sections(
-  #    net = net,
-  #    crosswalk_id = "id",
-  #    cs_widths = net$bf_width,
-  #    # cs_widths =  c(600,  rep(net$bf_width, 39)),
-  #    num = 40,
-  #    densify = 10,
-  #    rm_self_intersect = TRUE
-  #  )
-  # 
-  #  START_CRS <- sf::st_crs(transects)
-  # 
-  #  # extended_df <-
-  #  transects <-
-  #    transects %>%
-  #    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
-  #    # dplyr::group_by(hy_id, cs_id) %>%
-  #    dplyr::mutate(
-  #      extended_geom = dplyr::case_when(
-  # 
-  #        cs_id == 1 ~ geos_extend_line(
-  #                            geometry,
-  #                            distance = 350,
-  #                            dir      = "both"
-  #                          ),
-  #        TRUE       ~ geos::as_geos_geometry(geometry)
-  #      )
-  #    ) %>%
-  #    dplyr::ungroup()
-  # 
-  #  # drop original geometry column
-  #  transects <-  sf::st_drop_geometry(transects)
-  # 
-  #  # set the extended geometry as the new geometry
-  #  transects$extended_geom <- sf::st_geometry(sf::st_as_sf(transects$extended_geom))
-  #  # make extended_df an sf object
-  #  transects <- sf::st_as_sf(
-  #    transects,
-  #    crs = START_CRS
-  #  )
-  # 
-  #  # rename "extended_geom" col to "geom"
-  #  transects <- hydroloom::rename_geometry(transects, "geometry")
-  #  # extended_df <- dplyr::rename(extended_df, "geometry" = "extended_geom")
-  # 
-  #  # # recalculate length of linestring and update length_col value
-  #  # extended_df[[length_col]] <- as.numeric(sf::st_length(extended_df$geometry))
-  # 
-  #  # add length column if specified w/ updated geometry lengths
-  #  transects <- add_length_col(x = transects, length_col = "cs_lengthm")
-  # 
-  # 
-  #  transects
-  #  net
-  #  # transects <- sf::read_sf("/Users/anguswatters/Desktop/test_ext_trans.gpkg")
-  #  # transects
-  #  mapview::mapview(net) + transects
-  #  #
-  # 
-  #  cs_pts <- hydrofabric3D::cross_section_pts(
-  #    cs = transects,
-  #    crosswalk_id = "id",
-  #    min_pts_per_cs = 10
-  #  )
-  # 
-  #  cs_pts <-
-  #    cs_pts %>%
-  #    hydrofabric3D::classify_points("id")
-  # 
-  #  cs_pts %>%
-  #    sf::st_drop_geometry() %>%
-  #    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%
-  #    dplyr::slice(1) %>%
-  #    dplyr::ungroup() %>%
-  #    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, valid_banks, has_relief)
-  # 
   
   # ----------------------------------------------------------------------------------
   # TEST DATA
@@ -1851,8 +1757,18 @@ extend_transects_by_cs_attributes = function(
   # keep_lengths   = TRUE
   # verbose        = TRUE
   # 
-  # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_flowlines_test.gpkg")
-  # transects <- sf::read_sf("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_transects_test.gpkg")
+  # flowlines <- sf::read_sf("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_flowlines_test.gpkg") %>%
+  #   dplyr::filter(hy_id %in% c("wb-778430", "wb-1060460")) %>% 
+  #   hydroloom::rename_geometry("geometry")
+  # 
+  # transects <- sf::read_sf("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_transects_test.gpkg") %>%
+  #   dplyr::filter(hy_id %in% c("wb-778430", "wb-1060460")) %>% 
+  #   dplyr::select(hy_id, cs_id, cs_measure, cs_lengthm, valid_banks, has_relief, geom) %>% 
+  #   hydroloom::rename_geometry("geometry")
+  # # 
+  # mapview::mapview(dplyr::filter(transects, vpu %in% c("07", "05")))
+  # mapview::mapview(dplyr::filter(transects, vpu %in% c("07", "05")))
+  
   # cs_pts <- arrow::read_parquet("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_cs_pts2_test.parquet")
   # cs_pts <- arrow::read_parquet("/Users/anguswatters/Desktop/extend_transects_by_cs_attributes_cs_pts_test.parquet")
   
@@ -1863,7 +1779,6 @@ extend_transects_by_cs_attributes = function(
   # keep_lengths = TRUE
   # reindex_cs_ids = FALSE
   # verbose =T
-  
   # ----------------------------------------------------------------------------------
   # ----------------------------------------------------------------------------------
   
@@ -1874,9 +1789,9 @@ extend_transects_by_cs_attributes = function(
   # stash the original starting transect line lengths
   starting_lengths <- 
     transects %>%  
-    add_length_col(length_col = "starting_length") %>% 
+    add_length_col(length_col = "initial_length") %>% 
     sf::st_drop_geometry() %>% 
-    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, starting_length)
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, initial_length)
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
@@ -1955,6 +1870,8 @@ extend_transects_by_cs_attributes = function(
     grouping_id  = crosswalk_id,
     direction    = "both"
   )
+
+  # extended_transects$is_extended
   
   # Set the is_extended flag based on if either the left OR the right side were extended
   extended_transects <-
@@ -1987,11 +1904,11 @@ extend_transects_by_cs_attributes = function(
   # extended_transects2  <- extended_transects
   
   # shorten any transects that intersect multiple transects back to their original lengths
-  extended_transects  <- shorten_multi_intersecting_transects(transects = extended_transects, 
+  extended_transects  <- shorten_multi_intersecting_transects(x = extended_transects, 
                                                               crosswalk_id = crosswalk_id)
   
   # shorten any transects that intersect multiple flowlines (or a flowline more than once) back to their original lengths
-  extended_transects  <- shorten_multi_flowline_intersecting_transects(transects = extended_transects, 
+  extended_transects  <- shorten_multi_flowline_intersecting_transects(x = extended_transects, 
                                                                        flowlines = flowlines,
                                                                        crosswalk_id = crosswalk_id)
   
@@ -2048,7 +1965,7 @@ extend_transects_by_cs_attributes = function(
         dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
         cs_lengthm, cs_measure,
         valid_banks, has_relief,
-        starting_length,
+        initial_length,
         geometry
       )
   }
