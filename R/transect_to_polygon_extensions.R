@@ -67,6 +67,7 @@ utils::globalVariables(
 # ----------------------------------------------------------------------------------
 
 #' Give a set of transecct linestrings and poylgons and get the minimum distance to extend each transect line (from both directions, to try and reach the edge of a "polygons")
+#' DEPRECATED VERSION, use extend_transects_to_polygons()
 #' WIP/internal function for extending transect lines out to FEMA 100 year flood plain polygons (VERSION 2)
 #' @param transect_lines Set of Sf linestrigns to extend (only if the transect lines are ENTIRELLY within a polygons)
 #' @param polygons set of sf polygons that transect lines should be exteneded 
@@ -87,7 +88,7 @@ utils::globalVariables(
 #' @importFrom wk wk_crs 
 #' @importFrom vctrs vec_c
 #' @export
-extend_transects_to_polygons <- function(
+extend_transects_to_polygons2 <- function(
     transect_lines, 
     polygons, 
     flowlines, 
@@ -139,7 +140,6 @@ extend_transects_to_polygons <- function(
   # bad_id   <- "wb-10813"
   # mainstem <- "1977479"
   
-  
   # ----------------------------------------------------------------------------------
   # ----------- Input checking ------
   # ----------------------------------------------------------------------------------
@@ -170,7 +170,7 @@ extend_transects_to_polygons <- function(
   # get only the relevent polygons/transects
   transect_subset   <- subset_transects_in_polygons(transect_lines, polygons)
   polygons_subset   <- subset_polygons_in_transects(transect_lines, polygons)
-
+  
   # get a dataframe that tells you how far to extend each line in either direction
   extensions_by_id  <- get_extensions_by_id(transect_subset, polygons_subset, crosswalk_id, max_extension_distance)
   
@@ -210,14 +210,11 @@ extend_transects_to_polygons <- function(
     cs_id        = "cs_id",
     grouping_id  = grouping_id 
   ) 
-    
-    # mapview::mapview(fema) + 
-    # mapview::mapview(transects, color = "red") +
-    # mapview::mapview(transect_lines, color = "green") +
-    #   mapview::mapview(transect_lines2, color = "green") +
-    # flines
   
-  # lengths(sf::st_intersects(transect_lines))  %>% order()
+  # mapview::mapview(fema) + 
+  # mapview::mapview(transects, color = "red") +
+  # mapview::mapview(transect_lines, color = "green") +
+  #   mapview::mapview(transect_lines2, color = "green") +
   
   # remove transects that intersect with OTHER TRANSECTS
   transect_lines <-
@@ -239,6 +236,292 @@ extend_transects_to_polygons <- function(
   transect_lines <- 
     transect_lines %>% 
     dplyr::select(-tmp_id)
+  
+  return(transect_lines)
+  
+}
+
+#' Give a set of transecct linestrings and poylgons and get the minimum distance to extend each transect line (from both directions, to try and reach the edge of a "polygons")
+#' Superseces old version of function (now named extend_transects_to_polygons2())
+#' @param transect_lines Set of Sf linestrings to extend (only if the transect lines are ENTIRELLY within a polygons)
+#' @param polygons set of sf polygons that transect lines should be exteneded 
+#' @param flowlines set of Sf linestrings
+#' @param crosswalk_id character, flowline ID that matches flowlines with transect lines. This crosswalk_id must appear are a column in both flowlines and transect_lines.
+#' @param grouping_id character, name of a column in flowlines that should be used to group each transect with 1 or more flowlines. 
+#' That is, when transects are checked to make sure they don't intersect 
+#' other transects or other flowlines, this group ID will distinguise which flowlines a transect should be checked against.
+#' The intersect_group_id must appear as a column in both flowlines and transect_lines dataframes
+#' @param max_extension_distance numeric, maximum distance (meters) to extend a transect line in either direction to try and intersect one of the "polygons". Default is 3000m
+#' @param keep_lengths logical whether to keep a record of the original transect lengths or not, default is FALSE, original lengths are not kept 
+#' @param reindex_cs_ids logical, whether to reindex the cs_ids to ensure each crosswalk_id has cs_ids of 1-number of transects. Default is TRUE, which makes sure if any cross sections were removed from a crosswalk_id, 
+#' then the cs_ids are renumbered so there are no gaps between cs_ids within a crosswalk_id. 
+#' Setting this to FALSE will make sure crosswalk_id/cs_ids remain untouched as they were given in the input data.
+#' @return sf linestring, with extended transect lines
+#' @importFrom rmapshaper ms_simplify
+#' @importFrom geos as_geos_geometry geos_intersects_matrix geos_simplify_preserve_topology geos_within_matrix geos_empty geos_point_start geos_point_end
+#' @importFrom sf st_as_sf st_cast st_segmentize st_length st_drop_geometry st_geometry
+#' @importFrom dplyr mutate case_when select left_join relocate n any_of
+#' @importFrom lwgeom st_linesubstring
+#' @importFrom wk wk_crs 
+#' @importFrom vctrs vec_c
+#' @export
+extend_transects_to_polygons <- function(
+    transect_lines, 
+    polygons, 
+    flowlines, 
+    crosswalk_id = 'hy_id',  
+    grouping_id = 'mainstem',
+    max_extension_distance = 3000,
+    keep_lengths = FALSE,
+    reindex_cs_ids = TRUE
+) {
+  # ----------------------------------------------------------------------------------
+  # ----------- TEST DATA  ------
+  # ----------------------------------------------------------------------------------
+  
+  # transect_lines          = transects
+  # polygons                = fema
+  # flowlines               = flines
+  # crosswalk_id            = "hy_id"
+  # grouping_id             = "mainstem"
+  # max_extension_distance  = 3000
+  
+  # library(dplyr)
+  # library(sf)
+  # 
+  # flines <- sf::read_sf( paste0("/Users/anguswatters/Desktop/tmp_flines.gpkg"))
+  # transects <- sf::read_sf(paste0("/Users/anguswatters/Desktop/tmp_trans.gpkg"))
+  # fema <- sf::read_sf( paste0("/Users/anguswatters/Desktop/tmp_fema.gpkg"))
+  # bb <- 
+  #   dplyr::filter(transects, id == "wb-10813") %>% 
+  #   sf::st_buffer(10000) %>% 
+  #   sf::st_bbox() %>% 
+  #   sf::st_as_sfc() %>% 
+  #   sf::st_sf()
+  # 
+  # # mapview::mapview(bb)
+  # 
+  # transects <- sf::st_filter(transects, bb) 
+  # flines <- sf::st_filter(flines, bb) 
+  # fema <- sf::st_filter(fema, bb) 
+  # 
+  # mapview::mapview(fema) + transects + flines
+  # # 
+  # transect_lines <- transects
+  # polygons <- fema
+  # flowlines <- flines
+  # 
+  # 
+  # crosswalk_id           = "id"
+  # grouping_id            = "mainstem"
+  # max_extension_distance = 3000
+  # 
+  # bad_id   <- "wb-10813"
+  # mainstem <- "1977479"
+  
+  # transect_lines = transects
+  # polygons = polygons
+  # flowlines = flowlines
+  # crosswalk_id = CROSSWALK_ID
+  # grouping_id = CROSSWALK_ID
+  # max_extension_distance = 5000
+  # reindex_cs_ids = TRUE
+  
+  # ----------------------------------------------------------------------------------
+  # ----------- Input checking ------
+  # ----------------------------------------------------------------------------------
+  
+  # if(!crosswalk_id %in% names(flowlines)) {
+  #   stop("crosswalk_id '", crosswalk_id, "' is not a column in 'flowlines' input,\n", 
+  #        "Please provide a valid 'crosswalk_id' that crosswalks 'flowlines' to 'transect_lines'")
+  # }
+  # 
+  # if(!crosswalk_id %in% names(transect_lines)) {
+  #   stop("crosswalk_id '", crosswalk_id, "' is not a column in 'transect_lines' input,\n", 
+  #        "Please provide a valid 'crosswalk_id' that crosswalks the 'transect_lines' to 'flowlines'")
+  # }
+  # 
+  # if(!grouping_id %in% names(flowlines)) {
+  #   stop("grouping_id '", grouping_id, "' is not a column in 'flowlines' input,\n", 
+  #        "Please provide a valid 'grouping_id' that associates each transect line with 1 or more flowlines in 'flowlines'"
+  #   )
+  # }
+  # 
+  # if(!grouping_id %in% names(transect_lines)) {
+  #   stop("grouping_id '", grouping_id, "' is not a column in 'transect_lines' input,\n", 
+  #        "Please provide a valid 'grouping_id' that associates each transect line with 1 or more flowlines in 'flowlines'"
+  #   )
+  # }
+  
+  is_valid_flowlines <- validate_df(flowlines, 
+                             c(crosswalk_id, grouping_id, "geometry"), 
+                             "flowlines")
+  
+  is_valid_transects <- validate_df(transect_lines, 
+                             c(crosswalk_id, "cs_id", grouping_id, "geometry"), 
+                             "transect_lines")
+  
+  # ----------------------------------------------------------------------------------
+  
+  # stash input UIDs, used in a check at the end of this function to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT,
+  # and raise an error if they're are missing hy_id/cs_ids
+  input_uids    <- get_unique_tmp_ids(transect_lines, x = crosswalk_id)
+  
+  # stash the original starting transect line lengths
+  starting_lengths <- 
+    transect_lines %>%  
+    add_length_col(length_col = "initial_length") %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, initial_length)
+  
+  # get only the relevent polygons/transects
+  transect_subset   <- subset_transects_in_polygons(transect_lines, polygons)
+  polygons_subset   <- subset_polygons_in_transects(transect_lines, polygons)
+
+  # get a dataframe that tells you how far to extend each line in either direction
+  extensions_by_id  <- get_extensions_by_id(transect_subset, polygons_subset, crosswalk_id, max_extension_distance)
+  
+  # pid <- "wb-1002059"
+  # pcsid <- 4
+  # mapview::mapview(polygons_subset) +
+  #   mapview::mapview(pt, color = "green") +
+  #   mapview::mapview(pt_ext, color = "red")
+  
+  # TODO: Add left/right extension distancces to transect data
+  # TODO: this can ultimately just be the "transects" variable, dont need to make new "transects_with_distances" variable
+  transect_lines <-
+    transect_lines %>% 
+    dplyr::left_join(
+      dplyr::select(extensions_by_id, 
+                    dplyr::any_of(crosswalk_id), cs_id, left_distance, right_distance),
+      # extensions_by_id,
+      by = c(crosswalk_id, "cs_id")
+    ) %>% 
+    # TODO: I think i want to keep the NAs and NOT fill w/ 0 
+    dplyr::mutate(
+      left_distance = dplyr::case_when(
+        is.na(left_distance) ~ 0,
+        TRUE                 ~ left_distance
+      ),
+      right_distance = dplyr::case_when(
+        is.na(right_distance) ~ 0,
+        TRUE                  ~ right_distance
+      )
+    ) %>% 
+    hydrofabric3D::add_tmp_id(x = crosswalk_id, y = "cs_id") 
+  
+  # transect_lines2 <- extend_transects_by_distances(
+  #   transects    = transect_lines,
+  #   flowlines    = flowlines,
+  #   crosswalk_id = crosswalk_id,
+  #   cs_id        = "cs_id",
+  #   grouping_id  = grouping_id 
+  # ) 
+  
+  transect_lines <- extend_transects_sides(
+    transects    = transect_lines,
+    flowlines    = flowlines,
+    crosswalk_id = crosswalk_id,
+    cs_id        = "cs_id",
+    grouping_id  = grouping_id,
+    direction    = "any_by_specific_distances"
+  )
+  # mapview::mapview(transect_lines, color = "red") + 
+  #  mapview::mapview(transect_lines2, color = "green")
+  
+  
+  # Set the is_extended flag based on if either the left OR the right side were extended
+  transect_lines <-
+    transect_lines %>%
+    hydroloom::rename_geometry("geometry") %>%
+    dplyr::mutate(
+      is_extended = dplyr::case_when(
+        left_is_extended | right_is_extended ~ TRUE,
+        TRUE                                 ~ FALSE
+      )
+    ) 
+  
+  # shorten any transects that intersect multiple transects back to their original lengths
+  transect_lines  <- shorten_multi_intersecting_transects(x = transect_lines, 
+                                                          crosswalk_id = crosswalk_id)
+  
+  # shorten any transects that intersect multiple flowlines (or a flowline more than once) back to their original lengths
+  transect_lines  <- shorten_multi_flowline_intersecting_transects(x = transect_lines, 
+                                                                   flowlines = flowlines,
+                                                                   crosswalk_id = crosswalk_id)
+  
+  #   mapview::mapview(transect_lines, color = "red") +
+  #   mapview::mapview(transect_lines2, color = "green") +
+  #   mapview::mapview(  rm_multi_intersects(transect_lines), color = "green") +
+  #   mapview::mapview(  rm_multi_intersects(transect_lines2), color = "green") 
+  
+  # remove transects that intersect with OTHER TRANSECTS
+  transect_lines <-
+    transect_lines %>%
+    rm_multi_intersects()
+    # rm_self_intersections()
+    # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
+    # dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+    # dplyr::ungroup()
+  
+  # remove transects that intersect multiple flowlines
+  transect_lines <- 
+    transect_lines %>% 
+    rm_multiflowline_intersections(flowlines = flowlines) 
+    # renumber_cs_ids(crosswalk_id)
+    # transect_lines[lengths(sf::st_intersects(transect_lines, flowlines)) == 1, ] %>% 
+    # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
+    # dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+    # dplyr::ungroup()
+  
+  # # make sure correct length column
+  # transect_lines <- 
+  #   transect_lines %>% 
+  #   add_length_col("cs_lengthm")
+  
+  # check to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT,
+  # and raise an error if they're are missing hy_id/cs_ids
+  output_uids   <- get_unique_tmp_ids(transect_lines, x = crosswalk_id)
+  
+  # check all of the output_uids exist in the input UIDs
+  has_all_uids           <- all(output_uids %in% input_uids)
+  
+  # throw an error if NOT all crosswalk_id/cs_ids are the same in the input and output data
+  if (!has_all_uids) {
+    stop("Missing unique crosswalk_id/cs_id UIDs from input transects in the output transects")
+  }
+  
+  if (keep_lengths) {
+    transect_lines <- 
+      transect_lines %>% 
+      dplyr::left_join(
+        starting_lengths %>% 
+          dplyr::select(dplyr::any_of(crosswalk_id), cs_id, initial_length),
+        by = c(crosswalk_id, "cs_id")
+      ) %>% 
+      dplyr::select(
+        dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source", "initial_length")),
+        cs_lengthm, cs_measure,
+        left_distance, right_distance,
+        geometry
+      )
+  }
+  
+  # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
+  if (reindex_cs_ids) {
+    warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in the input 'transect_lines' and the output data's unique crosswalk_id/cs_ids")
+    transect_lines <- renumber_cs_ids(transect_lines, crosswalk_id = crosswalk_id)
+  }
+  
+  # remove added tmp_id column
+  transect_lines <-
+    transect_lines %>% 
+      dplyr::select(
+        dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source", "initial_length")),
+        cs_lengthm, cs_measure,
+        left_distance, right_distance,
+        geometry
+      )
   
   return(transect_lines)
 
@@ -616,6 +899,7 @@ get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extensio
   
   # Convert the polygon to a MULTILINESTRING geometry for checking extension distances
   mls <- sf_polygons_to_geos_multilinestrings(polygons, 200)
+  # mls <- sf_polygons_to_geos_multilinestrings(polygons, 100)
   
   message("Generating left side distances....") 
   left_distances <- calc_extension_distances(

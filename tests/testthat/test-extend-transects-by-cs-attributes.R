@@ -10,6 +10,119 @@ source("testing_utils.R")
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::extend_transects_by_cs_attributes() ----
 # -------------------------------------------------------------------
+testthat::test_that("check output transects", {
+
+  #  # transects_path <- "/Users/anguswatters/Desktop/lynker-spatial/01_transects/nextgen_06_transects.gpkg"
+  #  flowlines_path <- "/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg/nextgen_06.gpkg"
+  # 
+  #  # transects <- sf::read_sf(transects_path) %>%
+  #  #   hydrofabric3D::add_tmp_id("hy_id")
+  # 
+  #  flowlines <- sf::read_sf(flowlines_path, layer = "flowpaths") %>%
+  #    dplyr::rename(hy_id = id) %>%
+  #    hydrofabric3D::add_powerlaw_bankful_width(
+  #      total_drainage_area_sqkm_col = "tot_drainage_areasqkm",
+  #      min_bf_width = 50
+  #    ) %>%
+  #    dplyr::select(
+  #      hy_id,
+  #      lengthkm,
+  #      tot_drainage_areasqkm,
+  #      bf_width,
+  #      mainstem,
+  #      geometry = geom
+  #    )
+  # # test_id <- "wb-1010946"
+  # 
+  #  bb <-
+  #    flowlines %>%
+  #    dplyr::filter(hy_id %in% c("wb-1010908")) %>%
+  #    sf::st_buffer(500)  %>%
+  #    sf::st_bbox() %>%
+  #    sf::st_as_sfc() %>%
+  #    sf::st_as_sf()
+  # 
+  #  flines <-
+  #    flowlines %>%
+  #    sf::st_filter(bb)
+  #  flines
+  #  # mapview::mapview(flines) + bb
+  # 
+  #  # create transect lines
+  #  transects_no_int <- hydrofabric3D::cut_cross_sections(
+  #    net               = flines,                        # flowlines network
+  #    crosswalk_id      = "hy_id",                       # Unique feature ID
+  #    cs_widths         = flines$bf_width, # cross section width of each "id" linestring ("hy_id")
+  #    # cs_widths         = pmax(50, flines$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
+  #    num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+  #    smooth            = TRUE,                          # smooth lines
+  #    densify           = 5,                             # densify linestring points
+  #    rm_self_intersect = TRUE,                          # remove self intersecting transects
+  #    fix_braids        = FALSE,                         # whether to fix braided flowlines or not
+  #    add               = TRUE                           # whether to add back the original data
+  #  )
+  # #  
+  #  transects_with_int <- hydrofabric3D::cut_cross_sections(
+  #    net               = flines,                        # flowlines network
+  #    crosswalk_id      = "hy_id",                       # Unique feature ID
+  #    cs_widths         = flines$bf_width, # cross section width of each "id" linestring ("hy_id")
+  #    # cs_widths         = pmax(50, flines$bf_width * 11),     # cross section width of each "id" linestring ("hy_id")
+  #    num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+  #    smooth            = TRUE,                          # smooth lines
+  #    densify           = 5,                             # densify linestring points
+  #    rm_self_intersect = FALSE,                          # remove self intersecting transects
+  #    fix_braids        = FALSE,                         # whether to fix braided flowlines or not
+  #    add               = TRUE                           # whether to add back the original data
+  #  )
+  #  
+  #  
+  #  mapview::mapview(
+  #    flines, color = "dodgerblue"
+  #  ) +
+  #    mapview::mapview(
+  #      transects_no_int,
+  #      color = "red"
+  #    ) +
+  #    mapview::mapview(
+  #      transects_with_int,
+  #      color = "green"
+  #    )
+  #  
+  #  new_transects %>%
+  #    sf::st_drop_geometry() %>%
+  #    dplyr::group_by(hy_id) %>%
+  #    dplyr::slice_min(cs_measure)
+  # 
+  #  new_transects %>%
+  #    sf::st_drop_geometry() %>%
+  #    dplyr::group_by(hy_id) %>%
+  #    dplyr::slice_max(cs_measure) %>%
+  #    dplyr::ungroup() %>%
+  #    dplyr::arrange(cs_measure)
+  #    # dplyr::filter(cs_measure < 85)
+  # 
+  #  new_transects %>%
+  #    dplyr::filter(hy_id %in% c("wb-1010908"))
+  # 
+  #  mapview::mapview(
+  #    flines %>%
+  #      dplyr::filter(hy_id %in% c("wb-1010908"))
+  #  ) +
+  #    mapview::mapview(
+  #      new_transects %>%
+  #        dplyr::filter(hy_id %in% c("wb-1010908")),
+  #      color = "red"
+  #    ) +
+  #    mapview::mapview(
+  #      flines, color = "dodgerblue"
+  #    ) +
+  #    mapview::mapview(
+  #      new_transects,
+  #      color = "green"
+  #    )
+
+})
+
 testthat::test_that("extend_transects_by_cs_attributes() transects with 
                     valid_banks=FALSE 
                     AND 

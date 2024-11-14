@@ -14,7 +14,7 @@ cut_cross_sections(
   rm_self_intersect = TRUE,
   fix_braids = FALSE,
   braid_threshold = NULL,
-  braid_method = "comid",
+  braid_method = "crosswalk_id",
   precision = 1,
   add = FALSE
 )
@@ -40,7 +40,7 @@ cut_cross_sections(
 lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
 Default is NULL, which will attempt to fix all the braid transects in the data}
 
-\item{braid_method}{The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"}
+\item{braid_method}{The method to determine the geometries to cut. Options are "crosswalk_id", "component", or "neighbor". Default is "crosswalk_id"}
 
 \item{precision}{int, distance in meters. Only applicable when fix_braids = TRUE. This is the number of meters to approximate final cross section linestring length. Increasing this value will decrease runtime of cross section extension algorithm. Value you must be greater than 0. Default is 1}
 

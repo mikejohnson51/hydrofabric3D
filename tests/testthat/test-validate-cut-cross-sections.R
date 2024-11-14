@@ -45,7 +45,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                               # terminal_id =NULL, 
                                                               braid_threshold = NULL, 
                                                               # version = 2, 
-                                                              braid_method = "comid", 
+                                                              braid_method = "crosswalk_id", 
                                                               precision = 1, 
                                                               add = FALSE), 
                             NULL)
@@ -62,7 +62,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id =NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE)
                          )
@@ -79,7 +79,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id ="terminal_id", 
                                                            braid_threshold = NULL, 
                                                            # # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE), 
                          NULL)
@@ -96,7 +96,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id =NULL, 
                                                            braid_threshold = 10, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE), 
                          NULL)
@@ -113,7 +113,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id =NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = TRUE), 
                          NULL)
@@ -130,7 +130,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                                # terminal_id =NULL, 
                                                                braid_threshold = NULL, 
                                                                # version = 2, 
-                                                               braid_method = "comid", 
+                                                               braid_method = "crosswalk_id", 
                                                                precision = 1, 
                                                                add = FALSE)
                           )
@@ -148,7 +148,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                        # terminal_id =NULL, 
                                        braid_threshold = NULL, 
                                        # version = 2, 
-                                       braid_method = "comid", 
+                                       braid_method = "crosswalk_id", 
                                        precision = 1, 
                                        add = FALSE)
                          )
@@ -165,7 +165,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id =NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE),
                          NULL
@@ -183,7 +183,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # terminal_id =NULL, 
                                                             braid_threshold = NULL, 
                                                             # version = 2, 
-                                                            braid_method = "comid", 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
                          )
@@ -200,7 +200,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE)
                          )
@@ -217,7 +217,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE)
                          )
@@ -234,7 +234,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # terminal_id = NULL, 
                                                             braid_threshold = NULL, 
                                                             # version = 2, 
-                                                            braid_method = "comid", 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
                          )
@@ -251,7 +251,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE))
   
@@ -267,7 +267,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # terminal_id = NULL, 
                                                             braid_threshold = NULL, 
                                                             # version = 2, 
-                                                            braid_method = "comid", 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE))
   
@@ -283,7 +283,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE))
   
@@ -299,7 +299,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # terminal_id = 12, 
                                                             braid_threshold = NULL, 
                                                             # version = 2, 
-                                                            braid_method = "comid", 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
                          )
@@ -316,7 +316,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # terminal_id = TRUE, 
                                                             braid_threshold = NULL, 
                                                             # version = 2, 
-                                                            braid_method = "comid", 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
   )
@@ -349,7 +349,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = -1, 
                                                            add = FALSE))
   
@@ -365,7 +365,7 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
                                                            # version = 2, 
-                                                           braid_method = "comid", 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = "FALSE"
                                                            ))

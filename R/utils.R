@@ -1913,9 +1913,9 @@ validate_cut_cross_section_inputs <- function(net,
   # }
   
   # Check if 'braid_method' is one of the valid options
-  valid_methods <- c("comid", "component", "neighbor")
+  valid_methods <- c("crosswalk_id", "component", "neighbor")
   if (!braid_method %in% valid_methods) {
-    stop("'braid_method' must be one of 'comid', 'component', or 'neighbor'.")
+    stop("'braid_method' must be one of 'crosswalk_id', 'component', or 'neighbor'.")
   }
   
   # Check if 'precision' is numeric and greater than 0

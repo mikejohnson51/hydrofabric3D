@@ -25,7 +25,8 @@ extend_transects_sides(
 
 \item{grouping_id}{character, column name in both transects and flowlines that denotes which flowlines are grouped with which transects.}
 
-\item{direction}{character, whether to extend transects individually from left and right sides, or to strictly extend a transect if BOTH the left and right extension are valid. Valid inputs are be either "any" or "both".}
+\item{direction}{character, whether to extend transects individually from left and right sides, or to strictly extend a transect if BOTH the left and right extension are valid.
+Valid inputs are either "any", "any_by_specific_distances", or "both".}
 }
 \value{
 transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
