@@ -67,7 +67,8 @@ utils::globalVariables(
 #' @importFrom sf st_geometry st_as_sf
 #' @importFrom dplyr filter bind_rows mutate case_when
 #' @importFrom hydroloom rename_geometry 
-#' @export 
+#' @noRd
+#' @keywords internal
 extend_invalid_transect_sides <- function(
     transects_to_check, 
     net, 
@@ -403,7 +404,8 @@ extend_transects_sides <-   function(
 #' @importFrom hydroloom rename_geometry 
 #' @importFrom dplyr mutate relocate any_of
 #' @return transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
-#' @export
+#' @noRd
+#' @keywords internal
 extend_transects_any_side <- function(
     transects,
     flowlines,
@@ -735,7 +737,8 @@ extend_transects_any_side <- function(
 #' @importFrom hydroloom rename_geometry 
 #' @importFrom dplyr mutate relocate any_of
 #' @return transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
-#' @export
+#' @noRd
+#' @keywords internal
 extend_transects_any_side_by_specific_distances <- function(
     transects,
     flowlines,
@@ -1072,7 +1075,8 @@ extend_transects_any_side_by_specific_distances <- function(
 #' @importFrom hydroloom rename_geometry 
 #' @importFrom dplyr mutate relocate any_of
 #' @return transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
-#' @export
+#' @noRd
+#' @keywords internal
 extend_transects_both_sides <- function(
     transects,
     flowlines,
@@ -1373,7 +1377,8 @@ extend_transects_both_sides <- function(
 #' @importFrom hydroloom rename_geometry 
 #' @importFrom dplyr mutate relocate any_of
 #' @return transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
-#' @export
+#' @noRd
+#' @keywords internal
 extend_transects_both_sides2 <- function(
     transects,
     flowlines,
@@ -1684,7 +1689,8 @@ extend_transects_both_sides2 <- function(
 #' @importFrom nhdplusTools rename_geometry 
 #' @importFrom dplyr mutate relocate any_of
 #' @return transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
-#' @export
+#' @noRd
+#' @keywords internal
 extend_transects_by_distances <- function(
     transects,
     flowlines,
@@ -2251,11 +2257,11 @@ extend_transects_by_cs_attributes = function(
   # extended_transects2  <- extended_transects
   
   # shorten any transects that intersect multiple transects back to their original lengths
-  extended_transects  <- shorten_multi_intersecting_transects(x = extended_transects, 
+  extended_transects  <- shorten_multi_transect_intersecting_extended_transects(x = extended_transects, 
                                                               crosswalk_id = crosswalk_id)
   
   # shorten any transects that intersect multiple flowlines (or a flowline more than once) back to their original lengths
-  extended_transects  <- shorten_multi_flowline_intersecting_transects(x = extended_transects, 
+  extended_transects  <- shorten_multi_flowline_intersecting_extended_transects(x = extended_transects, 
                                                                        flowlines = flowlines,
                                                                        crosswalk_id = crosswalk_id)
   
@@ -2345,7 +2351,8 @@ extend_transects_by_cs_attributes = function(
 #' @return sf linestring dataframe containing the updates transects_to_extend (with a flag denoting if the geometry was extended by "scale" % or not)
 #' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
 #' @importFrom sf st_geometry st_as_sf st_length
-#' @export
+#' @noRd
+#' @keywords internal
 extend_transects_by_length <- function(
     transects_to_extend,
     length_vector,

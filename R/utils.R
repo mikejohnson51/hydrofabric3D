@@ -143,6 +143,7 @@ get_unique_tmp_ids <- function(df, x = "hy_id", y = "cs_id") {
 #' @param df sf dataframe, tibble, or dataframe
 #' @importFrom dplyr mutate n
 #' @return dataframe, sf dataframe, or tibble
+#' @export 
 add_hydrofabric_id <- function(df) {
   df <- 
     df %>% 
@@ -2238,6 +2239,8 @@ has_same_uids <- function(x, y, crosswalk_id = NULL) {
 #' @param data dataframe, tibble, sf dataframe, geometry
 #'
 #' @return logical, TRUE if data is an sf linestring / multilinestring
+#' @noRd
+#' @keywords internal
 is_sf_linestring <- function(data) {
   
   # check if the object inherits from sf class
@@ -2264,6 +2267,7 @@ is_sf_linestring <- function(data) {
 #' @importFrom sf st_coordinates st_drop_geometry
 #' @importFrom dplyr mutate 
 #' @return data.frame or tibble with added X and Y columns
+#' @export 
 pts_to_XY <- function(pts) {
   
   pts <- 
@@ -2286,7 +2290,8 @@ pts_to_XY <- function(pts) {
 #' @param n numeric, total number of iterations
 #' @importFrom utils txtProgressBar
 #' @return make_progress function, when called will increment the progress bar text
-#' @export
+#' @noRd
+#' @keywords internal
 #'
 #' @examples
 #' progress=TRUE

@@ -51,7 +51,8 @@ utils::globalVariables(
 #' @param relative_distance numeric vector of distances from 0 to length of CS
 #' @importFrom DescTools AUC
 #' @return numeric cross sectional area value, 0 if no area can be calculated
-#' @export
+#' @noRd
+#' @keywords internal
 find_cs_area <- function(depth, depth_array, relative_distance){
   
   # depth <- df$Z[1]

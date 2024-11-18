@@ -59,7 +59,8 @@ utils::globalVariables(
 #'
 #' @return dataframe of the input cross_section_pts with an added middle index column
 #' @importFrom dplyr group_by mutate n ungroup select
-#' @export
+#' @noRd
+#' @keywords internal
 add_middle_index_by_point_type <- function(
     cross_section_pts, 
     point_type = "bottom",
@@ -129,7 +130,8 @@ add_middle_index_by_point_type <- function(
 #'
 #' @return dataframe, the cross_section_pts dataframe with an added "angle_at" column
 #' @importFrom dplyr group_by mutate ungroup select
-#' @export
+#' @noRd
+#' @keywords internal
 add_angle_at_point_type <- function(cross_section_pts, 
                                     # point_type = "bottom",
                                     angle_at = "bottom",
@@ -168,7 +170,8 @@ add_angle_at_point_type <- function(cross_section_pts,
 #' @param middle_index numeric value, indicating middle index X, Y point to calculate the angle at (can be obtained from add_middle_index_by_point_type())
 #'
 #' @return numeric angle in degrees between the middle_index point and the maximum Y value XY points to the left and right of middle_index point
-#' @export
+#' @noRd
+#' @keywords internal
 angle_at_index <- function(x, y, middle_index = NULL) {
   
   # get the number of points

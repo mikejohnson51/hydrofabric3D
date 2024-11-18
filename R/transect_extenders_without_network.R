@@ -418,7 +418,7 @@ adjust_transect_lengths <- function(
 #' 
 #' @importFrom sf st_intersects st_geometry
 #' @return sf dataframe of transects with any transects that intersect multiple other transects being shortened by -extension_distance
-shorten_multi_intersecting_transects <- function(x, crosswalk_id = NULL) {
+shorten_multi_transect_intersecting_extended_transects <- function(x, crosswalk_id = NULL) {
   
   # x = extended_transects
   # crosswalk_id = crosswalk_id
@@ -605,7 +605,7 @@ shorten_multi_intersecting_transects <- function(x, crosswalk_id = NULL) {
 #' 
 #' @importFrom sf st_intersects st_geometry
 #' @return sf dataframe of transects with any transects that intersect multiple other transects being shortened by -extension_distance
-shorten_multi_flowline_intersecting_transects <- function(x, 
+shorten_multi_flowline_intersecting_extended_transects <- function(x, 
                                                           flowlines, 
                                                           crosswalk_id = NULL) {
   # x <-

@@ -442,11 +442,11 @@ extend_transects_to_polygons <- function(
     ) 
   
   # shorten any transects that intersect multiple transects back to their original lengths
-  transect_lines  <- shorten_multi_intersecting_transects(x = transect_lines, 
+  transect_lines  <- shorten_multi_transect_intersecting_extended_transects(x = transect_lines, 
                                                           crosswalk_id = crosswalk_id)
   
   # shorten any transects that intersect multiple flowlines (or a flowline more than once) back to their original lengths
-  transect_lines  <- shorten_multi_flowline_intersecting_transects(x = transect_lines, 
+  transect_lines  <- shorten_multi_flowline_intersecting_extended_transects(x = transect_lines, 
                                                                    flowlines = flowlines,
                                                                    crosswalk_id = crosswalk_id)
   

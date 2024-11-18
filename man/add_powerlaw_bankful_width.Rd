@@ -7,7 +7,11 @@
 add_powerlaw_bankful_width(df, total_drainage_area_sqkm_col, min_bf_width)
 }
 \arguments{
-\item{total_drainage_area_sqkm_col}{}
+\item{df}{dataframe}
+
+\item{total_drainage_area_sqkm_col}{character, column with the total downstrream drainage area in square kilometers (numeric column)}
+
+\item{min_bf_width}{numeric, minimum bankful width value}
 }
 \value{
 character, column with the total downstrream drainage area in square kilometers (numeric column)

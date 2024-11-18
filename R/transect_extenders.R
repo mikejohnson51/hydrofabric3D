@@ -62,7 +62,8 @@ utils::globalVariables(
 #' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
 #' @importFrom sf st_geometry st_as_sf
 #' @importFrom dplyr filter bind_rows
-#' @export
+#' @noRd
+#' @keywords internal
 extend_invalid_transects <- function(
     transects_to_check, 
     net, 

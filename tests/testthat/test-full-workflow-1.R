@@ -2,8 +2,12 @@ library(testthat)
 library(dplyr)
 library(sf)
 # library(hydrofabric3D)
+
+# source("tests/testthat/testing_utils.R")
+# devtools::load_all()
 # devtools::load_all()
 
+# 
 # --------------------------------------------------------------------------------------------------------------------
 # ---- Testing a full workflow ----
 # generating transects/cross section points from hydrological network (flowlines)
@@ -390,12 +394,11 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   
   flowlines <-
     flowlines %>%
-    dplyr::mutate(
-      bf_width        = hydrofabric3D::calc_powerlaw_bankful_width(tot_drainage_areasqkm),
-      # bf_width        = hydrofabric3D::calc_powerlaw_bankful_width(tot_drainage_areasqkm),
-      # bf_width        = pmax(50, bf_width * 2)
-      bf_width        = pmax(50, bf_width * 11)
-    ) %>%
+    hydrofabric3D::add_powerlaw_bankful_width("tot_drainage_areasqkm", 50) %>%
+    # dplyr::mutate(
+    #   bf_width        = hydrofabric3D:::calc_powerlaw_bankful_width(tot_drainage_areasqkm),
+    #   bf_width        = pmax(50, bf_width * 11)
+    # ) %>%
      dplyr::select(
       hy_id = id,
       # tot_drainage_areasqkm,

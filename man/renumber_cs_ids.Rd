@@ -7,7 +7,9 @@
 renumber_cs_ids(df, crosswalk_id = NULL)
 }
 \arguments{
-\item{df}{crosswalk_id character, name of primary ID column}
+\item{df}{A dataframe containing crosswalk_id and cs_id columns.}
+
+\item{crosswalk_id}{crosswalk_id character, name of primary ID column}
 }
 \value{
 The input dataframe with renumbered cs_id values.

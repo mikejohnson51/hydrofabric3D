@@ -49,9 +49,10 @@ utils::globalVariables(
 )
 
 #' Calculates the powerlaw derived Bankful width given total drainage area (square kilometers)
-#' @param total_drainage_area_sqkm 
+#' @param total_drainage_area_sqkm numeric, total downstream drainage area in square kilometers
 #' @return numeric, bankful width estimate
-#' @export
+#' @noRd
+#' @keywords internal
 calc_powerlaw_bankful_width <- function(total_drainage_area_sqkm) {
   
   # Check if 'total_drainage_area_sqkm' is numeric or a numeric vector
@@ -64,7 +65,9 @@ calc_powerlaw_bankful_width <- function(total_drainage_area_sqkm) {
 }
 
 #' Add powerlaw_bankful_width column
-#' @param total_drainage_area_sqkm_col 
+#' @param df dataframe
+#' @param total_drainage_area_sqkm_col character, column with the total downstrream drainage area in square kilometers (numeric column)
+#' @param min_bf_width numeric, minimum bankful width value
 #' @return character, column with the total downstrream drainage area in square kilometers (numeric column)
 #' @export
 add_powerlaw_bankful_width <- function(df, total_drainage_area_sqkm_col, min_bf_width) {

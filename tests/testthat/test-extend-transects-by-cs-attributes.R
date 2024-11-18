@@ -10,7 +10,7 @@ source("testing_utils.R")
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::extend_transects_by_cs_attributes() ----
 # -------------------------------------------------------------------
-testthat::test_that("check output transects", {
+testthat::test_that("an area to test out tests", {
 
   #  # transects_path <- "/Users/anguswatters/Desktop/lynker-spatial/01_transects/nextgen_06_transects.gpkg"
   #  flowlines_path <- "/Users/anguswatters/Desktop/lynker-spatial/v20.1/gpkg/nextgen_06.gpkg"

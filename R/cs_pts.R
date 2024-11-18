@@ -336,6 +336,8 @@ extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
 #'
 #' @return numeric vector of values from SpatRaster
 #' @importFrom terra extract project vect crs
+#' @noRd
+#' @keywords internal
 extract_pt_val <- function(rast, pts) {
   return(
     terra::extract(
@@ -667,7 +669,8 @@ classify_points <- function(
 #' @param depths numeric vector
 #' @importFrom dplyr between
 #' @return character vector
-#' @export
+#' @noRd
+#' @keywords internal
 classify_banks_and_bottoms <- function(
     num_of_pts, 
     pt_ids, 
@@ -700,7 +703,8 @@ classify_banks_and_bottoms <- function(
 #' @param window 
 #'
 #' @return numeric vector
-#' @export
+#' @noRd
+#' @keywords internal
 smooth_depths <- function(
     depths,
     num_of_pts = NULL,
@@ -732,7 +736,8 @@ smooth_depths <- function(
 #' @param point_types 
 #'
 #' @return numeric vector
-#' @export
+#' @noRd
+#' @keywords internal
 use_smoothed_depths <- function(
     start_depths, 
     smoothed_depths, 
@@ -756,7 +761,8 @@ use_smoothed_depths <- function(
 #' @param point_types 
 #'
 #' @return numeric vector of length 3 with the index of the left anchor, middle point, and right anchor (i.e. c(2, 5, 9) -> c(left_anchor, middle_bottom, right_anchor))
-#' @export
+#' @noRd
+#' @keywords internal
 find_anchor_pts <- function(depths, 
                             num_of_pts,
                             cs_length, 
@@ -831,7 +837,8 @@ find_anchor_pts <- function(depths,
 #' @param depths numeric vector
 #'
 #' @return character vector
-#' @export
+#' @noRd
+#' @keywords internal
 classify_derivatives <- function(depths) {
   
   classify_derivs <- function(slope, second_deriv) {
@@ -873,7 +880,8 @@ classify_derivatives <- function(depths) {
 #' @param point_types character vector 
 #'
 #' @return character vector
-#' @export
+#' @noRd
+#' @keywords internal
 clean_point_types <- function(point_types) {
   
   # point_types <- classified_pts$deriv_type
@@ -1141,7 +1149,8 @@ clean_point_types <- function(point_types) {
 #' @param point_types character vector 
 #'
 #' @return character vector
-#' @export
+#' @noRd
+#' @keywords internal
 set_channel_anchors <- function(point_types) {
 
   # point_types <- cs_pts2$deriv_type
@@ -1305,7 +1314,8 @@ set_channel_anchors <- function(point_types) {
 #' @param R numeric, right pointer
 #'
 #' @return character vector
-#' @export
+#' @noRd
+#' @keywords internal
 set_bank_anchors <- function(
     depths,
     point_types,
@@ -1354,7 +1364,8 @@ set_bank_anchors <- function(
 #' @param R numeric, right pointer
 #'
 #' @return character vector
-#' @export
+#' @noRd
+#' @keywords internal
 set_bank_anchors2 <- function(
     depths,
     point_types,
@@ -1403,7 +1414,8 @@ set_bank_anchors2 <- function(
 #' @param point_types character vector 
 #'
 #' @return logical, TRUE if points are left_bank --> channel --> right_bank order
-#' @export
+#' @noRd
+#' @keywords internal
 is_bank_channel_bank_pattern <- function(point_types) {
   
   # point_types <- c("left_bank", "left_bank", "channel", "channel", "channel", "right_bank", "right_bank")
@@ -1439,7 +1451,8 @@ is_bank_channel_bank_pattern <- function(point_types) {
 #' @param point_types character vector
 #'
 #' @return character vector
-#' @export
+#' @noRd
+#' @keywords internal
 set_missing_bottom <- function(depths, point_types) {
   
   # depths <- c(10, 8, 5, 4, 5, 7, 12)
@@ -1484,7 +1497,8 @@ set_missing_bottom <- function(depths, point_types) {
 #' @param point_types character vector 
 #'
 #' @return character
-#' @export
+#' @noRd
+#' @keywords internal
 set_left_bank <- function(point_types) {
   
   # point_types <- c("left_bank", "channel", "channel", "left_bank", "channel", "channel", "bottom", "channel", "right_bank")
@@ -1531,7 +1545,8 @@ set_left_bank <- function(point_types) {
 #' @param point_types character vector 
 #'
 #' @return character
-#' @export
+#' @noRd
+#' @keywords internal
 set_right_bank <- function(point_types) {
   
   # point_types <- c("left_bank", "channel", "channel", "left_bank", "channel", "channel", "bottom", "channel", "right_bank", "channel",  "right_bank")
@@ -1582,7 +1597,8 @@ set_right_bank <- function(point_types) {
 #' @param point_types character vector 
 #'
 #' @return character
-#' @export
+#' @noRd
+#' @keywords internal
 set_channel_surrounded_by_bottom <- function(
     depths,
     point_types
@@ -1678,158 +1694,6 @@ set_channel_surrounded_by_bottom <- function(
 
 # -----------------------------------------------------------------------------------------
 
-# classify_pts_tmp = function(
-#     cs_pts, 
-#     crosswalk_id = NULL,
-#     pct_of_length_for_relief = 0.01
-#     ){
-  
-#   . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
-#     count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
-
-#     classified_pts = 
-#       cs_pts %>%
-#       dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-#       # dplyr::group_by(hy_id, cs_id) %>%
-#       dplyr::mutate(
-#           third          = calculate_third(dplyr::n()),
-#           mean_dist      = calculate_mean_dist(relative_distance),
-#           in_channel_pts = calculate_in_channel_pts(cs_lengthm[1], mean_dist),
-#           b1             = calculate_b1(in_channel_pts),
-#           b2             = calculate_b2(in_channel_pts, b1),
-#           low_pt         = find_low_pt(Z, third[1]),
-#           class          = classify_initial(Z, low_pt, pt_id, third[1]),
-#           # Z2             = smooth_depth(Z, class)
-#           Z2             = c(Z[1], zoo::rollmean(Z, 3), Z[dplyr::n()]),
-#           Z              = ifelse(class == "bottom", Z, Z2),
-#           min_bottom     = find_min_bottom(class),
-#           mid_bottom     = find_mid_bottom(class),
-#           max_bottom     = find_max_bottom(class),
-#           L1             = calculate_L1(mid_bottom, b1),
-#           L2             = calculate_L2(mid_bottom, b2),
-#           R1             = calculate_R1(mid_bottom, b2, dplyr::n()),
-#           R2             = calculate_R2(mid_bottom, b1, dplyr::n()),
-#           anchor         = determine_anchor(Z, L1, R2),
-#           L              = adjust_L(third, anchor, L1, L2),
-#           R              = adjust_R(third, anchor, R1, R2),
-#           count_left     = calculate_count_left(min_bottom, L),
-#           count_right    = calculate_count_right(R, max_bottom),
-#           # boundaries     = adjust_boundaries(L, count_left, count_right, R)
-#           L              = ifelse(count_left == 0, L - count_right, L),
-#           R              = ifelse(count_right == 0, R + count_left, R),
-#           class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
-#           class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
-#           class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)
-#           # L              = boundaries$L,
-#           # R              = boundaries$R,
-#           # class          = final_classify(pt_id, L[1], R[1], class)
-#       ) 
-# }
-
-
-# calculate_third <- function(n) {
-#   ceiling(n / 3)
-# }
-
-# calculate_mean_dist <- function(relative_distance) {
-#   mean(diff(relative_distance))
-# }
-
-# calculate_in_channel_pts <- function(cs_lengthm, mean_dist) {
-#   ceiling(cs_lengthm / mean_dist)
-# }
-
-# calculate_b1 <- function(in_channel_pts) {
-#   ceiling(in_channel_pts / 2)
-# }
-
-# calculate_b2 <- function(in_channel_pts, b1) {
-#   in_channel_pts - b1
-# }
-
-# find_low_pt <- function(Z, third) {
-#   min(Z[third:(2*third - 1)])
-# }
-
-# classify_initial <- function(Z, low_pt, pt_id, third) {
-#   ifelse(Z <= low_pt & dplyr::between(pt_id, third, (2*third - 1)), 
-#          "bottom", 
-#          "bank")
-# }
-
-# smooth_depth <- function(Z, class) {
-#   if (class == "bottom") {
-#     Z
-#   } else {
-#     c(Z[1], zoo::rollmean(Z, 3), Z[dplyr::n()])
-#   }
-# }
-
-# find_min_bottom <- function(class) {
-#   which(class == "bottom")[1]
-# }
-
-# find_mid_bottom <- function(class) {
-#   which(class == "bottom")[ceiling(length(which(class == "bottom"))/2)]
-# }
-
-# find_max_bottom <- function(class) {
-#   which(class == "bottom")[length(which(class == "bottom"))]
-# }
-
-# calculate_L1 <- function(mid_bottom, b1) {
-#   pmax(1, mid_bottom - b1)
-# }
-
-# calculate_L2 <- function(mid_bottom, b2) {
-#   pmax(1, mid_bottom - b2)
-# }
-
-# calculate_R1 <- function(mid_bottom, b2, n) {
-#   pmin(mid_bottom + b2, n)
-# }
-
-# calculate_R2 <- function(mid_bottom, b1, n) {
-#   pmin(mid_bottom + b1, n)
-# }
-
-# determine_anchor <- function(Z, L1, R2) {
-#   ifelse(Z[R2] < Z[L1], 2, 1)
-# }
-
-# adjust_L <- function(third, anchor, L1, L2) {
-#   pmax(third, ifelse(anchor == 1, L1, L2))
-# }
-
-# adjust_R <- function(third, anchor, R1, R2) {
-#   pmin(2*third, ifelse(anchor == 1, R1, R2))
-# }
-
-# calculate_count_left <- function(min_bottom, L) {
-#   min_bottom - L
-# }
-
-# calculate_count_right <- function(R, max_bottom) {
-#   R - max_bottom
-# }
-
-# # adjjust the boundaries if there are no points to the left or right
-# adjust_boundaries <- function(L, count_left, count_right, R) {
-#   L <- ifelse(count_left == 0, L - count_right, L)
-#   R <- ifelse(count_right == 0, R + count_left, R)
-#   return(list(L = L, R = R))
-# }
-
-# # final classification of points as "channel", "left_bank", or "right_bank"
-# final_classify <- function(pt_id, L, R, class) {
-#   class <- ifelse(dplyr::between(pt_id, L, R) & class != 'bottom', "channel", class)
-#   class <- ifelse(class == 'bank' & pt_id <= L, "left_bank", class)
-#   class <- ifelse(class == 'bank' & pt_id >= R, "right_bank", class)
-#   return(class)
-# }
-
-# -----------------------------------------------------------------------------------------
-
 # -----------------------------------------------------------------------------------------
 # ---- OLD FUNCTION VERSIONS ----
 # TODO: DELETE
@@ -1844,7 +1708,8 @@ set_channel_surrounded_by_bottom <- function(
 #' @importFrom dplyr mutate group_by ungroup n select everything relocate last_col bind_rows filter
 #' @importFrom terra linearUnits res rast extract project vect crs 
 #' @importFrom sf st_line_sample st_set_geometry st_cast
-#' @export
+#' @noRd
+#' @keywords internal
 cross_section_pts2 = function(
     cs             = NULL,
     points_per_cs  = NULL,
@@ -1902,6 +1767,8 @@ cross_section_pts2 = function(
 #' the function calculates it based on the length of cross-sections and the resolution of the DEM.
 #' @importFrom terra linearUnits rast res
 #' @return An updated sf dataframe with the 'points_per_cs' column added.
+#' @noRd
+#' @keywords internal
 add_points_per_cs2 <- function(cs,
                                points_per_cs  = NULL,
                                min_pts_per_cs = 10,
@@ -1954,6 +1821,8 @@ add_points_per_cs2 <- function(cs,
 #' @importFrom sf st_set_geometry st_line_sample st_cast
 #' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
+#' @noRd
+#' @keywords internal
 extract_dem_values2 <- function(cs, dem) {
   
   extract_pt_val <- function(rast, pts) {
@@ -1990,6 +1859,8 @@ extract_dem_values2 <- function(cs, dem) {
 #' @importFrom sf st_set_geometry st_line_sample st_cast
 #' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
+#' @noRd
+#' @keywords internal
 extract_dem_values3 <- function(cs, crosswalk_id = NULL, dem = NULL) {
   
   extract_pt_val <- function(rast, pts) {
@@ -2219,6 +2090,8 @@ classify_points2 <- function(
 #' @return sf object
 #' @importFrom dplyr filter group_by mutate ungroup select between n left_join
 #' @importFrom zoo rollmean
+#' @noRd
+#' @keywords internal
 classify_points3 <- function(
     cs_pts, 
     pct_of_length_for_relief = 0.01

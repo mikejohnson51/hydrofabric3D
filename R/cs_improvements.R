@@ -1536,7 +1536,7 @@ get_improved_cs_pts = function(
 #' numbered from 1 to the total number of cross sections on the crosswalk_id.
 #'
 #' @param df A dataframe containing crosswalk_id and cs_id columns.
-#' @param df crosswalk_id character, name of primary ID column
+#' @param crosswalk_id crosswalk_id character, name of primary ID column
 #' @return The input dataframe with renumbered cs_id values.
 #' @importFrom dplyr select group_by slice ungroup mutate n left_join rename relocate
 #' @importFrom sf st_drop_geometry

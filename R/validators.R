@@ -121,6 +121,11 @@ validate_transects_has_crs <- function(transects) {
   
 }
 
+#' Validate Transects
+#' @param transects sf object, transects
+#' @param crosswalk_id character, column name of the crosswalk id
+#' @return logical, TRUE if all validations pass, FALSE otherwise
+#' @export
 validate_transects <- function(transects, 
                                crosswalk_id = NULL
 ) {
@@ -208,7 +213,7 @@ validate_transects_flowline_intersections <- function(transects, flowlines) {
   
   # flowlines <- flines
   return (
-    nrow(transects) == nrow(hydrofabric3D:::rm_multiflowline_intersections(transects, flowlines)) 
+    nrow(transects) == nrow(rm_multiflowline_intersections(transects, flowlines)) 
   )
 }
 
@@ -221,6 +226,13 @@ validate_same_crs <- function(x, y) {
   
 }
 
+#' Validate Transects Against Flowlines
+#' Ensure all transects are valid relative to a set of flowlines
+#' @param transects sf object, transects
+#' @param flowlines sf object, flowlines
+#' @param crosswalk_id character, column name of the crosswalk id
+#' @return logical, TRUE if all validations pass, FALSE otherwise
+#' @export
 validate_transects_against_flowlines <- function(transects, 
                                                  flowlines,  
                                                  crosswalk_id = NULL
@@ -232,7 +244,7 @@ validate_transects_against_flowlines <- function(transects,
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_source", "cs_measure", "cs_lengthm", "geometry")
   
   # validate dataframe has all correct columns  
-  has_all_valid_cols         <- hydrofabric3D:::validate_df(
+  has_all_valid_cols         <- validate_df(
     x = transects, 
     cols = REQUIRED_COLS,
     obj_name = "transects"
@@ -374,6 +386,11 @@ validate_cs_pts_point_types <- function(cs_pts) {
   
 }
 
+
+#' Validate Cross Sections Points
+#' Ensure all cross section points are valid
+#' @param cs_pts sf object, cross section points
+#' @param crosswalk_id character, column name of the crosswalk id
 validate_cs_pts <- function(
     cs_pts,  
     crosswalk_id = NULL
@@ -388,7 +405,7 @@ validate_cs_pts <- function(
   )
   
   # validate dataframe has all correct columns  
-  has_all_valid_cols         <- hydrofabric3D:::validate_df(
+  has_all_valid_cols         <- validate_df(
     x = cs_pts, 
     cols = REQUIRED_COLS,
     obj_name = "cs_pts"
@@ -494,6 +511,13 @@ validate_cs_pts_length_against_transects <- function(cs_pts, transects, crosswal
   
 }
 
+#' Validate Cross Section Points Against Transects
+#' Ensure all cross section points are valid relative to a set of transects
+#' @param cs_pts sf object, cross section points
+#' @param transects sf object, transects
+#' @param crosswalk_id character, column name of the crosswalk id
+#' @return logical, TRUE if all validations pass, FALSE otherwise
+#' 
 validate_cs_pts_against_transects <- function(
     cs_pts,  
     transects, 
