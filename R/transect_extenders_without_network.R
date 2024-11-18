@@ -71,6 +71,7 @@ extend_by_percent <- function(
   # crosswalk_id = "hy_id"
   # pct = 0.5
   # length_col = "cs_lengthm"
+  
   # ---------------------------
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
@@ -201,11 +202,6 @@ extend_by_length <- function(
     length_vector,
     length_col = NULL
 ) {
-  
-  # x = update_transect_lines
-  # crosswalk_id  = crosswalk_id
-  # length_vector = update_transect_lines$distance_to_extend
-  # length_col = NULL
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {

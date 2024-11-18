@@ -77,14 +77,7 @@ extend_invalid_transects <- function(
   # net                 = net
   # scale               = scale
   # verbose             = verbose
-  
-  # transects_to_check  = transects
-  # net                 = net
-  # crosswalk_id        = crosswalk_id
-  # scale               = scale
-  # direction           = "both"
-  # verbose             = verbose
-  
+
   # ----------------------------------------
   # ----------------------------------------
   

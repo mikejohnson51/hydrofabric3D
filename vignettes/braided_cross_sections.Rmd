@@ -175,12 +175,13 @@ flood_plain_sections = 5
 
 net <-
   net %>%
+  # linestring %>% 
   # https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2013WR013916
   dplyr::mutate(
     bf_width = exp(0.700	 + 0.365* log(totdasqkm)),
     cs_width = flood_plain_sections * bf_width
     ) %>% 
-  dplyr::select(comid, divergence,bf_width, cs_width, lengthkm, totdasqkm, fromnode, tonode, terminalpa)
+  dplyr::select(comid, divergence, bf_width, cs_width, lengthkm, totdasqkm, fromnode, tonode, terminalpa)
 
 # set geometry name of network to "geometry"
 net <- nhdplusTools::rename_geometry(net, "geometry")
