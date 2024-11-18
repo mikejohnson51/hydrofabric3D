@@ -65,13 +65,14 @@ plot(transects$geometry)
 
 ```{r}
 (pts = cross_section_pts(transects, 
+                         crosswalk_id = "comid",
                         dem = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt"))
 ```
 
 ## Classify Cross section points
 
 ```{r}
-(classified_pts = classify_points(pts))
+(classified_pts = classify_points(pts, crosswalk_id = "comid"))
 ```
 
 ## Explore!
@@ -79,7 +80,7 @@ plot(transects$geometry)
 ```{r}
 library(ggplot2)
 
-ggplot(data = filter(classified_pts, hy_id == 101) ) + 
+ggplot(data = filter(classified_pts, comid == 101) ) + 
   geom_line(aes(x = relative_distance, y = Z)) + 
   geom_point(aes(x = relative_distance, y = Z, color = class)) + 
   facet_wrap(~cs_id, scales = "free") + 
@@ -95,8 +96,10 @@ system.time({
   cut_cross_sections(crosswalk_id = "comid", 
                      cs_widths = pmax(50, net$bf_width * 7),
                      num = 10) %>% 
-  cross_section_pts(dem = '/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt') %>% 
-  classify_points()
+  cross_section_pts(
+    crosswalk_id = "comid",
+    dem = '/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/1/TIFF/USGS_Seamless_DEM_1.vrt') %>% 
+  classify_points(crosswalk_id = "comid")
 })
 ```
 
