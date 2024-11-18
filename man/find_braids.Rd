@@ -2,27 +2,16 @@
 % Please edit documentation in R/braids.R
 \name{find_braids}
 \alias{find_braids}
-\title{Find braids and add to a dataframe/sf dataframe}
+\title{Find braided sections of a network and return the unique crosswalk_ids for each idenfied braid}
 \usage{
-find_braids(
-  network,
-  terminal_id = NULL,
-  add = FALSE,
-  nested = TRUE,
-  version = 2,
-  verbose = FALSE
-)
+find_braids(network, crosswalk_id = NULL, nested = TRUE, verbose = FALSE)
 }
 \arguments{
 \item{network}{The network object representing the river network.}
 
-\item{terminal_id}{character, column name containing a unique identifier, delineating separate networks in the 'network' dataset. Default is NULL which will use 'find_connected_components()' and determine the connected components in the graph to try and create a 'component_id' column in 'network'}
-
-\item{add}{Logical indicating whether to add braid information to the original network data.}
+\item{crosswalk_id}{unique ID column name}
 
 \item{nested}{Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)}
-
-\item{version}{integer, version number of multibraid classification and grouping algorithm, must be either 1 or 2. Default is 2.}
 
 \item{verbose}{Logical indicating whether to display verbose messages during the braid detection process.}
 }
@@ -44,26 +33,14 @@ net <- nhdplusTools::navigate_network(
 net <- dplyr::select(net, comid, divergence, totdasqkm, fromnode, tonode, terminalpa)
 
 # get a dataframe of COMIDs and braid IDs
-braids <- find_braids(network = net, add = FALSE)
+braids <- find_braids(network = net, crosswalk_id = "comid")
 
-# add braid_id column to original dataset
-braid_df = find_braids(network   = net,
-                       add       = TRUE,
-                       nested    = TRUE,
-                       )
 
-# returnal original data with each braid_id represented
+# returns original data with each braid_id represented
 # by its individual COMIDs (may contain duplicate COMIDs)
 nested_braids = find_braids(network   = net,
-                       add       = TRUE,
+                       crosswalk_id = "comid",
                        nested    = FALSE
-                       )
-# if a column exists that uniquely identifies different contiguous networks,
-# the column name can be given to 'terminal_id' to delianiate seperate networks within 'net'
-sep_braids = find_braids(network     = net,
-                         terminal_id = "terminalpa",
-                         add         = TRUE,
-                         nested      = FALSE
                        )
 }
 }

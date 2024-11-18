@@ -4,10 +4,16 @@
 \alias{calc_validity_scores}
 \title{Calculates a validity score column based on valid_banks and has_relief columns in a set of cross section points}
 \usage{
-calc_validity_scores(cs_to_validate, validity_col_name = "validity_score")
+calc_validity_scores(
+  cs_to_validate,
+  crosswalk_id = NULL,
+  validity_col_name = "validity_score"
+)
 }
 \arguments{
 \item{cs_to_validate}{dataframe}
+
+\item{crosswalk_id}{character, ID column}
 
 \item{validity_col_name}{name of the output validity score column}
 }

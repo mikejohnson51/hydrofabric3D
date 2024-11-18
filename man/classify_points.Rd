@@ -2,12 +2,15 @@
 % Please edit documentation in R/cs_pts.R
 \name{classify_points}
 \alias{classify_points}
-\title{Classify Cross Section Points}
+\title{Classify Cross Section Points (version 2)
+Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points}
 \usage{
-classify_points(cs_pts, pct_of_length_for_relief = 0.01)
+classify_points(cs_pts, crosswalk_id = NULL, pct_of_length_for_relief = 0.01)
 }
 \arguments{
 \item{cs_pts}{CS points, output of hydrofabric3D::cross_section_pts()}
+
+\item{crosswalk_id}{character, ID column in cs_pts}
 
 \item{pct_of_length_for_relief}{numeric, percent of cross section length (cs_lengthm) to use as the
 threshold depth for classifying whether a cross section has "relief". If a cross section has at least X\% of its length in depth,
@@ -18,5 +21,6 @@ Default is 0.01 (1\% of the cross sections length).}
 sf object
 }
 \description{
-Classify Cross Section Points
+Classify Cross Section Points (version 2)
+Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points
 }

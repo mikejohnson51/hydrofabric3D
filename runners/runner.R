@@ -12,7 +12,7 @@ library(hydrofabric)
     ) 
 
   cs = cut_cross_sections(net = out,
-                          id = "comid", 
+                          crosswalk_id = "comid", 
                           cs_widths = 2* out$average_tw,
                           num = ceiling(out$dist_m / 250),
                           smooth = TRUE,

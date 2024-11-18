@@ -6,17 +6,15 @@
 \usage{
 cut_cross_sections(
   net,
-  id = NULL,
+  crosswalk_id = NULL,
   cs_widths = 100,
   num = 10,
   smooth = TRUE,
   densify = 2,
   rm_self_intersect = TRUE,
   fix_braids = FALSE,
-  terminal_id = NULL,
   braid_threshold = NULL,
-  version = 2,
-  braid_method = "comid",
+  braid_method = "crosswalk_id",
   precision = 1,
   add = FALSE
 )
@@ -24,7 +22,7 @@ cut_cross_sections(
 \arguments{
 \item{net}{Hydrographic LINESTRING Network}
 
-\item{id}{Unique Identifier in net}
+\item{crosswalk_id}{Unique Identifier in net}
 
 \item{cs_widths}{numeric, Bankfull Widths (length of cross sections for each net element)}
 
@@ -38,15 +36,11 @@ cut_cross_sections(
 
 \item{fix_braids}{logical, whether to fix braided transect lines or not. If TRUE, linestrings that are part of a braided network are augmented. Default is FALSE.}
 
-\item{terminal_id}{character, column name containing a unique identifier, delineating separate networks in the 'net' dataset. Default is NULL which will best effort determine the connected components in the network to try and create a 'component_id' column in 'net'}
-
 \item{braid_threshold}{numeric value, value of the total length of all flowlines in a braid. Only braids with total flowline
 lengths less than or equal to the threshold will be considered by function (i.e. determines that maximum braid size that fix_braid_transects() should operate on).
 Default is NULL, which will attempt to fix all the braid transects in the data}
 
-\item{version}{integer, version number of braid algorithm to use, either 1 or 2. Default is 2.}
-
-\item{braid_method}{The method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid"}
+\item{braid_method}{The method to determine the geometries to cut. Options are "crosswalk_id", "component", or "neighbor". Default is "crosswalk_id"}
 
 \item{precision}{int, distance in meters. Only applicable when fix_braids = TRUE. This is the number of meters to approximate final cross section linestring length. Increasing this value will decrease runtime of cross section extension algorithm. Value you must be greater than 0. Default is 1}
 

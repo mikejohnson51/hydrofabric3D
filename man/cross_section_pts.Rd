@@ -6,6 +6,7 @@
 \usage{
 cross_section_pts(
   cs = NULL,
+  crosswalk_id = NULL,
   points_per_cs = NULL,
   min_pts_per_cs = 10,
   dem =
@@ -14,6 +15,8 @@ cross_section_pts(
 }
 \arguments{
 \item{cs}{character, Hydrographic LINESTRING Network file path}
+
+\item{crosswalk_id}{character, ID column}
 
 \item{points_per_cs}{the desired number of points per CS. If NULL, then approximately 1 per grid cell resultion of DEM is selected.}
 

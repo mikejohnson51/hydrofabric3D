@@ -1,6 +1,6 @@
 Package: hydrofabric3D
 Title: hydrofabric3D
-Version: 0.0.96
+Version: 0.1.51
 Authors@R: c(person("Mike", "Johnson", role = c("aut", "cre"), email = "mikecp11@gmail.com"),
              person("Angus", "Watters",  role = "aut"),
              person("Arash", "Modaresi",  role = "ctb"),
@@ -22,12 +22,16 @@ Imports:
   smoothr,
   zoo,
   nhdplusTools,
+  hydroloom,
   fastmap,
+  DescTools,
+  purrr,
   ggplot2,
   rlang,
   lwgeom,
   rmapshaper,
-  AHGestimation
+  AHGestimation,
+  methods
 Remotes:
   mikejohnson51/AHGestimation
 Depends: 

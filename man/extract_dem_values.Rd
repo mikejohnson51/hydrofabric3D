@@ -4,10 +4,12 @@
 \alias{extract_dem_values}
 \title{Given a set of linestrings, extract DEM values at points along the linestring}
 \usage{
-extract_dem_values(cs, dem)
+extract_dem_values(cs, crosswalk_id = NULL, dem = NULL)
 }
 \arguments{
 \item{cs}{cross section sf object}
+
+\item{crosswalk_id}{character, column name of unique flowline / transect ID}
 
 \item{dem}{SpatRaster DEM or character pointing to remote DEM resource}
 }

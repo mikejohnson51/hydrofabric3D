@@ -2,7 +2,7 @@ library(testthat)
 library(dplyr)
 library(sf)
 # library(hydrofabric3D)
-
+# devtools::load_all()
 # -------------------------------------------------------------------
 # ---- hydrofabric3D:::validate_cut_cross_section_inputs() ----
 # -------------------------------------------------------------------
@@ -35,336 +35,337 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
 
    # Test valid inputs
    testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                              id = "hy_id",
+                                                              crosswalk_id = "hy_id",
                                                               cs_widths = 100,
                                                               num = 10, 
                                                               smooth = TRUE,
                                                               densify = 2, 
                                                               rm_self_intersect = TRUE, 
                                                               fix_braids = FALSE, 
-                                                              terminal_id =NULL, 
+                                                              # terminal_id =NULL, 
                                                               braid_threshold = NULL, 
-                                                              version = 2, 
-                                                              braid_method = "comid", 
+                                                              # version = 2, 
+                                                              braid_method = "crosswalk_id", 
                                                               precision = 1, 
                                                               add = FALSE), 
                             NULL)
   
   # Test valid inputs
-  testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "anotherID",
+  testthat::expect_error(alidate_cut_cross_section_inputs(net = net, 
+                                                           crosswalk_id = "anotherID",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id =NULL, 
+                                                           # terminal_id =NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE), 
-                         NULL)
+                                                           add = FALSE)
+                         )
   
   # Test valid inputs with terminal_id
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id ="terminal_id", 
+                                                           # terminal_id ="terminal_id", 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE), 
                          NULL)
   
   # Test valid inputs with braid_threshold
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id =NULL, 
+                                                           # terminal_id =NULL, 
                                                            braid_threshold = 10, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE), 
                          NULL)
   
   # Test valid inputs with add
   testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id =NULL, 
+                                                           # terminal_id =NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = TRUE), 
                          NULL)
   
    # Test invalid sf object
    testthat::expect_error(validate_cut_cross_section_inputs(net = data.frame(), 
-                                                                id = "hy_id",
+                                                                crosswalk_id = "hy_id",
                                                                cs_widths = 100,
                                                                num = 10, 
                                                                smooth = TRUE,
                                                                densify = 2, 
                                                                rm_self_intersect = TRUE, 
                                                                fix_braids = FALSE, 
-                                                               terminal_id =NULL, 
+                                                               # terminal_id =NULL, 
                                                                braid_threshold = NULL, 
-                                                               version = 2, 
-                                                               braid_method = "comid", 
+                                                               # version = 2, 
+                                                               braid_method = "crosswalk_id", 
                                                                precision = 1, 
                                                                add = FALSE)
                           )
    
-   # Test invalid id type (id is a numeric)
+   # Test invalid crosswalk_id type (crosswalk_id is a numeric)
   testthat::expect_error(
     validate_cut_cross_section_inputs(net = net, 
-                                       id = 2,
+                                       crosswalk_id = 2,
                                        cs_widths = 100,
                                        num = 10, 
                                        smooth = TRUE,
                                        densify = 2, 
                                        rm_self_intersect = TRUE, 
                                        fix_braids = FALSE, 
-                                       terminal_id =NULL, 
+                                       # terminal_id =NULL, 
                                        braid_threshold = NULL, 
-                                       version = 2, 
-                                       braid_method = "comid", 
+                                       # version = 2, 
+                                       braid_method = "crosswalk_id", 
                                        precision = 1, 
                                        add = FALSE)
                          )
   
-  # Test invalid id type (id is NULL)
-  testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                           id = NULL,
+  # Test invalid crosswalk_id type (crosswalk_id is NULL)
+  testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
+                                                           crosswalk_id = NULL,
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id =NULL, 
+                                                           # terminal_id =NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE)
+                                                           add = FALSE),
+                         NULL
                          )
   
-  # Test invalid id type (id is a numeric)
+  # Test invalid crosswalk_id type (crosswalk_id is a numeric)
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = 32324,
+                                                            crosswalk_id = 32324,
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
                                                             densify = 2, 
                                                             rm_self_intersect = TRUE, 
                                                             fix_braids = FALSE, 
-                                                            terminal_id =NULL, 
+                                                            # terminal_id =NULL, 
                                                             braid_threshold = NULL, 
-                                                            version = 2, 
-                                                            braid_method = "comid", 
+                                                            # version = 2, 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
                          )
   
   # Test invalid num type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = "10", 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id = NULL, 
+                                                           # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE)
                          )
   
   # Test invalid densify type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                           id = "hy_id",
+                                                           crosswalk_id = "hy_id",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = "2", 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id = NULL, 
+                                                           # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE)
                          )
   
   # Test invalid smooth type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hy_id",
+                                                            crosswalk_id = "hy_id",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = "453",
                                                             densify = 2, 
                                                             rm_self_intersect = TRUE, 
                                                             fix_braids = FALSE, 
-                                                            terminal_id = NULL, 
+                                                            # terminal_id = NULL, 
                                                             braid_threshold = NULL, 
-                                                            version = 2, 
-                                                            braid_method = "comid", 
+                                                            # version = 2, 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
                          )
   
   # Test invalid rm_self_intersect type 1
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = "TRUE", 
                                                            fix_braids = FALSE, 
-                                                           terminal_id = NULL, 
+                                                           # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE))
   
   # Test invalid rm_self_intersect type 2
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
                                                             densify = 2, 
                                                             rm_self_intersect = "bad input", 
                                                             fix_braids = FALSE, 
-                                                            terminal_id = NULL, 
+                                                            # terminal_id = NULL, 
                                                             braid_threshold = NULL, 
-                                                            version = 2, 
-                                                            braid_method = "comid", 
+                                                            # version = 2, 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE))
   
   # Test invalid fix_braids type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = "FALSE", 
-                                                           terminal_id = NULL, 
+                                                           # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = FALSE))
   
   # Test invalid terminal ID value (terminal ID is a number)
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
                                                             densify = 2, 
                                                             rm_self_intersect = TRUE, 
                                                             fix_braids = FALSE, 
-                                                            terminal_id = 12, 
+                                                            # terminal_id = 12, 
                                                             braid_threshold = NULL, 
-                                                            version = 2, 
-                                                            braid_method = "comid", 
+                                                            # version = 2, 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
                          )
   
   # Test invalid terminal ID value (terminal ID is a logical)
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                             cs_widths = 100,
                                                             num = 10, 
                                                             smooth = TRUE,
                                                             densify = 2, 
                                                             rm_self_intersect = TRUE, 
                                                             fix_braids = FALSE, 
-                                                            terminal_id = TRUE, 
+                                                            # terminal_id = TRUE, 
                                                             braid_threshold = NULL, 
-                                                            version = 2, 
-                                                            braid_method = "comid", 
+                                                            # version = 2, 
+                                                            braid_method = "crosswalk_id", 
                                                             precision = 1, 
                                                             add = FALSE)
   )
   
   # Test invalid braid_method value
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id = NULL, 
+                                                           # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
+                                                           # version = 2, 
                                                            braid_method = "invalid_method", 
                                                            precision = 1, 
                                                            add = FALSE))
   
   # Test invalid precision value
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id = NULL, 
+                                                           # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = -1, 
                                                            add = FALSE))
   
   # Test invalid add type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
-                                                            id = "hyid",
+                                                            crosswalk_id = "hyid",
                                                            cs_widths = 100,
                                                            num = 10, 
                                                            smooth = TRUE,
                                                            densify = 2, 
                                                            rm_self_intersect = TRUE, 
                                                            fix_braids = FALSE, 
-                                                           terminal_id = NULL, 
+                                                           # terminal_id = NULL, 
                                                            braid_threshold = NULL, 
-                                                           version = 2, 
-                                                           braid_method = "comid", 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = "FALSE"
                                                            ))

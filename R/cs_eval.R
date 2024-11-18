@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -40,7 +40,11 @@ utils::globalVariables(
     "cs_source", 
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
-    "new_cs_lengthm"
+    "new_cs_lengthm", "polygon_index",
+    "crosswalk_id", "extend_invalid_transects2",
+    "anchors", "deriv_type", "edge", "extension_distance", 
+    "left_is_extended", "right_is_extended", "to_node", "verbose", 
+    "toindid", "indid", "toid", "is", "internal_is_braided2"
   )
 )
 
@@ -55,7 +59,8 @@ utils::globalVariables(
 #'
 #' @return dataframe of the input cross_section_pts with an added middle index column
 #' @importFrom dplyr group_by mutate n ungroup select
-#' @export
+#' @noRd
+#' @keywords internal
 add_middle_index_by_point_type <- function(
     cross_section_pts, 
     point_type = "bottom",
@@ -125,7 +130,8 @@ add_middle_index_by_point_type <- function(
 #'
 #' @return dataframe, the cross_section_pts dataframe with an added "angle_at" column
 #' @importFrom dplyr group_by mutate ungroup select
-#' @export
+#' @noRd
+#' @keywords internal
 add_angle_at_point_type <- function(cross_section_pts, 
                                     # point_type = "bottom",
                                     angle_at = "bottom",
@@ -164,7 +170,8 @@ add_angle_at_point_type <- function(cross_section_pts,
 #' @param middle_index numeric value, indicating middle index X, Y point to calculate the angle at (can be obtained from add_middle_index_by_point_type())
 #'
 #' @return numeric angle in degrees between the middle_index point and the maximum Y value XY points to the left and right of middle_index point
-#' @export
+#' @noRd
+#' @keywords internal
 angle_at_index <- function(x, y, middle_index = NULL) {
   
   # get the number of points

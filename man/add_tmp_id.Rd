@@ -4,14 +4,14 @@
 \alias{add_tmp_id}
 \title{Function to add a new "tmp_id" column to a dataframe from 2 other columns}
 \usage{
-add_tmp_id(df, x = hy_id, y = cs_id)
+add_tmp_id(df, x = "hy_id", y = "cs_id")
 }
 \arguments{
 \item{df}{dataframe with x and y as columns}
 
-\item{x}{The name of the column in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is hy_id.}
+\item{x}{character, column name in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is "hy_id."}
 
-\item{y}{The name of the column in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is cs_id.}
+\item{y}{character, column name in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is "cs_id."}
 }
 \value{
 The input dataframe with the "tmp_id" column added.

@@ -7,10 +7,17 @@ Generate a dataframe from a set of classified cross section points indicating wh
 Relief is determined by checking each set of cross section points have a left OR right bank that has a depth difference from the bottom that is
 greater than or equal to a percentage of the cross section length (e.g. Assuming a 'pct_of_length_for_relief' of 0.01 (1\%) of a 100m cross section would have a relief depth threshold of 1m)}
 \usage{
-get_relief(classified_pts, pct_of_length_for_relief = 0.01, detailed = FALSE)
+get_relief(
+  classified_pts,
+  crosswalk_id = NULL,
+  pct_of_length_for_relief = 0.01,
+  detailed = FALSE
+)
 }
 \arguments{
 \item{classified_pts}{sf or dataframe of points with "hy_id", "cs_id", "cs_lengthm", and "point_type" columns. Output of hydrofabric3D::classify_pts()}
+
+\item{crosswalk_id}{character, ID column}
 
 \item{pct_of_length_for_relief}{numeric, percent of cs_lengthm to use as the threshold depth for classifying whether a cross section has "relief". Default is 0.01 (1\% of the cross sections length).}
 

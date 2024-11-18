@@ -8,10 +8,12 @@ Given a set of cross section points with point_type column, return a dataframe o
 And a "valid_banks" column indicating whether the hy_id/cs_id set of cross section point has at least a signle bottom point with
 at least 1 left bank point AND 1 right bank point that are above the lowest "bottom" point.}
 \usage{
-get_bank_attributes(classified_pts)
+get_bank_attributes(classified_pts, crosswalk_id = NULL)
 }
 \arguments{
 \item{classified_pts}{sf or dataframe of points with "hy_id", "cs_id", and "point_type" columns. Output of hydrofabric3D::classify_pts()}
+
+\item{crosswalk_id}{character, ID column}
 }
 \value{
 dataframe with each row being a unique hy_id/cs_id with "bottom", "left_bank", "right_bank", and "valid_banks" values for each hy_id/cs_id.

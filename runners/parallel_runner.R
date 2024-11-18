@@ -15,7 +15,7 @@ system.time({
   lines = foreach(i = 1:length(xx)) %dopar% {
     input = filter(fl, mainstem == xx[i])
       cut_cross_sections(net = input,
-                         id = "id", 
+                         crosswalk_id = "crosswalk_id", 
                          bf_widths = pmax(50, input$bf_width * 7),
                          num = 10) 
   }

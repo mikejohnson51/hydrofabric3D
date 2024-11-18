@@ -4,10 +4,12 @@
 \alias{add_point_type_counts}
 \title{Add the count of each point type as a column to a dataframe of section points}
 \usage{
-add_point_type_counts(classified_pts)
+add_point_type_counts(classified_pts, crosswalk_id = NULL)
 }
 \arguments{
 \item{classified_pts}{dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well as a 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"}
+
+\item{crosswalk_id}{character, ID column}
 }
 \value{
 dataframe or sf dataframe with "<point_type>_count" columns added

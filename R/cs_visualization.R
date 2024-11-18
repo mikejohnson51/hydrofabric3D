@@ -16,7 +16,7 @@ utils::globalVariables(
     "new_cs_id", "split_braid_ids",
     
     "braid_length", 
-    "id", 
+    "crosswalk_id", 
     "lengthm", 
     "check_z_values", 
     "geom", 
@@ -46,58 +46,91 @@ utils::globalVariables(
 
 #' Plots an X-Y scatter plot of cross section points 
 #' @param cs_pts data.frame of cross section points with columns hy_id, cs_id and columns for X and Y axises (i.e. "pt_id", "Z")
+#' @param crosswalk_id unique ID column name 
 #' @param x character name of column in cs_pts to use for X axis
 #' @param y character name of column in cs_pts to use for Y axis
 #' @param color character name of column in cs_pts to color points on plot
+#' @param size numeric, size of the cs points, default is 1 
 #' @param grid logical, if TRUE then use facet_grid, otherwise use facet_wrap. Default is FALSE (uses facet_wrap)
+#' @param scales Should scales be fixed ("fixed", the default), free ("free"), or free in one dimension ("free_x", "free_y")?
 #' 
 #' @return ggplot2 object
 #' @importFrom ggplot2 ggplot geom_point aes facet_grid facet_wrap
 #' @importFrom dplyr sym
 #' @export 
 plot_cs_pts <- function(cs_pts, 
+                        crosswalk_id = NULL,
                         x     = "pt_id", 
                         y     = "Z",
                         color = NULL,
-                        grid  = FALSE
+                        size  = 1,
+                        grid  = FALSE,
+                        scales = "free_y"
 ) {
   
-  ######   ######   ######   ######
-  # x = "pt_id"
-  # y = "Z"
-  # color = "cs_source"
-  # color = 2
+  # crosswalk_id = "hy_id"
+  # x     = "pt_id"
+  # y     = "Z"
   # color = NULL
-  # grid = FALSE
-  # cs_pts = cs_pts
-  ######   ######   ######   ######
+  # size  = 1
+  # grid  = FALSE
+  if (!scales %in% c("fixed", "free", "free_x", "free_y")) {
+    stop("Invalid scales argument '", scales, "', must be one of: \n> ", paste0(c("fixed", "free", "free_x", "free_y"), collapse = "\n> "))
+    
+  }
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'crosswalk_id'
+  }
   
+  is_valid <- validate_df(cs_pts, c(crosswalk_id, x, y, "cs_id"), "cs_pts")
+  
+  if(is.null(size)) {
+    size = 1
+  }
+ 
   cs_plot <- 
-    # cs_pts %>%
     cs_pts %>%
-    ggplot2::ggplot() +
-    # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z)) 
-    ggplot2::geom_point(
-      ggplot2::aes(
-        x = !!dplyr::sym(x), 
-        y = !!dplyr::sym(y),
-        color = !!ifelse(is.character(color), dplyr::sym(color), TRUE)
-      )
-    ) 
-  # tidyselect::all_of("pt_id")
+    ggplot2::ggplot() 
   
+    # ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z)) 
+  if(is.character(color)) {
+    cs_plot <- 
+      cs_plot + 
+      ggplot2::geom_point(
+        ggplot2::aes(
+          x = !!dplyr::sym(x), 
+          y = !!dplyr::sym(y),
+          color = !!ifelse(is.character(color), dplyr::sym(color), TRUE)
+        ),
+        size = size
+      ) 
+  } else {
+    cs_plot <- 
+        cs_plot + 
+        ggplot2::geom_point(
+        ggplot2::aes(
+          x = !!dplyr::sym(x), 
+          y = !!dplyr::sym(y)
+        ),
+        size = size
+      ) 
+  }
   # if grid == TRUE, then use facet_grid, otherwise use facet wrap
   if (grid) {
     
     cs_plot <- 
       cs_plot +
-      ggplot2::facet_grid(hy_id~cs_id, scales = "free_y")
+      ggplot2::facet_grid(get(crosswalk_id)~cs_id, scales = scales)
+      # ggplot2::facet_grid(hy_id~cs_id, scales = "free_y")
     
   } else {
     
     cs_plot <- 
       cs_plot +
-      ggplot2::facet_wrap(hy_id~cs_id,  scales = "free_y")
+      ggplot2::facet_wrap(get(crosswalk_id)~cs_id,  scales = scales)
+      # ggplot2::facet_wrap(hy_id~cs_id,  scales = "free_y")
   }
   
   return(cs_plot)

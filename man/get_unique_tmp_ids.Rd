@@ -4,7 +4,7 @@
 \alias{get_unique_tmp_ids}
 \title{Get a list of unique tmp_ids in a dataframe}
 \usage{
-get_unique_tmp_ids(df, x = hy_id, y = cs_id)
+get_unique_tmp_ids(df, x = "hy_id", y = "cs_id")
 }
 \arguments{
 \item{df}{dataframe with x and y as columns, with an optional "tmp_id" column, otherwise a tmp_id will be created from x_y}

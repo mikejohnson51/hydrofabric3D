@@ -19,4 +19,21 @@ tmp_plots.R
 scraps.R
 scraps2.R
 scraps3.R
+
+# TODO: remove paper related scripts
 general_visuals.R
+visual_utils.R
+paper.R
+validity_scoring.R
+transect_extensions_viz.R
+ras_comp.R
+cs_area2.R
+cs_based_extensions_viz.R
+paper/
+
+
+scrap.R
+braids_tmp.R
+braids2.R
+braids3.R
+

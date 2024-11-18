@@ -258,13 +258,13 @@ ggplot() +
 OK, so we have gone from a single edge, to a full flowline. Now - how about a full network! Again, this requires looping over all flowlines. Additionally we add a few new items: 
 
   - The `num` argument allows a user to restrict the number of cross sections desired per flowline.
-  - The `id` argument allows a user to specify the identifier column of the input. If provided these will be assigned as the "hy_id" in the output. If not prescribed, a 1:n() index will be added.
+  - The `crosswalk_id` argument allows a user to specify the identifier column of the input. If provided these will be assigned as the "hy_id" in the output. If not prescribed, a 1:n() index will be added.
   - The outputs will also have a 1:n() cs_id describing the ordered set of cross sections where 1 is the most upstream and n is the most downstream.
   - Lastly, a final pass is made to remove all cross sections that intersect with cross section from a different flowline.
 
 ```{r}
 
-cut_cross_sections = function(net, id = NULL, widths = NULL, num = NULL){
+cut_cross_sections = function(net, crosswalk_id = NULL, widths = NULL, num = NULL){
   
   ll = list()
   
@@ -295,8 +295,8 @@ cut_cross_sections = function(net, id = NULL, widths = NULL, num = NULL){
   ids_length = lengths(ll)
   ll = st_as_sf(Reduce(c,ll))
   
-  if(!is.null(id)){
-    ll$hy_id = rep(net[[id]], times = ids_length)
+  if(!is.null(crosswalk_id)){
+    ll$hy_id = rep(net[[crosswalk_id]], times = ids_length)
   } else {
      ll$hy_id = rep(1:nrow(net), times = ids_length)
   }
@@ -310,7 +310,7 @@ cut_cross_sections = function(net, id = NULL, widths = NULL, num = NULL){
 
 system.time({
   oo = cut_cross_sections(net = network, 
-                          id = "comid", 
+                          crosswalk_id = "comid", 
                           widths = network$cs_width,
                           num = 10)
 })
@@ -392,7 +392,7 @@ system.time({
                  get_vaa(c("tomeas", "frommeas", 'reachcode'), updated_network = TRUE), 
                  by = c("comid")) %>% 
      get_flowline_index(tmp) %>% 
-     mutate(cs_id = tmp$cs_id[id], id = NULL) %>% 
+     mutate(cs_id = tmp$cs_id[crosswalk_id], crosswalk_id = NULL) %>% 
      rename(hy_id = COMID)
   
   # add new information of cs_pts and rearrange columns
