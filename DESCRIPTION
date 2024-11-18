@@ -1,13 +1,13 @@
 Package: hydrofabric3D
 Title: hydrofabric3D
-Version: 0.1.51
+Version: 0.1.60
 Authors@R: c(person("Mike", "Johnson", role = c("aut", "cre"), email = "mikecp11@gmail.com"),
              person("Angus", "Watters",  role = "aut"),
              person("Arash", "Modaresi",  role = "ctb"),
              person("NOAA", role = "fnd"),
              person("Lynker", role = "fnd"))
 Description: Cuts terrain based cross sections for a river network.
-License: MIT + file LICENSE
+License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
