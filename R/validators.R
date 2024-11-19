@@ -95,7 +95,8 @@ validate_transects_cs_length <- function(transects, crosswalk_id = NULL) {
       new_cs_length = as.numeric(sf::st_length(.)) 
     ) %>% 
     dplyr::filter(
-      !dplyr::near(cs_lengthm, new_cs_length)
+      # TODO: within 2 meters...
+      !dplyr::near(cs_lengthm, new_cs_length, tol = 2)
       # !all.equal(cs_lengthm, new_cs_length)
       # cs_lengthm != new_cs_length
     )

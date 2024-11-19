@@ -2059,11 +2059,12 @@ select_cs_pts <- function(cs_pts, crosswalk_id = NULL) {
         "X", 
         "Y",
         "Z",
-        "Z_source",
+        "slope",
         "class", 
         "point_type",
         "valid_banks",
-        "has_relief"
+        "has_relief",
+        "Z_source"
       )
       )
     )
@@ -2094,10 +2095,11 @@ select_transects <- function(transects, crosswalk_id = NULL) {
     dplyr::select(
       dplyr::any_of(c(
         crosswalk_id,
-        "cs_source",
         "cs_id",
         "cs_measure",
         "cs_lengthm",
+        "sinuosity",
+        "cs_source",
         "geometry"
       )
       )

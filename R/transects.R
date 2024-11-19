@@ -106,10 +106,17 @@ cut_transect <- function(edge, width){
 get_transects <- function(line, bf_width, n) {
   
   # line     = geos::as_geos_geometry(net$geometry[j])
+  # # line     = geos::as_geos_geometry(net$geometry[j]) %>% 
+  # #   geos::geos_densify(tolerance = 200)
+  # 
+  # TODO: need to deal with line of less than 4 points. Minimum allowed should be 4, 4 points are required
+  # # geos::as_geos_geometry(net$geometry[j]) %>% 
+  # #   geos::geos_densify(tolerance = 200) %>% 
+  # #   geos::geos_num_coordinates()
+  # 
   # bf_width = cs_widths[j]
   # n        = num[j]
-  # line <- geos::geos_densify(line, 10)
-  
+
   # plot(geos::geos_densify(line, 5), add = F)
   # plot(geos::geos_densify(line, 10) %>% wk::wk_vertices(), add = T)
   # geos::geos_densify(line, 10) %>% wk::wk_vertices() %>% length()
@@ -143,7 +150,7 @@ get_transects <- function(line, bf_width, n) {
   if (!is.numeric(bf_width)) {
     stop("Invalid 'bf_width', bf_width must be a numeric")
   }
-  
+ 
   # vertices of line
   vertices <- wk::wk_vertices(line)
   
@@ -173,15 +180,21 @@ get_transects <- function(line, bf_width, n) {
   # # the below check should be TRUE 
   # total_length == geos::geos_length(line)
   
+  # is_single_edge <- length(edges) == 1
+  # if (!is_single_edge) {
+    
   # keep all lines except first and last edges
   edges <- edges[-c(1, length(edges))]
   
-  # # keep all edge lengths except first and last edge lengths
+  # keep all edge lengths except first and last edge lengths
   edge_lengths <- edge_lengths[-c(1, length(edge_lengths))]
+  # }
   
   # create a sequence of edges along 'line'
   if (!is.null(n)) {
+    
     if (n == 1) {
+      
       # get a single edge at the midpoint
       edges <- edges[as.integer(ceiling(length(edges)/ 2))]
       
@@ -189,16 +202,18 @@ get_transects <- function(line, bf_width, n) {
       edge_lengths <- edge_lengths[as.integer(ceiling(length(edge_lengths)/ 2))]
       
     } else {
+      
       # extract edges at intervals of 'n' 
       edges <- edges[as.integer(
-        seq.int(1, length(edges), length.out = min(n, length(edges)))
-      )
-      ]
+                            seq.int(1, length(edges), length.out = min(n, length(edges)))
+                          )
+                     ]
+      
       # extract edge lengths at intervals of 'n' (same interval/indices of above edges indexing)
       edge_lengths <- edge_lengths[as.integer(
-        seq.int(1, length(edge_lengths), length.out = min(n, length(edge_lengths)))
-      )
-      ]
+                            seq.int(1, length(edge_lengths), length.out = min(n, length(edge_lengths)))
+                          )
+                      ]
     }
   }
   
@@ -218,8 +233,12 @@ get_transects <- function(line, bf_width, n) {
     # # # measure of edge
     meas <- edge_lengths[i]
     
-    # # If a MULTIPOINT, then it crosses more the once
-    if(geos::geos_type(geos::geos_intersection(tran, line)) == "point") {
+    # plot(line)
+    # plot(edges, col = "red", add = T)
+    # plot(tran, col = "green", add = T)
+    
+    # If a MULTIPOINT, then it crosses more the once
+    if (geos::geos_type(geos::geos_intersection(tran, line)) == "point") {
       # message("intersect IS point ")
       # Ensure that there are no intersections with previously computed cross sections
       if (!any(geos::geos_intersects(tran, transects))) {
@@ -1184,20 +1203,27 @@ cut_cross_sections <- function(
     add               = FALSE
 ) {
   
+  
   # library(dplyr)
   # library(sf)
+  # 
   # net = flowline
-  # num = 20
-  # crosswalk_id                = NULL
-  # cs_widths         = 100 
-  # smooth            = TRUE
-  # densify           = 2
-  # rm_self_intersect = TRUE
-  # fix_braids        = FALSE
-  # braid_threshold   = NULL
-  # braid_method      = "comid"
+  # net <- sf::read_sf("/Users/anguswatters/Desktop/empty_geom_flines_error.gpkg") %>%
+  #   hydroloom::rename_geometry("geometry")
+  # crosswalk_id      = "id"                      # Unique feature ID
+  # cs_widths         = net$bf_width     # cross section width of each "id" linestring ("hy_id")
+  # num               = 3                            # number of cross sections per "id" linestring ("hy_id")
+  # smooth            = FALSE                          # smooth lines
+  # densify           = 3                            # densify linestring points
+  # braid_method      = "crosswalk_id"
   # precision         = 1
-  # add               = FALSE
+  # # smooth            = TRUE,                          # smooth lines
+  # # densify           = 3,                             # densify linestring points
+  # rm_self_intersect = TRUE                          # remove self intersecting transects
+  # fix_braids        = FALSE                         # whether to fix braided flowlines or not
+  # braid_threshold   = NULL
+  # add               = TRUE
+
   
   # 
   # net    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
@@ -1293,6 +1319,8 @@ cut_cross_sections <- function(
     # list to store transect outputs
     transects <- list()
     
+    # mapview::npts(net, by_feature = T)
+    
     # if there is a missing number of cross section widths given relative to the number of rows in net, fill in the missing values
     if (length(cs_widths) != nrow(net)) {
       cs_widths = rep(cs_widths[1], nrow(net))
@@ -1304,9 +1332,20 @@ cut_cross_sections <- function(
     
     message("Cutting")
     
+    # net$geometry %>% mapview::npts(by_feature = T)
+    
     # iterate through each linestring in "net" and generate transect lines along each line 
     for (j in 1:nrow(net)) {
       # j = 1
+      # message(j)
+      # if (j == 37) {
+      #   message("STOPPPINNGG")
+      #   break
+      # }
+      # 
+      
+      # net$geometry[j] %>% mapview::npts()
+      # geos::geos_num_coordinates(net$geometry)
       
       # cut transect lines at each 'edge' generated along our line of interest
       trans <- get_transects(
@@ -1470,7 +1509,7 @@ cut_cross_sections <- function(
     
     return(transects)
   
-    })  
+    })
 }
 
 #' Adds a logical 'is_outlet' flag to a set of transects identifying the most downstream transect
