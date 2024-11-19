@@ -195,7 +195,8 @@ extend_by_percent <- function(
 #' @importFrom sf st_length st_geometry st_drop_geometry st_as_sf st_crs
 #' @importFrom hydroloom rename_geometry
 #' @return sf dataframe with extended linestring geometries
-#' @export
+#' @noRd
+#' @keywords internal
 extend_by_length <- function(
     x, 
     crosswalk_id = NULL,

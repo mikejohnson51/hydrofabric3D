@@ -87,7 +87,8 @@ utils::globalVariables(
 #' @importFrom lwgeom st_linesubstring
 #' @importFrom wk wk_crs 
 #' @importFrom vctrs vec_c
-#' @export
+#' @noRd
+#' @keywords internal
 extend_transects_to_polygons2 <- function(
     transect_lines, 
     polygons, 
@@ -873,7 +874,8 @@ partition_transects_for_extension <- function(transects, polygons_subset, dir = 
 #' @param max_extension_distance numeric 
 #'
 #' @return data.frame or tibble
-#' @export
+#' @noRd
+#' @keywords internal
 get_extensions_by_id <- function(transects, polygons, crosswalk_id, max_extension_distance) {
   
   # split transects into left and right partitions

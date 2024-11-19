@@ -9,7 +9,7 @@ source("testing_utils.R")
 # devtools::load_all()
 
 # -------------------------------------------------------------------
-# ---- hydrofabric3D::get_extensions_by_id() ----
+# ---- hydrofabric3D:::get_extensions_by_id() ----
 # -------------------------------------------------------------------
 testthat::test_that("get_extensions_by_id() correct output columns - default inputs", {
   # transect_lines, 
@@ -68,7 +68,7 @@ testthat::test_that("get_extensions_by_id() correct output columns - default inp
       )
   
   
-  ext_dists <- hydrofabric3D::get_extensions_by_id(
+  ext_dists <- hydrofabric3D:::get_extensions_by_id(
                   transects = transects,
                   polygons = polygons, 
                   crosswalk_id = CROSSWALK_ID, 
@@ -139,7 +139,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
     )
   
   
-  ext_dists <- hydrofabric3D::get_extensions_by_id(
+  ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects = transects,
     polygons = polygons, 
     crosswalk_id = CROSSWALK_ID, 
@@ -183,7 +183,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
     )
   
   # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
-  ext_dists <- hydrofabric3D::get_extensions_by_id(
+  ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects = transects,
     polygons  =  sf::st_buffer( 
                     dplyr::slice(flowlines, 1), 
@@ -198,7 +198,7 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
   testthat::expect_true(all_unique_ids_kept)
   
   # ALL transects have a corresponding polygon,  still results in all unique crosswalk_id/cs_id IDs being kept
-  ext_dists <- hydrofabric3D::get_extensions_by_id(
+  ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects = transects,
     polygons  =  sf::st_buffer(flowlines, BUFF_DIST), 
     crosswalk_id = CROSSWALK_ID, 
@@ -244,7 +244,7 @@ testthat::test_that("get_extensions_by_id() polygon is farther away than max ext
   # mapview::mapview(buffed_flowlines) + transects + flowlines
   
   # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
-  ext_dists <- hydrofabric3D::get_extensions_by_id(
+  ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
@@ -295,7 +295,7 @@ testthat::test_that("get_extensions_by_id() max extension distance is long enoug
   # mapview::mapview(buffed_flowlines) + transects + flowlines
   
   # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
-  ext_dists <- hydrofabric3D::get_extensions_by_id(
+  ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
@@ -347,7 +347,7 @@ testthat::test_that("get_extensions_by_id() transects that are already longer th
   # mapview::mapview(buffed_flowlines) + transects + flowlines
   
   # only 1 polygon, most transects are NOT extendable to the polygon, results in all unique crosswalk_id/cs_id IDs being kept
-  ext_dists <- hydrofabric3D::get_extensions_by_id(
+  ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
@@ -405,14 +405,14 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
   )
   
   # mapview::mapview(buffered_flowlines) + transects + flowlines
-  small_ext_dists <- hydrofabric3D::get_extensions_by_id(
+  small_ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  small_polygons, 
     crosswalk_id = CROSSWALK_ID, 
     max_extension_distance = MAX_EXT_DIST
   )
   
-  all_ext_dists <- hydrofabric3D::get_extensions_by_id(
+  all_ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
@@ -484,14 +484,14 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
   
   # mapview::mapview(buffed_flowlines) + transects + flowlines
   
-  small_ext_dists <- hydrofabric3D::get_extensions_by_id(
+  small_ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  small_polygons, 
     crosswalk_id = CROSSWALK_ID, 
     max_extension_distance = MAX_EXT_DIST
   )
   
-  all_ext_dists <- hydrofabric3D::get_extensions_by_id(
+  all_ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
@@ -563,14 +563,14 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
   
   # mapview::mapview(buffed_flowlines) + transects + flowlines
   
-  small_ext_dists <- hydrofabric3D::get_extensions_by_id(
+  small_ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  small_polygons, 
     crosswalk_id = CROSSWALK_ID, 
     max_extension_distance = MAX_EXT_DIST
   )
   
-  all_ext_dists <- hydrofabric3D::get_extensions_by_id(
+  all_ext_dists <- hydrofabric3D:::get_extensions_by_id(
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 

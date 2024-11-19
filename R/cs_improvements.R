@@ -1762,7 +1762,8 @@ renumber_cs_ids <- function(df, crosswalk_id = NULL) {
 #' @return dataframe
 #' @importFrom dplyr select group_by arrange slice ungroup summarize count
 #' @importFrom sf st_drop_geometry
-#' @export
+#' @noRd
+#' @keywords internal
 rectify_summary <- function(input_points, 
                             output_points, 
                             crosswalk_id = NULL, 
@@ -1928,7 +1929,8 @@ add_needs_rectification <- function(transects) {
 #' @importFrom dplyr group_by mutate ungroup relocate filter summarize left_join between case_when select all_of last_col
 #' @importFrom sf st_drop_geometry
 #' @return sf dataframe of cross section points with the added columns described above 
-#' @export
+#' @noRd
+#' @keywords internal
 pct_pts_near_bottom = function(cs_pts, 
                                distance_from_bottom    = 1, 
                                look_only_above_bottom  = TRUE,
@@ -2085,7 +2087,8 @@ pct_pts_near_bottom = function(cs_pts,
 #' An empty dataframe is returned if ZERO points are classified as "near the bottom"
 #' @importFrom dplyr mutate filter select group_by slice ungroup
 #' @importFrom sf st_drop_geometry
-#' @export
+#' @noRd
+#' @keywords internal
 pts_to_reevaluate <- function(
     cs_pts, 
     threshold = 1, 
@@ -2172,7 +2175,8 @@ pts_to_reevaluate <- function(
 #' @importFrom sf st_drop_geometry
 #' @importFrom nhdplusTools rename_geometry
 #' @return sf object of cs_pts with "flat" cross sections removed/updated with longer transects to capture more Z data
-#' @export
+#' @noRd
+#' @keywords internal
 rectify_flat_cs = function(
     cs_pts         = NULL,   
     net            = NULL,
@@ -2766,7 +2770,8 @@ flag_transects_for_change <- function(
 #' @importFrom dplyr left_join mutate any_of select
 #'
 #' @return sf dataframe of transects with updated geometries 
-#' @export
+#' @noRd
+#' @keywords internal
 adjust_flagged_transects <- function(
     x, 
     crosswalk_id = NULL,

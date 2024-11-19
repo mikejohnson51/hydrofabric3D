@@ -134,7 +134,8 @@ add_cs_area <- function(cs_pts,
 #' @param relative_distance numeric vector of distances from 0 to length of CS
 #' @importFrom DescTools AUC
 #' @return numeric cross sectional area value, 0 if no area can be calculated
-#' @export
+#' @noRd
+#' @keywords internal
 find_cs_area2 <- function(pt_id,
                           depth, 
                           depth_array, 
@@ -209,7 +210,8 @@ find_cs_area2 <- function(pt_id,
 #' @importFrom dplyr group_by mutate across any_of ungroup
 #' @importFrom purrr map_dbl 
 #' @return cs_pts dataframe with added numeric 'cs_area' column
-#' @export
+#' @noRd
+#' @keywords internal
 add_cs_area2 <- function(cs_pts, 
                         crosswalk_id = NULL) {
   
