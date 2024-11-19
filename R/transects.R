@@ -47,6 +47,7 @@ utils::globalVariables(
     "toindid", "indid", "toid", "is", "internal_is_braided2"
   )
 )
+
 sf::sf_use_s2(FALSE)
 
 #' Generate a Perpendicular Linestring of a Given Width
@@ -273,206 +274,6 @@ get_transects <- function(line, bf_width, n) {
   
 }
 
-#' Calculate sinuosity between cross sections on flowlines by
-#' 
-#' @param lines sf linestring geometry of flowlines with a unique "hy_id" column
-#' @param cross_sections sf linestring dataframe with a "hy_id" unique identifier that maps to a linestring geometry in 'lines'. Must contain a "cs_id" column to uniquely identify cross sections in each hy_id and the order on the given hy_id.
-#'  Also must include a "cs_measure" column, which indicates the percent downstream the cross section linestring is along the linestring in 'lines'.
-#' @param add logical, whether to add the sinuosity values to the original cross section dataset (TRUE). Default is TRUE. If FALSE, a dataframe with hy_id, cs_id, cs_measure, and sinuosity columns is returned
-#'
-#' @noRd
-#' @keywords internal
-#' @return sf dataframe containing the cross_sections dataset with an added sinuosity column (add = TRUE), or a dataframe with with hy_id, cs_id, cs_measure, and sinuosity columns with values for each linestring in 'cross_sections' 
-#' @importFrom dplyr select group_by ungroup relocate mutate bind_rows lead filter left_join
-#' @importFrom sf st_geometry st_distance st_length st_centroid st_drop_geometry
-#' @importFrom nhdplusTools get_node
-get_cs_sinuosity2 <- function(
-    lines, 
-    cross_sections, 
-    add = TRUE
-) {
-  
-  # convert cross section linestrings into points at the centroid of each cross section
-  pts <- 
-    cross_sections %>% 
-    dplyr::select(hy_id, cs_id, cs_measure, ds_distance, geometry) %>% 
-    sf::st_centroid()
-  
-  # # plot(pts$geometry)
-  # plot(start$geometry, col = "green", add= T)
-  # plot(end$geometry, col = "red", add= T)
-  # plot(dplyr::slice(cs_lines, 3)$geometry, col = "red", add= T)
-  # plot(cs_lines$geometry, col = "red", add= T)
-  # plot(lines$geometry, add= T)
-  
-  # calculate line lengths
-  lines <- 
-    lines %>% 
-    dplyr::select(hy_id, geometry) %>% 
-    dplyr::group_by(hy_id) %>% 
-    dplyr::mutate(
-      ds_distance = as.numeric(sf::st_length(geometry)),
-      cs_id       = "end",
-      cs_measure  = 100
-    ) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::relocate(hy_id, cs_id, cs_measure, ds_distance, geometry)
-  
-  # replace linestring geometries with the point endpoint geometry for each hy_id linestring in 'lines'
-  # this is needed so that the final cross section point on the linestring has a final point that 
-  # it can use to calculate sinuosity between
-  sf::st_geometry(lines) <- sf::st_geometry(nhdplusTools::get_node(lines, "end"))
-  
-  # bind the cross section points together with the extra point geometries at the end of each linestring 
-  pts <- dplyr::bind_rows(
-    dplyr::mutate(pts, 
-                  cs_id = as.character(cs_id)), 
-    lines
-  ) 
-  
-  # calculate euclidean distance between each point and the next point on the linestring 
-  # and calculate the along channel distance and then calcualate sinuosity as along_channel / euclid_dist
-  pts <- 
-    pts %>% 
-    dplyr::group_by(hy_id) %>%
-    dplyr::mutate(
-      euclid_dist   = as.numeric(sf::st_distance(geometry,        
-                                                 dplyr::lead(geometry),
-                                                 by_element = TRUE)),
-      along_channel = dplyr::lead(ds_distance) - ds_distance, 
-      sinuosity     = along_channel / euclid_dist
-    ) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::select(hy_id, cs_id, cs_measure, ds_distance, along_channel, euclid_dist, sinuosity, geometry) %>% 
-    dplyr::filter(cs_id != "end") %>% 
-    dplyr::mutate(cs_id = as.integer(cs_id)) %>% 
-    sf::st_drop_geometry() %>% 
-    dplyr::select(hy_id, cs_id, cs_measure, sinuosity)
-  
-  # if add is TRUE, then add the sinuosity column back to the original data
-  if (add) {
-    cross_sections <- dplyr::left_join(
-      cross_sections,
-      dplyr::select(pts, -cs_measure), 
-      by = c("hy_id", "cs_id")
-    )
-    
-    return(cross_sections)
-    
-  }
-  
-  return(pts)
-  
-}
-#' Calculate sinuosity between cross sections on flowlines by
-#' 
-#' @param lines sf linestring geometry of flowlines with a unique "hy_id" column
-#' @param cross_sections sf linestring dataframe with a "hy_id" unique identifier that maps to a linestring geometry in 'lines'. Must contain a "cs_id" column to uniquely identify cross sections in each hy_id and the order on the given hy_id.
-#'  Also must include a "cs_measure" column, which indicates the percent downstream the cross section linestring is along the linestring in 'lines'.
-#' @param crosswalk_id character, name of the unique identifier column in 'lines' and 'cross_sections' 
-#' @param add logical, whether to add the sinuosity values to the original cross section dataset (TRUE). Default is TRUE. If FALSE, a dataframe with hy_id, cs_id, cs_measure, and sinuosity columns is returned
-#'
-#' @noRd
-#' @keywords internal
-#' @return sf dataframe containing the cross_sections dataset with an added sinuosity column (add = TRUE), or a dataframe with with hy_id, cs_id, cs_measure, and sinuosity columns with values for each linestring in 'cross_sections' 
-#' @importFrom dplyr select group_by ungroup relocate mutate bind_rows lead filter left_join
-#' @importFrom sf st_geometry st_distance st_length st_centroid st_drop_geometry
-#' @importFrom nhdplusTools get_node
-get_cs_sinuosity <- function(
-    lines, 
-    cross_sections, 
-    crosswalk_id = "hydrofabric_id",
-    add = TRUE
-) {
-  
-  # lines          = net
-  # cross_sections = transects
-  # crosswalk_id   = "hydrofabric_id"
-  # add            = TRUE
-  
-  # convert cross section linestrings into points at the centroid of each cross section
-  pts <- 
-    cross_sections %>% 
-    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, geometry) %>% 
-    # dplyr::select(hy_id, cs_id, cs_measure, ds_distance, geometry) %>% 
-    sf::st_centroid()
-
-  # # plot(pts$geometry)
-  # plot(start$geometry, col = "green", add= T)
-  # plot(end$geometry, col = "red", add= T)
-  # plot(dplyr::slice(cs_lines, 3)$geometry, col = "red", add= T)
-  # plot(cs_lines$geometry, col = "red", add= T)
-  # plot(lines$geometry, add= T)
-  
-  # calculate line lengths
-  lines <- 
-    lines %>% 
-    dplyr::select(dplyr::any_of(crosswalk_id), geometry) %>% 
-    dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-    # dplyr::select(hy_id, geometry) %>% 
-    # dplyr::group_by(hy_id) %>% 
-    dplyr::mutate(
-      ds_distance = as.numeric(sf::st_length(geometry)),
-      cs_id       = "end",
-      cs_measure  = 100
-    ) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::relocate(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, geometry)
-    # dplyr::relocate(hy_id, cs_id, cs_measure, ds_distance, geometry)
-
-  # replace linestring geometries with the point endpoint geometry for each hy_id linestring in 'lines'
-  # this is needed so that the final cross section point on the linestring has a final point that 
-  # it can use to calculate sinuosity between
-  sf::st_geometry(lines) <- sf::st_geometry(nhdplusTools::get_node(lines, "end"))
-  
-  # bind the cross section points together with the extra point geometries at the end of each linestring 
-  pts <- dplyr::bind_rows(
-    dplyr::mutate(pts, 
-                  cs_id = as.character(cs_id)), 
-    lines
-  ) 
-  
-  # calculate euclidean distance between each point and the next point on the linestring 
-  # and calculate the along channel distance and then calcualate sinuosity as along_channel / euclid_dist
-  pts <- 
-    pts %>% 
-    dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>%
-    # dplyr::group_by(hy_id) %>%
-    dplyr::mutate(
-      euclid_dist   = as.numeric(sf::st_distance(geometry,        
-                                                 dplyr::lead(geometry),
-                                                 by_element = TRUE)),
-      along_channel = dplyr::lead(ds_distance) - ds_distance, 
-      sinuosity     = along_channel / euclid_dist
-    ) %>% 
-    dplyr::ungroup() %>% 
-    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, along_channel, 
-                  euclid_dist, sinuosity, geometry) %>% 
-    # dplyr::select(hy_id, cs_id, cs_measure, ds_distance, along_channel, 
-    #               euclid_dist, sinuosity, geometry) %>% 
-    dplyr::filter(cs_id != "end") %>% 
-    dplyr::mutate(cs_id = as.integer(cs_id)) %>% 
-    sf::st_drop_geometry() %>% 
-    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, sinuosity)
-    # dplyr::select(hy_id, cs_id, cs_measure, sinuosity)
-  
-  
-  # if add is TRUE, then add the sinuosity column back to the original data
-  if (add) {
-    cross_sections <- dplyr::left_join(
-      cross_sections,
-      dplyr::select(pts, -cs_measure), 
-      by = c(crosswalk_id, "cs_id")
-      # by = c("hy_id", "cs_id")
-    )
-    
-    return(cross_sections)
-    
-  }
-  
-  return(pts)
-  
-}
 
 # # Generate Cross Sections Across Hydrographic Network
 # #
@@ -1207,8 +1008,9 @@ cut_cross_sections <- function(
   # library(dplyr)
   # library(sf)
   # 
-  # net = flowline
   # net <- sf::read_sf("/Users/anguswatters/Desktop/empty_geom_flines_error.gpkg") %>%
+  #   hydroloom::rename_geometry("geometry")
+  # net <- sf::read_sf("/Users/anguswatters/Desktop/wrong_cs_ids_flines_error.gpkg") %>%
   #   hydroloom::rename_geometry("geometry")
   # crosswalk_id      = "id"                      # Unique feature ID
   # cs_widths         = net$bf_width     # cross section width of each "id" linestring ("hy_id")
@@ -1303,6 +1105,12 @@ cut_cross_sections <- function(
     # }
     # -----------------------------
     
+    # Add an initial ordering column to ensure transects are returned in the same order as the 
+    # provided flowlines
+    net <- 
+      net %>% 
+      add_initial_order()
+    
     # Densify network flowlines, adds more points to each linestring
     if(!is.null(densify)){ 
       message("Densifying")
@@ -1336,16 +1144,8 @@ cut_cross_sections <- function(
     
     # iterate through each linestring in "net" and generate transect lines along each line 
     for (j in 1:nrow(net)) {
-      # j = 1
-      # message(j)
-      # if (j == 37) {
-      #   message("STOPPPINNGG")
-      #   break
-      # }
-      # 
       
       # net$geometry[j] %>% mapview::npts()
-      # geos::geos_num_coordinates(net$geometry)
       
       # cut transect lines at each 'edge' generated along our line of interest
       trans <- get_transects(
@@ -1356,7 +1156,6 @@ cut_cross_sections <- function(
       
       # if 0 transects can be formed, skip the iteration
       if(nrow(trans) == 0) {
-        # logger::log_info("---> SKIPPING ITERATION {j}")
         next
       }
       
@@ -1390,35 +1189,59 @@ cut_cross_sections <- function(
     }
     
     message("Formatting")
-    
+ 
     # remove self intersecting transects or not
     if (rm_self_intersect) {
       transects <- 
         transects %>% 
-        rm_multi_intersects() %>%
-        # rm_self_intersections() %>% 
-        # transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
-        dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-        # dplyr::group_by(hy_id) %>% 
-        dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
-        dplyr::ungroup() %>% 
-        dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
-    } else {
-      transects <- 
-        transects %>% 
-        dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-        # dplyr::group_by(hy_id) %>% 
-        dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
-        dplyr::ungroup() %>% 
-        dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
-    }
+        rm_multi_intersects()
+        # # rm_self_intersections() %>% 
+        # # transects[lengths(sf::st_intersects(transects)) == 1, ] %>% 
+        # add_cs_id_sequence(crosswalk_id = crosswalk_id) %>% 
+        # # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
+        # # dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+        # # dplyr::ungroup() %>% 
+        # dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+    } 
+    # else {
+    #   transects <- 
+    #     transects %>% 
+    #     add_cs_id_sequence(crosswalk_id = crosswalk_id) %>% 
+    #     # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
+    #     # dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+    #     # dplyr::ungroup() %>% 
+    #     dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+    # }
+    
+    # add cs_id and lengthm columns
+    transects <- 
+      transects %>% 
+      add_cs_id_sequence(crosswalk_id = crosswalk_id) %>% 
+      # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
+      # dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
+      # dplyr::ungroup() %>% 
+      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+    
+    # add the intitial_order column to the transects
+    transects <-
+      transects %>% 
+      dplyr::left_join(
+        net %>% 
+          sf::st_drop_geometry() %>% 
+          dplyr::select(dplyr::any_of(crosswalk_id), initial_order),
+        by = crosswalk_id
+      )
+    
     
     # if original columns of data should be added to transects dataset
     if(add) {
       transects <-
         dplyr::left_join(
           transects,
-          sf::st_drop_geometry(net),
+          net %>% 
+            sf::st_drop_geometry() %>% 
+            dplyr::select(-initial_order),
+          # sf::st_drop_geometry(net),
           by = crosswalk_id
         )
     }
@@ -1447,29 +1270,50 @@ cut_cross_sections <- function(
     
     # if transects were NOT updated to try and fix_braids, then we want to remove transects that intersect with multiple flowlines
     # braided transects by definition, may cross over multiple flowlines
-    if(!fix_braids) {
+    if (!fix_braids) {
       # NOTE: IF we DID NOT do braid fixing, which could cause a transect to purposefully intersect multiple flowlines
       transects <- rm_multiflowline_intersections(transects = transects, flowlines = net)
       # transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
     }
     
-    # # remove any transect lines that intersect with any flowlines more than 1 time
-    # transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
-     
+
+    # regenerate the cs_id after multiflowline intersections are removed
+    transects <- 
+      transects %>% 
+      add_cs_id_sequence(crosswalk_id) %>% 
+      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+    
     # get_cs_sinuosity2(
     #   lines          = net, 
     #   cross_sections = transects, 
     #   crosswalk_id   = "hydrofabric_id",
     #   add            = TRUE
     # )
-    
+  
+    # -----------------------------
+    # Sinuosity calculation 
+    # -----------------------------
     # calculate sinuosity and add it as a column to the cross sections
     transects <- get_cs_sinuosity(
-      lines          = net, 
-      cross_sections = transects, 
+      flowlines      = net, 
+      transects      = transects, 
       crosswalk_id   = crosswalk_id,
       add            = TRUE
     )
+    
+    # -----------------------------
+    # Final reordering 
+    # -----------------------------
+    
+      transects <- 
+        transects %>% 
+        dplyr::arrange(initial_order, cs_id) 
+        # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>%
+        # dplyr::arrange(cs_id, .by_group = TRUE) %>%
+        # dplyr::ungroup() %>%     
+        # dplyr::arrange(initial_order)
+    
+    # -----------------------------
     
     # -----------------------------
     # TODO: Testing out removing forced CRS change
@@ -1555,6 +1399,36 @@ rm_multiflowline_intersections <- function(transects, flowlines) {
   
 }
 
+#' Selectively removes intersecting transect lines
+#' Attempts to remove transects intersecting other transects by first removing transects that interesect the most other transects, then re checking intersection condition,  and doing this until there are no multi intersections
+#' this gives the benefit of removing a transect line that intersects many other transects, potentially leaving those other transects with no extraneous intersections ONCE the MULTI intersecting transect is removed
+#' @param x sf dataframe of linestrings
+#' @importFrom sf st_intersects
+#'
+#' @return sf dataframe
+rm_multi_intersects <- function(x) {
+  
+  # x <- tmp_trans
+  # x
+  
+  while (any(lengths(sf::st_intersects(x)) > 1)) {
+    
+    intersect_counts <- lengths(sf::st_intersects(x))
+    max_crossings    <- which(intersect_counts == max(intersect_counts))
+    x                <- x[-max_crossings, ]
+    
+    # message("# intersects > 1 intersect_counts: ",       sum(intersect_counts > 1))
+    # message("Removing ", length(max_crossings), " from x")
+    # message(nrow(x), " rows in x remain...\n")
+    # mapview::mapview(x, color = "red") + 
+    # mapview::mapview(tmp_trans, color = "green") 
+    
+  }
+  
+  return(x)
+  
+}
+
 #' Remove linestrings that intersect with any other linestring 
 #'
 #' @param x sf linestring dataframe 
@@ -1570,15 +1444,6 @@ rm_self_intersections <- function(x) {
   return(x)
   
 }
-
-
-# reindex_cs_id  <- function(transects, crosswalk_id = NULL) {
-#   
-#   
-# }
-
-
-
 
 #' Remove transect lines that cross their given flowline more than once
 #' Internal function used in get_transects2(), a slightly faster method over get_transects() but yields slightly different outputs. 
@@ -1673,36 +1538,6 @@ check_intersects <- function(transects, line) {
   # to_keep <- rev(to_keep)
   
   return(to_keep)
-  
-}
-
-#' Selectively removes intersecting transect lines
-#' Attempts to remove transects intersecting other transects by first removing transects that interesect the most other transects, then re checking intersection condition,  and doing this until there are no multi intersections
-#' this gives the benefit of removing a transect line that intersects many other transects, potentially leaving those other transects with no extraneous intersections ONCE the MULTI intersecting transect is removed
-#' @param x sf dataframe of linestrings
-#' @importFrom sf st_intersects
-#'
-#' @return sf dataframe
-rm_multi_intersects <- function(x) {
-  
-  # x <- tmp_trans
-  # x
-  
-  while (any(lengths(sf::st_intersects(x)) > 1)) {
-    
-    intersect_counts <- lengths(sf::st_intersects(x))
-    max_crossings    <- which(intersect_counts == max(intersect_counts))
-    x                <- x[-max_crossings, ]
-    
-    # message("# intersects > 1 intersect_counts: ",       sum(intersect_counts > 1))
-    # message("Removing ", length(max_crossings), " from x")
-    # message(nrow(x), " rows in x remain...\n")
-    # mapview::mapview(x, color = "red") + 
-    # mapview::mapview(tmp_trans, color = "green") 
-    
-  }
-  
-  return(x)
   
 }
 

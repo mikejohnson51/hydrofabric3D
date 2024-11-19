@@ -3,6 +3,7 @@
 export(add_braid_ids)
 export(add_cs_area)
 export(add_cs_bathymetry)
+export(add_cs_id_sequence)
 export(add_hydrofabric_id)
 export(add_is_outlet_flag)
 export(add_length_col)

@@ -271,6 +271,51 @@ add_attribute_based_extension_distances <- function(transects,
   
 }
 
+#' Add a 1:number of rows 'initial_order' column
+#' Internal helper function for readability
+#'
+#' @param x dataframe, sf dataframe or tibble
+#' @importFrom dplyr mutate 
+#' @return dataframe, sf dataframe or tibble with an added 'initial_order' column 
+#' @noRd
+#' @keywords internal
+add_initial_order <- function(x) {
+  
+  x <- 
+    x %>% 
+    dplyr::mutate(
+      initial_order = 1:dplyr::n()
+    )
+  
+  return(x)
+  
+}
+
+#' Add a 1:number of cross sections 'cs_id' for each crosswalk_id by cs_measure  
+#'
+#' @param x dataframe, sf dataframe or tibble
+#' @param crosswalk_id character, unique ID column
+#' @importFrom dplyr mutate group_by across any_of arrange n ungroup 
+#' @return dataframe, sf dataframe or tibble with an added 'cs_id' column 
+#' @export
+add_cs_id_sequence <- function(x, crosswalk_id = NULL) {
+  is_x_valid        <- validate_df(x, 
+                                  c(crosswalk_id, "cs_measure"), 
+                                  "x")
+  
+  x <- 
+    x %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id)))) %>% 
+    dplyr::arrange(cs_measure, .by_group = TRUE) %>% 
+    dplyr::mutate(
+      cs_id = 1:dplyr::n()
+    ) %>% 
+    dplyr::ungroup() 
+  
+  return(x)
+  
+}
+
 #' @title Move Geometry Column to the last column position
 #' @description 
 #' Internal utility function for taking a dataframe or an sf dataframe, checks for the existence of a geometry type column, and 
