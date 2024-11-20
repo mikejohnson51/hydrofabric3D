@@ -12,6 +12,9 @@ validate_cs_pts(cs_pts, crosswalk_id = NULL)
 
 \item{crosswalk_id}{character, column name of the crosswalk id}
 }
+\value{
+logical, TRUE if cs_pts meet all required criteria, FALSE otherwise
+}
 \description{
 Validate Cross Sections Points
 Ensure all cross section points are valid

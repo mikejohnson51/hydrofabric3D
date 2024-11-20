@@ -554,7 +554,10 @@ classify_points <- function(
       dplyr::any_of(c(
               crosswalk_id, 
               "cs_id", "pt_id", 
-              "cs_lengthm", "relative_distance", "Z",
+              "cs_lengthm", "relative_distance", 
+              "X", 
+              "Y",
+              "Z",
               "points_per_cs",
               "class", "point_type", 
               "bottom", "left_bank", "right_bank", 

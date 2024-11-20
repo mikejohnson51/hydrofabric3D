@@ -544,11 +544,34 @@ validate_cs_pts_point_types <- function(cs_pts) {
   
 }
 
+#' Validate cs_pts has a XY columns or a geometry column
+#'
+#' @param cs_pts dataframe or sf dataframe
+#' @importFrom hydroloom rename_geometry 
+#' @return logical, TRUE if cs_pts has either XY columns or a geometry column
+#' @noRd
+#' @keywords internal
+validate_cs_pts_has_XY_or_geometry_col <- function(cs_pts) {
+  
+  # standardize geometry name
+  cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
+  
+  has_XY_cols             <-  all(c("X", "Y") %in% names(cs_pts))
+  has_geometry_col        <- "geometry" %in% names(cs_pts)
+  has_XY_or_geometry_col  <- has_XY_cols || has_geometry_col
+  
+  return(
+    has_XY_or_geometry_col
+  )
+  
+}
 
 #' Validate Cross Sections Points
 #' Ensure all cross section points are valid
 #' @param cs_pts sf object, cross section points
 #' @param crosswalk_id character, column name of the crosswalk id
+#' @importFrom hydroloom rename_geometry 
+#' @return logical, TRUE if cs_pts meet all required criteria, FALSE otherwise
 #' @export
 validate_cs_pts <- function(
     cs_pts,  
@@ -556,10 +579,12 @@ validate_cs_pts <- function(
 ) {
   # cs_pts <- final_cs_pts
   # # standardize geometry name
-  # transects <- hydroloom::rename_geometry(transects, "geometry")
+  cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
-                     "relative_distance", "cs_lengthm", "X", "Y", "Z", 
+                     "relative_distance", "cs_lengthm", 
+                     # "X", "Y", 
+                     "Z", 
                      # "Z_source",
                      "class", "point_type", "valid_banks", "has_relief"
                      )
@@ -572,6 +597,9 @@ validate_cs_pts <- function(
     obj_name = "cs_pts"
   )  
   
+  # check that cs_pts has either an XY column or a geomtry column
+  has_XY_or_geometry_col        <- validate_cs_pts_has_XY_or_geometry_col(cs_pts)
+ 
   # make sure valid cs_ids
   has_valid_cs_pts_cs_ids       <- validate_cs_pts_cs_id_enumeration(cs_pts, crosswalk_id = crosswalk_id)
   
@@ -585,6 +613,7 @@ validate_cs_pts <- function(
   
   check_list <- list(
     has_all_valid_cols            = has_all_valid_cols,
+    has_XY_or_geometry_col        = has_XY_or_geometry_col,
     has_valid_cs_pts_cs_ids       = has_valid_cs_pts_cs_ids,
     has_valid_cs_pts_pt_ids       = has_valid_cs_pts_pt_ids,
     has_valid_relative_distances  = has_valid_relative_distances,
@@ -710,6 +739,7 @@ validate_cs_pts_length_against_transects <- function(cs_pts, transects, crosswal
 #' @param cs_pts sf object, cross section points
 #' @param transects sf object, transects
 #' @param crosswalk_id character, column name of the crosswalk id
+#' @importFrom hydroloom rename_geometry 
 #' @return logical, TRUE if all validations pass, FALSE otherwise
 #' @export
 validate_cs_pts_against_transects <- function(
@@ -718,8 +748,13 @@ validate_cs_pts_against_transects <- function(
     crosswalk_id = NULL
 ) {
   
+  # standardize geometry name
+  cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
+  
   REQUIRED_CS_PTS_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
-                     "relative_distance", "cs_lengthm", "X", "Y", "Z", 
+                     "relative_distance", "cs_lengthm", 
+                     # "X", "Y", 
+                     "Z", 
                      # "Z_source",
                      "class", "point_type", "valid_banks", "has_relief"
   )
@@ -734,6 +769,9 @@ validate_cs_pts_against_transects <- function(
   # # standardize geometry name
   # transects <- hydroloom::rename_geometry(transects, "geometry")
   
+  # check that cs_pts has either an XY column or a geomtry column
+  has_XY_or_geometry_col        <- validate_cs_pts_has_XY_or_geometry_col(cs_pts)
+  
   # make sure all id/cs_id combos are in both transects and cs_pts
   has_valid_cs_pts_ids  <- validate_cs_pt_ids_in_transects(cs_pts, transects, crosswalk_id = crosswalk_id)
   
@@ -742,6 +780,7 @@ validate_cs_pts_against_transects <- function(
   
   check_list <- list(
     has_all_valid_cols         = has_all_valid_cols,
+    has_XY_or_geometry_col     = has_XY_or_geometry_col,
     has_valid_cs_pts_ids       = has_valid_cs_pts_ids,
     has_matching_lengths       = has_matching_lengths
   ) 
