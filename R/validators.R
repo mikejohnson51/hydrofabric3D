@@ -530,8 +530,8 @@ validate_cs_pts_relative_distance <- function(cs_pts, crosswalk_id = NULL) {
 #' @keywords internal
 validate_cs_pts_point_types <- function(cs_pts) {
   
-  # make sure only "left_bank", "right_bank", "channel", and "bottom" values exist in cs_pts point_type column
-  valid_point_types  <- c("left_bank", "right_bank", "channel", "bottom")
+  # make sure only NA, "left_bank", "right_bank", "channel", and "bottom" values exist in cs_pts point_type column
+  valid_point_types  <- c(NA, "left_bank", "right_bank", "channel", "bottom")
   
   # unique point types in cs_pts
   unique_point_types <- unique(cs_pts$point_type)
