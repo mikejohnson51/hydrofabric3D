@@ -12,6 +12,7 @@ source("testing_utils.R")
 # -------------------------------------------------------------------
 # ---- hydrofabric::cross_section_pts() ----
 # -------------------------------------------------------------------
+
 testthat::test_that("check that missing NA value is identified and added as a NA Z value for the correct transect", {
   TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
   ID_COL              <- "hy_id"
@@ -95,6 +96,429 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
   
 })
 
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values throws an error when na.rm = TRUE and its the only cross section in the set", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  ID_COL              <- "hy_id"
+  CS_IDS_MISSING_Z    <- c(66)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  POINTS_PER_CS       <- NULL
+  MIN_PTS_PER_CS      <- 10
+  
+  transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+    dplyr::filter(cs_id %in% CS_IDS_MISSING_Z)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = POINTS_PER_CS,
+    min_pts_per_cs = MIN_PTS_PER_CS,
+    dem            = DEM_PATH
+  ) 
+  
+  testthat::expect_error(
+    hydrofabric3D::classify_points(cs_pts, 
+                                     crosswalk_id = ID_COL, 
+                                     na.rm = TRUE
+                                     )
+  )
+  # has_bottom_point_type <- c("bottom") %in% classified_pts$point_type
+  # testthat::expect_true(has_bottom_point_type)
+  
+})
+
+
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values gets 
+                  removed when na.rm = TRUE and there are more than just that NA filled set of cs pts 
+                  (i.e. theres another cross section that does NOT contain any NA values)
+                    ", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  ID_COL              <- "hy_id"
+  CS_ID_WITH_MISSING_Z <- 66
+  CS_ID_WITH_COMPLETE_Z <- 67
+  
+  CS_IDS_OF_INTEREST <- c(CS_ID_WITH_MISSING_Z, CS_ID_WITH_COMPLETE_Z)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  POINTS_PER_CS       <- NULL
+  MIN_PTS_PER_CS      <- 10
+  
+  transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+    dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = POINTS_PER_CS,
+    min_pts_per_cs = MIN_PTS_PER_CS,
+    dem            = DEM_PATH
+  ) 
+  
+  classified_pts <- hydrofabric3D::classify_points(cs_pts, 
+                                   crosswalk_id = ID_COL, 
+                                   na.rm = TRUE
+  )
+  
+  # the cs_id with known missing Z values is NOT in output set
+  testthat::expect_true(
+    !CS_ID_WITH_MISSING_Z %in% unique(classified_pts$cs_id)
+  )
+  
+  # cs_ids with all good Z values are all in the output set
+  testthat::expect_true(
+    all(CS_ID_WITH_COMPLETE_Z %in% unique(classified_pts$cs_id))
+  )
+  
+})
+
+
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values is kept 
+                  when na.rm = FALSE and there are more than just that NA filled set of cs pts 
+                  (i.e. theres another cross section that does NOT contain any NA values)", {
+                      
+      TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+      ID_COL              <- "hy_id"
+      CS_ID_WITH_MISSING_Z <- 66
+      CS_ID_WITH_COMPLETE_Z <- 67
+      
+      CS_IDS_OF_INTEREST <- c(CS_ID_WITH_MISSING_Z, CS_ID_WITH_COMPLETE_Z)
+      
+      # Cross section point inputs
+      DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+      POINTS_PER_CS       <- NULL
+      MIN_PTS_PER_CS      <- 10
+      
+      transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+        dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+      
+      # mapview::mapview(raster::raster(DEM_PATH)) + transects
+      
+      cs_pts <- hydrofabric3D::cross_section_pts(
+        cs             = transects,
+        crosswalk_id   = ID_COL,
+        points_per_cs  = POINTS_PER_CS,
+        min_pts_per_cs = MIN_PTS_PER_CS,
+        dem            = DEM_PATH
+      ) 
+      
+      classified_pts <- hydrofabric3D::classify_points(cs_pts, 
+                                                         crosswalk_id = ID_COL, 
+                                                         na.rm = FALSE
+      )
+      
+      # all of the cs_ids are all in the output set
+      testthat::expect_true(
+        all(CS_IDS_OF_INTEREST %in% unique(classified_pts$cs_id))
+      )
+      
+    })
+
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values have all NA values for classification attributes
+          when na.rm = FALSE", {
+                    
+    TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+    ID_COL              <- "hy_id"
+    CS_ID_WITH_MISSING_Z <- 66
+    CS_ID_WITH_COMPLETE_Z <- 67
+    
+    CS_IDS_OF_INTEREST <- c(CS_ID_WITH_MISSING_Z, CS_ID_WITH_COMPLETE_Z)
+    
+    # Cross section point inputs
+    DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+    POINTS_PER_CS       <- NULL
+    MIN_PTS_PER_CS      <- 10
+    
+    transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+      dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+    
+    # mapview::mapview(raster::raster(DEM_PATH)) + transects
+    
+    cs_pts <- hydrofabric3D::cross_section_pts(
+      cs             = transects,
+      crosswalk_id   = ID_COL,
+      points_per_cs  = POINTS_PER_CS,
+      min_pts_per_cs = MIN_PTS_PER_CS,
+      dem            = DEM_PATH
+    ) 
+    
+    classified_pts <- hydrofabric3D::classify_points(cs_pts, 
+                                                       crosswalk_id = ID_COL, 
+                                                       na.rm = FALSE
+    )
+    
+    # check all of the values of the CS_ID with missing Z that they are all NA values
+    testthat::expect_true(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+        dplyr::pull(class) %>% 
+        is.na() %>% 
+        all()
+    )
+    
+    testthat::expect_true(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+        dplyr::pull(point_type) %>% 
+        is.na() %>% 
+        all()
+    )
+    
+    testthat::expect_true(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+        dplyr::pull(bottom) %>% 
+        is.na() %>% 
+        all()
+    )
+    
+    testthat::expect_true(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+        dplyr::pull(left_bank) %>% 
+        is.na() %>% 
+        all()
+    )
+    
+    testthat::expect_true(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+        dplyr::pull(right_bank) %>% 
+        is.na() %>% 
+        all()
+    )
+    
+    testthat::expect_true(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+        dplyr::pull(valid_banks) %>% 
+        is.na() %>% 
+        all()
+    )
+    
+    testthat::expect_true(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+        dplyr::pull(has_relief) %>% 
+        is.na() %>% 
+        all()
+    )
+    
+    # Check NON MISSING Z cs_ids for NO NA values in attributes columns 
+    testthat::expect_false(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+        dplyr::pull(class) %>% 
+        is.na() %>% 
+        any()
+    )
+    
+    testthat::expect_false(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+        dplyr::pull(point_type) %>% 
+        is.na() %>% 
+        any()
+    )
+    
+    testthat::expect_false(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+        dplyr::pull(bottom) %>% 
+        is.na() %>% 
+        any()
+    )
+    
+    testthat::expect_false(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+        dplyr::pull(left_bank) %>% 
+        is.na() %>% 
+        any()
+    )
+    
+    testthat::expect_false(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+        dplyr::pull(right_bank) %>% 
+        is.na() %>% 
+        any()
+    )
+    
+    testthat::expect_false(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+        dplyr::pull(valid_banks) %>% 
+        is.na() %>% 
+        any()
+    )
+    
+    testthat::expect_false(
+      classified_pts %>% 
+        dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+        dplyr::pull(has_relief) %>% 
+        is.na() %>% 
+        any()
+    )
+    
+  })
+
+
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values have all NA values for classification attributes
+          when na.rm = FALSE", {
+            
+            TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+            ID_COL              <- "hy_id"
+            CS_ID_WITH_MISSING_Z <- 66
+            CS_ID_WITH_COMPLETE_Z <- 67
+            
+            CS_IDS_OF_INTEREST <- c(CS_ID_WITH_MISSING_Z, CS_ID_WITH_COMPLETE_Z)
+            
+            # Cross section point inputs
+            DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+            POINTS_PER_CS       <- NULL
+            MIN_PTS_PER_CS      <- 10
+            
+            transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+              dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+            
+            # mapview::mapview(raster::raster(DEM_PATH)) + transects
+            
+            cs_pts <- hydrofabric3D::cross_section_pts(
+              cs             = transects,
+              crosswalk_id   = ID_COL,
+              points_per_cs  = POINTS_PER_CS,
+              min_pts_per_cs = MIN_PTS_PER_CS,
+              dem            = DEM_PATH
+            ) 
+            
+            classified_pts <- hydrofabric3D::classify_points(cs_pts, 
+                                                               crosswalk_id = ID_COL, 
+                                                               na.rm = FALSE
+            )
+            
+            # check all of the values of the CS_ID with missing Z that they are all NA values
+            testthat::expect_true(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+                dplyr::pull(class) %>% 
+                is.na() %>% 
+                all()
+            )
+            
+            testthat::expect_true(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+                dplyr::pull(point_type) %>% 
+                is.na() %>% 
+                all()
+            )
+            
+            testthat::expect_true(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+                dplyr::pull(bottom) %>% 
+                is.na() %>% 
+                all()
+            )
+            
+            testthat::expect_true(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+                dplyr::pull(left_bank) %>% 
+                is.na() %>% 
+                all()
+            )
+            
+            testthat::expect_true(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+                dplyr::pull(right_bank) %>% 
+                is.na() %>% 
+                all()
+            )
+            
+            testthat::expect_true(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+                dplyr::pull(valid_banks) %>% 
+                is.na() %>% 
+                all()
+            )
+            
+            testthat::expect_true(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_MISSING_Z) %>% 
+                dplyr::pull(has_relief) %>% 
+                is.na() %>% 
+                all()
+            )
+            
+            # Check NON MISSING Z cs_ids for NO NA values in attributes columns 
+            testthat::expect_false(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+                dplyr::pull(class) %>% 
+                is.na() %>% 
+                any()
+            )
+            
+            testthat::expect_false(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+                dplyr::pull(point_type) %>% 
+                is.na() %>% 
+                any()
+            )
+            
+            testthat::expect_false(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+                dplyr::pull(bottom) %>% 
+                is.na() %>% 
+                any()
+            )
+            
+            testthat::expect_false(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+                dplyr::pull(left_bank) %>% 
+                is.na() %>% 
+                any()
+            )
+            
+            testthat::expect_false(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+                dplyr::pull(right_bank) %>% 
+                is.na() %>% 
+                any()
+            )
+            
+            testthat::expect_false(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+                dplyr::pull(valid_banks) %>% 
+                is.na() %>% 
+                any()
+            )
+            
+            testthat::expect_false(
+              classified_pts %>% 
+                dplyr::filter(cs_id %in% CS_ID_WITH_COMPLETE_Z) %>% 
+                dplyr::pull(has_relief) %>% 
+                is.na() %>% 
+                any()
+            )
+            
+          })
 
 # testthat::test_that("check that missing NA value is identified and added as a NA Z value", {
   

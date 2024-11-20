@@ -2,10 +2,15 @@
 % Please edit documentation in R/cs_pts.R
 \name{classify_points}
 \alias{classify_points}
-\title{Classify Cross Section Points (version 2)
+\title{Classify Cross Section Points (version 3) with NA removal
 Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points}
 \usage{
-classify_points(cs_pts, crosswalk_id = NULL, pct_of_length_for_relief = 0.01)
+classify_points(
+  cs_pts,
+  crosswalk_id = NULL,
+  pct_of_length_for_relief = 0.01,
+  na.rm = TRUE
+)
 }
 \arguments{
 \item{cs_pts}{CS points, output of hydrofabric3D::cross_section_pts()}
@@ -16,11 +21,13 @@ classify_points(cs_pts, crosswalk_id = NULL, pct_of_length_for_relief = 0.01)
 threshold depth for classifying whether a cross section has "relief". If a cross section has at least X\% of its length in depth,
 then it is classified as "having relief" (i.e. has_relief = TRUE). Value must be non negative number (greater than or equal to 0).
 Default is 0.01 (1\% of the cross sections length).}
+
+\item{na.rm}{logical, whether to remove cross section pts with any missing Z values (Z = NA). Default is TRUE.}
 }
 \value{
 sf object
 }
 \description{
-Classify Cross Section Points (version 2)
+Classify Cross Section Points (version 3) with NA removal
 Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points
 }

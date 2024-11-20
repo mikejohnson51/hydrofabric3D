@@ -357,6 +357,104 @@ extract_pt_val <- function(rast, pts) {
   ) 
 }
 
+#' Add missing depths and complete cs flags for classification of cross section points
+#' internal helper function used for dealing with NA Z values in cs_pts
+#'
+#' @param cs_pts cs_pts dataframe with is_missing_depths column
+#' @param crosswalk_id character, column name of unique flowline / transect ID
+#' @return dataframe or sf dataframe 
+#' @importFrom dplyr mutate case_when 
+#' @noRd
+#' @keywords internal
+add_missing_depths_flags_for_classification <- function(cs_pts, crosswalk_id = NULL) {
+  
+  # cs_pts <- classified_pts
+  
+  REQUIRED_COLS <- c(crosswalk_id, "Z")
+  
+  # validate input graph
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
+  
+  cs_pts <- 
+    cs_pts %>%
+    # dplyr::filter() %>%
+    add_is_complete_cs_flag(crosswalk_id) %>% 
+    # TODO: this code deals with missing depth values, still need to fully test
+    # Deal with missing Z values by temporarily setting the NA Z values to 1, then undoing this at the end.
+    add_is_missing_depth_flag() %>%
+    dplyr::mutate(
+      Z = dplyr::case_when(
+        !is_missing_depth ~ Z,
+        TRUE              ~ 1
+      )
+    )
+  
+  return(cs_pts)
+  
+}
+
+#' Set all classification attributes in cross section points to NA if they are missing depths
+#'
+#' @param cs_pts cs_pts dataframe with is_missing_depths column
+#'
+#' @return dataframe or sf dataframe 
+#' @importFrom dplyr mutate case_when 
+#' @noRd
+#' @keywords internal
+undo_classification_for_missing_depths <- function(cs_pts) {
+  
+  # cs_pts <- classified_pts
+  
+  REQUIRED_COLS <- c("Z", "class", "point_type", "bottom", 
+                     "left_bank", "right_bank", "valid_banks", "has_relief",
+                     "is_missing_depth", "is_complete_cs")
+  
+  # validate input graph
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
+  
+  # if NOT is_complete_cs, set class, point_type, bottom, left_bank, right_bank, valid_banks, has_relief to NA
+  # set Z that is_missing_depth to NA
+  cs_pts <- 
+    cs_pts %>% 
+    dplyr::mutate(
+      Z = dplyr::case_when(
+        !is_missing_depth ~ Z,
+        TRUE              ~ NA
+      ),
+      class = dplyr::case_when(
+        is_complete_cs    ~ class,
+        TRUE              ~ NA
+      ),
+      point_type = dplyr::case_when(
+        is_complete_cs    ~ point_type,
+        TRUE              ~ NA
+      ),
+      bottom = dplyr::case_when(
+        is_complete_cs    ~ bottom,
+        TRUE              ~ NA
+      ),
+      left_bank = dplyr::case_when(
+        is_complete_cs    ~ left_bank,
+        TRUE              ~ NA
+      ),
+      right_bank = dplyr::case_when(
+        is_complete_cs    ~ right_bank,
+        TRUE              ~ NA
+      ),
+      valid_banks = dplyr::case_when(
+        is_complete_cs    ~ valid_banks,
+        TRUE              ~ NA
+      ),
+      has_relief = dplyr::case_when(
+        is_complete_cs    ~ has_relief,
+        TRUE              ~ NA
+      )
+    )
+    
+  return(cs_pts)
+  
+}
+
 #' Classify Cross Section Points (version 2)
 #' Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points
 #' @param cs_pts CS points, output of hydrofabric3D::cross_section_pts()
@@ -369,7 +467,7 @@ extract_pt_val <- function(rast, pts) {
 #' @importFrom dplyr filter group_by mutate ungroup select between n left_join
 #' @importFrom zoo rollmean
 #' @export
-classify_points <- function(
+classify_points2 <- function(
     cs_pts, 
     crosswalk_id = NULL,
     pct_of_length_for_relief = 0.01
@@ -377,7 +475,8 @@ classify_points <- function(
   
   # -----------------------------------------------------------------------
   # cs_pts <- cs
-  # crosswalk_id = "hy_id"
+  # cs_pts <- sf::read_sf(    "/Users/anguswatters/Desktop/cs_pts_na_values.gpkg")
+  # crosswalk_id = "id"
   # pct_of_length_for_relief = 0.01
   
   # cs_pts <- data.frame(
@@ -416,17 +515,11 @@ classify_points <- function(
     # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'
   }
-
+  
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
   
   # validate input cs pts
   is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts") 
-
-  # if (!all(REQUIRED_COLS %in% names(cs_pts))) {
-  #   missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(cs_pts))]
-  #   stop("'cs_pts' is missing one or more of the required columns:\n > ", 
-  #        paste0(missing_cols, collapse = "\n > "))
-  # }
   
   # type checking
   if (!is.numeric(pct_of_length_for_relief)) {
@@ -440,10 +533,7 @@ classify_points <- function(
          pct_of_length_for_relief, ", 'pct_of_length_for_relief' must be greater than or equal to 0")
   } 
   
-  # cs_pts <- r_cs_pts2 
-  # crosswalk_id = "hy_id"
-  
-  # # remove any columns that already exist
+  # remove any columns that already exist
   cs_pts <- dplyr::select(cs_pts, 
                           !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", 
                                            "right_bank", "valid_banks", "has_relief"))
@@ -451,7 +541,7 @@ classify_points <- function(
   
   # required cols that will be selected from the classified_pts object and in this order
   output_cols       <- c(crosswalk_id, "cs_id", "pt_id", "Z", "relative_distance", 
-                      "cs_lengthm", "class", "point_type")
+                         "cs_lengthm", "class", "point_type")
   
   # any starting columns in the original data 
   starting_cols  <- names(cs_pts)
@@ -473,29 +563,39 @@ classify_points <- function(
   
   # create classifications for points
   classified_pts <-
-    dplyr::filter(cs_pts) %>% 
+    cs_pts %>% 
+    dplyr::filter() %>%
+    #  TODO: this code deals with missing depth values, still need to fully test
+    # # Deal with missing Z values by temporarily setting the NA Z values to 1, then undoing this at the end.
+    # add_is_missing_depth_flag(crosswalk_id) %>% 
+    # dplyr::mutate(
+    #   Z = dplyr::case_when(
+    #                 !is_missing_depth ~ Z,
+    #                 TRUE              ~ 1
+    #               )
+    #             ) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     # dplyr::group_by(hy_id, cs_id) %>%
     dplyr::mutate(
       class       = classify_banks_and_bottoms(
-                        num_of_pts = points_per_cs[1],
-                        pt_ids     = pt_id,
-                        depths     = Z
-                      ),
+        num_of_pts = points_per_cs[1],
+        pt_ids     = pt_id,
+        depths     = Z
+      ),
       Z           = use_smoothed_depths(
-                        start_depths    = Z, 
-                        smoothed_depths = smooth_depths(Z, window = 3), 
-                        point_types     = class
-                      ),
+        start_depths    = Z, 
+        smoothed_depths = smooth_depths(Z, window = 3), 
+        point_types     = class
+      ),
       anchors     = list(
-                      find_anchor_pts(
-                        depths             = Z,
-                        num_of_pts         = points_per_cs[1],
-                        cs_length          = cs_lengthm[1],
-                        relative_distance  = relative_distance,
-                        point_types        = class
-                      )
-                    ),
+        find_anchor_pts(
+          depths             = Z,
+          num_of_pts         = points_per_cs[1],
+          cs_length          = cs_lengthm[1],
+          relative_distance  = relative_distance,
+          point_types        = class
+        )
+      ),
       L              = anchors[[1]][1],
       R              = anchors[[1]][3],
       class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
@@ -525,11 +625,11 @@ classify_points <- function(
       #                                 ),
       deriv_type   = set_channel_anchors(deriv_type),
       deriv_type   = set_bank_anchors2(
-                                    depths = Z,
-                                    point_types = deriv_type,
-                                    L = L[1],
-                                    R = R[1]
-                                    ),
+        depths = Z,
+        point_types = deriv_type,
+        L = L[1],
+        R = R[1]
+      ),
       deriv_type   = set_missing_bottom(
         depths      = Z, 
         point_types = deriv_type
@@ -552,22 +652,24 @@ classify_points <- function(
     dplyr::ungroup() %>% 
     dplyr::select(
       dplyr::any_of(c(
-              crosswalk_id, 
-              "cs_id", "pt_id", 
-              "cs_lengthm", "relative_distance", 
-              "X", 
-              "Y",
-              "Z",
-              "points_per_cs",
-              "class", "point_type", 
-              "bottom", "left_bank", "right_bank", 
-              "valid_banks", "has_relief",
-              "geometry"
-              )
-            ))
-    # dplyr::select(dplyr::any_of(cols_to_select))
+        crosswalk_id, 
+        "cs_id", "pt_id", 
+        "cs_lengthm", "relative_distance", 
+        "X", 
+        "Y",
+        "Z",
+        "points_per_cs",
+        "class", "point_type", 
+        "bottom", "left_bank", "right_bank", 
+        "valid_banks", "has_relief",
+        # "is_missing_depth", # TODO: deals with missing depths
+        "geometry"
+      )
+      ))
+  # dplyr::select(dplyr::any_of(cols_to_select))
   # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
   # classified_pts$point_type
+  
   
   
   # classified_pts[cols_to_select]                       # Another method for selecting columns....
@@ -609,12 +711,332 @@ classify_points <- function(
       # by = c("hy_id", "cs_id")
     ) 
   
+  # TODO: this code deals with missing depth values, still need to fully test
+  # # Undo temporary fill in depths for missing Z values in any cross sections
+  # classified_pts <- 
+  #   classified_pts %>% 
+  #   undo_classification_for_missing_depths() %>% 
+  #   dplyr::select(-is_missing_depth)
+  
   # move the geometry column to the last column (if one exists)
   classified_pts <- move_geometry_to_last(classified_pts)
   
   return(classified_pts)
   
 }
+
+#' Classify Cross Section Points (version 3) with NA removal
+#' Version 2 of cross section point classifier function, uses 1st and 2nd derivative of the depths to better classify channel points
+#' @param cs_pts CS points, output of hydrofabric3D::cross_section_pts()
+#' @param crosswalk_id character, ID column in cs_pts
+#' @param pct_of_length_for_relief numeric, percent of cross section length (cs_lengthm) to use as the 
+#' threshold depth for classifying whether a cross section has "relief". If a cross section has at least X% of its length in depth, 
+#' then it is classified as "having relief" (i.e. has_relief = TRUE). Value must be non negative number (greater than or equal to 0). 
+#' Default is 0.01 (1% of the cross sections length).
+#' @param na.rm logical, whether to remove cross section pts with any missing Z values (Z = NA). Default is TRUE.
+#' @return sf object
+#' @importFrom dplyr filter group_by mutate ungroup select between n left_join
+#' @importFrom zoo rollmean
+#' @export
+classify_points <- function(
+    cs_pts, 
+    crosswalk_id = NULL,
+    pct_of_length_for_relief = 0.01,
+    na.rm = TRUE
+){
+  
+  # -----------------------------------------------------------------------
+  # cs_pts <- cs
+  # cs_pts <- sf::read_sf(    "/Users/anguswatters/Desktop/cs_pts_na_values.gpkg") %>%
+  #   dplyr::mutate(
+  #     Z = dplyr::case_when(
+  #       id == "wb-20471" & pt_id %in% c(1, 2, 3) & cs_id %in% c(1) ~ 10,
+  #       TRUE ~ Z
+  #     )
+  #   )
+  # crosswalk_id = "id"
+  # pct_of_length_for_relief = 0.01
+  # na.rm = FALSE
+  
+  # cs_pts <- data.frame(
+  #   hy_id      = c("A", "A",  "A"),
+  #   cs_id      = c(1, 1, 1),
+  #   pt_id             = c(1, 2, 3),
+  #   cs_lengthm        = c(100, 100, 100),
+  #   relative_distance = c(0.333333, 0.666667, 1.0000000),
+  #   Z = c(4, 1, 4)
+  # )
+  # cs_pts <- data.frame(
+  #   hy_id      = c("A", "A",  "A"),
+  #   cs_id      = c(1, 1, 1),
+  #   pt_id             = c(1, 2, 3),
+  #   cs_lengthm        = c(100, 100, 100),
+  #   relative_distance = c(0.333333, 0.666667, 1.0000000),
+  #   Z = c(4, 1, 4)
+  # )
+  # crosswalk_id = "hy_id"
+  # pct_of_length_for_relief = 0.01
+  
+  # message("message from dev testing ~.__.~")
+  # -----------------------------------------------------------------------
+  
+  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
+    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
+  # TODO: maybe relief_to_length_ratio is more intuitive than pct_of_length_for_relief ????
+  # relief_to_length_ratio = 0.01
+  
+  # cs_pts2 <- cs_pts
+  # crosswalk_id = "hy_id"
+  # pct_of_length_for_relief = 0.01
+  
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    # cs  <- add_hydrofabric_id(cs) 
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
+  
+  # validate input cs pts
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts") 
+  
+  # type checking
+  if (!is.numeric(pct_of_length_for_relief)) {
+    stop("Invalid argument type, 'pct_of_length_for_relief' must be of type 'numeric', given type was '",   
+         class(pct_of_length_for_relief), "'")
+  }
+  
+  # Make sure pct_of_length_for_relief is valid percentage value (greater than 0)
+  if (pct_of_length_for_relief < 0 ) {
+    stop("Invalid value 'pct_of_length_for_relief' of ", 
+         pct_of_length_for_relief, ", 'pct_of_length_for_relief' must be greater than or equal to 0")
+  } 
+  
+  # cs_pts <- r_cs_pts2 
+  # crosswalk_id = "hy_id"
+  
+  # # remove any columns that already exist
+  cs_pts <- dplyr::select(cs_pts, 
+                          !dplyr::any_of(c("class", "point_type", "bottom", "left_bank", 
+                                           "right_bank", "valid_banks", "has_relief"))
+  )
+  
+  # check if we're missing the required points_per_cs column, if so, 
+  # we generate one based on the number of points in each cross section
+  is_missing_points_per_cs <- !"point_per_cs" %in% names(cs_pts)
+  
+  if (is_missing_points_per_cs) {
+    cs_pts <- 
+      cs_pts %>% 
+      dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+      dplyr::mutate(points_per_cs = dplyr::n()) %>% 
+      dplyr::ungroup()
+  } 
+  
+  # cs_pts %>% 
+  #   dplyr::filter() %>%
+  #   add_is_missing_depth_flag(crosswalk_id) %>% 
+  #   dplyr::filter(!is_missing_depth)
+  # 
+  # cs_pts %>% 
+  #   dplyr::filter() %>%
+  #   drop_incomplete_cs_pts(crosswalk_id)
+  
+  if (na.rm) {
+    classified_pts <-
+      cs_pts %>%
+      drop_incomplete_cs_pts(crosswalk_id)
+  } else {
+    
+    classified_pts <-
+      cs_pts %>%
+      add_missing_depths_flags_for_classification(crosswalk_id)
+    # add_is_complete_cs_flag(crosswalk_id) %>% 
+    # add_is_missing_depth_flag() %>%
+    # dplyr::mutate(
+    #   Z = dplyr::case_when(
+    #                 !is_missing_depth ~ Z,
+    #                 TRUE              ~ 1
+    #               )
+    #             )
+  }
+  
+  no_cs_pts_remain <- nrow(classified_pts) == 0 
+  
+  if (no_cs_pts_remain && na.rm) {
+    
+    stop("No cross sections avaliable after removing cross sections containing NA Z values.\nConsider setting 'na.rm = FALSE' to handle missing Z values.")
+    # classified_pts <-
+    #   cs_pts %>%
+    #   add_missing_depths_flags_for_classification(crosswalk_id)
+    
+  }
+  
+  # create classifications for points
+  classified_pts <-
+    classified_pts %>% 
+    dplyr::filter() %>%
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>%
+    dplyr::mutate(
+      class       = classify_banks_and_bottoms(
+        num_of_pts = points_per_cs[1],
+        pt_ids     = pt_id,
+        depths     = Z
+      ),
+      Z           = use_smoothed_depths(
+        start_depths    = Z, 
+        smoothed_depths = smooth_depths(Z, window = 3), 
+        point_types     = class
+      ),
+      anchors     = list(
+        find_anchor_pts(
+          depths             = Z,
+          num_of_pts         = points_per_cs[1],
+          cs_length          = cs_lengthm[1],
+          relative_distance  = relative_distance,
+          point_types        = class
+        )
+      ),
+      L              = anchors[[1]][1],
+      R              = anchors[[1]][3],
+      class          = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
+      class          = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
+      class          = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class),
+      
+      # get classification of concavity based on 1st and 2nd derivatives of depth points
+      deriv_type   = classify_derivatives(Z),
+      deriv_type   = dplyr::case_when(
+        (grepl("concave", deriv_type) | deriv_type == "linear") & class != "bottom" ~ "channel",
+        TRUE                         ~ class
+      ),
+      # side = dplyr::case_when(
+      #   pt_id >= R[1] ~ "right_side",
+      #   pt_id <= L[1] ~ "left_side",
+      #   TRUE          ~ "middle"
+      # ),
+      # # max_left      = which.max(Z[1:L[1]]),
+      # # max_right     = which.max(Z[R[1]:length(Z)]) + R[1],
+      # max_left      = pmax(which.max(Z[1:L[1]]), 1),
+      # max_right     = pmin(which.max(Z[R[1]:length(Z)]) + R[1], points_per_cs[1]),
+      
+      deriv_type   = clean_point_types(deriv_type),
+      # deriv_type   = set_missing_bottom(
+      #                                 depths      = Z, 
+      #                                 point_types = deriv_type
+      #                                 ),
+      deriv_type   = set_channel_anchors(deriv_type),
+      deriv_type   = set_bank_anchors2(
+        depths = Z,
+        point_types = deriv_type,
+        L = L[1],
+        R = R[1]
+      ),
+      deriv_type   = set_missing_bottom(
+        depths      = Z, 
+        point_types = deriv_type
+      ),
+      deriv_type   = set_left_bank(
+        point_types = deriv_type
+      ),
+      deriv_type   = set_right_bank(
+        point_types = deriv_type
+      ),
+      deriv_type   = set_channel_surrounded_by_bottom(
+        depths      = Z,
+        point_types = deriv_type
+      ),
+      class        = deriv_type,
+      point_type   = deriv_type
+      # class      = clean_point_types(class),
+      # point_type = class
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(
+      dplyr::any_of(c(
+        crosswalk_id, 
+        "cs_id", "pt_id", 
+        "cs_lengthm", "relative_distance", 
+        "X", 
+        "Y",
+        "Z",
+        "points_per_cs",
+        "class", "point_type", 
+        "bottom", "left_bank", "right_bank", 
+        "valid_banks", "has_relief",
+        "is_complete_cs", # TODO: deals with missing depths
+        "is_missing_depth", # TODO: deals with missing depths
+        "geometry"
+      )
+      ))
+  # dplyr::select(dplyr::any_of(cols_to_select))
+  # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
+  # classified_pts$point_type
+  
+  
+  
+  # classified_pts[cols_to_select]                       # Another method for selecting columns....
+  
+  # get bank validity attributes for each hy_id/cs_id
+  # - Uses the count of point types per cross section and checks Z to make sure that a "bottom" point is
+  #   in each cross section and each "bottom" point has a valid left and right bank)
+  bank_validity_df <- get_bank_attributes(classified_pts, crosswalk_id)
+  
+  # classified_pts %>%
+  # dplyr::filter(hy_id %in% c('wb-1003260')) %>%
+  # hydrofabric3D::plot_cs_pts(color = "point_type")
+  
+  # # Or add bank attributes 
+  # banked_pts <- add_bank_attributes(output_pts)
+  
+  # get relief data, determine if a cross section has relief within X% percentage of the cross sections length
+  relief_df <- get_relief(
+    classified_pts, 
+    crosswalk_id             = crosswalk_id,
+    pct_of_length_for_relief = pct_of_length_for_relief, 
+    detailed                 = FALSE
+  )
+  
+  # join the bank validity attributes with the relief values
+  validity_checks <- dplyr::left_join(
+    bank_validity_df, 
+    relief_df, 
+    by = c(crosswalk_id, "cs_id")  
+    # by = c("hy_id", "cs_id")
+  )
+  
+  # join the new validity check values to the classified points
+  classified_pts <- 
+    classified_pts %>% 
+    dplyr::left_join(
+      validity_checks,
+      by = c(crosswalk_id, "cs_id")  
+      # by = c("hy_id", "cs_id")
+    ) 
+  
+  if(!na.rm) {
+    
+    # TODO: this code deals with missing depth values, still need to fully test
+    # # Undo temporary fill in depths for missing Z values in any cross sections
+    classified_pts <-
+      classified_pts %>%
+      undo_classification_for_missing_depths() %>%
+      dplyr::select(-is_missing_depth, -is_complete_cs)
+    
+  }
+  
+  # # remove any columns that already exist
+  classified_pts <- dplyr::select(classified_pts, 
+                                  !dplyr::any_of(c("is_missing_depth", "is_complete_cs"))
+                                  )
+  
+  # move the geometry column to the last column (if one exists)
+  classified_pts <- move_geometry_to_last(classified_pts)
+  
+  return(classified_pts)
+  
+}
+
 
 #############################################################################################################
 # classify_banks_and_bottoms()
@@ -1961,7 +2383,7 @@ extract_dem_values3 <- function(cs, crosswalk_id = NULL, dem = NULL) {
 #' @return sf object
 #' @importFrom dplyr filter group_by mutate ungroup select between n left_join
 #' @importFrom zoo rollmean
-classify_points2 <- function(
+classify_points5 <- function(
     cs_pts, 
     crosswalk_id = NULL,
     pct_of_length_for_relief = 0.01
@@ -2226,53 +2648,6 @@ classify_points3 <- function(
   classified_pts <- move_geometry_to_last(classified_pts)
   
   return(classified_pts)
-  
-}
-
-#' Classify Cross Section Points v1 (Deprecated version)
-#' @param cs_pts CS points
-#' @return sf object
-#' @importFrom dplyr filter group_by mutate ungroup select between n
-#' @importFrom zoo rollmean
-classify_points4 <- function(cs_pts){
-  
-  . <-  L <-  L1 <-  L2  <-  R  <-  R1 <-  R2  <- Z  <-  Z2 <-  anchor <-  b1  <- b2  <- cs_lengthm  <- count_left <- 
-    count_right  <-  cs_id <-  hy_id <-  in_channel_pts  <- lengthm <-  low_pt  <- max_bottom  <- mean_dist <-  mid_bottom  <- min_bottom  <- pt_id <- relative_distance <-  third <- NULL
-  
-  dplyr::filter(cs_pts) %>% 
-    dplyr::group_by(hy_id, cs_id) %>% 
-    dplyr::mutate(
-      third = ceiling(n() / 3),
-      mean_dist = mean(diff(relative_distance)),
-      in_channel_pts = ceiling(cs_lengthm[1] / mean_dist),
-      b1 = ceiling(in_channel_pts / 2),
-      b2 = in_channel_pts - b1,
-      low_pt  = min(Z[third[1]:(2*third[1] - 1)]),
-      class = ifelse(Z <= low_pt & dplyr::between(pt_id, third[1], (2*third[1] - 1)), 
-                     "bottom", 
-                     "bank"),
-      Z2 = c(Z[1], zoo::rollmean(Z, 3), Z[dplyr::n()]),
-      Z = ifelse(class == "bottom", Z, Z2),
-      min_bottom = which(class == "bottom")[1],
-      mid_bottom = which(class == "bottom")[ceiling(length(which(class == "bottom"))/2)],
-      max_bottom = which(class == "bottom")[length(which(class == "bottom"))],
-      L1 = pmax(1, mid_bottom - b1),
-      L2 = pmax(1, mid_bottom - b2),
-      R1 = pmin(mid_bottom + b2, dplyr::n()),
-      R2 = pmin(mid_bottom + b1, dplyr::n()),
-      anchor = ifelse(Z[R2] < Z[L1], 2, 1),
-      L = pmax(third, ifelse(anchor == 1, L1, L2)),
-      R = pmin(2*third[1], ifelse(anchor == 1, R1, R2)),
-      count_left = min_bottom - L,
-      count_right = R - max_bottom,
-      L = ifelse(count_left == 0, L - count_right, L),
-      R = ifelse(count_right == 0, R + count_left, R),
-      class = ifelse(dplyr::between(pt_id, L[1], R[1]) & class != 'bottom', "channel", class),
-      class = ifelse(class == 'bank' & pt_id <= L[1], "left_bank", class),
-      class = ifelse(class == 'bank' & pt_id >= R[1], "right_bank", class)) %>%
-    dplyr::ungroup() %>% 
-    dplyr::mutate(point_type = class) %>% 
-    dplyr::select(hy_id, cs_id, pt_id, Z, relative_distance, cs_lengthm, class, point_type)
   
 }
 
