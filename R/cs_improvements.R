@@ -292,7 +292,10 @@ get_improved_cs_pts = function(
   extended_pts <- drop_incomplete_cs_pts(extended_pts, crosswalk_id)
   
   # Drop the old valid_banks and has_relief columns
-  extended_pts <- dplyr::select(extended_pts, -valid_banks, -has_relief)
+  extended_pts <- dplyr::select(extended_pts, 
+                                -dplyr::any_of(c("valid_banks", "has_relief"))
+                                # -valid_banks, -has_relief
+                                )
   
   # add a tmp_id for joining and filtering 
   # extended_pts <- add_tmp_id(extended_pts)

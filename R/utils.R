@@ -2119,15 +2119,17 @@ drop_incomplete_cs_pts <- function(cross_section_pts, crosswalk_id = NULL) {
 #' @param cs_pts dataframe, tibble, or sf dataframe 
 #' @param crosswalk_id character, unique ID column
 #' @importFrom dplyr select any_of 
+#' @importFrom hydroloom rename_geometry 
 #' @return dataframe, tibble, or sf dataframe with only relavent cross section point columns
-#' @noRd
-#' @keywords internal
+#' @export
 select_cs_pts <- function(cs_pts, crosswalk_id = NULL) {
   
   if(is.null(crosswalk_id)) {
     # crosswalk_id  <- 'hydrofabric_id'
     stop("Please provide a valid 'crosswalk_id' which uniquely identifies each cross section in 'cs_pts'")
   }
+  
+  cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
   
   cs_pts <- 
     cs_pts %>% 
@@ -2136,17 +2138,22 @@ select_cs_pts <- function(cs_pts, crosswalk_id = NULL) {
         crosswalk_id,
         "cs_id",
         "pt_id",
-        "relative_distance",
         "cs_lengthm",
+        "relative_distance",
         "X", 
         "Y",
         "Z",
+        # "points_per_cs",
         "slope",
         "class", 
         "point_type",
+        # "bottom",
+        # "left_bank",
+        # "right_bank",
         "valid_banks",
         "has_relief",
-        "Z_source"
+        "Z_source",
+        "geometry"
       )
       )
     )
@@ -2161,8 +2168,7 @@ select_cs_pts <- function(cs_pts, crosswalk_id = NULL) {
 #' @importFrom dplyr select any_of 
 #' @importFrom hydroloom rename_geometry 
 #' @return dataframe, tibble, or sf dataframe with only relavent transects columns
-#' @noRd
-#' @keywords internal
+#' @export
 select_transects <- function(transects, crosswalk_id = NULL) {
   
   if(is.null(crosswalk_id)) {

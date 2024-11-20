@@ -145,9 +145,10 @@ classified_cs_pts_has_min_output_cols <- function(classified_pts, crosswalk_id =
   }
   
   expected_cols <- c(crosswalk_id, 
-                     "cs_id","pt_id", "Z", "cs_lengthm", 
-                     "relative_distance", "class", "point_type", 
-                     "points_per_cs", 
+                     "cs_id","pt_id", 
+                     "cs_lengthm", "relative_distance", "Z",  
+                     "points_per_cs",
+                     "class", "point_type", 
                      "bottom",
                      "left_bank",
                      "right_bank",
@@ -169,8 +170,8 @@ cs_pts_has_min_output_cols <- function(cs_pts, crosswalk_id = "hydrofabric_id") 
   }
   
   expected_cols <- c(crosswalk_id, 
-                     "cs_id","pt_id", "Z", "cs_lengthm", 
-                     "relative_distance", "points_per_cs", "geometry"
+                     "cs_id","pt_id", "cs_lengthm", 
+                     "relative_distance", "Z", "points_per_cs", "geometry"
   )
   
   return(
@@ -198,6 +199,8 @@ check_cs_pts_has_exact_cols <- function(cs_pts, crosswalk_id = "hydrofabric_id")
 # TODO: this is a better named version of check_cs_pts_and_transect_cols() (DUPLICATE)
 cs_pts_has_correct_cols_from_transects <- function(cs_pts, transects, crosswalk_id = "hydrofabric_id") {
   # crosswalk_id = "hy_id"
+  # crosswalk_id <- ID_COL
+  
   if(is.null(crosswalk_id)) {
     crosswalk_id = "hydrofabric_id"
   }

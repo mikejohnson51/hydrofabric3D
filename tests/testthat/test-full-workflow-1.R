@@ -469,8 +469,6 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   # test that the minimum number of cross section points was generated (minimum of N points per transect, i.e. MIN_PTS_PER_CS * TOTAL_TRANSECTS_COUNT)
   testthat::expect_true(TOTAL_CS_PTS_COUNT >= MIN_PTS_PER_CS * TOTAL_TRANSECTS_COUNT)
   
-  cs_pts
-  
   # ----------------------------------------------------------------------------------------------------------------
   # ---- STEP 2: Remove any cross section that has ANY missing (NA) Z values, and classify the points ----
   # ----------------------------------------------------------------------------------------------------------------

@@ -262,7 +262,7 @@ transects_to_cs_pts <- function(transects, points_per_cs) {
 #' @param cs cross section sf object
 #' @param crosswalk_id character, column name of unique flowline / transect ID
 #' @param dem SpatRaster DEM or character pointing to remote DEM resource
-#' @importFrom dplyr mutate group_by n ungroup select everything across any_of
+#' @importFrom dplyr mutate group_by n ungroup select across any_of
 #' @importFrom sf st_set_geometry st_line_sample st_cast
 #' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
@@ -317,11 +317,21 @@ extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
         dplyr::any_of(crosswalk_id),
         cs_id, 
         pt_id, 
-        Z, 
         cs_lengthm, 
-        relative_distance, 
-        dplyr::everything()
+        relative_distance,
+        Z, 
+        points_per_cs
+        # dplyr::everything()
       )
+      # dplyr::select(
+      #   dplyr::any_of(crosswalk_id),
+      #   cs_id, 
+      #   pt_id, 
+      #   Z, 
+      #   cs_lengthm, 
+      #   relative_distance, 
+      #   dplyr::everything()
+      # )
     # dplyr::select(dplyr::any_of(cols_to_select))
   })
   
@@ -408,7 +418,7 @@ classify_points <- function(
   }
 
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "relative_distance")
-
+  
   # validate input cs pts
   is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts") 
 
@@ -540,7 +550,19 @@ classify_points <- function(
       # point_type = class
     ) %>% 
     dplyr::ungroup() %>% 
-    dplyr::select(dplyr::any_of(cols_to_select))
+    dplyr::select(
+      dplyr::any_of(c(
+              crosswalk_id, 
+              "cs_id", "pt_id", 
+              "cs_lengthm", "relative_distance", "Z",
+              "points_per_cs",
+              "class", "point_type", 
+              "bottom", "left_bank", "right_bank", 
+              "valid_banks", "has_relief",
+              "geometry"
+              )
+            ))
+    # dplyr::select(dplyr::any_of(cols_to_select))
   # dplyr::select(dplyr::all_of(cols_to_select))      # Stricter, requires ALL of the columns to be present or it will throw an error
   # classified_pts$point_type
   
