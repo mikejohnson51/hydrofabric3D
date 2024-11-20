@@ -275,7 +275,7 @@ add_attribute_based_extension_distances <- function(transects,
 #' Internal helper function for readability
 #'
 #' @param x dataframe, sf dataframe or tibble
-#' @importFrom dplyr mutate 
+#' @importFrom dplyr mutate n
 #' @return dataframe, sf dataframe or tibble with an added 'initial_order' column 
 #' @noRd
 #' @keywords internal
@@ -288,6 +288,43 @@ add_initial_order <- function(x) {
     )
   
   return(x)
+  
+}
+
+#' Get the initial ordering of crosswalk IDs in a dataframe of transects
+#'
+#' @param x dataframe or sf dataframe
+#' @param crosswalk_id character
+#'
+#' @importFrom dplyr mutate any_of select group_by slice_min ungroup n
+#' @importFrom sf st_drop_geometry 
+#' @return dataframe, sf dataframe or tibble of crosswalk_id with initial_order column
+#' @noRd
+#' @keywords internal
+get_transect_initial_order <- function(x, crosswalk_id = NULL) {
+  
+  is_x_valid        <- validate_df(x, 
+                                   c(crosswalk_id, "cs_id"), 
+                                   "x")
+  
+  x[[crosswalk_id]] <- factor(x[[crosswalk_id]], levels = unique(x[[crosswalk_id]]))
+  
+  x_order <- 
+    x %>% 
+    sf::st_drop_geometry() %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id)))) %>% 
+    dplyr::slice_min(cs_id, n = 1, with_ties = FALSE) %>%
+    # dplyr::filter(cs_id == min(cs_id)) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      initial_order = 1:dplyr::n()
+    ) %>% 
+    # hydrofabric3D:::add_initial_order() %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), initial_order)
+  
+  # t_order[[crosswalk_id]] <- as.character(t_order[[crosswalk_id]])
+  
+  return(x_order)
   
 }
 

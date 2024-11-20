@@ -375,6 +375,9 @@ extend_transects_to_polygons <- function(
     sf::st_drop_geometry() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, initial_length)
   
+  # # preserve the initial ordering
+  # starting_order <- get_transect_initial_order(transect_lines, crosswalk_id) 
+  
   # get only the relevent polygons/transects
   transect_subset   <- subset_transects_in_polygons(transect_lines, polygons)
   polygons_subset   <- subset_polygons_in_transects(transect_lines, polygons)
@@ -514,14 +517,35 @@ extend_transects_to_polygons <- function(
     transect_lines <- renumber_cs_ids(transect_lines, crosswalk_id = crosswalk_id)
   }
   
+  # ----------------------------------
+  # ---- Final reorder ----
+  # ----------------------------------
+  
+  # transect_lines <- 
+  #   transect_lines %>% 
+  #   dplyr::left_join(
+  #     starting_order,
+  #     by = crosswalk_id
+  #   ) %>% 
+  #   dplyr::arrange(initial_order, cs_id) %>% 
+  #   dplyr::select(-initial_order)
+  
+  # ----------------------------------
+  # ---- Final column select ----
+  # ----------------------------------
+  
   # remove added tmp_id column
   transect_lines <-
     transect_lines %>% 
       dplyr::select(
-        dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source", "initial_length")),
-        cs_lengthm, cs_measure,
-        left_distance, right_distance,
-        geometry
+        dplyr::any_of(
+          c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", "sinuosity", 
+            "left_distance", "right_distance", "initial_length", "cs_source",
+            "geometry")
+        )
+        # cs_lengthm, cs_measure,
+        # left_distance, right_distance,
+        # geometry
       )
   
   return(transect_lines)

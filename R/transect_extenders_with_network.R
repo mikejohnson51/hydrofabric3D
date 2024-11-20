@@ -2146,6 +2146,9 @@ extend_transects_by_cs_attributes = function(
     sf::st_drop_geometry() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, initial_length)
   
+  # # preserve the initial ordering
+  # starting_order <- get_transect_initial_order(transects, crosswalk_id) 
+  
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
@@ -2328,6 +2331,35 @@ extend_transects_by_cs_attributes = function(
     warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in input 'transects' and the output unique crosswalk_id/cs_ids")
     extended_transects <- renumber_cs_ids(extended_transects, crosswalk_id = crosswalk_id)
   }
+  # ----------------------------------
+  # ---- Final reorder ----
+  # ----------------------------------
+  
+  # extended_transects <- 
+  #   extended_transects %>% 
+  #   dplyr::left_join(
+  #     starting_order,
+  #     by = crosswalk_id
+  #   ) %>% 
+  #   dplyr::arrange(initial_order, cs_id) %>% 
+  #   dplyr::select(-initial_order)
+  
+  # ----------------------------------
+  # ---- Final column select ----
+  # ----------------------------------
+  
+  # remove added tmp_id column
+  extended_transects <-
+    extended_transects %>% 
+    dplyr::select(
+      dplyr::any_of(
+        c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", "sinuosity", 
+          "valid_banks", "has_relief", 
+          "initial_length", "cs_source",
+          "geometry")
+        )
+    )
+  
   
   return(extended_transects)
   
