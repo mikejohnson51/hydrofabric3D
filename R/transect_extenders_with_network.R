@@ -2371,12 +2371,22 @@ extend_transects_by_cs_attributes = function(
     extended_transects %>% 
     dplyr::select(
       dplyr::any_of(
-        c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", "sinuosity", 
+        c(crosswalk_id, 
+          "cs_id", 
+          "cs_lengthm",
+          "cs_measure", 
+          "ds_distance",
+          "sinuosity", 
+          
+          # CS attributes
           "valid_banks", "has_relief", 
+          
           "initial_length",                    # if keep_lengths = TRUE
           "left_distance", "right_distance",   # if keep_extension_distance = TRUE
+          
           "cs_source",
-          "geometry")
+          "geometry"
+          )
         )
     )
   

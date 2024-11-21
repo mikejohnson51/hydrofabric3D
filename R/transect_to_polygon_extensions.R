@@ -539,15 +539,26 @@ extend_transects_to_polygons <- function(
     transect_lines %>% 
       dplyr::select(
         dplyr::any_of(
-          c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", "sinuosity", 
-            "left_distance", "right_distance", "initial_length", "cs_source",
-            "geometry")
+          c(crosswalk_id, 
+            "cs_id", 
+            "cs_lengthm", 
+            "cs_measure", 
+            "ds_distance",
+            "sinuosity", 
+            
+            "initial_length", 
+            "left_distance", 
+            "right_distance", 
+            
+            "cs_source",
+            "geometry"
+            )
         )
         # cs_lengthm, cs_measure,
         # left_distance, right_distance,
         # geometry
       )
-  
+      
   return(transect_lines)
 
 }

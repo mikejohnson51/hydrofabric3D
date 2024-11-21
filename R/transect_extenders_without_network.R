@@ -445,13 +445,21 @@ adjust_flagged_transects <- function(
   x <- 
     x %>%  
     dplyr::select(
-      dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
-      cs_lengthm, cs_measure,
-      # valid_banks, 
-      # has_relief,
-      # initial_length,
-      geometry
+      dplyr::any_of(
+        c(
+          crosswalk_id,
+          "cs_id",
+          "cs_lengthm", 
+          "cs_measure",
+          "ds_distance",
+          "sinuosity",
+          "cs_source",
+          "geometry"
+        )
+      )
     )
+  # dplyr::select(dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
+  #               cs_lengthm, cs_measure, geometry)
   
   # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
   if (reindex_cs_ids) {
@@ -505,13 +513,21 @@ adjust_flagged_transects2 <- function(
   x <- 
     x %>%  
     dplyr::select(
-      dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
-      cs_lengthm, cs_measure,
-      # valid_banks, 
-      # has_relief,
-      # initial_length,
-      geometry
+      dplyr::any_of(
+        c(
+          crosswalk_id,
+          "cs_id",
+          "cs_lengthm", 
+          "cs_measure",
+          "ds_distance",
+          "sinuosity",
+          "cs_source",
+          "geometry"
+        )
+      )
     )
+    # dplyr::select(dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
+    #   cs_lengthm, cs_measure, geometry)
   
   # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
   if (reindex_cs_ids) {
