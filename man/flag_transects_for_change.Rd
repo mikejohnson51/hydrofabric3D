@@ -11,7 +11,8 @@ flag_transects_for_change(
   min_pts_per_cs = 10,
   dem =
     "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
-  pct_of_length_for_relief = 0.01
+  pct_of_length_for_relief = 0.01,
+  na.rm = TRUE
 )
 }
 \arguments{
@@ -26,6 +27,8 @@ flag_transects_for_change(
 \item{dem}{character}
 
 \item{pct_of_length_for_relief}{numeric}
+
+\item{na.rm}{logical, whether to remove NAs from the given cross section points and any NA comparison points pulled from the dem. Default is TRUE}
 }
 \value{
 sf dataframe of transects with updated geometries

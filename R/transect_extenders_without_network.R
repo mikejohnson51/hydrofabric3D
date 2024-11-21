@@ -405,7 +405,63 @@ adjust_transect_lengths <- function(
   
 }
 
-
+#' Update a flagged set of transects by shortening them by the given extension_distance
+#'
+#' @param x sf dataframe of transects 
+#' @param crosswalk_id character, unique ID column
+#' @param reindex_cs_ids logical, whether to generate a new 1-n set of cs_ids or to return the original identifiers
+#' @importFrom hydroloom rename_geometry
+#' @importFrom dplyr left_join mutate any_of select
+#'
+#' @return sf dataframe of transects with updated geometries 
+#' @export
+adjust_flagged_transects <- function(
+    x, 
+    crosswalk_id = NULL,
+    reindex_cs_ids = FALSE
+) {
+  
+  # x <- flagged_extended
+  # crosswalk_id = CROSSWALK_ID
+  # reindex_cs_ids = FALSE
+  
+  # set geometry column names at beginning
+  x    <- hydroloom::rename_geometry(x, "geometry")
+  
+  # validate input datas
+  is_valid_df        <- validate_df(x, 
+                                    c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", 
+                                      "flagged", "extension_distance", "geometry"), 
+                                    "x"
+  )
+  
+  # shorten the unimproved set of transects
+  x <- shorten_flagged_transects(
+    transects = x,
+    crosswalk_id = crosswalk_id
+  )
+  
+  # select relevent columns
+  x <- 
+    x %>%  
+    dplyr::select(
+      dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
+      cs_lengthm, cs_measure,
+      # valid_banks, 
+      # has_relief,
+      # initial_length,
+      geometry
+    )
+  
+  # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
+  if (reindex_cs_ids) {
+    warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in input 'transects' and the output unique crosswalk_id/cs_ids")
+    x <- renumber_cs_ids(x, crosswalk_id = crosswalk_id)
+  }
+  
+  return(x)
+  
+}
 
 
 #' Takes any transects with multiple intersections that was extended, and shortens them by the distance specified in the "extension_distance" column

@@ -2674,6 +2674,41 @@ has_same_unique_tmp_ids <- function(x, y, crosswalk_id = NULL) {
   return(same_unique_ids)
 }
 
+#' Set valid_banks and has_relief values to TRUE if an NA exists in either column
+#'
+#' @param x dataframe or sf dataframe with valid_banks and has_relief columns
+#'
+#' @importFrom dplyr mutate case_when
+#'
+#' @return dataframe or sf dataframe with valid_banks and has_relief set to TRUE 
+#' @noRd
+#' @keywords internal
+fill_missing_cs_attributes <- function(x) {
+  
+  # validate input datas
+  is_valid        <- validate_df(x, 
+                                c("valid_banks", "has_relief"), 
+                                "x")
+  x <- 
+    x %>% 
+    dplyr::mutate(
+    valid_banks = dplyr::case_when(
+      is.na(valid_banks) | is.na(has_relief) ~ TRUE,
+      TRUE                                   ~ valid_banks
+    ),
+    has_relief = dplyr::case_when(
+      is.na(valid_banks) | is.na(has_relief) ~ TRUE,
+      TRUE                                   ~ has_relief
+    )
+    # valid_banks = ifelse(is.na(valid_banks), TRUE, valid_banks),
+    # has_relief  = ifelse(is.na(has_relief), TRUE, has_relief)
+  )
+  
+  
+  return(x)
+  
+}
+
 #' Add a flagged and extension distance columns to set of transects with CS attributes based on new cross section points data
 #'
 #' @param x sf dataframe of transects 
@@ -2682,8 +2717,9 @@ has_same_unique_tmp_ids <- function(x, y, crosswalk_id = NULL) {
 #' @param min_pts_per_cs numeric
 #' @param dem character
 #' @param pct_of_length_for_relief numeric
+#' @param na.rm logical, whether to remove NAs from the given cross section points and any NA comparison points pulled from the dem. Default is TRUE 
 #' @importFrom hydroloom rename_geometry
-#' @importFrom dplyr left_join mutate any_of select
+#' @importFrom dplyr left_join mutate any_of select case_when
 #'
 #' @return sf dataframe of transects with updated geometries 
 #' @export
@@ -2693,7 +2729,8 @@ flag_transects_for_change <- function(
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
     dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
-    pct_of_length_for_relief = 0.01
+    pct_of_length_for_relief = 0.01,
+    na.rm = TRUE
 ) {
   
   # -----------------------------------------------------------
@@ -2731,18 +2768,20 @@ flag_transects_for_change <- function(
     min_pts_per_cs = min_pts_per_cs,
     dem            = dem
   ) %>%
-    drop_incomplete_cs_pts(crosswalk_id) %>%
+    # drop_incomplete_cs_pts(crosswalk_id) %>%
     classify_points(
       crosswalk_id             = crosswalk_id,
-      pct_of_length_for_relief = pct_of_length_for_relief
+      pct_of_length_for_relief = pct_of_length_for_relief,
+      na.rm                    = na.rm
     ) %>% 
-    add_tmp_id(crosswalk_id) 
+    add_tmp_id(crosswalk_id) %>% 
+    fill_missing_cs_attributes()
   
   # compare validity scores between initial validity values and new ones
   cs_validities <- compare_cs_validity(cs_pts1  = x, 
                                        cs_pts2  = new_cs_pts, 
                                        crosswalk_id = crosswalk_id
-  )
+                                       )
   
   # identify transects to shorten back to original length and provide a distance to shorten by (extension_distance)
   x <- 
@@ -2763,65 +2802,6 @@ flag_transects_for_change <- function(
   
 }
 
-
-#' Update a flagged set of transects by shortening them by the given extension_distance
-#'
-#' @param x sf dataframe of transects 
-#' @param crosswalk_id character, unique ID column
-#' @param reindex_cs_ids logical, whether to generate a new 1-n set of cs_ids or to return the original identifiers
-#' @importFrom hydroloom rename_geometry
-#' @importFrom dplyr left_join mutate any_of select
-#'
-#' @return sf dataframe of transects with updated geometries 
-#' @noRd
-#' @keywords internal
-adjust_flagged_transects <- function(
-    x, 
-    crosswalk_id = NULL,
-    reindex_cs_ids = FALSE
-) {
-  
-  # x <- flagged_extended
-  # crosswalk_id = CROSSWALK_ID
-  # reindex_cs_ids = FALSE
-  
-  # set geometry column names at beginning
-  x    <- hydroloom::rename_geometry(x, "geometry")
-  
-  # validate input datas
-  is_valid_df        <- validate_df(x, 
-                                    c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", 
-                                      "flagged", "extension_distance", "geometry"), 
-                                    "x"
-                                    )
-  
-  # shorten the unimproved set of transects
-  x <- shorten_flagged_transects(
-    transects = x,
-    crosswalk_id = crosswalk_id
-  )
-  
-  # select relevent columns
-  x <- 
-    x %>%  
-    dplyr::select(
-      dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
-      cs_lengthm, cs_measure,
-      # valid_banks, 
-      # has_relief,
-      # initial_length,
-      geometry
-    )
-  
-  # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
-  if (reindex_cs_ids) {
-    warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in input 'transects' and the output unique crosswalk_id/cs_ids")
-    x <- renumber_cs_ids(x, crosswalk_id = crosswalk_id)
-  }
-  
-  return(x)
-  
-}
 
 #Check for flat cross sections and try to update these values by extending the original cross sections and reextracting DEM values
 #(Deprecated version 1)
