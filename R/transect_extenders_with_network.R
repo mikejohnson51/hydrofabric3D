@@ -2077,6 +2077,7 @@ extend_transects_by_distances <- function(
 #' @param crosswalk_id character
 #' @param scale numeric percent of original transect length to extend (in both directions). Default is 0.5 or 50% of transects length (i.e. 25% increase in length in both directions).
 #' @param keep_lengths logical whether to keep a record of the original transect lengths or not, default is FALSE, original lengths are not kept 
+#' @param keep_extension_distances logical whether to return the extension distance (left_distance and right_distance) columns with the output dataframe. Default is FALSE, left_distance and right_distance are NOT returned with the output.
 #' @param reindex_cs_ids logical, whether to reindex the cs_ids to ensure each crosswalk_id has cs_ids of 1-number of transects. Default is FALSE, which guarantees 
 #' crosswalk_id/cs_ids remain untouched as they were given in the input data. Setting this to TRUE will make sure if any cross sections were removed from a crosswalk_id, then the cs_ids are renumbered so there are no gaps between cs_ids within a crosswalk_id 
 #' @param verbose logical
@@ -2093,6 +2094,7 @@ extend_transects_by_cs_attributes = function(
     crosswalk_id   = NULL,
     scale          = 0.5,
     keep_lengths   = FALSE,
+    keep_extension_distances = FALSE,
     reindex_cs_ids = FALSE,
     verbose        = TRUE
 ) {
@@ -2202,20 +2204,24 @@ extend_transects_by_cs_attributes = function(
                                                        length_col = "cs_lengthm"
   )
   
-  # count of transects to improve
-  invalid_count <-
-    transects %>% 
-    sf::st_drop_geometry() %>% 
-    dplyr::select(valid_banks, has_relief) %>% 
-    dplyr::summarise(
-      count = sum(!valid_banks | !has_relief, na.rm = T)
-    ) %>%
-    dplyr::pull(count)
-  
-  if(verbose) { message(paste0("Extending ", 
+  if(verbose) { 
+    
+    # count of transects to improve
+    invalid_count <-
+      transects %>% 
+      sf::st_drop_geometry() %>% 
+      dplyr::select(valid_banks, has_relief) %>% 
+      dplyr::summarise(
+        count = sum(!valid_banks | !has_relief, na.rm = T)
+      ) %>%
+      dplyr::pull(count)
+    
+    message(paste0("Extending ", 
                                invalid_count,
                                " transects without valid banks or relief by ",
-                               scale * 100, "%...")) }
+                               scale * 100, "%...")) 
+    
+    }
   
   # extend the transects based on the 'extension_distance' column (meters)
   extended_transects <- extend_transects_sides(
@@ -2275,15 +2281,15 @@ extend_transects_by_cs_attributes = function(
     rm_self_intersections() %>%
     rm_multiflowline_intersections(flowlines)
   
-  # select relevant IDs
-  extended_transects <- 
-    extended_transects %>% 
-    dplyr::select(
-      dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
-      cs_lengthm, cs_measure,
-      valid_banks, has_relief,
-      geometry
-    )
+  # # select relevant IDs
+  # extended_transects <- 
+  #   extended_transects %>% 
+  #   dplyr::select(
+  #     dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source", "left_distance", "right_distance")),
+  #     cs_lengthm, cs_measure,
+  #     valid_banks, has_relief,
+  #     geometry
+  #   )
   
   # extended_transects3 <-
   #   extended_transects %>% 
@@ -2316,14 +2322,14 @@ extend_transects_by_cs_attributes = function(
       dplyr::left_join(
         starting_lengths,
         by = c(crosswalk_id, "cs_id")
-      ) %>% 
-      dplyr::select(
-        dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source")),
-        cs_lengthm, cs_measure,
-        valid_banks, has_relief,
-        initial_length,
-        geometry
-      )
+      ) 
+      # dplyr::select(
+      #   dplyr::any_of(c(crosswalk_id, "cs_id", "cs_source", "left_distance", "right_distance")),
+      #   cs_lengthm, cs_measure,
+      #   valid_banks, has_relief,
+      #   initial_length,
+      #   geometry
+      # )
   }
   
   # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
@@ -2331,31 +2337,45 @@ extend_transects_by_cs_attributes = function(
     warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in input 'transects' and the output unique crosswalk_id/cs_ids")
     extended_transects <- renumber_cs_ids(extended_transects, crosswalk_id = crosswalk_id)
   }
-  # ----------------------------------
-  # ---- Final reorder ----
-  # ----------------------------------
   
-  # extended_transects <- 
-  #   extended_transects %>% 
-  #   dplyr::left_join(
-  #     starting_order,
-  #     by = crosswalk_id
-  #   ) %>% 
-  #   dplyr::arrange(initial_order, cs_id) %>% 
-  #   dplyr::select(-initial_order)
+  # ------------------------------------------------------------
+  # ---- Drop specific columns based on flags ----
+  # - keep_lengths (initial_length)
+  # - keep_extension_distances (left_distance and right_distance)
+  # ------------------------------------------------------------
+  
+  if (!keep_lengths) {
+    # remove initial_length columns
+    extended_transects <-
+      extended_transects %>% 
+      dplyr::select(
+        !dplyr::any_of(c("initial_length"))
+      )
+  }
+  
+  if (!keep_extension_distances) {
+    # remove left_distance and right_distance columns
+    extended_transects <-
+      extended_transects %>% 
+      dplyr::select(
+        !dplyr::any_of(c("left_distance", "right_distance"))
+      )
+  }
   
   # ----------------------------------
   # ---- Final column select ----
   # ----------------------------------
   
-  # remove added tmp_id column
+  # select only desired columns and remove tmp_id column
   extended_transects <-
     extended_transects %>% 
     dplyr::select(
       dplyr::any_of(
         c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", "sinuosity", 
           "valid_banks", "has_relief", 
-          "initial_length", "cs_source",
+          "initial_length",                    # if keep_lengths = TRUE
+          "left_distance", "right_distance",   # if keep_extension_distance = TRUE
+          "cs_source",
           "geometry")
         )
     )

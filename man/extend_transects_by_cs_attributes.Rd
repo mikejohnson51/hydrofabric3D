@@ -10,6 +10,7 @@ extend_transects_by_cs_attributes(
   crosswalk_id = NULL,
   scale = 0.5,
   keep_lengths = FALSE,
+  keep_extension_distances = FALSE,
   reindex_cs_ids = FALSE,
   verbose = TRUE
 )
@@ -24,6 +25,8 @@ extend_transects_by_cs_attributes(
 \item{scale}{numeric percent of original transect length to extend (in both directions). Default is 0.5 or 50\% of transects length (i.e. 25\% increase in length in both directions).}
 
 \item{keep_lengths}{logical whether to keep a record of the original transect lengths or not, default is FALSE, original lengths are not kept}
+
+\item{keep_extension_distances}{logical whether to return the extension distance (left_distance and right_distance) columns with the output dataframe. Default is FALSE, left_distance and right_distance are NOT returned with the output.}
 
 \item{reindex_cs_ids}{logical, whether to reindex the cs_ids to ensure each crosswalk_id has cs_ids of 1-number of transects. Default is FALSE, which guarantees
 crosswalk_id/cs_ids remain untouched as they were given in the input data. Setting this to TRUE will make sure if any cross sections were removed from a crosswalk_id, then the cs_ids are renumbered so there are no gaps between cs_ids within a crosswalk_id}
