@@ -1006,14 +1006,32 @@ cut_cross_sections <- function(
     verbose           = TRUE
 ) {
   
-  
+  # 
   # library(dplyr)
   # library(sf)
+  # # 
+  # # net <- sf::read_sf("/Users/anguswatters/Desktop/empty_geom_flines_error.gpkg") %>%
+  # #   hydroloom::rename_geometry("geometry")
+  # net <- sf::read_sf("/Users/anguswatters/Desktop/multiflowline_int_error.gpkg") %>%
+  #   hydroloom::rename_geometry("geometry")
+  # # "/Users/anguswatters/Desktop/multiflowline_int_error.gpkg"
+  # # net <- sf::read_sf("/Users/anguswatters/Desktop/wrong_cs_ids_flines_error.gpkg") %>%
+  # #   hydroloom::rename_geometry("geometry")
   # 
-  # net <- sf::read_sf("/Users/anguswatters/Desktop/empty_geom_flines_error.gpkg") %>%
-  #   hydroloom::rename_geometry("geometry")
-  # net <- sf::read_sf("/Users/anguswatters/Desktop/wrong_cs_ids_flines_error.gpkg") %>%
-  #   hydroloom::rename_geometry("geometry")
+  # crosswalk_id      = "id"                       # Unique feature ID
+  # cs_widths         = net$bf_width     # cross section width of each "id" linestring ("hy_id")
+  # num               = 10                       # number of cross sections per "id" linestring ("hy_id")
+  # smooth            = TRUE                       # smooth lines
+  # densify           = 3                         # densify linestring points
+  # 
+  # rm_self_intersect = TRUE                          # remove self intersecting transects
+  # fix_braids        = FALSE                         # whether to fix braided flowlines or not
+  # braid_threshold   = NULL
+  # braid_method      = "crosswalk_id"
+  # precision         = 1
+  # add               = TRUE                           # whether to add back the original data
+  # verbose           = TRUE
+  
   # crosswalk_id      = "id"                      # Unique feature ID
   # cs_widths         = net$bf_width     # cross section width of each "id" linestring ("hy_id")
   # num               = 3                            # number of cross sections per "id" linestring ("hy_id")
@@ -1204,6 +1222,7 @@ cut_cross_sections <- function(
     
     # remove self intersecting transects or not
     if (rm_self_intersect) {
+     
       transects <- 
         transects %>% 
         rm_multi_intersects()
@@ -1293,8 +1312,16 @@ cut_cross_sections <- function(
     # if transects were NOT updated to try and fix_braids, then we want to remove transects that intersect with multiple flowlines
     # braided transects by definition, may cross over multiple flowlines
     if (!fix_braids) {
+      
+      pre_rm_flowline_ints <- nrow(transects)
+      message("Rows BEFORE rm_multiflowline_intersections() ", pre_rm_flowline_ints)
+      
       # NOTE: IF we DID NOT do braid fixing, which could cause a transect to purposefully intersect multiple flowlines
       transects <- rm_multiflowline_intersections(transects = transects, flowlines = net)
+      
+      post_rm_flowline_ints <- nrow(transects)
+      message("Rows AFTER rm_multiflowline_intersections() ", post_rm_flowline_ints)
+      
     }
     
 

@@ -293,7 +293,16 @@ validate_transects <- function(transects,
   
 }
 
-# all ids in transects are in flowlines
+#' Validate all IDs in transects are in flowlines
+#'
+#' @param transects sf dataframe
+#' @param flowlines sf dataframe
+#' @param crosswalk_id character. unique ID column
+#' @importFrom sf st_drop_geometry
+#' @importFrom dplyr select any_of pull  
+#' @return TRUE if valid else false
+#' @noRd
+#' @keywords internal
 validate_transects_ids_in_flowlines <- function(transects, flowlines, crosswalk_id = NULL) {
   
   # flowlines <- flines
@@ -320,7 +329,14 @@ validate_transects_ids_in_flowlines <- function(transects, flowlines, crosswalk_
   
 }
 
-# make sure no transect crosses more than a single flowline, a single time
+#' Validate transects and flowlines have valid intersections rules
+#'
+#' @param transects sf dataframe
+#' @param flowlines sf dataframe
+#'
+#' @return TRUE if valid else false
+#' @noRd
+#' @keywords internal
 validate_transects_flowline_intersections <- function(transects, flowlines) {
   
   # flowlines <- flines
@@ -329,7 +345,14 @@ validate_transects_flowline_intersections <- function(transects, flowlines) {
   )
 }
 
-# validate 2 SF objects have the same CRS
+#' validate 2 SF objects have the same CRS
+#'
+#' @param x sf dataframe
+#' @param y sf dataframe
+#' @importFrom sf st_crs 
+#' @return logical, TRUE if both x and y have same CRS
+#' @noRd
+#' @keywords internal
 validate_same_crs <- function(x, y) {
   
   return (

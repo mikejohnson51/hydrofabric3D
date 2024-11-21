@@ -1543,6 +1543,7 @@ get_improved_cs_pts = function(
 #' @return The input dataframe with renumbered cs_id values.
 #' @importFrom dplyr select group_by slice ungroup mutate n left_join rename relocate
 #' @importFrom sf st_drop_geometry
+#' @export
 renumber_cs_ids <- function(df, crosswalk_id = NULL) {
   # df <- out_transect_lines
   # df <- fixed_cs_pts
