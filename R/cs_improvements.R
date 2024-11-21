@@ -2802,6 +2802,10 @@ flag_transects_for_change <- function(
     dplyr::mutate(
       flagged            = (!is_improved) & ((initial_length < cs_lengthm) | (left_distance > 0) | (right_distance > 0)),
       extension_distance = ((cs_lengthm - initial_length) / 2)
+      # extension_distance = pmin(left_distance, right_distance)
+      
+      # flagged            = (!is_improved) & (initial_length < cs_lengthm),
+      # extension_distance = ((cs_lengthm - initial_length) / 2)
     )
   
   return(x)
