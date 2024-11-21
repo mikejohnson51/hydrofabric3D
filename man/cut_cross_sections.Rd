@@ -16,7 +16,8 @@ cut_cross_sections(
   braid_threshold = NULL,
   braid_method = "crosswalk_id",
   precision = 1,
-  add = FALSE
+  add = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -45,9 +46,11 @@ Default is NULL, which will attempt to fix all the braid transects in the data}
 \item{precision}{int, distance in meters. Only applicable when fix_braids = TRUE. This is the number of meters to approximate final cross section linestring length. Increasing this value will decrease runtime of cross section extension algorithm. Value you must be greater than 0. Default is 1}
 
 \item{add}{logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.}
+
+\item{verbose}{logical, whether to output messages or not. Default is TRUE, and messages will be given}
 }
 \value{
-sf object
+sf object of transect linestrings
 }
 \description{
 Generate Cross Sections Across Hydrographic Network

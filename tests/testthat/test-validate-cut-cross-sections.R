@@ -3,9 +3,14 @@ library(dplyr)
 library(sf)
 # library(hydrofabric3D)
 # devtools::load_all()
+
+# TODO: Split out single test into individual tests for each scenario
+# TODO: Less informational when the single test could break and it wouldnt be clear what caused it to FAIL
+
 # -------------------------------------------------------------------
 # ---- hydrofabric3D:::validate_cut_cross_section_inputs() ----
 # -------------------------------------------------------------------
+
 # create test data (hy_id = "wb-1004970" from nextgen flowlines)
 coords <- matrix(c(968520.8, 1381795, 968471.3, 1381851, 968420.6, 1381874, 
                    968418.1, 1381897, 968436.2, 1381961, 968426.9, 1382022, 
@@ -47,7 +52,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                               # version = 2, 
                                                               braid_method = "crosswalk_id", 
                                                               precision = 1, 
-                                                              add = FALSE), 
+                                                              add = FALSE,
+                                                              verbose = TRUE 
+                                                            ), 
                             NULL)
   
   # Test valid inputs
@@ -64,7 +71,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE)
+                                                           add = FALSE,
+                                                           verbose = TRUE
+                                                          )
                          )
   
   # Test valid inputs with terminal_id
@@ -81,7 +90,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE), 
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           ), 
                          NULL)
   
   # Test valid inputs with braid_threshold
@@ -98,7 +109,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE), 
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           ), 
                          NULL)
   
   # Test valid inputs with add
@@ -115,7 +128,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = TRUE), 
+                                                           add = TRUE
+                                                           ,verbose = TRUE
+                                                           ), 
                          NULL)
   
    # Test invalid sf object
@@ -132,7 +147,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                                # version = 2, 
                                                                braid_method = "crosswalk_id", 
                                                                precision = 1, 
-                                                               add = FALSE)
+                                                               add = FALSE
+                                                            ,verbose = TRUE
+                                                            )
                           )
    
    # Test invalid crosswalk_id type (crosswalk_id is a numeric)
@@ -150,7 +167,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                        # version = 2, 
                                        braid_method = "crosswalk_id", 
                                        precision = 1, 
-                                       add = FALSE)
+                                       add = FALSE
+                                      ,verbose = TRUE
+                                      )
                          )
   
   # Test invalid crosswalk_id type (crosswalk_id is NULL)
@@ -167,7 +186,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE),
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           ),
                          NULL
                          )
   
@@ -185,7 +206,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # version = 2, 
                                                             braid_method = "crosswalk_id", 
                                                             precision = 1, 
-                                                            add = FALSE)
+                                                            add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
                          )
   
   # Test invalid num type
@@ -202,7 +225,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE)
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
                          )
   
   # Test invalid densify type
@@ -219,7 +244,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE)
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
                          )
   
   # Test invalid smooth type
@@ -236,7 +263,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # version = 2, 
                                                             braid_method = "crosswalk_id", 
                                                             precision = 1, 
-                                                            add = FALSE)
+                                                            add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
                          )
   
   # Test invalid rm_self_intersect type 1
@@ -253,7 +282,10 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE))
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
+                         )
   
   # Test invalid rm_self_intersect type 2
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
@@ -269,7 +301,10 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # version = 2, 
                                                             braid_method = "crosswalk_id", 
                                                             precision = 1, 
-                                                            add = FALSE))
+                                                            add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
+                         )
   
   # Test invalid fix_braids type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
@@ -285,7 +320,10 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
-                                                           add = FALSE))
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
+                         )
   
   # Test invalid terminal ID value (terminal ID is a number)
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
@@ -301,7 +339,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # version = 2, 
                                                             braid_method = "crosswalk_id", 
                                                             precision = 1, 
-                                                            add = FALSE)
+                                                            add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
                          )
   
   # Test invalid terminal ID value (terminal ID is a logical)
@@ -318,7 +358,9 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                             # version = 2, 
                                                             braid_method = "crosswalk_id", 
                                                             precision = 1, 
-                                                            add = FALSE)
+                                                            add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
   )
   
   # Test invalid braid_method value
@@ -335,7 +377,10 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "invalid_method", 
                                                            precision = 1, 
-                                                           add = FALSE))
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
+                         )
   
   # Test invalid precision value
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
@@ -351,7 +396,10 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            # version = 2, 
                                                            braid_method = "crosswalk_id", 
                                                            precision = -1, 
-                                                           add = FALSE))
+                                                           add = FALSE
+                                                           ,verbose = TRUE
+                                                           )
+                         )
   
   # Test invalid add type
   testthat::expect_error(validate_cut_cross_section_inputs(net = net, 
@@ -368,7 +416,77 @@ testthat::test_that("validate_cut_cross_section_inputs correctly validates input
                                                            braid_method = "crosswalk_id", 
                                                            precision = 1, 
                                                            add = "FALSE"
-                                                           ))
+                                                           ,verbose = TRUE
+                                                           )
+                         )
    
 })
+
+testthat::test_that("validate_cut_cross_section_inputs returns NULL with valid inputs
+                    testing verbose = TRUE", {
   
+  testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
+                                                           crosswalk_id = "hy_id",
+                                                           cs_widths = 100,
+                                                           num = 10, 
+                                                           smooth = TRUE,
+                                                           densify = 2, 
+                                                           rm_self_intersect = TRUE, 
+                                                           fix_braids = FALSE, 
+                                                           # terminal_id =NULL, 
+                                                           braid_threshold = NULL, 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
+                                                           precision = 1, 
+                                                           add = FALSE,
+                                                           verbose = TRUE 
+  ), 
+  NULL)
+  
+})
+
+testthat::test_that("validate_cut_cross_section_inputs returns NULL with valid inputs
+                    testing verbose = FALSE", {
+                      
+  testthat::expect_equal(validate_cut_cross_section_inputs(net = net, 
+                                                           crosswalk_id = "hy_id",
+                                                           cs_widths = 100,
+                                                           num = 10, 
+                                                           smooth = TRUE,
+                                                           densify = 2, 
+                                                           rm_self_intersect = TRUE, 
+                                                           fix_braids = FALSE, 
+                                                           # terminal_id =NULL, 
+                                                           braid_threshold = NULL, 
+                                                           # version = 2, 
+                                                           braid_method = "crosswalk_id", 
+                                                           precision = 1, 
+                                                           add = FALSE,
+                                                           verbose = FALSE 
+  ), 
+  NULL)
+  
+})
+  
+testthat::test_that("validate_cut_cross_section_inputs throws an error when a character string is given to verbose", {
+                      
+                      testthat::expect_error(
+                        validate_cut_cross_section_inputs(net = net, 
+                                                                               crosswalk_id = "hy_id",
+                                                                               cs_widths = 100,
+                                                                               num = 10, 
+                                                                               smooth = TRUE,
+                                                                               densify = 2, 
+                                                                               rm_self_intersect = TRUE, 
+                                                                               fix_braids = FALSE, 
+                                                                               # terminal_id =NULL, 
+                                                                               braid_threshold = NULL, 
+                                                                               # version = 2, 
+                                                                               braid_method = "crosswalk_id", 
+                                                                               precision = 1, 
+                                                                               add = FALSE,
+                                                                               verbose = "invalid verbose value" 
+                      )
+                      )
+  
+              })

@@ -788,6 +788,11 @@ classify_points <- function(
   # cs_pts2 <- cs_pts
   # crosswalk_id = "hy_id"
   # pct_of_length_for_relief = 0.01
+  is_empty_cs_pts <- nrow(cs_pts) == 0 
+  
+  if (is_empty_cs_pts) {
+    stop("No cross section points data provided, can not classify points.")
+  }
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
@@ -842,12 +847,12 @@ classify_points <- function(
   #   dplyr::filter() %>%
   #   drop_incomplete_cs_pts(crosswalk_id)
   
-  if (na.rm) {
-    classified_pts <-
-      cs_pts %>%
-      drop_incomplete_cs_pts(crosswalk_id)
-  } else {
-    
+  # if (na.rm) {
+  #   classified_pts <-
+  #     cs_pts %>%
+  #     drop_incomplete_cs_pts(crosswalk_id)
+  # } else {
+  #   
     classified_pts <-
       cs_pts %>%
       add_missing_depths_flags_for_classification(crosswalk_id)
@@ -859,7 +864,7 @@ classify_points <- function(
     #                 TRUE              ~ 1
     #               )
     #             )
-  }
+  # }
   
   no_cs_pts_remain <- nrow(classified_pts) == 0 
   
@@ -1014,7 +1019,7 @@ classify_points <- function(
       # by = c("hy_id", "cs_id")
     ) 
   
-  if(!na.rm) {
+  # if(!na.rm) {
     
     # TODO: this code deals with missing depth values, still need to fully test
     # # Undo temporary fill in depths for missing Z values in any cross sections
@@ -1023,12 +1028,29 @@ classify_points <- function(
       undo_classification_for_missing_depths() %>%
       dplyr::select(-is_missing_depth, -is_complete_cs)
     
-  }
+  # }
   
   # # remove any columns that already exist
   classified_pts <- dplyr::select(classified_pts, 
                                   !dplyr::any_of(c("is_missing_depth", "is_complete_cs"))
                                   )
+  
+  if(na.rm) {
+    
+    # TODO: this code deals with missing depth values, still need to fully test
+    # # Undo temporary fill in depths for missing Z values in any cross sections
+    classified_pts <-
+      classified_pts %>%
+      drop_incomplete_cs_pts(crosswalk_id)
+    
+  }
+  
+  no_pts_remain <- nrow(classified_pts) == 0
+  
+  if (no_pts_remain && na.rm) {
+    warning("No cross sections remain after removing cross sections containing NA Z values.\nConsider setting 'na.rm = FALSE' to preserve missing Z values.")
+  }
+  
   
   # move the geometry column to the last column (if one exists)
   classified_pts <- move_geometry_to_last(classified_pts)

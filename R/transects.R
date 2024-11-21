@@ -980,8 +980,9 @@ get_transects <- function(line, bf_width, n) {
 #' @param braid_method The method to determine the geometries to cut. Options are "crosswalk_id", "component", or "neighbor". Default is "crosswalk_id"
 #' @param precision int, distance in meters. Only applicable when fix_braids = TRUE. This is the number of meters to approximate final cross section linestring length. Increasing this value will decrease runtime of cross section extension algorithm. Value you must be greater than 0. Default is 1
 #' @param add logical indicating whether to add original 'net' data to the outputted transect lines. Default is FALSE.
-#'
-#' @return sf object
+#' @param verbose logical, whether to output messages or not. Default is TRUE, and messages will be given 
+#' 
+#' @return sf object of transect linestrings 
 #' @importFrom dplyr group_by mutate ungroup n left_join all_of rename
 #' @importFrom sf st_crs st_transform st_intersects st_length st_drop_geometry st_as_sf
 #' @importFrom smoothr smooth densify
@@ -1001,7 +1002,8 @@ cut_cross_sections <- function(
     braid_threshold   = NULL,
     braid_method      = "crosswalk_id",
     precision         = 1,
-    add               = FALSE
+    add               = FALSE,
+    verbose           = TRUE
 ) {
   
   
@@ -1061,6 +1063,9 @@ cut_cross_sections <- function(
     # dplyr::select(geometry = geom)
   
   suppressWarnings({
+    # -------------------------------------------
+    # Input validation
+    # -------------------------------------------
     
     # validate all inputs are valid, throws an error if they are not
     validate_cut_cross_section_inputs(net = net, 
@@ -1074,12 +1079,13 @@ cut_cross_sections <- function(
                                       braid_threshold = braid_threshold,
                                       braid_method = braid_method, 
                                       precision = precision,
-                                      add = add 
+                                      add = add,
+                                      verbose = verbose
     )
     
     # make a unique ID if one is not given (NULL 'crosswalk_id')
     if (is.null(crosswalk_id)) {
-      net <- add_hydrofabric_id(net) 
+      net           <- add_hydrofabric_id(net) 
       crosswalk_id  <- 'hydrofabric_id'
     }
     
@@ -1091,9 +1097,9 @@ cut_cross_sections <- function(
     # validate input dataframe has correct columns  
     is_valid <- validate_df(net, REQUIRED_COLS, "net")  
   
-    # -----------------------------
+    # -------------------------------------------
     # TODO: Testing out removing forced CRS change
-    # -----------------------------
+    # -------------------------------------------
     
     # # keep track of the CRS of the input to retransform return 
     # start_crs <- sf::st_crs(net, parameters = T)$epsg
@@ -1103,24 +1109,29 @@ cut_cross_sections <- function(
     #   # message("Transforming CRS to EPSG: 5070")
     #   net <- sf::st_transform(net, 5070) 
     # }
-    # -----------------------------
+    # -------------------------------------------
     
-    # Add an initial ordering column to ensure transects are returned in the same order as the 
-    # provided flowlines
+    # -------------------------------------------------------
+    # Preserve initial_order of flowlines 
+    #   - Add an initial ordering column to
+    #     ensure transects are returned 
+    #     in the same order as the provided flowlines
+    # -------------------------------------------------------
+    
+    # Add an initial ordering column to ensure transects are returned in the same order as the provided flowlines
     net <- 
       net %>% 
       add_initial_order()
     
     # Densify network flowlines, adds more points to each linestring
     if(!is.null(densify)){ 
-      message("Densifying")
+      if(verbose) { message("Densifying") }
       net <- smoothr::densify(net, densify) 
     }
     
     # smooth out flowlines
     if(smooth){ 
-      message("Smoothing")
-      # net = smoothr::smooth(net, "ksmooth")
+      if(verbose) { message("Smoothing") }
       net <- smoothr::smooth(net, "spline")
     }
     
@@ -1138,9 +1149,7 @@ cut_cross_sections <- function(
       num = pmax(3, rep(num[1], nrow(net)))
     }
     
-    message("Cutting")
-    
-    # net$geometry %>% mapview::npts(by_feature = T)
+    if(verbose) { message("Cutting transects") }
     
     # iterate through each linestring in "net" and generate transect lines along each line 
     for (j in 1:nrow(net)) {
@@ -1178,7 +1187,6 @@ cut_cross_sections <- function(
     
     # bind list of sf dataframes of transects back together
     transects <- dplyr::bind_rows(transects)
-    # transects <- sf::st_as_sf(Reduce(c, transects))]
     
     # mapview::mapview(transects, color = "red") + net 
     # plot(net$geometry, add = F)
@@ -1188,8 +1196,12 @@ cut_cross_sections <- function(
       return(NULL)
     }
     
-    message("Formatting")
- 
+    if(verbose) { message("Formatting transects") }
+    
+    # -------------------------------------------
+    # Removing self intersections
+    # -------------------------------------------
+    
     # remove self intersecting transects or not
     if (rm_self_intersect) {
       transects <- 
@@ -1213,6 +1225,13 @@ cut_cross_sections <- function(
     #     dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
     # }
     
+    # -------------------------------------------
+    # Add transect attribute columns
+    # - cs_id
+    # - lengthm
+    # - initial_order (temporary)
+    # -------------------------------------------
+    
     # add cs_id and lengthm columns
     transects <- 
       transects %>% 
@@ -1222,7 +1241,7 @@ cut_cross_sections <- function(
       # dplyr::ungroup() %>% 
       dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
     
-    # add the intitial_order column to the transects
+    # add the initial_order column to the transects
     transects <-
       transects %>% 
       dplyr::left_join(
@@ -1253,6 +1272,9 @@ cut_cross_sections <- function(
       #          "- Braid detection version: ", version, "\n",
       #          "- Braid grouping method: ", braid_method
       #          ))
+      
+      if(verbose) { message("Fixing braided transects") }
+      
       transects <- fix_braided_transects(
         net             = net,
         transect_lines  = transects,
@@ -1263,7 +1285,7 @@ cut_cross_sections <- function(
         rm_intersects   = rm_self_intersect
       )
       
-      # #   # if one of the transect lines interesects MORE than 1 line in net AND it also has a braid_id == "no_braid", then remove it from output
+      # # if one of the transect lines interesects MORE than 1 line in net AND it also has a braid_id == "no_braid", then remove it from output
       #   transect_lines <- transect_lines[!(lengths(sf::st_intersects(transect_lines, net)) > 1 & transect_lines$braid_id == "no_braid"), ]
       #   transect_lines <- transect_lines[!(lengths(sf::st_intersects(transect_lines)) > 1 & transect_lines$braid_id == "no_braid"), ]
     } 
@@ -1273,7 +1295,6 @@ cut_cross_sections <- function(
     if (!fix_braids) {
       # NOTE: IF we DID NOT do braid fixing, which could cause a transect to purposefully intersect multiple flowlines
       transects <- rm_multiflowline_intersections(transects = transects, flowlines = net)
-      # transects <- transects[lengths(sf::st_intersects(transects, net)) == 1, ]
     }
     
 
@@ -1283,16 +1304,10 @@ cut_cross_sections <- function(
       add_cs_id_sequence(crosswalk_id) %>% 
       dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
     
-    # get_cs_sinuosity2(
-    #   lines          = net, 
-    #   cross_sections = transects, 
-    #   crosswalk_id   = "hydrofabric_id",
-    #   add            = TRUE
-    # )
-  
     # -----------------------------
     # Sinuosity calculation 
     # -----------------------------
+    
     # calculate sinuosity and add it as a column to the cross sections
     transects <- get_cs_sinuosity(
       flowlines      = net, 

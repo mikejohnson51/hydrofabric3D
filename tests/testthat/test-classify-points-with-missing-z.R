@@ -10,61 +10,137 @@ source("testing_utils.R")
 # devtools::load_all()
 
 # -------------------------------------------------------------------
-# ---- hydrofabric::cross_section_pts() ----
+# ---- hydrofabric::classify_points() when cs_pts have missing Z values ----
 # -------------------------------------------------------------------
 
-testthat::test_that("check that missing NA value is identified and added as a NA Z value for the correct transect", {
+testthat::test_that("classify_points() - throws an error when empty cross section points dataframe is given and when na.rm = TRUE", {
+                      
   TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
   ID_COL              <- "hy_id"
-  CS_IDS_MISSING_Z    <- c(66)
+  CS_IDS_OF_INTEREST    <- c(65, 66, 67)
   
   # Cross section point inputs
   DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
   POINTS_PER_CS       <- NULL
   MIN_PTS_PER_CS      <- 10
   
-  transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) 
-
+  transects    <- 
+    TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH %>% 
+    sf::read_sf() %>% 
+    dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+  
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-              cs             = transects,
-              crosswalk_id   = ID_COL,
-              points_per_cs  = POINTS_PER_CS,
-              min_pts_per_cs = MIN_PTS_PER_CS,
-              dem            = DEM_PATH
-            ) 
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = NULL,
+    min_pts_per_cs = 10,
+    dem            = DEM_PATH
+  ) %>% 
+    dplyr::slice(0)
   
-  invalid_cs <-     
-    cs_pts %>% 
-    dplyr::filter(
-      cs_id %in% CS_IDS_MISSING_Z
-    ) 
   
-  correct_transects_missing_z <- 
-    invalid_cs  %>% 
-    dplyr::pull(Z) %>% 
-    is.na() %>% 
-    any()
-  
-  testthat::expect_true(correct_transects_missing_z)
-  
-  all_cs_have_atleast_min_num_pts <- 
-    all(
-      cs_pts %>% 
-        sf::st_drop_geometry() %>% 
-        add_tmp_id(x = ID_COL) %>% 
-        dplyr::group_by(tmp_id) %>% 
-        dplyr::count() %>% 
-        dplyr::pull(n) >= MIN_PTS_PER_CS
-    )
-  
-  testthat::expect_true(all_cs_have_atleast_min_num_pts)
+  testthat::expect_error(
+    hydrofabric3D::classify_points(cs_pts, crosswalk_id = ID_COL, na.rm = TRUE)
+  )
   
 })
 
-# TODO: maybe there should be some methods to allow for NAs and give a warning instead?
-testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values throws an error", {
+testthat::test_that("classify_points() - throws an error when empty cross section points dataframe is given and when na.rm = FALSE", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  ID_COL              <- "hy_id"
+  CS_IDS_OF_INTEREST    <- c(65, 66, 67)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  POINTS_PER_CS       <- NULL
+  MIN_PTS_PER_CS      <- 10
+  
+  transects    <- 
+    TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH %>% 
+    sf::read_sf() %>% 
+    dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = NULL,
+    min_pts_per_cs = 10,
+    dem            = DEM_PATH
+  ) %>% 
+    dplyr::slice(0)
+  
+  testthat::expect_error(
+    hydrofabric3D::classify_points(cs_pts, crosswalk_id = ID_COL, na.rm = FALSE)
+  )
+  
+})
+
+testthat::test_that("classify_points() - throws an error when given a not present crosswalk_id and na.rm = TRUE", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  CS_IDS_OF_INTEREST    <- c(65, 66, 67)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  
+  transects    <- 
+    TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH %>% 
+    sf::read_sf() %>% 
+    dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = "hy_id",
+    points_per_cs  = NULL,
+    min_pts_per_cs = 10,
+    dem            = DEM_PATH
+  ) 
+  
+  testthat::expect_error(
+    hydrofabric3D::classify_points(cs_pts, crosswalk_id = "not_a_column", na.rm = TRUE)
+  )
+  
+})
+
+testthat::test_that("classify_points() - throws an error when given a not present crosswalk_id and na.rm = FALSE", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  CS_IDS_OF_INTEREST    <- c(65, 66, 67)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  
+  transects    <- 
+    TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH %>% 
+    sf::read_sf() %>% 
+    dplyr::filter(cs_id %in% CS_IDS_OF_INTEREST)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = "hy_id",
+    points_per_cs  = NULL,
+    min_pts_per_cs = 10,
+    dem            = DEM_PATH
+  ) 
+  
+  testthat::expect_error(
+    hydrofabric3D::classify_points(cs_pts, crosswalk_id = "not_a_column", na.rm = FALSE)
+  )
+  
+})
+
+
+testthat::test_that("classify_points() - 1 transects with 1+ NA values 
+                    gives a warning when na.rm = TRUE and there are no output classified points because of the NA removal", {
   
   TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
   ID_COL              <- "hy_id"
@@ -88,15 +164,13 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
     dem            = DEM_PATH
   ) 
   
-  testthat::expect_error(
-    hydrofabric3D::classify_points(cs_pts, crosswalk_id = ID_COL)
+  testthat::expect_warning(
+    hydrofabric3D::classify_points(cs_pts, crosswalk_id = ID_COL, na.rm = TRUE)
   )
-  # has_bottom_point_type <- c("bottom") %in% classified_pts$point_type
-  # testthat::expect_true(has_bottom_point_type)
-  
 })
 
-testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values throws an error when na.rm = TRUE and its the only cross section in the set", {
+testthat::test_that("classify_points() - 1 transects with 1+ NA values 
+                    does NOT give a warning when na.rm = FALSE because the NA cs pts are kept", {
   
   TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
   ID_COL              <- "hy_id"
@@ -120,26 +194,135 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
     dem            = DEM_PATH
   ) 
   
-  testthat::expect_error(
-    hydrofabric3D::classify_points(cs_pts, 
+  testthat::expect_no_warning(
+    hydrofabric3D::classify_points(cs_pts, crosswalk_id = ID_COL, na.rm = FALSE)
+  )
+})
+
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values gives a warning when na.rm = TRUE and its the only cross section in the set", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  ID_COL              <- "hy_id"
+  CS_IDS_MISSING_Z    <- c(66)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  POINTS_PER_CS       <- NULL
+  MIN_PTS_PER_CS      <- 10
+  
+  transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+    dplyr::filter(cs_id %in% CS_IDS_MISSING_Z)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = POINTS_PER_CS,
+    min_pts_per_cs = MIN_PTS_PER_CS,
+    dem            = DEM_PATH
+  ) 
+  testthat::expect_warning(
+    classified_pts <- hydrofabric3D::classify_points(cs_pts, 
                                      crosswalk_id = ID_COL, 
                                      na.rm = TRUE
                                      )
   )
+  
+  
   # has_bottom_point_type <- c("bottom") %in% classified_pts$point_type
   # testthat::expect_true(has_bottom_point_type)
   
 })
 
+testthat::test_that("classify_points() - cs_pts for 1 transect that have 1+ NA values returns an 
+                    empty classified pts dataframe when na.rm = TRUE and 
+                    the cs_pts being classified have an NA and its the only cross section in the set", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  ID_COL              <- "hy_id"
+  CS_IDS_MISSING_Z    <- c(66)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  POINTS_PER_CS       <- NULL
+  MIN_PTS_PER_CS      <- 10
+  
+  transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+    dplyr::filter(cs_id %in% CS_IDS_MISSING_Z)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = POINTS_PER_CS,
+    min_pts_per_cs = MIN_PTS_PER_CS,
+    dem            = DEM_PATH
+  ) 
+    classified_pts <- hydrofabric3D::classify_points(cs_pts, 
+                                                     crosswalk_id = ID_COL, 
+                                                     na.rm = TRUE
+    )
+  
+    testthat::expect_true(
+      nrow(classified_pts) == 0
+    )
+})
 
-testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values gets 
+testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA values returns a classified pts dataframe 
+                    with all NA cs pts attributes values when na.rm = FALSE its the only cross section in the set", {
+  
+  TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
+  ID_COL              <- "hy_id"
+  CS_IDS_MISSING_Z    <- c(66)
+  
+  # Cross section point inputs
+  DEM_PATH            <- testthat::test_path("testdata", "dem_missing_depth.tif")
+  POINTS_PER_CS       <- NULL
+  MIN_PTS_PER_CS      <- 10
+  
+  transects    <- sf::read_sf(TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH) %>% 
+    dplyr::filter(cs_id %in% CS_IDS_MISSING_Z)
+  
+  # mapview::mapview(raster::raster(DEM_PATH)) + transects
+  
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = POINTS_PER_CS,
+    min_pts_per_cs = MIN_PTS_PER_CS,
+    dem            = DEM_PATH
+  ) 
+  
+  classified_pts <- hydrofabric3D::classify_points(cs_pts, 
+                                                   crosswalk_id = ID_COL, 
+                                                   na.rm = FALSE
+  )
+  classified_pts
+  
+  testthat::expect_true(
+    nrow(classified_pts) == nrow(cs_pts)
+  )
+  
+  testthat::expect_true(
+    classified_pts$Z %>% is.na() %>% any()
+  )
+  
+  testthat::expect_true(
+    all(c("class", "point_type", "bottom", "left_bank", "right_bank", "valid_banks", "has_relief") %in% names(classified_pts))
+  )
+  
+})
+
+testthat::test_that("classify_points() - cs_pts for 2 transects where one of the transects has 1+ NA values gets 
                   removed when na.rm = TRUE and there are more than just that NA filled set of cs pts 
                   (i.e. theres another cross section that does NOT contain any NA values)
                     ", {
   
   TRANSECTS_MISSING_DEPTH_TEST_DATA_PATH <- testthat::test_path("testdata", "transects_missing_depth.gpkg")
   ID_COL              <- "hy_id"
-  CS_ID_WITH_MISSING_Z <- 66
+  CS_ID_WITH_MISSING_Z  <- 66
   CS_ID_WITH_COMPLETE_Z <- 67
   
   CS_IDS_OF_INTEREST <- c(CS_ID_WITH_MISSING_Z, CS_ID_WITH_COMPLETE_Z)

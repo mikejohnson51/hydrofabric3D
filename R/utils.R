@@ -1899,6 +1899,7 @@ validate_arg_types <- function(..., type_map) {
 #' @param braid_method Character, the method to determine the geometries to cut. Options are "comid", "component", or "neighbor". Default is "comid".
 #' @param precision Numeric, the number of meters to approximate final cross-section linestring length.
 #' @param add Logical, indicating whether to add original 'net' data to the outputted transect lines.
+#' @param verbose Logical, whether messages should be shown or not.
 #' @return NULL if inputs are valid; otherwise, an error is thrown.
 #' @noRd
 #' @keywords internal
@@ -1913,7 +1914,8 @@ validate_cut_cross_section_inputs <- function(net,
                                               braid_threshold , 
                                               braid_method, 
                                               precision, 
-                                              add 
+                                              add,
+                                              verbose
 ) {
   
   # Check if 'net' is an sf object
@@ -2009,6 +2011,11 @@ validate_cut_cross_section_inputs <- function(net,
   # Check if 'add' is a logical value
   if (!is.logical(add)) {
     stop("'add' must be a logical value.")
+  }
+  
+  # Check if 'verbose' is a logical value
+  if (!is.logical(verbose)) {
+    stop("'verbose' must be a logical value.")
   }
   
   return(NULL)
