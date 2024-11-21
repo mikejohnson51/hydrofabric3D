@@ -1402,10 +1402,10 @@ add_is_outlet_flag <- function(x, crosswalk_id = NULL) {
 #'
 #' @param transects sf linestring dataframe of transect lines
 #' @param flowlines sf linestring dataframe of flowlines
-#' @noRd
-#' @keywords internal
+#' 
 #' @importFrom sf st_intersects 
 #' @return sf linestring dataframe
+#' @export
 rm_multiflowline_intersections <- function(transects, flowlines) {
   
   transects <- transects[lengths(sf::st_intersects(transects, flowlines)) == 1, ]
@@ -1421,6 +1421,7 @@ rm_multiflowline_intersections <- function(transects, flowlines) {
 #' @importFrom sf st_intersects
 #'
 #' @return sf dataframe
+#' @export
 rm_multi_intersects <- function(x) {
   
   # x <- tmp_trans
@@ -1451,6 +1452,7 @@ rm_multi_intersects <- function(x) {
 #' @keywords internal
 #' @importFrom sf st_intersects 
 #' @return sf linestring dataframe
+#' @export
 rm_self_intersections <- function(x) {
   
   x <- x[lengths(sf::st_intersects(x)) == 1, ]

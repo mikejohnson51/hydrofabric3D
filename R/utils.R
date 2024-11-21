@@ -353,6 +353,21 @@ add_cs_id_sequence <- function(x, crosswalk_id = NULL) {
   
 }
 
+#' Extract the VPU string from part of a string
+#'
+#' @param s character to extract vpuid out of
+#' @param prefix character, default is an empty string
+#'
+#' @return character vpuid
+#' @noRd
+#' @keywords internal
+extract_vpu <- function(s, prefix = "") {
+  regex_pattern <- paste0(prefix, "(\\d+[A-Za-z]?).*")
+  return(
+    gsub(regex_pattern, "\\1", s)
+  )
+}
+
 #' @title Move Geometry Column to the last column position
 #' @description 
 #' Internal utility function for taking a dataframe or an sf dataframe, checks for the existence of a geometry type column, and 
