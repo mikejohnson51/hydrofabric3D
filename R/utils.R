@@ -2242,8 +2242,8 @@ select_transects <- function(transects, crosswalk_id = NULL) {
       dplyr::any_of(c(
         crosswalk_id,
         "cs_id",
-        "cs_measure",
         "cs_lengthm",
+        "cs_measure",
         "sinuosity",
         "cs_source",
         "geometry"
