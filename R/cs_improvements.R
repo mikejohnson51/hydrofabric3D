@@ -2756,10 +2756,16 @@ flag_transects_for_change <- function(
   
   # validate input datas
   is_valid_df        <- validate_df(x, 
-                                  c(crosswalk_id, "cs_id", "cs_lengthm", "initial_length", "cs_measure", 
+                                  c(crosswalk_id, "cs_id", 
+                                    "cs_lengthm", 
+                                    
+                                    "initial_length",
+                                    "left_distance", "right_distance",
+                                    
+                                    "cs_measure", 
                                   "valid_banks", "has_relief", "geometry"), 
                                   "x")
-  
+
   # get cross section point elevations``
   new_cs_pts <- cross_section_pts(
     cs             = x,
@@ -2794,7 +2800,7 @@ flag_transects_for_change <- function(
       by = c(crosswalk_id, "cs_id")
     ) %>% 
     dplyr::mutate(
-      flagged            = (!is_improved) & (initial_length < cs_lengthm),
+      flagged            = (!is_improved) & ((initial_length < cs_lengthm) | (left_distance > 0) | (right_distance > 0)),
       extension_distance = ((cs_lengthm - initial_length) / 2)
     )
   
