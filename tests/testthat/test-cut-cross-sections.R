@@ -275,6 +275,630 @@ testthat::test_that("flowline only (no other input cols) sf dataframe, checking 
   
 })
 
+testthat::test_that("flowline w/ only 2 points results 
+                    in a single transect line when no densification or smoothing", {
+  
+  flowlines <-
+    sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")) %>% 
+    hydrofabric3D::add_powerlaw_bankful_width(
+      total_drainage_area_sqkm_col = "tot_drainage_areasqkm",
+      min_bf_width = 50
+    ) %>%
+    dplyr::select(
+      id,
+      lengthkm,
+      mainstem,
+      tot_drainage_areasqkm,
+      geometry = geom
+    ) %>%   
+    dplyr::filter(
+      id %in% c("wb-1002023")
+      # id %in% c("wb-1010908","wb-1002024", "wb-1002023")
+    ) %>% 
+    sf::st_simplify(dTolerance = 50)
+  
+  # dense_lines <- force_min_npts_per_flowlines(flowlines)
+  
+  # flowlines %>% 
+  #   mapview::npts(by_feature = T)
+  
+  # mapview::mapview(dense_lines, color = "red") +
+  #   mapview::mapview(flowlines, color = "green")
+  
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowlines,
+    crosswalk_id      = "id",
+    cs_widths         = 50,     # cross section width of each "id" linestring ("hy_id")
+    num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+    smooth            = FALSE,                          # smooth lines
+    densify           = NULL,                             # densify linestring points
+    rm_self_intersect = TRUE,                          # remove self intersecting transects
+    fix_braids        = FALSE
+  )
+  
+  testthat::expect_true(
+    nrow(transects) == 1
+  )
+  
+  # mapview::mapview(transects, color = "red") +
+  #   mapview::mapview(flowlines, color = "green")
+  
+})
+testthat::test_that("flowline w/ only 3 points results 
+                    in a max of 4 transects (no densification or smoothing)", {
+                      
+  flowlines <-
+    sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")) %>% 
+    hydrofabric3D::add_powerlaw_bankful_width(
+      total_drainage_area_sqkm_col = "tot_drainage_areasqkm",
+      min_bf_width = 50
+    ) %>%
+    dplyr::select(
+      id,
+      lengthkm,
+      mainstem,
+      tot_drainage_areasqkm,
+      geometry = geom
+    ) %>%   
+    dplyr::filter(
+      # id %in% c("wb-1002023")
+      # id %in% c("wb-1010908","wb-1002024", "wb-1002023")
+      id %in% c("wb-1010908")
+    ) %>% 
+    sf::st_simplify(dTolerance = 50)
+  
+  # dense_lines <- force_min_npts_per_flowlines(flowlines)
+  
+  # flowlines %>%
+  #   mapview::npts(by_feature = T)
+  # mapview::mapview(dense_lines, color = "red") +
+  #   mapview::mapview(flowlines, color = "green")
+  
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowlines,
+    crosswalk_id      = "id",
+    cs_widths         = 50,     # cross section width of each "id" linestring ("hy_id")
+    num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+    smooth            = FALSE,                          # smooth lines
+    densify           = NULL,                             # densify linestring points
+    rm_self_intersect = TRUE,                          # remove self intersecting transects
+    fix_braids        = FALSE
+  )
+  
+  testthat::expect_true(
+    nrow(transects) == 4
+  )
+  
+  # mapview::mapview(transects, color = "red") +
+  #   mapview::mapview(flowlines, color = "green")
+  
+})
+
+testthat::test_that("flowline w/ only 4 points results 
+                    in 1 transect line (no densification or smoothing)", {
+      
+      flowlines <-
+        sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")) %>% 
+        hydrofabric3D::add_powerlaw_bankful_width(
+          total_drainage_area_sqkm_col = "tot_drainage_areasqkm",
+          min_bf_width = 50
+        ) %>%
+        dplyr::select(
+          id,
+          lengthkm,
+          mainstem,
+          tot_drainage_areasqkm,
+          geometry = geom
+        ) %>%   
+        dplyr::filter(
+          # id %in% c("wb-1002023")
+          # id %in% c("wb-1010908","wb-1002024", "wb-1002023")
+          id %in% c("wb-1010908")
+        ) %>% 
+        sf::st_simplify(dTolerance = 35)
+      
+      # dense_lines <- force_min_npts_per_flowlines(flowlines)
+      
+      # flowlines %>%
+      #   mapview::npts(by_feature = T)
+      
+      # mapview::mapview(dense_lines, color = "red") +
+      #   mapview::mapview(flowlines, color = "green")
+      
+      transects <- hydrofabric3D::cut_cross_sections(
+        net               = flowlines,
+        crosswalk_id      = "id",
+        cs_widths         = 50,     # cross section width of each "id" linestring ("hy_id")
+        num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+        smooth            = FALSE,                          # smooth lines
+        densify           = NULL,                             # densify linestring points
+        rm_self_intersect = TRUE,                          # remove self intersecting transects
+        fix_braids        = FALSE
+      )
+      
+      testthat::expect_true(
+        nrow(transects) == 1
+      )
+      
+})
+
+testthat::test_that("flowline w/ only 5 points results 
+                    in 2 transect lines (no densification or smoothing)", {
+                      
+  flowlines <-
+    sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")) %>% 
+    hydrofabric3D::add_powerlaw_bankful_width(
+      total_drainage_area_sqkm_col = "tot_drainage_areasqkm",
+      min_bf_width = 50
+    ) %>%
+    dplyr::select(
+      id,
+      lengthkm,
+      mainstem,
+      tot_drainage_areasqkm,
+      geometry = geom
+    ) %>%   
+    dplyr::filter(
+      # id %in% c("wb-1002023")
+      # id %in% c("wb-1010908","wb-1002024", "wb-1002023")
+      id %in% c("wb-1010908")
+    ) %>% 
+    sf::st_simplify(dTolerance = 27)
+  
+  # flowlines %>%
+  #   mapview::npts(by_feature = T)
+  
+  # mapview::mapview(dense_lines, color = "red") +
+  #   mapview::mapview(flowlines, color = "green")
+  
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowlines,
+    crosswalk_id      = "id",
+    cs_widths         = 50,     # cross section width of each "id" linestring ("hy_id")
+    num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+    smooth            = FALSE,                          # smooth lines
+    densify           = NULL,                             # densify linestring points
+    rm_self_intersect = TRUE,                          # remove self intersecting transects
+    fix_braids        = FALSE
+  )
+  
+  testthat::expect_true(
+    nrow(transects) == 2
+  )
+  
+})
+
+
+testthat::test_that("flowline w/ only 7 points results 
+                    in max of 4 transect lines (no densification or smoothing)", {
+                      
+    flowlines <-
+      sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")) %>% 
+      hydrofabric3D::add_powerlaw_bankful_width(
+        total_drainage_area_sqkm_col = "tot_drainage_areasqkm",
+        min_bf_width = 50
+      ) %>%
+      dplyr::select(
+        id,
+        lengthkm,
+        mainstem,
+        tot_drainage_areasqkm,
+        geometry = geom
+      ) %>%   
+      dplyr::filter(
+        # id %in% c("wb-1002023")
+        # id %in% c("wb-1010908","wb-1002024", "wb-1002023")
+        id %in% c("wb-1010908")
+      ) 
+    # %>% 
+      # sf::st_simplify(dTolerance = 27)
+
+    # flowlines %>%
+    #   mapview::npts(by_feature = T)
+    
+    # mapview::mapview(dense_lines, color = "red") +
+    #   mapview::mapview(flowlines, color = "green")
+    
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowlines,
+      crosswalk_id      = "id",
+      cs_widths         = 50,     # cross section width of each "id" linestring ("hy_id")
+      num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+      smooth            = FALSE,                          # smooth lines
+      densify           = NULL,                             # densify linestring points
+      rm_self_intersect = TRUE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+    
+    testthat::expect_true(
+      nrow(transects) == 4
+    )
+    
+  })
+
+testthat::test_that("number of transects equals the number of points on a line
+                    minus 2 (for the end points) and then minus 1 (2 pts create 1 transect)
+                    (asssuming no densification or smoothing)", {
+    
+    flowlines <- dplyr::bind_rows(
+                      sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")),
+                      sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")),
+                      sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg")) %>% 
+                        dplyr::select(id = comid) %>% 
+                        dplyr::mutate(id = as.character(id))
+                    ) %>% 
+      hydroloom::rename_geometry("geometry") %>% 
+      dplyr::select(
+        id
+      ) %>%
+      dplyr::filter(
+        # id %in% c("wb-1002023")
+        # id %in% c("wb-1010908","wb-1002024", "wb-1002023")
+        # id %in% c("wb-1007682")
+      )
+    
+    for (i in 1:nrow(flowlines)) {
+     
+      message(i)
+      # i <- 94
+      fl <- flowlines[i, ]
+      
+      pt_count <- geos::geos_num_coordinates(fl)
+      
+      # pt_counts <- 
+      #   fl %>%
+      #   mapview::npts(by_feature = T)
+      
+      num_trans <- max(pt_count) + 4
+      
+      transects <- hydrofabric3D::cut_cross_sections(
+        net               = fl,
+        crosswalk_id      = "id",
+        cs_widths         = 0.01,     # cross section width of each "id" linestring ("hy_id")
+        num               = num_trans,                            # number of cross sections per "id" linestring ("hy_id")
+        smooth            = FALSE,                          # smooth lines
+        densify           = NULL,                             # densify linestring points
+        rm_self_intersect = FALSE,                          # remove self intersecting transects
+        fix_braids        = FALSE
+      )
+      
+      # mapview::mapview(transects, color = "red") +
+      #   mapview::mapview(fl, color = "green")
+      
+      # prep_flowlines(fl) %>%
+      #   mapview::npts()
+      # transects %>% 
+      #   sf::st_drop_geometry() %>% 
+      #   dplyr::group_by(id) %>% 
+      #   dplyr::count(id) %>% 
+      #   dplyr::ungroup()
+      
+      # if flowlines have more than 4 points, then its the equation to know how many transects get made
+      # 2, 3, 4 points are all special edge cases
+      if (pt_count > 4) {
+        expected_num_of_transects <- (pt_count - 2) - 1
+      } else if (pt_count %in% c(2, 4)) {
+        expected_num_of_transects <- 1
+      } else if(pt_count == 3) {
+        expected_num_of_transects <- 4
+      }
+      
+      testthat::expect_true(
+        nrow(transects) == expected_num_of_transects
+      )
+       
+    }
+    
+    # flowlines %>%
+    #   mapview::npts(by_feature = T)
+})
+
+
+testthat::test_that("transects pass validate_transects with varying number of prescribed transects (1-15 cuts)
+                    with rm_self_intersection = TRUE", {
+                      
+    flowlines <- dplyr::bind_rows(
+      sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")),
+      sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")),
+      sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg")) %>% 
+        dplyr::select(id = comid) %>% 
+        dplyr::mutate(id = as.character(id))
+    ) %>% 
+      hydroloom::rename_geometry("geometry") %>% 
+      dplyr::select(
+        id
+      ) %>% 
+      sf::st_cast("MULTILINESTRING")
+    
+    for (i in 1:15) {
+    
+      transects <- hydrofabric3D::cut_cross_sections(
+        net               = flowlines,
+        crosswalk_id      = "id",
+        cs_widths         = 0.01,     # cross section width of each "id" linestring ("hy_id")
+        num               = i,                            # number of cross sections per "id" linestring ("hy_id")
+        smooth            = FALSE,                          # smooth lines
+        densify           = NULL,                             # densify linestring points
+        rm_self_intersect = TRUE,                          # remove self intersecting transects
+        fix_braids        = FALSE
+      )
+      
+      # mapview::mapview(transects, color = "red") +
+      #   mapview::mapview(fl, color = "green")
+      testthat::expect_true(
+        hydrofabric3D::validate_transects(transects, "id")
+      )
+  
+    }
+})
+
+testthat::test_that("transects that cross other transects are removed when rm_self_intersecct is TRUE", {
+                      
+      flowlines <-
+        sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg")) %>% 
+        dplyr::arrange(hydroseq) %>% 
+        dplyr::select(id = comid) %>% 
+        dplyr::mutate(id = as.character(id)) %>% 
+        hydroloom::rename_geometry("geometry") %>% 
+        dplyr::select(
+          id
+        ) %>% 
+        sf::st_cast("MULTILINESTRING") %>% 
+        dplyr::slice(1:50)
+      
+        
+        transects <- hydrofabric3D::cut_cross_sections(
+          net               = flowlines,
+          crosswalk_id      = "id",
+          cs_widths         = 500,     # cross section width of each "id" linestring ("hy_id")
+          num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+          smooth            = FALSE,                          # smooth lines
+          densify           = NULL,                             # densify linestring points
+          rm_self_intersect = TRUE,                          # remove self intersecting transects
+          fix_braids        = FALSE
+        )
+        
+        # plot(flowlines$geometry)
+        # plot(transects$geometry, add = T)
+        
+        testthat::expect_true(
+            all(
+              lengths(sf::st_intersects(transects)) == 1
+            )
+        )
+       
+    })
+
+testthat::test_that("transects that cross other transects are ketp when rm_self_intersecct is FALSE", {
+  
+  flowlines <-
+    sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg")) %>% 
+    dplyr::arrange(hydroseq) %>% 
+    dplyr::select(id = comid) %>% 
+    dplyr::mutate(id = as.character(id)) %>% 
+    hydroloom::rename_geometry("geometry") %>% 
+    dplyr::select(
+      id
+    ) %>% 
+    sf::st_cast("MULTILINESTRING") %>% 
+    dplyr::slice(1:50)
+  
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowlines,
+    crosswalk_id      = "id",
+    cs_widths         = 500,     # cross section width of each "id" linestring ("hy_id")
+    num               = 10,                            # number of cross sections per "id" linestring ("hy_id")
+    smooth            = FALSE,                          # smooth lines
+    densify           = NULL,                             # densify linestring points
+    rm_self_intersect = FALSE,                          # remove self intersecting transects
+    fix_braids        = FALSE
+  )
+  
+  # plot(flowlines$geometry)
+  # plot(transects$geometry, add = T)
+  
+  testthat::expect_true(
+    any(lengths(sf::st_intersects(transects)) > 1)
+  )
+  
+})
+
+testthat::test_that("braided flowlines, transects never cross flowlines more than once
+                    whether rm_self_intersect is TRUE or FALSE
+                    ", {
+  
+  flowlines <-
+    sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg")) %>% 
+    dplyr::arrange(hydroseq) %>% 
+    dplyr::select(id = comid) %>% 
+    dplyr::mutate(id = as.character(id)) %>% 
+    hydroloom::rename_geometry("geometry") %>% 
+    dplyr::select(
+      id
+    ) %>% 
+    sf::st_cast("MULTILINESTRING") %>% 
+    dplyr::slice(1:50)
+  
+  for (width in c(1000, 2500)) {
+    
+    # rm_self_intersect = TRUE
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowlines,
+      crosswalk_id      = "id",
+      cs_widths         = width,     # cross section width of each "id" linestring ("hy_id")
+      num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+      smooth            = FALSE,                          # smooth lines
+      densify           = NULL,                             # densify linestring points
+      rm_self_intersect = TRUE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+    
+    # plot(flowlines$geometry)
+    # plot(transects$geometry, add = T)
+    
+    testthat::expect_true(
+      all(
+        lengths(sf::st_intersects(transects, flowlines)) == 1
+      )
+    )
+  }
+  
+  for (width in c(1000, 2500)) {
+    # rm_self_intersect = FALSE
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowlines,
+      crosswalk_id      = "id",
+      cs_widths         = width,     # cross section width of each "id" linestring ("hy_id")
+      num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+      smooth            = FALSE,                          # smooth lines
+      densify           = NULL,                             # densify linestring points
+      rm_self_intersect = FALSE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+  
+    # plot(flowlines$geometry)
+    # plot(transects$geometry, add = T)
+    
+    testthat::expect_true(
+      all(
+        lengths(sf::st_intersects(transects, flowlines)) == 1
+      )
+    )
+    
+  }
+  
+  
+})
+
+testthat::test_that("junction flowlines, transects never cross flowlines more than once
+                    whether rm_self_intersect is TRUE or FALSE", {
+                      
+  flowlines <-
+    sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")) %>% 
+    dplyr::mutate(id = as.character(id)) %>% 
+    hydroloom::rename_geometry("geometry") %>% 
+    dplyr::select(
+      id
+    ) %>% 
+    sf::st_cast("MULTILINESTRING") 
+  
+  for (width in c(1000, 2500)) {
+    
+    # rm_self_intersect = TRUE
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowlines,
+      crosswalk_id      = "id",
+      cs_widths         = width,     # cross section width of each "id" linestring ("hy_id")
+      num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+      smooth            = FALSE,                          # smooth lines
+      densify           = NULL,                             # densify linestring points
+      rm_self_intersect = TRUE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+    
+    # plot(flowlines$geometry)
+    # plot(transects$geometry, add = T)
+    
+    testthat::expect_true(
+      all(
+        lengths(sf::st_intersects(transects, flowlines)) == 1
+      )
+    )
+  }
+  
+  for (width in c(1000, 2500)) {
+    # rm_self_intersect = FALSE
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowlines,
+      crosswalk_id      = "id",
+      cs_widths         = width,     # cross section width of each "id" linestring ("hy_id")
+      num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+      smooth            = FALSE,                          # smooth lines
+      densify           = NULL,                             # densify linestring points
+      rm_self_intersect = FALSE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+    
+    # plot(flowlines$geometry)
+    # plot(transects$geometry, add = T)
+    
+    testthat::expect_true(
+      all(
+        lengths(sf::st_intersects(transects, flowlines)) == 1
+      )
+    )
+    
+  }
+  
+  
+})
+
+testthat::test_that("flowlines.gpkg, transects never cross flowlines more than once
+                    whether rm_self_intersect is TRUE or FALSE", {
+  
+  flowlines <-
+    sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>% 
+    dplyr::mutate(id = as.character(id)) %>% 
+    hydroloom::rename_geometry("geometry") %>% 
+    dplyr::select(
+      id
+    ) %>% 
+    sf::st_cast("MULTILINESTRING") 
+  
+  for (width in c(1000, 2500)) {
+    
+    # rm_self_intersect = TRUE
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowlines,
+      crosswalk_id      = "id",
+      cs_widths         = width,     # cross section width of each "id" linestring ("hy_id")
+      num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+      smooth            = FALSE,                          # smooth lines
+      densify           = NULL,                             # densify linestring points
+      rm_self_intersect = TRUE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+    
+    # plot(flowlines$geometry)
+    # plot(transects$geometry, add = T)
+    
+    testthat::expect_true(
+      all(
+        lengths(sf::st_intersects(transects, flowlines)) == 1
+      )
+    )
+  }
+  
+  for (width in c(1000, 2500)) {
+    # rm_self_intersect = FALSE
+    transects <- hydrofabric3D::cut_cross_sections(
+      net               = flowlines,
+      crosswalk_id      = "id",
+      cs_widths         = width,     # cross section width of each "id" linestring ("hy_id")
+      num               = 20,                            # number of cross sections per "id" linestring ("hy_id")
+      smooth            = FALSE,                          # smooth lines
+      densify           = NULL,                             # densify linestring points
+      rm_self_intersect = FALSE,                          # remove self intersecting transects
+      fix_braids        = FALSE
+    )
+    
+    # plot(flowlines$geometry)
+    # plot(transects$geometry, add = T)
+    
+    testthat::expect_true(
+      all(
+        lengths(sf::st_intersects(transects, flowlines)) == 1
+      )
+    )
+    
+  }
+  
+  
+})
+
+
+
+
 testthat::test_that("cut 2 transects on a single flowline", {
   # flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) 
   # flowline <- flowlines[10, ] 
@@ -412,7 +1036,7 @@ testthat::test_that("cut 10 transects along single flowline & remove intersects 
   
   # Expect cs_lengthm and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
   testthat::expect_true(dplyr::between(transects$cs_lengthm[1], 50-2, 50+2))
-  testthat::expect_true(dplyr::between(transects$lengthm[1], 50-2, 50+2))
+  # testthat::expect_true(dplyr::between(transects$lengthm[1], 50-2, 50+2))
   # testthat::expect_equal(as.character(transects$cs_lengthm)[1], "50")
   
   testthat::expect_lte(max(transects$cs_measure), 100)
@@ -447,7 +1071,7 @@ testthat::test_that("cut 20 transects along single flowline & remove intersects 
   
   # Expect cs_lengthm and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
   testthat::expect_true(dplyr::between(transects$cs_lengthm[1], 50-2, 50+2))
-  testthat::expect_true(dplyr::between(transects$lengthm[1], 50-2, 50+2))
+  # testthat::expect_true(dplyr::between(transects$lengthm[1], 50-2, 50+2))
   testthat::expect_true(all(dplyr::between(transects$cs_lengthm, 50-2, 50+2)))
   testthat::expect_true(all(dplyr::between(transects$cs_lengthm, 50-2, 50+2)))
 
@@ -480,11 +1104,13 @@ testthat::test_that("cut 100 transects along single flowline & remove intersects
   testthat::expect_equal(transects$cs_id, c(1:69))
   
   # test correct column names 
-  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_lengthm", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
+  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_lengthm", "cs_measure", "ds_distance", 
+                                              # "lengthm", 
+                                              "sinuosity","geometry"))
   
   # Expect cs_lengthm and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
   testthat::expect_true(dplyr::between(transects$cs_lengthm[1], 100-2, 100+2))
-  testthat::expect_true(dplyr::between(transects$lengthm[1], 100-2, 100+2))
+  # testthat::expect_true(dplyr::between(transects$lengthm[1], 100-2, 100+2))
   testthat::expect_true(all(dplyr::between(transects$cs_lengthm, 100-2, 100+2)))
   testthat::expect_true(all(dplyr::between(transects$cs_lengthm, 100-2, 100+2)))
   # testthat::expect_equal(as.character(transects$cs_lengthm)[1], "50")
@@ -518,11 +1144,13 @@ testthat::test_that("huge cs_lengthm with remove intersections)", {
   testthat::expect_equal(transects$cs_id, c(1:9))
   
   # test correct column names 
-  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_lengthm", "cs_measure", "ds_distance", "lengthm", "sinuosity","geometry"))
+  testthat::expect_equal(names(transects),  c("hy_id","cs_id","cs_lengthm", "cs_measure", "ds_distance", 
+                                              # "lengthm", 
+                                              "sinuosity","geometry"))
   
   # Expect cs_lengthm and lengthm are within 2 units of expected value # TODO: might not want to check for equivalency with floating point numbers...
   testthat::expect_true(dplyr::between(transects$cs_lengthm[1], 2500-2, 2500+2))
-  testthat::expect_true(dplyr::between(transects$lengthm[1], 2500-2, 2500+2))
+  # testthat::expect_true(dplyr::between(transects$lengthm[1], 2500-2, 2500+2))
   testthat::expect_true(all(dplyr::between(transects$cs_lengthm, 2500-2, 2500+2)))
   testthat::expect_true(all(dplyr::between(transects$cs_lengthm, 2500-2, 2500+2)))
   

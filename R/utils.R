@@ -2422,7 +2422,6 @@ is_sf_linestring <- function(data) {
   return(is_sf && is_linestring)
 }
 
-
 #' Convert an sf dataframe with a point geometry column to non spatial with XY columns
 #'
 #' @param pts sf dataframe of points

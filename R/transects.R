@@ -1141,17 +1141,13 @@ cut_cross_sections <- function(
       net %>% 
       add_initial_order()
     
-    # Densify network flowlines, adds more points to each linestring
-    if(!is.null(densify)){ 
-      if(verbose) { message("Densifying") }
-      net <- smoothr::densify(net, densify) 
-    }
-    
+    # Densify flowlines (adds more points to each linestring)
     # smooth out flowlines
-    if(smooth){ 
-      if(verbose) { message("Smoothing") }
-      net <- smoothr::smooth(net, "spline")
-    }
+    net <- prep_flowlines(flowlines = net, 
+                   densify = densify, 
+                   smooth = smooth, 
+                   verbose = verbose
+                   )
     
     # list to store transect outputs
     transects <- list()
@@ -1234,15 +1230,6 @@ cut_cross_sections <- function(
         # # dplyr::ungroup() %>% 
         # dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
     } 
-    # else {
-    #   transects <- 
-    #     transects %>% 
-    #     add_cs_id_sequence(crosswalk_id = crosswalk_id) %>% 
-    #     # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-    #     # dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
-    #     # dplyr::ungroup() %>% 
-    #     dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
-    # }
     
     # -------------------------------------------
     # Add transect attribute columns
@@ -1258,7 +1245,8 @@ cut_cross_sections <- function(
       # dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
       # dplyr::mutate(cs_id = 1:dplyr::n()) %>% 
       # dplyr::ungroup() %>% 
-      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+      add_length_col(length_col = "lengthm")
+      # dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
     
     # add the initial_order column to the transects
     transects <-
@@ -1313,14 +1301,14 @@ cut_cross_sections <- function(
     # braided transects by definition, may cross over multiple flowlines
     if (!fix_braids) {
       
-      pre_rm_flowline_ints <- nrow(transects)
-      message("Rows BEFORE rm_multiflowline_intersections() ", pre_rm_flowline_ints)
+      # pre_rm_flowline_ints <- nrow(transects)
+      # message("Rows BEFORE rm_multiflowline_intersections() ", pre_rm_flowline_ints)
       
       # NOTE: IF we DID NOT do braid fixing, which could cause a transect to purposefully intersect multiple flowlines
       transects <- rm_multiflowline_intersections(transects = transects, flowlines = net)
       
-      post_rm_flowline_ints <- nrow(transects)
-      message("Rows AFTER rm_multiflowline_intersections() ", post_rm_flowline_ints)
+      # post_rm_flowline_ints <- nrow(transects)
+      # message("Rows AFTER rm_multiflowline_intersections() ", post_rm_flowline_ints)
       
     }
     
@@ -1329,7 +1317,8 @@ cut_cross_sections <- function(
     transects <- 
       transects %>% 
       add_cs_id_sequence(crosswalk_id) %>% 
-      dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
+      add_length_col(length_col = "lengthm")
+      # dplyr::mutate(lengthm = as.numeric(sf::st_length(.)))
     
     # -----------------------------
     # Sinuosity calculation 
@@ -1386,19 +1375,139 @@ cut_cross_sections <- function(
             # "cs_widths", 
             "cs_measure",
             "ds_distance",
-            "lengthm",
+            # "lengthm",
             "sinuosity",
             "geometry"
             )
           )
       )
     
-    is_valid_transects                    <- hydrofabric3D::validate_transects(transects, crosswalk_id)
-    is_valid_transects_against_flowlines  <- hydrofabric3D::validate_transects_against_flowlines(transects, net, crosswalk_id)
+    # is_valid_transects                    <- hydrofabric3D::validate_transects(transects, crosswalk_id)
+    # is_valid_transects_against_flowlines  <- hydrofabric3D::validate_transects_against_flowlines(transects, net, crosswalk_id)
     
     return(transects)
   
     })
+}
+
+#' Prepare flowlines have a more dense and/or smoother surface for cutting transects
+#'
+#' @param flowlines sf dataframe of flowline linestrings
+#' @param densify numeric, if NULL, no densification happens. Default is NULL
+#' @param smooth logical, whether to smooth linestrings 
+#' @param verbose logical
+#' @importFrom smoothr densify smooth 
+#' @return sf dataframe
+#' @export
+prep_flowlines <- function(flowlines, 
+                           densify = NULL, 
+                           smooth = FALSE, 
+                           verbose = TRUE
+) {
+  
+  # Densify network flowlines, adds more points to each linestring
+  if(!is.null(densify)){ 
+    if(verbose) { message("Densifying") }
+    flowlines <- smoothr::densify(flowlines, densify) 
+  }
+  
+  # smooth out flowlines
+  if(smooth){ 
+    if(verbose) { message("Smoothing") }
+    flowlines <- smoothr::smooth(flowlines, "spline")
+  }
+  
+  flowlines <- force_min_npts_per_flowlines(flowlines)
+  # flowlines <- set_min_num_pts_per_line(flowlines, 4)
+  
+  return(flowlines)
+  
+}
+
+#' Require each linestring to have a minimum number of points
+#'
+#' @param lines sf linestring dataframe
+#' @param min_npts numeric
+#'
+#' @importFrom geos geos_num_coordinates
+#' @importFrom hydroloom rename_geometry
+#' @importFrom sf st_line_sample st_cast st_geometry 
+#' @noRd
+#' @keywords internal
+#' @return sf linestring dataframe with added points to lines with less than min_npts
+set_min_num_pts_per_line <- function(lines, min_npts = 4) {
+  
+  # lines <- flowlines
+  # min_npts <- 4
+  
+  lines     <- hydroloom::rename_geometry(lines, "geometry")
+  is_valid  <- validate_df(lines, c("geometry"), "lines")
+  
+  if(!is.numeric(min_npts)) {
+    stop("Invalid type for 'min_npts' argument, must be numeric")
+  }
+  
+  node_counts      <- geos::geos_num_coordinates(lines)
+  idxs_to_densify  <- node_counts < min_npts
+  
+  no_lines_need_added_pts <- !any(idxs_to_densify)
+  
+  if(no_lines_need_added_pts) {
+    return(lines)
+  }
+  
+  # pull out the lines to densify, then sample the min_npts for each line and cast back to LINESTRING
+  dense_lines <- lines[idxs_to_densify, ]
+  
+  dense_lines <- 
+    dense_lines %>% 
+    sf::st_line_sample(min_npts) %>% 
+    sf::st_cast("LINESTRING")
+  
+  sf::st_geometry(lines[idxs_to_densify, ]) <- sf::st_geometry(dense_lines)
+  
+  return(lines)
+  
+}
+
+#' Require each flowline linestring to have at minimum 4 points per linestring 
+#'
+#' @param lines sf linestring dataframe
+#'
+#' @importFrom geos geos_num_coordinates
+#' @importFrom hydroloom rename_geometry
+#' @importFrom smoothr densify
+#' @importFrom sf st_geometry 
+#' @noRd
+#' @keywords internal
+#' @return sf linestring dataframe with added points to lines with less than 4 points 
+force_min_npts_per_flowlines <- function(lines) {
+  # lines <- flowlines
+  # min_npts <- 4
+  
+  lines     <- hydroloom::rename_geometry(lines, "geometry")
+  is_valid  <- validate_df(lines, c("geometry"), "lines")
+  
+  node_counts      <- geos::geos_num_coordinates(lines)
+  idxs_to_densify  <- node_counts < 4
+  
+  no_lines_need_added_pts <- !any(idxs_to_densify)
+  
+  if(no_lines_need_added_pts) {
+    return(lines)
+  }
+  
+  # pull out the lines to densify, then sample the min_npts for each line and cast back to LINESTRING
+  dense_lines <- lines[idxs_to_densify, ]
+  
+  dense_lines <- 
+    dense_lines %>% 
+    smoothr::densify(n = 3) 
+  
+  sf::st_geometry(lines[idxs_to_densify, ]) <- sf::st_geometry(dense_lines)
+  
+  return(lines)
+  
 }
 
 #' Adds a logical 'is_outlet' flag to a set of transects identifying the most downstream transect

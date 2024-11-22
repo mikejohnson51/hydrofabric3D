@@ -222,7 +222,8 @@ check_transect_output_cols <- function(transects, crosswalk_id = "hydrofabric_id
   }
   
   expected_cols <- c(crosswalk_id, "cs_id","cs_lengthm", "cs_measure", "ds_distance", 
-                     "lengthm", "sinuosity", "geometry")
+                     # "lengthm", 
+                     "sinuosity", "geometry")
   
   return(
     all(expected_cols %in% names(transects)) && length(expected_cols) == length(names(transects))
