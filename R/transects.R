@@ -1393,6 +1393,9 @@ cut_cross_sections <- function(
           )
       )
     
+    is_valid_transects                    <- hydrofabric3D::validate_transects(transects, crosswalk_id)
+    is_valid_transects_against_flowlines  <- hydrofabric3D::validate_transects_against_flowlines(transects, net, crosswalk_id)
+    
     return(transects)
   
     })
