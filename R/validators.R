@@ -607,9 +607,9 @@ validate_cs_pts <- function(
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
                      "relative_distance", "cs_lengthm", 
                      # "X", "Y", 
-                     "Z", 
+                     "Z"
                      # "Z_source",
-                     "class", "point_type", "valid_banks", "has_relief"
+                     # "class", "point_type", "valid_banks", "has_relief"
                      )
   
   
@@ -623,6 +623,86 @@ validate_cs_pts <- function(
   # check that cs_pts has either an XY column or a geomtry column
   has_XY_or_geometry_col        <- validate_cs_pts_has_XY_or_geometry_col(cs_pts)
  
+  # make sure valid cs_ids
+  has_valid_cs_pts_cs_ids       <- validate_cs_pts_cs_id_enumeration(cs_pts, crosswalk_id = crosswalk_id)
+  
+  # make sure valid pt_ids
+  has_valid_cs_pts_pt_ids       <- validate_cs_pts_pt_id_enumeration(cs_pts, crosswalk_id = crosswalk_id)
+  
+  # check cs_pts have only valid relative_distance values
+  has_valid_relative_distances  <- validate_cs_pts_relative_distance(cs_pts, crosswalk_id = crosswalk_id)
+  
+  # if a point_type column exists, check and make sure it only contains valid point_type classifications, if point_type
+  # does NOT exist, just set to TRUE by default
+  has_valid_point_types         <- ifelse("point_type" %in% names(cs_pts), validate_cs_pts_point_types(cs_pts), TRUE)
+  # has_valid_point_types         <- validate_cs_pts_point_types(cs_pts)
+  
+  check_list <- list(
+    has_all_valid_cols            = has_all_valid_cols,
+    has_XY_or_geometry_col        = has_XY_or_geometry_col,
+    has_valid_cs_pts_cs_ids       = has_valid_cs_pts_cs_ids,
+    has_valid_cs_pts_pt_ids       = has_valid_cs_pts_pt_ids,
+    has_valid_relative_distances  = has_valid_relative_distances,
+    has_valid_point_types         = has_valid_point_types
+  ) 
+  
+  is_valid_check_list <- validate_validation_check_list(check_list = check_list, 
+                                                        obj_name = "cs_pts")
+  
+  # if everything is TRUE, return true, otherwise return FALSE (or throw an error...?)
+  is_validated_cs_pts <- all(
+    unname(
+      unlist(check_list)
+    )
+    # c(
+    #   has_all_valid_cols,
+    #   has_valid_cs_pts_cs_ids,
+    #   has_valid_cs_pts_pt_ids,
+    #   has_valid_relative_distances,
+    #   has_valid_point_types
+    # )
+  )
+  
+  return(is_validated_cs_pts)
+  
+}
+
+
+#' Validate Classified Cross Sections Points 
+#' Ensure all cross section points are valid. This validates the points in the same manner as validate_cs_pts() but also checks that 
+#' classification columns ('class', 'point_type', 'valid_banks', 'has_relief') exist.
+#' @param cs_pts sf object, cross section points
+#' @param crosswalk_id character, column name of the crosswalk id
+#' @importFrom hydroloom rename_geometry 
+#' @return logical, TRUE if cs_pts meet all required criteria, FALSE otherwise
+#' @export
+validate_classified_cs_pts <- function(
+    cs_pts,  
+    crosswalk_id = NULL
+) {
+  # cs_pts <- final_cs_pts
+  # # standardize geometry name
+  cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
+                     "relative_distance", "cs_lengthm", 
+                     # "X", "Y", 
+                     "Z",
+                     # "Z_source",
+                     "class", "point_type", "valid_banks", "has_relief"
+  )
+  
+  
+  # validate dataframe has all correct columns  
+  has_all_valid_cols         <- validate_df(
+    x = cs_pts, 
+    cols = REQUIRED_COLS,
+    obj_name = "cs_pts"
+  )  
+  
+  # check that cs_pts has either an XY column or a geomtry column
+  has_XY_or_geometry_col        <- validate_cs_pts_has_XY_or_geometry_col(cs_pts)
+  
   # make sure valid cs_ids
   has_valid_cs_pts_cs_ids       <- validate_cs_pts_cs_id_enumeration(cs_pts, crosswalk_id = crosswalk_id)
   
@@ -777,10 +857,82 @@ validate_cs_pts_against_transects <- function(
   REQUIRED_CS_PTS_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
                      "relative_distance", "cs_lengthm", 
                      # "X", "Y", 
-                     "Z", 
+                     "Z"
                      # "Z_source",
-                     "class", "point_type", "valid_banks", "has_relief"
+                     # "class", "point_type", "valid_banks", "has_relief"
   )
+  
+  # validate dataframe has all correct columns  
+  has_all_valid_cols         <- validate_df(
+    x = cs_pts, 
+    cols = REQUIRED_CS_PTS_COLS,
+    obj_name = "cs_pts"
+  )  
+  
+  # # standardize geometry name
+  # transects <- hydroloom::rename_geometry(transects, "geometry")
+  
+  # check that cs_pts has either an XY column or a geomtry column
+  has_XY_or_geometry_col        <- validate_cs_pts_has_XY_or_geometry_col(cs_pts)
+  
+  # make sure all id/cs_id combos are in both transects and cs_pts
+  has_valid_cs_pts_ids  <- validate_cs_pt_ids_in_transects(cs_pts, transects, crosswalk_id = crosswalk_id)
+  
+  # make sure cs_lengthm matches from transects to cs_pts
+  has_matching_lengths  <- validate_cs_pts_length_against_transects(cs_pts, transects, crosswalk_id = crosswalk_id)
+  
+  check_list <- list(
+    has_all_valid_cols         = has_all_valid_cols,
+    has_XY_or_geometry_col     = has_XY_or_geometry_col,
+    has_valid_cs_pts_ids       = has_valid_cs_pts_ids,
+    has_matching_lengths       = has_matching_lengths
+  ) 
+  
+  is_valid_check_list <- validate_validation_check_list(check_list = check_list, 
+                                                        obj_name = "cs_pts")
+  
+  # if everything is TRUE, return true, otherwise return FALSE (or throw an error...?)
+  is_transect_validated_cs_pts <- all(
+    unname(
+      unlist(check_list)
+    )
+    # c(
+    #   has_all_valid_cols,
+    #   has_valid_cs_pts_ids,
+    #   has_matching_lengths
+    # )
+  )
+  
+  return(is_transect_validated_cs_pts)
+  
+}
+
+#' Validate Classified Cross Section Points Against Transects
+#' Ensure all cross section points are valid relative to a set of transects.
+#' This validates the points in the same manner as validate_cs_pts_against_transects() but also checks that 
+#' classification columns ('class', 'point_type', 'valid_banks', 'has_relief') exist.
+#' @param cs_pts sf object, cross section points
+#' @param transects sf object, transects
+#' @param crosswalk_id character, column name of the crosswalk id
+#' @importFrom hydroloom rename_geometry 
+#' @return logical, TRUE if all validations pass, FALSE otherwise
+#' @export
+validate_classified_cs_pts_against_transects <- function(
+    cs_pts,  
+    transects, 
+    crosswalk_id = NULL
+) {
+  
+  # standardize geometry name
+  cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
+  
+  REQUIRED_CS_PTS_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
+                            "relative_distance", "cs_lengthm", 
+                            # "X", "Y", 
+                            "Z",
+                            # "Z_source",
+                            "class", "point_type", "valid_banks", "has_relief"
+                            )
   
   # validate dataframe has all correct columns  
   has_all_valid_cols         <- validate_df(

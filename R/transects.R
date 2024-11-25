@@ -1143,6 +1143,7 @@ cut_cross_sections <- function(
     
     # Densify flowlines (adds more points to each linestring)
     # smooth out flowlines
+    # ensure that each flowline has a minimum of 4 points to guarentee cross sectiosn can be cut
     net <- prep_flowlines(flowlines = net, 
                    densify = densify, 
                    smooth = smooth, 
