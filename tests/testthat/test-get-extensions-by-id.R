@@ -72,7 +72,8 @@ testthat::test_that("get_extensions_by_id() correct output columns - default inp
                   transects = transects,
                   polygons = polygons, 
                   crosswalk_id = CROSSWALK_ID, 
-                  max_extension_distance = MAX_EXT_DIST
+                  max_extension_distance = MAX_EXT_DIST,
+                  tolerance = 200
                 )
   
   # minimum expected cols
@@ -143,7 +144,8 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
     transects = transects,
     polygons = polygons, 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # hydrofabric3D::
@@ -202,7 +204,8 @@ testthat::test_that("get_extensions_by_id() retains all unique transects (unique
     transects = transects,
     polygons  =  sf::st_buffer(flowlines, BUFF_DIST), 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # hydrofabric3D::
@@ -248,7 +251,8 @@ testthat::test_that("get_extensions_by_id() polygon is farther away than max ext
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # make sure that because the polygon for the transects is WAY bigger than the max extension dist + starting transect length, 
@@ -299,7 +303,8 @@ testthat::test_that("get_extensions_by_id() max extension distance is long enoug
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # make sure that the transects get an extension distance less than the max because the max starting transect length + the max extension distance is much bigger 
@@ -351,7 +356,8 @@ testthat::test_that("get_extensions_by_id() transects that are already longer th
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # make sure that transects that are already longer than a polygon they intersect with, do NOT get extended
@@ -416,7 +422,8 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # hardcoded correct extension distances to the smaller polygon
@@ -495,7 +502,8 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # hardcoded correct extension distances to the smaller polygon
@@ -574,7 +582,8 @@ testthat::test_that("get_extensions_by_id() transects intersect with 2 overlappi
     transects    = transects,
     polygons     =  buffed_flowlines, 
     crosswalk_id = CROSSWALK_ID, 
-    max_extension_distance = MAX_EXT_DIST
+    max_extension_distance = MAX_EXT_DIST,
+    tolerance = 200
   )
   
   # hardcoded correct extension distances to the smaller polygon

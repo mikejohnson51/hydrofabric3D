@@ -12,6 +12,7 @@ extend_transects_to_polygons(
   crosswalk_id = "hy_id",
   grouping_id = "mainstem",
   max_extension_distance = 3000,
+  tolerance = NULL,
   keep_lengths = FALSE,
   reindex_cs_ids = TRUE
 )
@@ -31,6 +32,8 @@ other transects or other flowlines, this group ID will distinguise which flowlin
 The intersect_group_id must appear as a column in both flowlines and transect_lines dataframes}
 
 \item{max_extension_distance}{numeric, maximum distance (meters) to extend a transect line in either direction to try and intersect one of the "polygons". Default is 3000m}
+
+\item{tolerance}{A minimum distance to use for simplification on polygons. Use a higher value for more simplification on the polygons. Default is NULL which will apply no simplification to polygons.}
 
 \item{keep_lengths}{logical whether to keep a record of the original transect lengths or not, default is FALSE, original lengths are not kept}
 
