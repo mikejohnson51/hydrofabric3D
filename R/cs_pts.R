@@ -1131,6 +1131,80 @@ classify_points <- function(
 #   )
 # )
 
+#' Remove entire cross sections that have any NA Z (depth) values
+#'
+#' @param cross_section_pts cs points dataframe, tibble, or sf dataframe
+#' @param crosswalk_id unique ID for flowline 
+#' @importFrom dplyr group_by across any_of ungroup filter
+#' @return cross_section_pts dataframe / tibble / sf dataframe with removed cross sections
+#' @export
+drop_incomplete_cs_pts <- function(cross_section_pts, crosswalk_id = NULL) {
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  cross_section_pts <-  
+    cross_section_pts %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    dplyr::filter(!any(is.na(Z))) %>% 
+    dplyr::ungroup()
+  
+  return(cross_section_pts)
+  
+}
+
+#' Add an is_missing_depth flag to cross sections points
+#' Any cross section points that has missing Z (depth = NA) values is flagged as is_missing_depth = TRUE
+#'
+#' @param cs_pts cs points dataframe, tibble, or sf dataframe
+#' @importFrom dplyr mutate
+#' @return cross_section_pts dataframe / tibble / sf dataframe with cross section points missing depths flag added
+#' @export
+add_is_missing_depth_flag <- function(cs_pts) {
+  
+  cs_pts <-  
+    cs_pts %>% 
+    # dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    dplyr::mutate(
+      is_missing_depth = is.na(Z)
+    ) 
+  # dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+  # dplyr::mutate(
+  #   is_missing_depth = any(is.na(Z)) 
+  # ) %>% 
+  # dplyr::ungroup()
+  
+  return(cs_pts)
+  
+}
+
+#' Add an is_complete_cs flag to cross sections points
+#' Any cross section points that has does NOT have ANY NA Z (depth) values is flagged as is_complete_cs = TRUE
+#'
+#' @param cs_pts cs points dataframe, tibble, or sf dataframe
+#' @param crosswalk_id unique ID for flowline 
+#' @importFrom dplyr group_by across any_of ungroup mutate
+#' @return cross_section_pts dataframe / tibble / sf dataframe with cross section points with is_complete_cs flag added
+#' @export
+add_is_complete_cs_flag <- function(cs_pts, crosswalk_id = NULL) {
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  cs_pts <-  
+    cs_pts %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    dplyr::mutate(
+      is_complete_cs = !any(is.na(Z)) 
+    ) %>% 
+    dplyr::ungroup()
+  
+  return(cs_pts)
+  
+}
+
 #' Classify banks and bottoms
 #'
 #' @param num_of_pts integer

@@ -1511,33 +1511,6 @@ force_min_npts_per_flowlines <- function(lines) {
   
 }
 
-#' Adds a logical 'is_outlet' flag to a set of transects identifying the most downstream transect
-#'
-#' @param x sf dataframe linestrings
-#' @param crosswalk_id character
-#' @importFrom dplyr group_by across any_of mutate ungroup row_number
-#'
-#' @return sf dataframe of transects with added is_outlet logical column
-#' @export
-add_is_outlet_flag <- function(x, crosswalk_id = NULL) {
-  # x <- transects
-  
-  is_valid_df <- validate_df(x, c(crosswalk_id, "cs_measure"), "x") 
-  # is_valid_df <- validate_df(x, c(crosswalk_id, "cs_id", "cs_measure"), "x") 
-  
-  x <-
-    x %>% 
-    dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-    dplyr::mutate(
-      is_outlet = which.max(cs_measure) == dplyr::row_number()
-      # is_outlet = cs_id[which.max(cs_measure)] == cs_id
-    ) %>% 
-    dplyr::ungroup()
-  
-  return(x)
-  
-}
-
 #' Remove transect lines that intersect with more than one flowline
 #'
 #' @param transects sf linestring dataframe of transect lines
@@ -1564,9 +1537,6 @@ rm_multiflowline_intersections <- function(transects, flowlines) {
 #' @export
 rm_multi_intersects <- function(x) {
   
-  # x <- tmp_trans
-  # x
-  
   while (any(lengths(sf::st_intersects(x)) > 1)) {
     
     intersect_counts <- lengths(sf::st_intersects(x))
@@ -1576,8 +1546,6 @@ rm_multi_intersects <- function(x) {
     # message("# intersects > 1 intersect_counts: ",       sum(intersect_counts > 1))
     # message("Removing ", length(max_crossings), " from x")
     # message(nrow(x), " rows in x remain...\n")
-    # mapview::mapview(x, color = "red") + 
-    # mapview::mapview(tmp_trans, color = "green") 
     
   }
   

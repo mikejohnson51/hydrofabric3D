@@ -11,6 +11,74 @@ source("testing_utils.R")
 # -------------------------------------------------------------------
 # ---- hydrofabric3D::extend_transects_to_polygons() ----
 # -------------------------------------------------------------------
+testthat::test_that("trim_transects_to_polygons() correct output columns - default inputs", {
+  # transect_lines, 
+  # polygons, 
+  # flowlines, 
+  # crosswalk_id = 'hy_id',  
+  # grouping_id = 'mainstem',
+  # max_extension_distance = 3000
+  
+  flowlines    <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>% 
+    dplyr::slice(10)
+  
+  # MIN_BF_WIDTH       <- 50
+  CROSSWALK_ID       <- "id"
+  
+  flowlines <-
+    flowlines %>% 
+    # add_powerlaw_bankful_width("tot_drainage_areasqkm", MIN_BF_WIDTH) %>%  
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID)), 
+      geom
+    ) 
+  
+  # create testiung polygons by buffering the flowlines
+  polygons <- 
+    flowlines %>%
+    sf::st_buffer(500)
+  
+  # generate transects
+  transects <- cut_cross_sections(
+    net = flowlines,
+    crosswalk_id  = CROSSWALK_ID,  
+    cs_widths = 200,
+    num = 10
+  ) %>% 
+    dplyr::select(
+      dplyr::any_of(c(CROSSWALK_ID)), cs_id
+    )
+  
+  # plot(polygons$geom, col = scales::alpha("pink", 0.3), add = F)
+  # plot(transects$geometry, add = T)
+  # plot(flowlines$geom, col = "blue", add = T)
+  
+  ext_trans <- hydrofabric3D::extend_transects_to_polygons(
+    transect_lines = transects, 
+    polygons = polygons, 
+    flowlines = flowlines, 
+    crosswalk_id = CROSSWALK_ID,  
+    grouping_id = CROSSWALK_ID,
+    max_extension_distance = 3000,
+    tolerance = NULL,
+    keep_lengths = FALSE,
+    reindex_cs_ids = FALSE,
+    verbose = TRUE
+  )
+  
+  
+  # minimum expected cols
+  expected_cols <- c(CROSSWALK_ID, 
+                     "cs_id", 
+                     "cs_lengthm", 
+                     "left_distance",
+                     "right_distance")
+  
+  has_required_output_cols <- check_required_cols(ext_trans, expected_cols = expected_cols)
+  testthat::expect_true(has_required_output_cols)
+  
+})
+
 testthat::test_that("extend_transects_to_polygons() 2 transect lines get extended out to polygon boundaries but stop at specified max distance of 500m", {
   # transect_lines, 
   # polygons, 

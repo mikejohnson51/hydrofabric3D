@@ -730,14 +730,83 @@ fix_oversized_topwidths <- function(
   return(updated_TW_and_Ymax)
 }
 
-# cross_section_pts <- 
-#   inchannel_cs %>% 
-#   # dplyr::filter(hy_id == "wb-1002477", cs_id == "2")
-#   dplyr::filter(hy_id == "wb-1002477", cs_id %in% c("2", "3"))
-# top_width = "owp_tw_inchan"
-# depth     = "owp_y_inchan"
-# dingman_r = "owp_dingman_r"
-# cross_section_pts$owp_tw_bf
+
+#' Calculate the length between the leftmost and rightmost bottom point in each cross section 
+#'
+#' @param cross_section_pts dataframe, or sf dataframe of cross section points
+#' @param crosswalk_id character, ID column 
+#' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join across any_of
+#' @return summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
+#' @export
+get_cs_bottom_length <- function(cross_section_pts, 
+                                 crosswalk_id = NULL) {
+  
+  # make a unique ID if one is not given (NULL 'crosswalk_id')
+  if(is.null(crosswalk_id)) {
+    # x             <- add_hydrofabric_id(x)
+    crosswalk_id  <- 'hydrofabric_id'
+  }
+  
+  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "relative_distance", "point_type")
+  
+  # validate input graph
+  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
+  
+  # get the distance between cross section pts in each cross section,
+  # this will be used as a default for bottom length in case bottom length is 0
+  interval_distances <- 
+    cross_section_pts %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      distance_interval = relative_distance - dplyr::lag(relative_distance)
+    ) %>% 
+    dplyr::summarise(
+      distance_interval = ceiling(mean(distance_interval, na.rm = TRUE)) # TODO: round up to make sure we are not underestimating 
+      # the interval, we're going to use this value to 
+      # derive a new Top width for each cross section if 
+      # the cross section length is less than the prescribed top width
+    ) %>% 
+    dplyr::ungroup()
+  
+  # get the distance from the first and last bottom points, substittue any bottom lengths == 0 
+  # with the interval between points distance
+  bottom_lengths <-
+    cross_section_pts %>% 
+    dplyr::filter(point_type == "bottom") %>% 
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::select(hy_id, cs_id, pt_id, relative_distance) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::summarise(
+      bottom_start = min(relative_distance, na.rm = TRUE),
+      bottom_end   = max(relative_distance, na.rm = TRUE)
+    ) %>% 
+    dplyr::left_join(
+      interval_distances, 
+      by = c(crosswalk_id, "cs_id")
+      # by = c("hy_id", "cs_id")
+    ) %>% 
+    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+    # dplyr::group_by(hy_id, cs_id) %>% 
+    dplyr::mutate(
+      bottom_length = bottom_end - bottom_start
+    ) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::mutate(
+      bottom_length = dplyr::case_when(
+        floor(bottom_length) == 0 ~ distance_interval,
+        TRUE                      ~ bottom_length
+      )
+    ) %>%
+    dplyr::select(dplyr::any_of(crosswalk_id), cs_id, bottom_length)
+  # dplyr::select(hy_id, cs_id, bottom_length)
+  
+  return(bottom_lengths)
+  
+}
 
 #' Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
 #' @description
