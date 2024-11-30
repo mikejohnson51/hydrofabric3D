@@ -9,7 +9,7 @@ source("testing_utils.R")
 # devtools::load_all()
 
 # -------------------------------------------------------------------
-# ---- hydrofabric3D::trim_transects_to_polygons() ----
+# ---- trim_transects_to_polygons() ----
 # -------------------------------------------------------------------
 testthat::test_that("trim_transects_to_polygons() correct output columns - default inputs", {
   
@@ -81,11 +81,12 @@ testthat::test_that("trim_transects_to_polygons() correct output columns - defau
   # plot(transects$geometry, col = "red",lwd = 2, add = T)
   # plot(flowlines$geom, col = "blue", add = T)
   
-  trimmed_trans <- hydrofabric3D::trim_transects_by_polygons(
+  trimmed_trans <- trim_transects_to_polygons(
     transect_lines = ext_trans, 
     flowlines = flowlines, 
     polygons = small_polygons, 
-    crosswalk_id = CROSSWALK_ID
+    crosswalk_id = CROSSWALK_ID,
+    dissolve = TRUE
   ) 
   
   # plot(big_polygons$geom, col = scales::alpha("pink", 0.3), add = F)
@@ -186,11 +187,12 @@ testthat::test_that("trim_transects_to_polygons() all transects are within polyg
   # plot(transects$geometry, col = "red",lwd = 2, add = T)
   # plot(flowlines$geom, col = "blue", add = T)
   
-  trimmed_trans <- hydrofabric3D::trim_transects_by_polygons(
+  trimmed_trans <- trim_transects_to_polygons(
     transect_lines = ext_trans, 
     flowlines = flowlines, 
     polygons = small_polygons, 
-    crosswalk_id = CROSSWALK_ID
+    crosswalk_id = CROSSWALK_ID,
+        dissolve = TRUE
   ) 
   
   # plot(big_polygons$geom, col = scales::alpha("pink", 0.3), add = F)
@@ -306,11 +308,12 @@ testthat::test_that("trim_transects_to_polygons() one set of transects has all t
   #   mapview::mapview(big_polygons, col.regions = "white") 
   
   
-  trimmed_trans <- hydrofabric3D::trim_transects_by_polygons(
+  trimmed_trans <- trim_transects_to_polygons(
     transect_lines = ext_trans, 
     flowlines = flowlines, 
     polygons = small_polygons, 
-    crosswalk_id = CROSSWALK_ID
+    crosswalk_id = CROSSWALK_ID,
+    dissolve = TRUE
   ) 
   
   # plot(flowlines$geom, col = "blue", add = F)
@@ -428,11 +431,12 @@ testthat::test_that("trim_transects_to_polygons() 2 sets of transects lines get 
   #   mapview::mapview(big_polygons, col.regions = "white")
   
   
-  trimmed_trans <- hydrofabric3D::trim_transects_by_polygons(
+  trimmed_trans <- trim_transects_to_polygons(
     transect_lines = ext_trans, 
     flowlines = flowlines, 
     polygons = small_polygons, 
-    crosswalk_id = CROSSWALK_ID
+    crosswalk_id = CROSSWALK_ID,
+    dissolve = TRUE
   ) 
   
   # plot(flowlines$geom, col = "blue", add = F)
@@ -555,13 +559,14 @@ testthat::test_that("trim_transects_to_polygons() a single set of transects with
     #   mapview::mapview(big_polygons, col.regions = "white")
     
     
-    trimmed_trans <- hydrofabric3D::trim_transects_by_polygons(
+    trimmed_trans <- trim_transects_to_polygons(
       transect_lines = ext_trans, 
       flowlines = flowlines,
       # flowlines = sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>% 
       #   dplyr::slice(c(9, 10)),
       polygons = small_polygons, 
-      crosswalk_id = CROSSWALK_ID
+      crosswalk_id = CROSSWALK_ID,
+      dissolve = TRUE
     ) 
     
     # trimmed_trans %>% 
@@ -712,13 +717,14 @@ testthat::test_that("trim_transects_to_polygons() a single set of transects with
   #   mapview::mapview(big_polygons, col.regions = "white")
   
   
-  trimmed_trans <- trim_transects_by_polygons(
+  trimmed_trans <- trim_transects_to_polygons(
     transect_lines = ext_trans, 
     # flowlines = flowlines,
     flowlines = sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>%
       dplyr::slice(c(9, 10)),
     polygons = small_polygons, 
-    crosswalk_id = CROSSWALK_ID
+    crosswalk_id = CROSSWALK_ID,
+    dissolve = TRUE
   ) 
   
   # plot(big_polygons$geom, col = scales::alpha("pink", 0.3), add = F)
@@ -864,13 +870,14 @@ testthat::test_that("trim_transects_to_polygons() complex junction flowlines wit
   #   mapview::mapview(big_polygons, col.regions = "white")
   
   
-  trimmed_trans <- trim_transects_by_polygons(
+  trimmed_trans <- trim_transects_to_polygons(
     transect_lines = ext_trans, 
     flowlines = flowlines,
     # flowlines = sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>%
     #   dplyr::slice(c(9, 10)),
     polygons = small_polygons, 
-    crosswalk_id = CROSSWALK_ID
+    crosswalk_id = CROSSWALK_ID,
+    dissolve = TRUE
   ) 
   
   # plot(big_polygons$geom, col = scales::alpha("pink", 0.3), add = F)
@@ -1014,12 +1021,13 @@ testthat::test_that("trim_transects_to_polygons() complex junction flowlines wit
     #   mapview::mapview(big_polygons, col.regions = "white")
     
     
-    trimmed_trans <- trim_transects_by_polygons(
+    trimmed_trans <- trim_transects_to_polygons(
       transect_lines = ext_trans, 
       flowlines = flowlines,
       # flowlines = sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")),
       polygons = small_polygons, 
-      crosswalk_id = CROSSWALK_ID
+      crosswalk_id = CROSSWALK_ID,
+      dissolve = TRUE
     ) 
     
     # plot(big_polygons$geom, col = scales::alpha("pink", 0.3), add = F)
@@ -1182,12 +1190,13 @@ testthat::test_that("trim_transects_to_polygons() 2 seperate networks of flowlin
   #   mapview::mapview(big_polygons, col.regions = "white")
   
   
-  trimmed_trans <- trim_transects_by_polygons(
+  trimmed_trans <- trim_transects_to_polygons(
     transect_lines = ext_trans, 
     flowlines = flowlines,
     # flowlines = sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")),
     polygons = small_polygons, 
-    crosswalk_id = CROSSWALK_ID
+    crosswalk_id = CROSSWALK_ID,
+    dissolve = TRUE
   ) 
   
   # plot(big_polygons$geom, col = scales::alpha("pink", 0.3), add = F)

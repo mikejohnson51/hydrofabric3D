@@ -706,7 +706,8 @@ pts_to_XY <- function(pts) {
 #' @importFrom sf st_union st_cast st_intersects 
 #' @importFrom dplyr group_by summarize 
 #' @return dissolved sf dataframe
-#' @export
+#' @noRd
+#' @keywords internal
 cluster_dissolve <- function(x) {
   
   cluster <- unlist(
@@ -724,6 +725,46 @@ cluster_dissolve <- function(x) {
     dplyr::summarize()
   
   return(clustered)
+  
+}
+
+
+#' Use sf::st_union to resolve overlaps in polygons based on intersections with other polygons
+#'
+#' @param x sf dataframe
+#' @importFrom sf st_union st_as_sf  
+#' @importFrom rmapshaper ms_explode
+#' @return sf dataframe with overlaps removed
+#' @export
+dissolve_overlaps <- function(x) {
+  
+  x <- 
+    x %>% 
+    sf::st_union() %>%
+    rmapshaper::ms_explode() %>%
+    sf::st_as_sf() 
+  
+  return(x)
+  
+}
+
+#' Use sf::st_difference to resolve overlaps in polygons based on intersections with other polygons
+#'
+#' @param x sf dataframe
+#' @importFrom sf st_difference st_as_sf  
+#' @importFrom rmapshaper ms_explode
+#' @return sf dataframe with overlaps removed
+#' @export
+diff_overlaps <- function(x) {
+  
+  x <- 
+    x %>% 
+    # sf::st_union() %>%
+    sf::st_difference() %>%
+    rmapshaper::ms_explode() %>%
+    sf::st_as_sf() 
+  
+  return(x)
   
 }
 

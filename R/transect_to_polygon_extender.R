@@ -1250,16 +1250,18 @@ get_line_node_pts <- function(
 #' @param flowlines sf dataframe
 #' @param polygons sf dataframe 
 #' @param crosswalk_id character unique ID
+#' @param dissolve logical, whether to dissolve polygon internal boundaries or not. Default is FALSE. 
 #' @importFrom dplyr filter select any_of mutate bind_rows n slice_max group_by ungroup across distinct
 #' @importFrom rmapshaper ms_explode
 #' @importFrom sf st_intersection 
 #' @importFrom hydroloom rename_geometry 
 #' @return sf dataframe
 #' @export
-trim_transects_by_polygons <- function(transect_lines, 
+trim_transects_to_polygons <- function(transect_lines, 
                                        flowlines,
                                        polygons,
-                                       crosswalk_id = NULL
+                                       crosswalk_id = NULL,
+                                       dissolve = FALSE
                                        ) {
   
   # transect_lines = ext_trans
@@ -1302,13 +1304,20 @@ trim_transects_by_polygons <- function(transect_lines,
     hydroloom::rename_geometry("geometry") %>% 
     dplyr::select(!dplyr::any_of(POLYGON_ID))
   
+  
+  if (dissolve) {
+    polygons <- 
+      polygons %>% 
+      # # sf::st_union() %>% 
+      # sf::st_difference() %>%
+      # rmapshaper::ms_explode() %>%
+      # sf::st_as_sf() %>%
+      dissolve_overlaps()
+      # cluster_dissolve()
+  }
+  
   polygons <- 
     polygons %>% 
-    # # sf::st_union() %>% 
-    # sf::st_difference() %>%
-    # rmapshaper::ms_explode() %>%
-    # sf::st_as_sf() %>%
-    cluster_dissolve() %>%
     hydroloom::rename_geometry("geometry") %>% 
     dplyr::mutate(
       polygon_id = 1:dplyr::n()
