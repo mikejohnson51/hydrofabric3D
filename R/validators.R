@@ -216,6 +216,47 @@ validate_transects_has_crs <- function(transects) {
   
 }
 
+#' Validate that an sf object has only 1 type of geometry
+#'
+#' @param x sf dataframe / object
+#' @param geom_type character, one of "LINESTRING", "MULTILINESTRING", "POLYGON", "MULTIPOLYGON", "POINT", or "MULTIPOINT"
+#' @importFrom sf st_geometry_type
+#' @importFrom hydroloom rename_geometry
+#' @return logical, TRUE if all geometries in x are of type geom_type
+#' @noRd
+#' @keywords internal
+validate_geom_types_are_all <- function(x, 
+                                    geom_type = c("LINESTRING", "MULTILINESTRING", 
+                                                     "POLYGON", "MULTIPOLYGON", 
+                                                     "POINT", "MULTIPOINT")
+                                    ) {
+  
+  # evaluate geom_type choices
+  geom_type <- match.arg(geom_type)
+  
+  
+  # rename geometry column to geometry and then validate dataframe
+  x                 <- hydroloom::rename_geometry(x, "geometry")
+  
+  is_x_valid        <- validate_df(x,
+                                   c("geometry"),
+                                   "x")
+  
+  # count up all the geomtry types in x
+  geom_type_counts <- 
+    x %>% 
+    sf::st_geometry_type() %>% 
+    table()
+  
+  # get the names of the other geometry types other than the specified type
+  other_geom_types <- names(geom_type_counts)[!names(geom_type_counts) %in% geom_type]
+  
+  all_other_geom_types_are_empty <- all(geom_type_counts[other_geom_types] == 0)
+  
+  return(all_other_geom_types_are_empty)
+  
+}
+
 #' Validate Transects
 #' @param transects sf object, transects
 #' @param crosswalk_id character, column name of the crosswalk id
@@ -258,6 +299,9 @@ validate_transects <- function(transects,
   # make sure transects have a CRS
   has_crs                    <- validate_transects_has_crs(transects)
   
+  # make sure transects data is only LINESTRINGs
+  has_only_linestrings       <- validate_geom_types_are_all(x = transects, geom_type = "LINESTRING")
+  
   check_list <- list(
     has_all_valid_cols        = has_all_valid_cols,
     has_valid_cs_ids          = has_valid_cs_ids,
@@ -266,7 +310,8 @@ validate_transects <- function(transects,
     has_unique_ids            = has_unique_ids,
     has_valid_cs_measure      = has_valid_cs_measure,
     has_complete_geometries   = has_complete_geometries,
-    has_crs                   = has_crs
+    has_crs                   = has_crs,
+    has_only_linestrings      = has_only_linestrings
   ) 
   
   is_valid_check_list <- validate_validation_check_list(check_list = check_list, 
