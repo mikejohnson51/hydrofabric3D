@@ -1253,7 +1253,7 @@ get_line_node_pts <- function(
 #' @param dissolve logical, whether to dissolve polygon internal boundaries or not. Default is FALSE. 
 #' @importFrom dplyr filter select any_of mutate bind_rows n slice_max group_by ungroup across distinct
 #' @importFrom rmapshaper ms_explode
-#' @importFrom sf st_intersection 
+#' @importFrom sf st_intersection st_geometry_type
 #' @importFrom hydroloom rename_geometry 
 #' @return sf dataframe
 #' @export
@@ -1353,6 +1353,7 @@ trim_transects_to_polygons <- function(transect_lines,
       dplyr::select(-dplyr::any_of(POLYGON_ID)) %>% 
       sf::st_intersection(polygons) %>% 
       dplyr::select(!dplyr::any_of(c(POLYGON_ID, paste0(POLYGON_ID, ".1")))) %>% 
+      dplyr::filter(sf::st_geometry_type(geometry) %in% c("LINESTRING", "MULTILINESTRING")) %>% 
       rmapshaper::ms_explode() %>% 
       add_intersects_ids(
         flowlines %>% 
@@ -1415,6 +1416,10 @@ trim_transects_to_polygons <- function(transect_lines,
     merged_transects %>% 
     cs_arrange(crosswalk_id = crosswalk_id, order_by = "cs_id")
   
+  # recalculate lengths
+  merged_transects <- 
+    merged_transects %>% 
+    add_length_col("cs_lengthm")
   
   return(merged_transects)
 }

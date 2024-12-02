@@ -538,7 +538,8 @@ testthat::test_that("trim_transects_to_polygons() a single set of transects with
     ) %>% 
       dplyr::mutate(
         is_extended = left_distance > 0 | right_distance > 0
-      )
+      ) %>% 
+      hydrofabric3D::add_length_col("old_length")
     # %>% 
       # dplyr::select(
         # dplyr::any_of(CROSSWALK_ID),
@@ -627,7 +628,7 @@ testthat::test_that("trim_transects_to_polygons() a single set of transects with
       was_not_trimmed$new_length
     )
     
-    actually_trimmed_transects_are_not_equal_length <- was_trimmed$cs_lengthm != was_trimmed$new_length
+    actually_trimmed_transects_are_not_equal_length <- was_trimmed$old_length != was_trimmed$new_length
     testthat::expect_true(
       actually_trimmed_transects_are_not_equal_length
     )
@@ -703,7 +704,8 @@ testthat::test_that("trim_transects_to_polygons() a single set of transects with
     keep_lengths = FALSE,
     reindex_cs_ids = FALSE,
     verbose = TRUE
-  )  
+  ) %>% 
+    hydrofabric3D::add_length_col("old_length")
   
   # plot(flowlines$geom, col = "blue", add = F)
   # plot(big_polygons$geom, col = scales::alpha("pink", 0.3), add = T)
@@ -783,13 +785,14 @@ testthat::test_that("trim_transects_to_polygons() a single set of transects with
     dplyr::filter(id == "wb-1003265", cs_id %in% c(9, 10)) %>% 
     hydrofabric3D::add_length_col("new_length")
   
-  actually_trimmed_transects_are_not_equal_length <- all(was_trimmed$cs_lengthm != was_trimmed$new_length)
+  actually_trimmed_transects_are_not_equal_length <- all(was_trimmed$old_length != was_trimmed$new_length)
   
   testthat::expect_true(
     actually_trimmed_transects_are_not_equal_length
   )
   
 })
+
 testthat::test_that("trim_transects_to_polygons() complex junction flowlines with all flowlines having a polygon to trim against", {
   
   flowlines    <- sf::read_sf(testthat::test_path("testdata", "junction_flowlines.gpkg")) 
