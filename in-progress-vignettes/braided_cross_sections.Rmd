@@ -226,13 +226,12 @@ Now let's add cross sections using the algorithm described [here](cross_section_
 
 ```{r, eval = T, echo = T, message=FALSE}
 transects <- hydrofabric3D::cut_cross_sections(
-  net        = net,
-  crosswalk_id         = "comid",
-  cs_widths  = 200,
-  num        = 10,
-  fix_braids = FALSE,
-  add        = TRUE
-  )
+  net           = net,
+  crosswalk_id  = "comid",
+  cs_widths     = 200,
+  num           = 10,
+  fix_braids    = FALSE,
+  add           = TRUE)
 ```
 
 ```{r, eval = T, echo = F}
@@ -276,7 +275,6 @@ The `find_braids()` function can be used to identify and assign a `braid_id` to 
 # add braid_id column to network
 braids <- hydrofabric3D::find_braids(
     network     = net, 
-    add         = TRUE,
     nested      = TRUE
   )
 ```

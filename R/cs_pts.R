@@ -64,7 +64,7 @@ cross_section_pts = function(
     crosswalk_id   = NULL, 
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
-    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+    dem            = default_dem
 ){
   
   ### ### ## ## ### ## ### ##
@@ -140,8 +140,7 @@ cross_section_pts = function(
 add_points_per_cs <- function(cs,
                               points_per_cs  = NULL,
                               min_pts_per_cs = 10,
-                              dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
-) {
+                              dem            = default_dem) {
   
   REQUIRED_COLS <- c("cs_lengthm")
   
@@ -176,7 +175,7 @@ add_points_per_cs <- function(cs,
 get_points_per_cs <- function(cs_length,
                               points_per_cs  = NULL,
                               min_pts_per_cs = 10,
-                              dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+                              dem            = default_dem
 ) {
   
   has_points_per_cs <- !is.null(points_per_cs)
@@ -212,7 +211,7 @@ get_points_per_cs <- function(cs_length,
 #' @return numeric vector of length cs_length, with the number of points per cs_length
 dem_based_points_per_cs <- function(
     cs_length,
-    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+    dem            = default_dem
 ) {
   
   # cs_length = c(100, 500)
@@ -2257,7 +2256,7 @@ cross_section_pts2 = function(
     cs             = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
-    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+    dem            = default_dem
 ){
   
   ### ### ## ## ### ## ### ##
@@ -2315,7 +2314,7 @@ cross_section_pts2 = function(
 add_points_per_cs2 <- function(cs,
                                points_per_cs  = NULL,
                                min_pts_per_cs = 10,
-                               dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+                               dem            = default_dem
 ) {
   
   # TODO: also check that the input 'cs' is an sf dataframe with LINESTRINGS / MULT

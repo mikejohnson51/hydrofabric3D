@@ -1284,7 +1284,7 @@ cut_cross_sections <- function(
       if(verbose) { message("Fixing braided transects") }
       
       transects <- fix_braided_transects(
-        net             = net,
+        network         = net,
         transect_lines  = transects,
         crosswalk_id    = crosswalk_id,
         braid_threshold = braid_threshold,

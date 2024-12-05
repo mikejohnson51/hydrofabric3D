@@ -1,69 +1,117 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>/404.html</loc>
-  </url>
-  <url>
-    <loc>/LICENSE.html</loc>
-  </url>
-  <url>
-    <loc>/articles/basic_use.html</loc>
-  </url>
-  <url>
-    <loc>/articles/braided_cross_sections.html</loc>
-  </url>
-  <url>
-    <loc>/articles/cross_section_generator.html</loc>
-  </url>
-  <url>
-    <loc>/articles/index.html</loc>
-  </url>
-  <url>
-    <loc>/authors.html</loc>
-  </url>
-  <url>
-    <loc>/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/classify_points.html</loc>
-  </url>
-  <url>
-    <loc>/reference/cross_section_pts.html</loc>
-  </url>
-  <url>
-    <loc>/reference/cut_cross_sections.html</loc>
-  </url>
-  <url>
-    <loc>/reference/cut_transect.html</loc>
-  </url>
-  <url>
-    <loc>/reference/find_braids.html</loc>
-  </url>
-  <url>
-    <loc>/reference/find_connected_components.html</loc>
-  </url>
-  <url>
-    <loc>/reference/fix_braid_transects.html</loc>
-  </url>
-  <url>
-    <loc>/reference/get_braid_list.html</loc>
-  </url>
-  <url>
-    <loc>/reference/get_transects.html</loc>
-  </url>
-  <url>
-    <loc>/reference/index.html</loc>
-  </url>
-  <url>
-    <loc>/reference/is_braided.html</loc>
-  </url>
-  <url>
-    <loc>/reference/linestring.html</loc>
-  </url>
-  <url>
-    <loc>/reference/unique_braids.html</loc>
-  </url>
-  <url>
-    <loc>/reference/unnpack_braids.html</loc>
-  </url>
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>/404.html</loc></url>
+<url><loc>/LICENSE-text.html</loc></url>
+<url><loc>/LICENSE.html</loc></url>
+<url><loc>/articles/basic_use.html</loc></url>
+<url><loc>/articles/braided_cross_sections.html</loc></url>
+<url><loc>/articles/cross_section_generator.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/authors.html</loc></url>
+<url><loc>/index.html</loc></url>
+<url><loc>/reference/add_attribute_based_extension_distances.html</loc></url>
+<url><loc>/reference/add_bank_attributes.html</loc></url>
+<url><loc>/reference/add_braid_ids.html</loc></url>
+<url><loc>/reference/add_cs_area.html</loc></url>
+<url><loc>/reference/add_cs_area2.html</loc></url>
+<url><loc>/reference/add_cs_bathymetry.html</loc></url>
+<url><loc>/reference/add_cs_id_sequence.html</loc></url>
+<url><loc>/reference/add_hydrofabric_id.html</loc></url>
+<url><loc>/reference/add_intersects_ids.html</loc></url>
+<url><loc>/reference/add_is_complete_cs_flag.html</loc></url>
+<url><loc>/reference/add_is_missing_depth_flag.html</loc></url>
+<url><loc>/reference/add_is_outlet_flag.html</loc></url>
+<url><loc>/reference/add_length_col.html</loc></url>
+<url><loc>/reference/add_needs_rectification.html</loc></url>
+<url><loc>/reference/add_point_type_counts.html</loc></url>
+<url><loc>/reference/add_points_per_cs.html</loc></url>
+<url><loc>/reference/add_powerlaw_bankful_width.html</loc></url>
+<url><loc>/reference/add_relief.html</loc></url>
+<url><loc>/reference/add_tmp_id.html</loc></url>
+<url><loc>/reference/adjust_flagged_transects.html</loc></url>
+<url><loc>/reference/adjust_flagged_transects2.html</loc></url>
+<url><loc>/reference/adjust_transect_lengths.html</loc></url>
+<url><loc>/reference/align_banks_and_bottoms.html</loc></url>
+<url><loc>/reference/braided_flowlines.html</loc></url>
+<url><loc>/reference/calc_validity_scores.html</loc></url>
+<url><loc>/reference/classify_points.html</loc></url>
+<url><loc>/reference/classify_points2.html</loc></url>
+<url><loc>/reference/classify_points4.html</loc></url>
+<url><loc>/reference/classify_points5.html</loc></url>
+<url><loc>/reference/compare_cs_validity.html</loc></url>
+<url><loc>/reference/cross_section_pts.html</loc></url>
+<url><loc>/reference/cs_arrange.html</loc></url>
+<url><loc>/reference/cut_cross_sections.html</loc></url>
+<url><loc>/reference/cut_transect.html</loc></url>
+<url><loc>/reference/cycle_edge_list_to_cycle_edge_df.html</loc></url>
+<url><loc>/reference/cycle_node_list_to_cycle_node_df.html</loc></url>
+<url><loc>/reference/dem_based_points_per_cs.html</loc></url>
+<url><loc>/reference/diff_overlaps.html</loc></url>
+<url><loc>/reference/dissolve_overlaps.html</loc></url>
+<url><loc>/reference/drop_incomplete_cs_pts.html</loc></url>
+<url><loc>/reference/extend_by_length.html</loc></url>
+<url><loc>/reference/extend_by_percent.html</loc></url>
+<url><loc>/reference/extend_transects_by_cs_attributes.html</loc></url>
+<url><loc>/reference/extend_transects_sides.html</loc></url>
+<url><loc>/reference/extend_transects_to_polygons.html</loc></url>
+<url><loc>/reference/extend_transects_to_polygons2.html</loc></url>
+<url><loc>/reference/extract_dem_values.html</loc></url>
+<url><loc>/reference/find_braids.html</loc></url>
+<url><loc>/reference/find_connected_components.html</loc></url>
+<url><loc>/reference/find_cs_area2.html</loc></url>
+<url><loc>/reference/fix_braid_transects.html</loc></url>
+<url><loc>/reference/fix_braided_transects.html</loc></url>
+<url><loc>/reference/flag_transects_for_change.html</loc></url>
+<url><loc>/reference/flowlines.html</loc></url>
+<url><loc>/reference/flowlines_missing_depth.html</loc></url>
+<url><loc>/reference/geos_extend_line.html</loc></url>
+<url><loc>/reference/get_bank_attributes.html</loc></url>
+<url><loc>/reference/get_braid_list.html</loc></url>
+<url><loc>/reference/get_cs_bottom_length.html</loc></url>
+<url><loc>/reference/get_extensions_by_id.html</loc></url>
+<url><loc>/reference/get_improved_cs_pts.html</loc></url>
+<url><loc>/reference/get_point_type_counts.html</loc></url>
+<url><loc>/reference/get_points_per_cs.html</loc></url>
+<url><loc>/reference/get_relief.html</loc></url>
+<url><loc>/reference/get_start_node.html</loc></url>
+<url><loc>/reference/get_transect_extension_distances_to_polygons.html</loc></url>
+<url><loc>/reference/get_transects.html</loc></url>
+<url><loc>/reference/get_unique_tmp_ids.html</loc></url>
+<url><loc>/reference/get_validity_tally.html</loc></url>
+<url><loc>/reference/index.html</loc></url>
+<url><loc>/reference/invalid_flowlines.html</loc></url>
+<url><loc>/reference/is_braided.html</loc></url>
+<url><loc>/reference/junction_flowlines.html</loc></url>
+<url><loc>/reference/linestring.html</loc></url>
+<url><loc>/reference/needs_rectification.html</loc></url>
+<url><loc>/reference/nextgen_braided_flowlines.html</loc></url>
+<url><loc>/reference/pct_pts_near_bottom.html</loc></url>
+<url><loc>/reference/plot_cs_pts.html</loc></url>
+<url><loc>/reference/prep_flowlines.html</loc></url>
+<url><loc>/reference/pts_to_XY.html</loc></url>
+<url><loc>/reference/pts_to_reevaluate.html</loc></url>
+<url><loc>/reference/rectify_flat_cs.html</loc></url>
+<url><loc>/reference/rectify_summary.html</loc></url>
+<url><loc>/reference/remove_cols_from_df.html</loc></url>
+<url><loc>/reference/renumber_cs_ids.html</loc></url>
+<url><loc>/reference/rm_multi_intersects.html</loc></url>
+<url><loc>/reference/rm_multiflowline_intersections.html</loc></url>
+<url><loc>/reference/rm_self_intersections.html</loc></url>
+<url><loc>/reference/select_cs_pts.html</loc></url>
+<url><loc>/reference/select_transects.html</loc></url>
+<url><loc>/reference/shorten_flagged_transects.html</loc></url>
+<url><loc>/reference/shorten_multi_flowline_intersecting_extended_transects.html</loc></url>
+<url><loc>/reference/shorten_multi_transect_intersecting_extended_transects.html</loc></url>
+<url><loc>/reference/transects_missing_depth.html</loc></url>
+<url><loc>/reference/transects_to_cs_pts.html</loc></url>
+<url><loc>/reference/trim_transects_to_polygons.html</loc></url>
+<url><loc>/reference/unique_braids.html</loc></url>
+<url><loc>/reference/unnpack_braids.html</loc></url>
+<url><loc>/reference/unpack_braids.html</loc></url>
+<url><loc>/reference/validate_classified_cs_pts.html</loc></url>
+<url><loc>/reference/validate_classified_cs_pts_against_transects.html</loc></url>
+<url><loc>/reference/validate_cs_pts.html</loc></url>
+<url><loc>/reference/validate_cs_pts_against_transects.html</loc></url>
+<url><loc>/reference/validate_transects.html</loc></url>
+<url><loc>/reference/validate_transects_against_flowlines.html</loc></url>
 </urlset>
+

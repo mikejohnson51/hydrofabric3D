@@ -9,8 +9,7 @@ flag_transects_for_change(
   crosswalk_id = NULL,
   points_per_cs = NULL,
   min_pts_per_cs = 10,
-  dem =
-    "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
+  dem = default_dem,
   pct_of_length_for_relief = 0.01,
   na.rm = TRUE
 )

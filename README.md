@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# hydrofabric3D
+# hydrofabric3D <img src="man/figures/logo.png" width=130 height = 150 align="right" />
 
 <!-- badges: start -->
 
@@ -19,7 +19,7 @@ You can install the development version of hydrofabric3D from
 
 ``` r
 # install.packages("devtools")
-devtools::install_github("mikejohnson51/hydrofabric3D")
+devtools::install_github("lynker-spatial/hydrofabric3D")
 ```
 
 ## Overview

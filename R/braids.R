@@ -853,6 +853,8 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
   #     to_comid = c("B", "C", "D", "E")
   #   )
   
+  .data <- NULL
+  
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     # x             <- add_hydrofabric_id(x)
@@ -970,7 +972,8 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
 #' @noRd
 #' @keywords internal
 #' @return An undirected graph represented as a data frame with columns 'fromnode' and 'tonode'.
-#' @importFrom dplyr select tibble bind_rows
+#' @importFrom dplyr select tibble bind_rows 
+#' @importFrom rlang `:=`
 #' @importFrom sf st_drop_geometry
 #' @examples
 #'  \dontrun{
@@ -3142,6 +3145,7 @@ braid_thresholder <- function(x,
   # new_braid_ids = "no_braid"
   # verbose   = TRUE
   
+  .data <- NULL
   ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### 
   ###### BRAID LENGTH CHECKING
   # TODO: Refactor braid_thresholder Code to use a prescription ID

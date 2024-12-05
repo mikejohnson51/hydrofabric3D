@@ -265,7 +265,7 @@ flag_transects_for_change <- function(
     crosswalk_id = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
-    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
+    dem            = default_dem,
     pct_of_length_for_relief = 0.01,
     na.rm = TRUE
 ) {
@@ -386,7 +386,7 @@ get_improved_cs_pts = function(
     crosswalk_id   = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
-    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
+    dem            = default_dem,
     scale          = 0.5,
     pct_of_length_for_relief = 0.01,
     fix_ids        = FALSE,
@@ -2329,7 +2329,7 @@ rectify_flat_cs = function(
     cs             = NULL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
-    dem            = "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt",
+    dem            = default_dem,
     scale          = 0.5,
     threshold      = 0,
     pct_threshold  = 0.99,
@@ -2587,6 +2587,7 @@ match_transects_to_extended_cs_pts <- function(transect_lines,
                                                crosswalk_id
                                                ) {
   
+  .data <- NULL
   # library(dplyr)
   # library(sf)
   # net <- sf::read_sf("/Users/anguswatters/Desktop/test_flines.gpkg")

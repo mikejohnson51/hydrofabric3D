@@ -8,6 +8,10 @@ author:
     affiliation: Lynker, NOAA-Affiliate
     affiliation_url: https://lynker.com
 output: distill::distill_article
+vignette: >
+  %\VignetteIndexEntry{Basic Use}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r, include = FALSE}
@@ -29,8 +33,8 @@ The goal of hydrofabric3D is to generate DEM-based cross sections for hydrograph
 You can install the development version of hydrofabric3D from [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("mikejohnson51/hydrofabric3D")
+# install.packages("remotes")
+devtools::install_github("lynker-spatial/hydrofabric3D")
 ```
 
 # Example

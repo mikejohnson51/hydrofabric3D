@@ -15,26 +15,27 @@ knitr::opts_chunk$set(
 )
 ```
 
-# hydrofabric3D
+# hydrofabric3D <img src="man/figures/logo.png" width=130 height = 150 align="right" />
+
 
 <!-- badges: start -->
 [![R CMD Check](https://github.com/mikejohnson51/hydrofabric3D/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/mikejohnson51/hydrofabric3D/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of hydrofabric3D is to generate DEM-based cross sections for hydrographic networks.
+The goal of `hydrofabric3D` is to generate DEM-based cross sections for hydrographic networks.
 
 ### Installation
 
-You can install the development version of hydrofabric3D from [GitHub](https://github.com/) with:
+You can install the development version of `hydrofabric3D` from [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("devtools")
-devtools::install_github("lynker-spatial/hydrofabric3D")
+# install.packages("remotes")
+remotes::install_github("lynker-spatial/hydrofabric3D")
 ```
 
 ## Overview
 
-This project provides the general tooling needed to create a flexible river channel data product based for the [Reference Hydrofabric](https://noaa-owp.github.io/hydrofabric/articles/02-design-deep-dive.html) that supports the modeling needs of NOAA and USGS. It is comprised of multiple modules that together form a clear picture of hydrofabric:
+This project provides the general tooling needed to create a flexible river channel data product based for the [Reference Hydrofabric](https://noaa-owp.github.io/hydrofabric/articles/02-design-deep-dive.html) that supports the modeling needs of NOAA and USGS. It is comprised of multiple modules that together form a more clear picture of the landscape:
 
 ```{r, echo = FALSE}
 knitr::include_graphics('man/figures/data_model.png')

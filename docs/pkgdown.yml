@@ -1,9 +1,7 @@
-pandoc: 3.1.5
-pkgdown: 2.0.7
+pandoc: '3.2'
+pkgdown: 2.1.1
 pkgdown_sha: ~
 articles:
   basic_use: basic_use.html
-  braided_cross_sections: braided_cross_sections.html
   cross_section_generator: cross_section_generator.html
-last_built: 2024-11-18T22:15Z
-
+last_built: 2024-12-05T21:06Z

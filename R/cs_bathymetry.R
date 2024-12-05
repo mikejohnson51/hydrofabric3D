@@ -69,6 +69,7 @@ get_ahg_parabolas <- function(
     crosswalk_id = NULL
 ) {
   
+  .data <- NULL
   # cross_section_pts <-
   #   cs_ml %>%
   #   dplyr::slice(1:20)
