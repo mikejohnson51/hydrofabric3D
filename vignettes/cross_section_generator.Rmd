@@ -8,8 +8,11 @@ author:
     affiliation: Lynker, NOAA-Affiliate
     affiliation_url: https://lynker.com
 output: distill::distill_article
+vignette: >
+  %\VignetteIndexEntry{NOAA OWP Cross Section Generator}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
 ---
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,

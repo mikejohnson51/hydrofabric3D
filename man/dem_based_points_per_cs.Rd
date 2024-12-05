@@ -5,11 +5,7 @@
 \title{Calculate the points per cross section based off length relative to a DEM
 Given the length of cross sections and a DEM, approximate the appropriate number of points for each cross section length}
 \usage{
-dem_based_points_per_cs(
-  cs_length,
-  dem =
-    "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
-)
+dem_based_points_per_cs(cs_length, dem = default_dem)
 }
 \arguments{
 \item{cs_length}{numeric vector, lengths of each cross section (meters)}

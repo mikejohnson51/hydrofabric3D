@@ -8,8 +8,7 @@ get_points_per_cs(
   cs_length,
   points_per_cs = NULL,
   min_pts_per_cs = 10,
-  dem =
-    "/vsicurl/https://prd-tnm.s3.amazonaws.com/StagedProducts/Elevation/13/TIFF/USGS_Seamless_DEM_13.vrt"
+  dem = default_dem
 )
 }
 \arguments{

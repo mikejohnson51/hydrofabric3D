@@ -28,4 +28,5 @@ workspace
 ^braids2\.R$
 ^braids3\.R$
 
-
+data-raw
+in-progress-vignettes

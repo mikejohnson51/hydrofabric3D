@@ -19,13 +19,12 @@ authors:
      html: "<img src='man/figures/lynker-logo.png' width='100' alt='Lynker'/>"
      href: "https://lynker-intel.com/"
    footer:
-    roles: [aut]
+    roles: [aut, cre]
    citation:
-    roles: [aut]
+    roles: [aut, cre]
 articles:
 - title: Cross Section Generation
   desc: Quick Start
   contents:
   - basic_use
   - cross_section_generator
-  - braided_cross_sections
