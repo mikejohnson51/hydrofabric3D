@@ -43,6 +43,9 @@ Suggests:
     rmarkdown,
     testthat (>= 3.0.0),
     distill,
-    pals
+    pals,
+    glue,
+    ggplot2,
+    patchwork
 VignetteBuilder: knitr
 Config/testthat/edition: 3
