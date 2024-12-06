@@ -41,7 +41,7 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", 
-    "crosswalk_id", "extend_invalid_transects2",
+    "crosswalk_id",  
     "anchors", "deriv_type", "edge", "extension_distance", 
     "left_is_extended", "right_is_extended", "to_node", "verbose", 
     "toindid", "indid", "toid", "is", "internal_is_braided2"
@@ -226,7 +226,6 @@ get_braid_list <- function(
   
   # list of the uniqueu component IDs 
   component_ids <- unique(graph$component_id)
-  # component_ids <- unique(network$component_id)
   
   # loop through each of the unique 'component_id' and get a list of braids for each distinct componenet
   braid_list <- lapply(1:length(component_ids), function(i) {
@@ -337,11 +336,10 @@ find_connected_components <- function(
   if (length(start_nodes) < 1) {
     start_nodes <- graph$fromnode[1]
   }
-  
-  
+
+  # Start DFS traversal 
   for (i in seq_along(start_nodes)) {
     
-    # message("starting DFS at node ", root)
     root = as.character(start_nodes[i])
     
     # output result object
@@ -1030,7 +1028,6 @@ reduce_braid_list <- function(x) {
             as.character(
               sort(
                 Reduce(c, x[[i]][k])
-                # x[[i]][k]
               )
             ),
             collapse = "_"
@@ -1084,7 +1081,6 @@ process_braids <- function(network,
   braids <- get_braid_list(
     network     = network, 
     crosswalk_id = crosswalk_id,
-    # terminal_id = terminal_id,
     verbose     = verbose
   )
   
@@ -2079,7 +2075,8 @@ braid_thresholder <- function(x,
 #' # unnest the nested braid_id column (explode the list column into individual rows)
 #' unpacked <- unpack_braids(braids)
 #' }
-#' @export
+#' @noRd
+#' @keywords internal
 unpack_braids <- function(x, 
                           crosswalk_id = NULL, 
                           into_list = FALSE

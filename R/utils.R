@@ -99,7 +99,8 @@ get_unique_tmp_ids <- function(df, x = "hy_id", y = "cs_id") {
 #' @param df sf dataframe, tibble, or dataframe
 #' @importFrom dplyr mutate n
 #' @return dataframe, sf dataframe, or tibble
-#' @export 
+#' @noRd
+#' @keywords internal
 add_hydrofabric_id <- function(df) {
   df <- 
     df %>% 
@@ -160,7 +161,8 @@ add_length_col <- function(x,
 #' @importFrom dplyr group_by across any_of mutate ungroup row_number
 #'
 #' @return sf dataframe of transects with added is_outlet logical column
-#' @export
+#' @noRd
+#' @keywords internal
 add_is_outlet_flag <- function(x, crosswalk_id = NULL) {
   
   is_valid_df <- validate_df(x, c(crosswalk_id, "cs_measure"), "x") 
@@ -245,6 +247,8 @@ move_geometry_to_last <- function(df) {
 #' @param df A dataframe.
 #' @param columns_to_remove character vector specifying the names of columns to be removed.
 #' @return dataframe with specified columns removed if they exist.
+#' @noRd
+#' @keywords internal
 remove_cols_from_df <- function(df, columns_to_remove) {
   
   existing_columns <- intersect(columns_to_remove, colnames(df))
@@ -644,7 +648,8 @@ cluster_dissolve <- function(x) {
 #' @importFrom sf st_union st_as_sf  
 #' @importFrom rmapshaper ms_explode
 #' @return sf dataframe with overlaps removed
-#' @export
+#' @noRd
+#' @keywords internal
 dissolve_overlaps <- function(x) {
   
   x <- 

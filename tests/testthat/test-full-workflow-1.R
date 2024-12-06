@@ -5,9 +5,7 @@ library(sf)
 
 # source("tests/testthat/testing_utils.R")
 # devtools::load_all()
-# devtools::load_all()
 
-# 
 # --------------------------------------------------------------------------------------------------------------------
 # ---- Testing a full workflow ----
 # generating transects/cross section points from hydrological network (flowlines)
@@ -279,7 +277,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   
   message("Adjusting transect lengths based on CS attribute comparisons flag (", Sys.time(), ")")
   
-  final_transects <- hydrofabric3D::adjust_flagged_transects2(
+  final_transects <- hydrofabric3D::adjust_flagged_transects(
     # final_transects <- hydrofabric3D::adjust_flagged_transects(
     x = flagged_transects, 
     crosswalk_id = ID_COL, 
@@ -287,7 +285,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   )
   
   testthat::expect_warning(
-    hydrofabric3D::adjust_flagged_transects2(
+    hydrofabric3D::adjust_flagged_transects(
       # final_transects <- hydrofabric3D::adjust_flagged_transects(
       x = flagged_transects, 
       crosswalk_id = ID_COL, 
@@ -297,7 +295,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   )
   
   testthat::expect_no_warning(
-    hydrofabric3D::adjust_flagged_transects2(
+    hydrofabric3D::adjust_flagged_transects(
       # final_transects <- hydrofabric3D::adjust_flagged_transects(
       x = flagged_transects, 
       crosswalk_id = ID_COL, 
@@ -362,40 +360,160 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
       crosswalk_id = ID_COL
       )
   )
+})
+
+# NOTE: Deprecated function
+testthat::test_that("Full workflow - 2 (Flowlines -> transects -> CS points -> get_improved_cs_pts())", {
   
-  # all(hydrofabric3D::get_unique_tmp_ids(extended_transects, x = ID_COL) %in% hydrofabric3D::get_unique_tmp_ids(final_transects, x = ID_COL))
-  # all(hydrofabric3D::get_unique_tmp_ids(final_transects, x = ID_COL) %in% hydrofabric3D::get_unique_tmp_ids(extended_transects, x = ID_COL))
+  flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg")) %>% 
+    hydroloom::rename_geometry("geometry") %>% 
+    dplyr::select(id, geometry)
+  
+  # Transects inputs
+  CS_SOURCE            <- 'hydrofabric3D_test'
+  CS_WIDTHS            <- 500
+  NUM_OF_TRANSECTS     <- 10
+  RM_SELF_INTERSECTS   <- TRUE
+  ID_COL               <- "id"
+  
+  # Cross section point inputs
+  DEM_PATH       <- testthat::test_path("testdata", "dem_flowlines.tif")
+  POINTS_PER_CS     <- NULL
+  MIN_PTS_PER_CS    <- 10
+  
+  # NOTE: 0.01 (1%) of cros sections length is the default
+  # percent of cross section length (cs_lengthm) to use as the
+  # threshold depth for classifying whether a cross section has "relief"
+  PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF <- 0.01
+  
+  EXTENSION_PCT = 0.5
+  
+  transects <- hydrofabric3D::cut_cross_sections(
+    net               = flowlines,
+    crosswalk_id      = ID_COL,
+    cs_widths         = CS_WIDTHS,
+    num               = NUM_OF_TRANSECTS,
+    rm_self_intersect = TRUE
+  )
+  
+  # mapview::mapview(transects, color = "green") + mapview::mapview(flowlines, color = "red")
+  
+  TOTAL_TRANSECTS_COUNT <- nrow(transects)
+  
+  max_transect_count <-
+    transects %>%
+    sf::st_drop_geometry() %>%
+    dplyr::group_by(id) %>%
+    dplyr::count() %>%
+    dplyr::ungroup() %>%
+    dplyr::pull(n) %>%
+    max()
+  
+  # Test that NO flowline has MORE than the prescribed number of transects (NUM_OF_TRANSECTS)
+  testthat::expect_true(max_transect_count <= NUM_OF_TRANSECTS)
+  
+  transects <- 
+    transects %>% 
+    hydrofabric3D::select_transects(ID_COL)
+  
+  # ----------------------------------------------------------------------------------------------------------------
+  # ---- Cross section points ----
+  # ----------------------------------------------------------------------------------------------------------------
+  
+  # ---- STEP 1: Extract cs points from DEM ----
+  
+  # get cross section point elevations
+  cs_pts <- hydrofabric3D::cross_section_pts(
+    cs             = transects,
+    crosswalk_id   = ID_COL,
+    points_per_cs  = POINTS_PER_CS,
+    min_pts_per_cs = MIN_PTS_PER_CS,
+    dem            = DEM_PATH
+  )
+  
+  TOTAL_CS_PTS_COUNT <- nrow(cs_pts)
+  
+  # test that the minimum number of cross section points was generated (minimum of N points per transect, i.e. MIN_PTS_PER_CS * TOTAL_TRANSECTS_COUNT)
+  testthat::expect_true(TOTAL_CS_PTS_COUNT >= MIN_PTS_PER_CS * TOTAL_TRANSECTS_COUNT)
+  
+  # there should NOT be any NA Z values in this area
+  testthat::expect_true(  !any(is.na(cs_pts$Z)))
   
   
-  # mapview::mapview(transects, color = "green") +
-  #   mapview::mapview(extended, color = "green") +
-  #   # mapview::mapview(extended, color = "gold") +
-  #   mapview::mapview(flag_adjusts, color = "red") +
-  #   mapview::mapview(flowlines, color = "dodgerblue")
+  # should validate 
+  testthat::expect_no_error(
+    validate_cs_pts(cs_pts, ID_COL)
+  ) 
   
+  testthat::expect_no_error(
+    validate_cs_pts_against_transects(cs_pts, transects, ID_COL)
+  ) 
+  
+  #expect an error to be thrown bc of missing classification columns
+  testthat::expect_error(
+    validate_classified_cs_pts(cs_pts, ID_COL)
+  ) 
+  
+  # ----------------------------------------------------------------------------------------------------------------
+  # ---- STEP 2: Remove any cross section that has ANY missing (NA) Z values, and classify the points ----
+  # ----------------------------------------------------------------------------------------------------------------
+  
+  
+  classified_pts <- 
+    cs_pts %>% 
+    hydrofabric3D:::classify_points(
+      crosswalk_id             = ID_COL, 
+      pct_of_length_for_relief = PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF,
+      na.rm          = TRUE
+    ) 
+  
+  # passes both cs_pts validator functions 
+  testthat::expect_no_error(
+    validate_cs_pts(classified_pts, ID_COL)
+  ) 
+  testthat::expect_no_error(
+    validate_classified_cs_pts(classified_pts, ID_COL)
+  ) 
+  
+  testthat::expect_no_error(
+    validate_cs_pts_against_transects(classified_pts, transects, ID_COL)
+  ) 
+  
+  testthat::expect_no_error(
+    validate_classified_cs_pts_against_transects(classified_pts, transects, ID_COL)
+  )  
+  
+  # --------------------------------------------------------------------------
+  # ---- Add CS attributes to transects data ----
+  # --------------------------------------------------------------------------
+  # message("Adding CS attributes to transects data (", Sys.time(), ")")  
+  
+  transects <-
+    transects %>% 
+    hydrofabric3D:::add_cs_attributes_to_transects(classified_pts, ID_COL)  %>% 
+    # fill the NA valid_banks / has_relief columns 
+    # with all TRUEs (ignores them for extension step, i.e. all TRUEs means they'll be disregarded in CS attribute extension step)
+    hydrofabric3D:::fill_missing_cs_attributes() 
   
   # ----------------------------------------------------------------------------------------------------------------
   # ---- STEP 3: Try to rectify any no relief and invalid banks cross sections ----
   # ----------------------------------------------------------------------------------------------------------------
-   
-  # system.time({
-    # NOTE: new inplace method for improving (rectifying) any invalid cross sections where we dont have banks and relief
-    fixed_pts <- hydrofabric3D::get_improved_cs_pts(
-      # cs_pts         = cs_pts,    # cross section points generated from hydrofabric3D::cross_section_pts()
-      cs_pts         = classified_pts,
-      net            = flowlines,    # original flowline network
-      # net            = flines,     # original flowline network
-      transects      = transects %>% dplyr::select(!dplyr::any_of(c("valid_banks", "has_relief"))),    # original transect lines
-      crosswalk_id   = ID_COL,
-      points_per_cs  = POINTS_PER_CS,
-      min_pts_per_cs = MIN_PTS_PER_CS, # number of points per cross sections
-      dem            = DEM_PATH, # DEM to extract points from
-      scale          = EXTENSION_PCT, # How far to extend transects if the points need to be rechecked
-      pct_of_length_for_relief = PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF, # percent of cross sections length to be needed in relief calculation to consider cross section to "have relief"
-      fix_ids = FALSE,
-      verbose = FALSE
-    )
-  # })
+  
+  # NOTE: new inplace method for improving (rectifying) any invalid cross sections where we dont have banks and relief
+  fixed_pts <- hydrofabric3D:::get_improved_cs_pts(
+    cs_pts         = classified_pts,
+    net            = flowlines,    # original flowline network
+    transects      = transects %>% 
+                          dplyr::select(!dplyr::any_of(c("valid_banks", "has_relief"))),    # original transect lines
+    crosswalk_id   = ID_COL,
+    points_per_cs  = POINTS_PER_CS,
+    min_pts_per_cs = MIN_PTS_PER_CS, # number of points per cross sections
+    dem            = DEM_PATH, # DEM to extract points from
+    scale          = EXTENSION_PCT, # How far to extend transects if the points need to be rechecked
+    pct_of_length_for_relief = PCT_LENGTH_OF_CROSS_SECTION_FOR_RELIEF, # percent of cross sections length to be needed in relief calculation to consider cross section to "have relief"
+    fix_ids = FALSE,
+    verbose = FALSE
+  )
   
   testthat::expect_no_error(
     hydrofabric3D::validate_cs_pts(fixed_pts, ID_COL)
@@ -421,7 +539,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   
   start_has_relief  <- sum(classified_pts$has_relief)
   end_has_relief    <- sum(fixed_pts$has_relief)
- 
+  
   testthat::expect_true(end_has_relief >= start_has_relief)
   
   extended_pts <- 
@@ -437,7 +555,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
   cs_length_ge_pre_extension_cs_length <- all(extended_pts$cs_lengthm >= pts_before_extension$cs_lengthm)
   
   testthat::expect_true(cs_length_ge_pre_extension_cs_length)
- 
+  
   start_uids <- hydrofabric3D::get_unique_tmp_ids(classified_pts, x = ID_COL)
   end_uids   <- hydrofabric3D::get_unique_tmp_ids(fixed_pts, x = ID_COL) 
   

@@ -112,98 +112,93 @@ add_cs_area <- function(cs_pts,
   
 }
 
-#' Given a specific depth, an array of depths, and relative_distances return the cross sectional area (v2)
-#'
-#' @param pt_id numeric index of point within CS 
-#' @param depth numeric, depth at a specific point along CS
-#' @param depth_array numeric set of all depths for CS
-#' @param relative_distance numeric vector of distances from 0 to length of CS
-#' @importFrom DescTools AUC
-#' @return numeric cross sectional area value, 0 if no area can be calculated
-#' @noRd
-#' @keywords internal
-find_cs_area2 <- function(pt_id,
-                          depth, 
-                          depth_array, 
-                          relative_distance
-){
-  
-  npts     <- length(depth_array)
-  
-  midpoint <- (npts + 1) / 2
-  
-  side     <- ifelse(pt_id < midpoint, "left", "right")
-  idxs     <- switch (side,
-                      "left"  = pt_id:npts,
-                      "right" = 1:pt_id
-  )
-  
-  
-  side_depths     <- depth_array[idxs]
-  side_distances  <- relative_distance[idxs]
-  
-  depth_under     <- side_depths[side_depths < depth]
-  rel_dist_under  <- side_distances[side_depths < depth]
-  
-  # depth_under      <-  depth_array[depth_array < depth]
-  # rel_dist_under   <-  relative_distance[depth_array < depth]
-  
-  auc1 <- DescTools::AUC(
-    x = rel_dist_under, 
-    y = rep(depth, length(depth_under)), 
-    absolutearea = FALSE
-  )
-  
-  auc2 <- DescTools::AUC(
-    x = rel_dist_under, 
-    y = depth_under, 
-    absolutearea = FALSE
-  )
-  
-  cs_area <- pmax(0, auc1 - auc2)
-  
-  return(
-    ifelse(is.na(cs_area), 0, cs_area)
-  )
-  
-}
+# # Given a specific depth, an array of depths, and relative_distances return the cross sectional area (v2)
+# #
+# # @param pt_id numeric index of point within CS 
+# # @param depth numeric, depth at a specific point along CS
+# # @param depth_array numeric set of all depths for CS
+# # @param relative_distance numeric vector of distances from 0 to length of CS
+# # @importFrom DescTools AUC
+# # @return numeric cross sectional area value, 0 if no area can be calculated
+# # @noRd
+# # @keywords internal
+# find_cs_area2 <- function(pt_id,
+#                           depth, 
+#                           depth_array, 
+#                           relative_distance
+# ){
+#   
+#   npts     <- length(depth_array)
+#   
+#   midpoint <- (npts + 1) / 2
+#   
+#   side     <- ifelse(pt_id < midpoint, "left", "right")
+#   idxs     <- switch (side,
+#                       "left"  = pt_id:npts,
+#                       "right" = 1:pt_id
+#   )
+#   
+#   
+#   side_depths     <- depth_array[idxs]
+#   side_distances  <- relative_distance[idxs]
+#   
+#   depth_under     <- side_depths[side_depths < depth]
+#   rel_dist_under  <- side_distances[side_depths < depth]
+#   
+#   auc1 <- DescTools::AUC(
+#     x = rel_dist_under, 
+#     y = rep(depth, length(depth_under)), 
+#     absolutearea = FALSE
+#   )
+#   
+#   auc2 <- DescTools::AUC(
+#     x = rel_dist_under, 
+#     y = depth_under, 
+#     absolutearea = FALSE
+#   )
+#   
+#   cs_area <- pmax(0, auc1 - auc2)
+#   
+#   return(
+#     ifelse(is.na(cs_area), 0, cs_area)
+#   )
+#   
+# }
 
 
-#' Adds a cs_area column to a set of cross section points (v2)
-#'
-#' @param cs_pts dataframe or sf dataframe of CS points with crosswalk_id, cs_id, Z, and relative distance columns
-#' @param crosswalk_id character, unique ID column name
-#' @importFrom dplyr group_by mutate across any_of ungroup
-#' @importFrom purrr map_dbl 
-#' @return cs_pts dataframe with added numeric 'cs_area' column
-#' @noRd
-#' @keywords internal
-add_cs_area2 <- function(cs_pts, 
-                        crosswalk_id = NULL) {
-  
-  REQUIRED_COLS <- c(crosswalk_id, "cs_id", "Z", "relative_distance")
-  
-  is_valid  <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
-  
-  cs_pts <-
-    cs_pts %>%
-  # df %>%
-    dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-    # dplyr::group_by(hy_id, cs_id) %>% 
-    dplyr::mutate(
-      cs_area2 = purrr::map_dbl(seq_along(Z), function(i) {
-        find_cs_area2(
-          pt_id = pt_id[i],
-          depth = Z[i],
-          depth_array = Z,
-          relative_distance = relative_distance
-        )
-      })) %>%
-    dplyr::ungroup()
-  
-  return(cs_pts)
-  
-}
+# # Adds a cs_area column to a set of cross section points (v2)
+# #
+# # @param cs_pts dataframe or sf dataframe of CS points with crosswalk_id, cs_id, Z, and relative distance columns
+# # @param crosswalk_id character, unique ID column name
+# # @importFrom dplyr group_by mutate across any_of ungroup
+# # @importFrom purrr map_dbl 
+# # @return cs_pts dataframe with added numeric 'cs_area' column
+# # @noRd
+# # @keywords internal
+# add_cs_area2 <- function(cs_pts, 
+#                         crosswalk_id = NULL) {
+#   
+#   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "Z", "relative_distance")
+#   
+#   is_valid  <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
+#   
+#   cs_pts <-
+#     cs_pts %>%
+#     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
+#     dplyr::mutate(
+#       cs_area = purrr::map_dbl(seq_along(Z), function(i) {
+#         find_cs_area2(
+#           pt_id = pt_id[i],
+#           depth = Z[i],
+#           depth_array = Z,
+#           relative_distance = relative_distance
+#         )
+#       })) %>%
+#     dplyr::ungroup()
+#   
+#   return(cs_pts)
+#   
+# }
 
 
 get_channel_to_channel_cs_area <- function(cs_pts, 
@@ -211,7 +206,6 @@ get_channel_to_channel_cs_area <- function(cs_pts,
                                            min_or_max = "max") {
   
   bottom_section <- 
-    # df %>% 
     cs_pts %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::filter(point_type == "bottom") %>% 
@@ -223,7 +217,6 @@ get_channel_to_channel_cs_area <- function(cs_pts,
   
   left_channel <-
     cs_pts %>%
-    # df %>% 
     dplyr::left_join(
       bottom_section %>% 
         dplyr::select(dplyr::any_of(crosswalk_id), cs_id, min_bottom),
@@ -232,13 +225,11 @@ get_channel_to_channel_cs_area <- function(cs_pts,
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::filter(point_type == "channel", pt_id < min_bottom) %>% 
     dplyr::slice_max(Z, n = 1, with_ties = FALSE) %>%
-    # dplyr::slice_min(Z, n = 1, with_ties = FALSE) %>% 
     dplyr::ungroup() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type, cs_area)
   
   right_channel <-
     cs_pts %>%
-    # df %>%
     dplyr::left_join(
       bottom_section %>% 
         dplyr::select(dplyr::any_of(crosswalk_id), cs_id, max_bottom),
@@ -247,7 +238,6 @@ get_channel_to_channel_cs_area <- function(cs_pts,
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::filter(point_type == "channel", pt_id > max_bottom) %>% 
     dplyr::slice_max(Z, n = 1, with_ties = FALSE) %>%
-    # dplyr::slice_min(Z, n = 1, with_ties = FALSE) %>% 
     dplyr::ungroup() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type, cs_area)
   

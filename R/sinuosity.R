@@ -41,7 +41,7 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", 
-    "crosswalk_id", "extend_invalid_transects2",
+    "crosswalk_id",  
     "anchors", "deriv_type", "edge", "extension_distance", 
     "left_is_extended", "right_is_extended", "to_node", "verbose", 
     "toindid", "indid", "toid", "is", "internal_is_braided2"
@@ -73,7 +73,6 @@ get_cs_sinuosity <- function(
   pts <- 
     transects %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, geometry) %>% 
-    # dplyr::select(hy_id, cs_id, cs_measure, ds_distance, geometry) %>% 
     sf::st_centroid()
   
   # calculate line lengths
@@ -106,7 +105,6 @@ get_cs_sinuosity <- function(
   pts <- 
     pts %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>%
-    # dplyr::group_by(hy_id) %>%
     dplyr::mutate(
       euclid_dist   = as.numeric(sf::st_distance(geometry,        
                                                  dplyr::lead(geometry),
@@ -128,7 +126,6 @@ get_cs_sinuosity <- function(
       transects,
       dplyr::select(pts, -cs_measure), 
       by = c(crosswalk_id, "cs_id")
-      # by = c("hy_id", "cs_id")
     )
     
     return(transects)

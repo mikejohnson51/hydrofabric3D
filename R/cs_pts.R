@@ -41,7 +41,7 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", 
-    "crosswalk_id", "extend_invalid_transects2",
+    "crosswalk_id",  
     "anchors", "deriv_type", "edge", "extension_distance", 
     "left_is_extended", "right_is_extended", "to_node", "verbose", 
     "toindid", "indid", "toid", "is", "internal_is_braided2"
@@ -521,7 +521,7 @@ classify_points <- function(
       ),
       deriv_type   = clean_point_types(deriv_type),
       deriv_type   = set_channel_anchors(deriv_type),
-      deriv_type   = set_bank_anchors2(
+      deriv_type   = set_bank_anchors_with_channel(
         depths = Z,
         point_types = deriv_type,
         L = L[1],
@@ -1214,7 +1214,7 @@ set_bank_anchors <- function(
 #' @return character vector
 #' @noRd
 #' @keywords internal
-set_bank_anchors2 <- function(
+set_bank_anchors_with_channel <- function(
     depths,
     point_types,
     L,

@@ -41,7 +41,7 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", "polygon_index",
-    "crosswalk_id", "extend_invalid_transects2",
+    "crosswalk_id",  
     "anchors", "deriv_type", "edge", "extension_distance", 
     "left_is_extended", "right_is_extended", "to_node", "verbose", 
     "toindid", "indid", "toid", "is", "internal_is_braided2"
@@ -319,8 +319,10 @@ adjust_transect_lengths <- function(
   
 }
 
-#' Update a flagged set of transects by shortening them by the given extension_distance
-#'
+
+
+#' Update a flagged set of transects by shortening them by the given left_distance and right_distance 
+#' Requires 'left_distance' and 'right_distance' columns to specify how much to adjust flagged transects by 
 #' @param x sf dataframe of transects 
 #' @param crosswalk_id character, unique ID column
 #' @param reindex_cs_ids logical, whether to generate a new 1-n set of cs_ids or to return the original identifiers
@@ -341,66 +343,6 @@ adjust_flagged_transects <- function(
   # validate input datas
   is_valid_df        <- validate_df(x, 
                                     c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", 
-                                      "flagged", "extension_distance", "geometry"), 
-                                    "x"
-  )
-  
-  # shorten the unimproved set of transects
-  x <- shorten_flagged_transects(
-    transects = x,
-    crosswalk_id = crosswalk_id
-  )
-  
-  # select relevent columns
-  x <- 
-    x %>%  
-    dplyr::select(
-      dplyr::any_of(
-        c(
-          crosswalk_id,
-          "cs_id",
-          "cs_lengthm", 
-          "cs_measure",
-          "ds_distance",
-          "sinuosity",
-          "cs_source",
-          "geometry"
-        )
-      )
-    )
-  
-  # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
-  if (reindex_cs_ids) {
-    warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in input 'transects' and the output unique crosswalk_id/cs_ids")
-    x <- renumber_cs_ids(x, crosswalk_id = crosswalk_id)
-  }
-  
-  return(x)
-  
-}
-
-#' Update a flagged set of transects by shortening them by the given left_distance and right_distance (adjust_flagged_transects() v2 ) 
-#' Requires 'left_distance' and 'right_distance' columns to specify how much to adjust flagged transects by 
-#' @param x sf dataframe of transects 
-#' @param crosswalk_id character, unique ID column
-#' @param reindex_cs_ids logical, whether to generate a new 1-n set of cs_ids or to return the original identifiers
-#' @importFrom hydroloom rename_geometry
-#' @importFrom dplyr left_join mutate any_of select
-#'
-#' @return sf dataframe of transects with updated geometries 
-#' @export
-adjust_flagged_transects2 <- function(
-    x, 
-    crosswalk_id = NULL,
-    reindex_cs_ids = FALSE
-) {
-  
-  # set geometry column names at beginning
-  x    <- hydroloom::rename_geometry(x, "geometry")
-  
-  # validate input datas
-  is_valid_df        <- validate_df(x, 
-                                    c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", 
                                       "flagged", 
                                       "left_distance", "right_distance", 
                                       "geometry"), 
@@ -408,7 +350,7 @@ adjust_flagged_transects2 <- function(
   )
   
   # shorten the unimproved set of transects
-  x <- shorten_flagged_transects2(
+  x <- shorten_flagged_transects(
     transects = x,
     crosswalk_id = crosswalk_id
   )
@@ -440,6 +382,66 @@ adjust_flagged_transects2 <- function(
   return(x)
   
 }
+
+# # Update a flagged set of transects by shortening them by the given extension_distance
+# #
+# # @param x sf dataframe of transects 
+# # @param crosswalk_id character, unique ID column
+# # @param reindex_cs_ids logical, whether to generate a new 1-n set of cs_ids or to return the original identifiers
+# # @importFrom hydroloom rename_geometry
+# # @importFrom dplyr left_join mutate any_of select
+# #
+# # @return sf dataframe of transects with updated geometries 
+# # @export
+# adjust_flagged_transects2 <- function(
+#     x, 
+#     crosswalk_id = NULL,
+#     reindex_cs_ids = FALSE
+# ) {
+  
+#   # set geometry column names at beginning
+#   x    <- hydroloom::rename_geometry(x, "geometry")
+  
+#   # validate input datas
+#   is_valid_df        <- validate_df(x, 
+#                                     c(crosswalk_id, "cs_id", "cs_lengthm", "cs_measure", 
+#                                       "flagged", "extension_distance", "geometry"), 
+#                                     "x"
+#   )
+  
+#   # shorten the unimproved set of transects
+#   x <- shorten_flagged_transects2(
+#     transects = x,
+#     crosswalk_id = crosswalk_id
+#   )
+  
+#   # select relevent columns
+#   x <- 
+#     x %>%  
+#     dplyr::select(
+#       dplyr::any_of(
+#         c(
+#           crosswalk_id,
+#           "cs_id",
+#           "cs_lengthm", 
+#           "cs_measure",
+#           "ds_distance",
+#           "sinuosity",
+#           "cs_source",
+#           "geometry"
+#         )
+#       )
+#     )
+  
+#   # re-index the cs_ids to make sure there are 1-number of transects for each crosswalk_id and that there are NO gaps between cs_ids
+#   if (reindex_cs_ids) {
+#     warning("Re-indexing cs_ids may result in a mismatch between unique crosswalk_id/cs_ids in input 'transects' and the output unique crosswalk_id/cs_ids")
+#     x <- renumber_cs_ids(x, crosswalk_id = crosswalk_id)
+#   }
+  
+#   return(x)
+  
+# }
 
 
 #' Takes any transects with multiple intersections that was extended, and shortens them by the distance specified in the "extension_distance" column
@@ -622,54 +624,6 @@ shorten_multi_flowline_intersecting_extended_transects <- function(x,
 }
 
 #' Shorten specific flagged transects by specified distance
-#' Shorten transects by 'extension_distance' if they have a 'flagged' column value of TRUE 
-#'
-#' @param transects sf dataframe of LINESTRINGS, requires an 'extension_distance' column to specify how much to flagged transects by
-#' @param crosswalk_id character, unique ID column
-#' 
-#' @importFrom sf st_intersects st_geometry
-#' @return sf dataframe of transects with shortened transects where flagged is TRUE 
-#' @noRd
-#' @keywords internal
-shorten_flagged_transects <- function(transects, crosswalk_id = NULL) {
-  
-  suppressWarnings({
-    
-    is_valid_df <- validate_df(transects, 
-                               c(crosswalk_id, "cs_id", "cs_lengthm", "flagged", "extension_distance", "geometry"), 
-                               "transects")
-    
-    # wehich rows are flagged for shortening?  
-    is_flagged      <- transects$flagged
-    
-    has_no_flags    <- !any(is_flagged)
-    
-    # return early if NO rows were flagged for shortening 
-    if (has_no_flags) {
-      return(transects)
-    }
-    
-    # reduce the length of each transect by extension_distance (from BOTH sides)
-    shortened_transects  <- extend_by_length(
-      x             = transects[is_flagged, ], 
-      crosswalk_id  = crosswalk_id, 
-      length_vector = -transects[is_flagged, ]$extension_distance, 
-      length_col    = "cs_lengthm"
-    ) 
-    
-    
-    # replace the geometries with the shorter transects
-    sf::st_geometry(transects[is_flagged, ])  <- sf::st_geometry(shortened_transects)
-    
-    # update the lengths to align with the above replacement of geometries
-    transects <- add_length_col(transects, "cs_lengthm") 
-    
-    return(transects)
-    
-  })
-}
-
-#' Shorten specific flagged transects by specified distance
 #' Shorten transects by 'left_distance' and 'right_distance' if they have a 'flagged' column value of TRUE 
 #'
 #' @param transects sf dataframe of LINESTRINGS, requires 'left_distance' and 'right_distance' columns to specify how much to flagged transects by
@@ -679,7 +633,7 @@ shorten_flagged_transects <- function(transects, crosswalk_id = NULL) {
 #' @return sf dataframe of transects with shortened transects where flagged is TRUE 
 #' @noRd
 #' @keywords internal
-shorten_flagged_transects2 <- function(transects, crosswalk_id = NULL) {
+shorten_flagged_transects <- function(transects, crosswalk_id = NULL) {
   
   suppressWarnings({
     
@@ -692,7 +646,7 @@ shorten_flagged_transects2 <- function(transects, crosswalk_id = NULL) {
                                
                                "transects")
     
-    # wehich rows are flagged for shortening?  
+    # which rows are flagged for shortening?  
     is_flagged      <- transects$flagged
     
     has_no_flags    <- !any(is_flagged)
@@ -742,3 +696,52 @@ shorten_flagged_transects2 <- function(transects, crosswalk_id = NULL) {
     
   })
 }
+
+
+# # Shorten specific flagged transects by specified distance
+# # Shorten transects by 'extension_distance' if they have a 'flagged' column value of TRUE 
+# #
+# # @param transects sf dataframe of LINESTRINGS, requires an 'extension_distance' column to specify how much to flagged transects by
+# # @param crosswalk_id character, unique ID column
+# # 
+# # @importFrom sf st_intersects st_geometry
+# # @return sf dataframe of transects with shortened transects where flagged is TRUE 
+# # @noRd
+# # @keywords internal
+# shorten_flagged_transects2 <- function(transects, crosswalk_id = NULL) {
+  
+#   suppressWarnings({
+    
+#     is_valid_df <- validate_df(transects, 
+#                                c(crosswalk_id, "cs_id", "cs_lengthm", "flagged", "extension_distance", "geometry"), 
+#                                "transects")
+    
+#     # wehich rows are flagged for shortening?  
+#     is_flagged      <- transects$flagged
+    
+#     has_no_flags    <- !any(is_flagged)
+    
+#     # return early if NO rows were flagged for shortening 
+#     if (has_no_flags) {
+#       return(transects)
+#     }
+    
+#     # reduce the length of each transect by extension_distance (from BOTH sides)
+#     shortened_transects  <- extend_by_length(
+#       x             = transects[is_flagged, ], 
+#       crosswalk_id  = crosswalk_id, 
+#       length_vector = -transects[is_flagged, ]$extension_distance, 
+#       length_col    = "cs_lengthm"
+#     ) 
+    
+    
+#     # replace the geometries with the shorter transects
+#     sf::st_geometry(transects[is_flagged, ])  <- sf::st_geometry(shortened_transects)
+    
+#     # update the lengths to align with the above replacement of geometries
+#     transects <- add_length_col(transects, "cs_lengthm") 
+    
+#     return(transects)
+    
+#   })
+# }

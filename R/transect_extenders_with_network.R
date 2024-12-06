@@ -41,175 +41,13 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", "polygon_index",
-    "crosswalk_id", "extend_invalid_transects2",
+    "crosswalk_id",  
     "anchors", "deriv_type", "edge", "extension_distance", 
     "left_is_extended", "right_is_extended", "to_node", "verbose", 
     "toindid", "indid", "toid", "is", "internal_is_braided2"
   )
 )
 
-
-#' @title Extend a set of transects by a percentage based on banks and relief
-#' Given a set of transect lines with valid_banks and has_relief columns (derived from DEM extracted cross section points), extend any transects 
-#' by a percentage of the transects length if the transect does NOT have valid banks (valid_banks == FALSE) OR it does NOT have relief (has_relief == FALSE).
-#' @param transects_to_check sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters), "valid_banks", and "has_relief"
-#' @param net sf linestrings, flowline network that transects were generated from, requires "crosswalk_id" column (where "crosswalk_id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )
-#' @param crosswalk_id character, column name that connects features in transects to net
-#' @param scale numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50% of the transect length)
-#' @param direction character, strategy to take for extending transects. 
-#' Either 'both' or 'any'. 'both' means both sides of each transects are extended if and only both sides are 
-#' valid extensions. 'any' means a transect can be extended from either the 'left', 'right', or both 'left' and 'right' sides, 
-#' depending on which sides show valid extensions. 'any' will require at least 2x more intersection checks with the network and thus can result in longer processing times.
-#' Default is 'both'. 
-#' @param verbose logical, whether to show a progress bar and progress messages or not. Default is TRUE.
-#' @return sf linestring dataframe containing the the original transects with extensions performed on transects without valid_banks OR has_relief (a "is_extended" flag denotes if the geometry was extended by "scale" % or not)
-#' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
-#' @importFrom sf st_geometry st_as_sf
-#' @importFrom dplyr filter bind_rows mutate case_when
-#' @importFrom hydroloom rename_geometry 
-#' @noRd
-#' @keywords internal
-extend_invalid_transect_sides <- function(
-    transects_to_check, 
-    net, 
-    crosswalk_id = NULL,
-    scale     = 0.5,
-    direction = "both",
-    verbose   = TRUE
-) {
-  
-  # ----------------------------------------------------------------------------------
-  # ----------- Input checking ------
-  # ----------------------------------------------------------------------------------
-  
-  # make a unique ID if one is not given (NULL 'crosswalk_id')
-  if(is.null(crosswalk_id)) {
-    # x             <- add_hydrofabric_id(x)
-    crosswalk_id  <- 'hydrofabric_id'
-  }
-  
-  # set geometry column names at beginning 
-  net                 <- hydroloom::rename_geometry(net, "geometry") 
-  transects_to_check  <- hydroloom::rename_geometry(transects_to_check, "geometry") 
- 
-  # validate input datas 
-  is_net_valid        <- validate_df(net, c(crosswalk_id, "geometry"), "net")
-  is_transects_valid  <- validate_df(transects_to_check, c(crosswalk_id, "cs_id", "cs_lengthm", 
-                                                          "valid_banks", "has_relief", "geometry"), 
-                                    "transects_to_check")
-  start_cols          <- names(transects_to_check)
-  
-  # Create an "is_extended" flag to identify which transects were extended and updated 
-  transects_to_check$is_extended <- FALSE
-  
-  # keep track of any transects that having missing values in either valid_banks/has_relief columns, 
-  # these get added back to the updated data at the end
-  missing_bank_or_relief_data <- 
-    transects_to_check %>% 
-    dplyr::filter(is.na(valid_banks) | is.na(has_relief))
-  
-  # TODO: Probably remove this
-  count_check <- nrow(dplyr::filter(transects_to_check, valid_banks & has_relief)) + 
-    nrow(dplyr::filter(transects_to_check, !valid_banks | !has_relief)) == 
-    nrow(transects_to_check) - nrow(missing_bank_or_relief_data)
-  
-  if(!count_check) {
-    warning(paste0(nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
-  }
-  
-  # add distances to extend for the left and right side of a transect
-  # for any of the the already "valid transects", we just set an extension distance of 0 
-  # on both sides and these transects will be KEPT AS IS
-  # also set any missing valid_banks or has_relief values to 0
-  transects_to_check <- add_attribute_based_extension_distances(transects = transects_to_check, 
-                                                                scale = scale, 
-                                                                length_col = "cs_lengthm"
-  )
-
-  if(verbose) { message(paste0("Extending ", nrow(transects_to_check), 
-                               " transects without valid banks or relief by ",     
-                               scale * 100, "%...")) }
-  
-  # extend the transects based on the 'extension_distance' column (meters)
-  extended_transects <- extend_transects_sides(
-    transects    = transects_to_check,
-    flowlines    = net,
-    crosswalk_id = crosswalk_id,
-    cs_id        = "cs_id",
-    grouping_id  = crosswalk_id,
-    direction    = direction
-  ) 
-  
-  # Set the is_extended flag based on if either the left OR the right side were extended
-  extended_transects <- 
-    extended_transects %>% 
-    hydroloom::rename_geometry("geometry") %>%
-    dplyr::mutate(
-      is_extended = dplyr::case_when(
-        left_is_extended | right_is_extended ~ TRUE,
-        TRUE                                 ~ FALSE
-      )
-    ) %>% 
-    dplyr::select(
-      -left_distance,
-      -right_distance,
-      -extension_distance,
-      -left_is_extended, 
-      -right_is_extended
-    )
-  
-  # Try and fix any transects that cross multiple 
-  is_multi_intersecting <- lengths(sf::st_intersects(extended_transects)) != 1
-  
-  # replace any extended geoms that have multiple intersections with the original UNEXTENDED version of those same transects
-  sf::st_geometry(extended_transects[is_multi_intersecting, ]) <- sf::st_geometry(transects_to_check[is_multi_intersecting, ])
-  
-  # update the lengths and is_extended flag to align with the above replacement of geometries
-  extended_transects[is_multi_intersecting, ]$cs_lengthm       <- transects_to_check[is_multi_intersecting, ]$cs_lengthm
-  extended_transects[is_multi_intersecting, ]$is_extended      <- transects_to_check[is_multi_intersecting, ]$is_extended
-  
-  # TODO: 
-  # TODO:  this won't work as expected currently, in case any transects were removed by the self intersection removal above
-  # TODO: if any were removed, then "transects_to_check" is not guarenteed to have the same indices so the below logical\
-  # TODO: won't work as desired
-  is_multi_intersecting_flowlines <- lengths(sf::st_intersects(extended_transects, net)) != 1
-  
-  # replace any extended geoms that have multiple intersections with any flowlines (replacing with the original set of transects)
-  sf::st_geometry(extended_transects[is_multi_intersecting_flowlines, ])  <- sf::st_geometry(transects_to_check[is_multi_intersecting_flowlines, ])
-  
-  # update the lengths and is_extended flag to align with the above replacement of geometries
-  extended_transects[is_multi_intersecting_flowlines, ]$cs_lengthm        <- transects_to_check[is_multi_intersecting_flowlines, ]$cs_lengthm
-  extended_transects[is_multi_intersecting_flowlines, ]$is_extended       <- transects_to_check[is_multi_intersecting_flowlines, ]$is_extended
-  
-  # remove transects that intersect with OTHER TRANSECTS
-  extended_transects <- 
-    extended_transects[lengths(sf::st_intersects(extended_transects)) == 1, ] %>% 
-    dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-    # dplyr::group_by(hy_id) 
-    # dplyr::mutate(cs_id = 1:dplyr::n()) %>%
-    dplyr::ungroup()
-  
-  # remove transects that intersect multiple flowlines
-  extended_transects <- 
-    extended_transects[lengths(sf::st_intersects(extended_transects, net)) == 1, ] %>% 
-    dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-    # dplyr::mutate(cs_id = 1:dplyr::n()) %>%
-    dplyr::ungroup()
-  
-  # check to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT, 
-  # and raise an error if they're are missing hy_id/cs_ids
-  input_uids    <- unique(hydrofabric3D::add_tmp_id(transects_to_check, x = crosswalk_id)$tmp_id)
-  output_uids   <- unique(hydrofabric3D::add_tmp_id(extended_transects, x = crosswalk_id)$tmp_id)
-  
-  has_all_uids  <- all(output_uids %in% input_uids)
-  
-  # throw an error if NOT all hy_id/cs_ids are the same in the input and output data
-  if(!has_all_uids) {
-    stop("Missing unique hy_id/cs_id from input transects in the output transects")
-  }
-  
-  return(extended_transects)
-}
 
 #' Given a set of transect lines, a flowline network, extend the transect lines out given distances from the left and right
 #' Flowlines are required to ensure valid transect intersection relationship is maintained
@@ -371,9 +209,6 @@ extend_transects_any_side <- function(
   # number of geometries that will be iterated over, keeping this variable to reference in message block  
   total <- length(transect_crosswalk_id_array)
   
-  # output a message every ~10% intervals
-  number_of_skips  <- 0
-  
   make_progress <- make_progress_bar(TRUE, length(transect_crosswalk_id_array))
   
   for (i in seq_along(transect_crosswalk_id_array)) {
@@ -400,8 +235,6 @@ extend_transects_any_side <- function(
     
     # Skip the iteration if NO extension distance in either direction
     if(no_extension_required) {
-      number_of_skips = number_of_skips + 1
-      
       next
     }
     
@@ -615,9 +448,6 @@ extend_transects_any_side_by_specific_distances <- function(
   # number of geometries that will be iterated over, keeping this variable to reference in message block  
   total <- length(transect_crosswalk_id_array)
   
-  # output a message every ~10% intervals
-  number_of_skips  <- 0
-  
   make_progress <- make_progress_bar(TRUE, length(transect_crosswalk_id_array))
   
   for (i in seq_along(transect_crosswalk_id_array)) {
@@ -640,15 +470,11 @@ extend_transects_any_side_by_specific_distances <- function(
       (left_distance_to_extend == 0 || is.na(left_distance_to_extend) || is.null(left_distance_to_extend)) && 
         (right_distance_to_extend == 0 || is.na(right_distance_to_extend) || is.null(right_distance_to_extend)) 
     )
-    # no_extension_required <- (left_distance_to_extend == 0 && right_distance_to_extend == 0)
-    
+
     # Skip the iteration if NO extension distance in either direction
     if(no_extension_required) {
-      number_of_skips = number_of_skips + 1
-      
       next
     }
-    
     
     # extend the transects by the prescribed distances
     left_extended_trans  <- hydrofabric3D::geos_extend_line(current_trans, 
@@ -656,19 +482,16 @@ extend_transects_any_side_by_specific_distances <- function(
     right_extended_trans <- hydrofabric3D::geos_extend_line(current_trans, 
                                                             right_distance_to_extend, "tail")
     
-    # TODO version 2:
     # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
     use_left_extension  <- is_valid_transect_line2(
       left_extended_trans,
       transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid],
-      # transects_geos[transect_group_id_array == transect_group_id_array[i]], 
       flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
     ) 
     
     use_right_extension <- is_valid_transect_line2(
       right_extended_trans, 
       transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid],
-      # transects_geos[transect_group_id_array == transect_group_id_array[i]], 
       flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
     )
     
@@ -683,16 +506,13 @@ extend_transects_any_side_by_specific_distances <- function(
     # we try HALF the distance (or some distane less than we extended by in the first place)
     if (!use_left_extension) {
       
-      # half_left_distance   <- ifelse(left_distance_to_extend > 0, left_distance_to_extend %/% 2, 0)
       left_extended_trans  <- hydrofabric3D::geos_extend_line(current_trans, 
                                                               half_left_distance, "head")
-      # TODO version 2:
+
       # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
-      # if (!is.null(intersect_group_id)) {
       use_left_extension  <- is_valid_transect_line2(
         left_extended_trans,
         transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid],
-        # transects_geos[transect_group_id_array == transect_group_id_array[i]], 
         flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
       ) 
       
@@ -710,7 +530,6 @@ extend_transects_any_side_by_specific_distances <- function(
       use_right_extension <- is_valid_transect_line2(
         right_extended_trans, 
         transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid],
-        # transects_geos[transect_group_id_array == transect_group_id_array[i]], 
         flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
       )
       
@@ -733,14 +552,6 @@ extend_transects_any_side_by_specific_distances <- function(
     # create the new transect line
     updated_trans  <- make_line_from_start_and_end_pts(start, end, line_crs)
     
-    # TODO: in case the above code is making a copy, below should NOT ( i dont think creating start/end is a copy but just a pointer to the data)
-    # updated_trans  <- make_line_from_start_and_end_pts(extension_pts[1], extension_pts[2], line_crs) 
-    
-    # use_left_extension <- TRUE
-    # used_half_of_left <- F
-    # left_distance_to_extend <- 100
-    # half_left_distance <- left_distance_to_extend / 2
-    
     left_extended_flag[i]   <- use_left_extension
     right_extended_flag[i]  <- use_right_extension
     updated_left_distance   <- ifelse(use_left_extension, 
@@ -762,41 +573,6 @@ extend_transects_any_side_by_specific_distances <- function(
       # last step is to replace the original transect with the updated transect (extended)
       transects_geos[i] <- updated_trans
     }
-    
-    # # last step is to replace the original transect with the updated transect (extended)
-    # transects_geos[i] <- updated_trans
-    # 
-    # # flag if left extension happened
-    # if(use_left_extension) {
-    #   left_extended_flag[i]  <- TRUE
-    # }
-    # 
-    # # flag if right extension happened
-    # if(use_right_extension) {
-    #   right_extended_flag[i] <- TRUE
-    # }
-    # 
-    # # update the left extension distance if half the original distance was used
-    # if (used_half_of_left) {
-    #   left_distances[i]  <- half_left_distance 
-    #   # updated_left_distances[i]  <- half_left_distance 
-    # }
-    # 
-    # # update the right extension distance if half the original distance was used   
-    # if (used_half_of_right) {
-    #   right_distances[i] <- half_right_distance
-    #   # updated_right_distances[i] <- half_right_distance 
-    # }
-    # 
-    # # TODO: review this, didnt have this check before so theoretically, an iteration could happen where neither left or right extensions were used, but we still 
-    # # TODO: set the transect to the updated transect
-    # if (use_left_extension || use_right_extension) {
-    #   # last step is to replace the original transect with the updated transect (extended)
-    #   transects_geos[i] <- updated_trans
-    # }
-    # 
-    # # last step is to replace the original transect with the updated transect (extended)
-    # transects_geos[i] <- updated_trans
     
   }      
   
@@ -934,9 +710,6 @@ extend_transects_both_sides <- function(
   # number of geometries that will be iterated over, keeping this variable to reference in message block  
   total <- length(transect_crosswalk_id_array)
   
-  # output a message every ~10% intervals
-  number_of_skips  <- 0
-  
   make_progress <- make_progress_bar(TRUE, length(transect_crosswalk_id_array))
   
   for (i in seq_along(transect_crosswalk_id_array)) {
@@ -958,8 +731,6 @@ extend_transects_both_sides <- function(
     
     # Skip the iteration if NO extension distance is prescribed 
     if (no_extension_required) {
-      number_of_skips <- number_of_skips + 1
-      
       next
     }
     
@@ -1024,233 +795,6 @@ extend_transects_both_sides <- function(
     
   }      
   
-  # Update the "transects_to_extend" with new geos geometries ("geos_list")
-  sf::st_geometry(transects)   <- sf::st_geometry(sf::st_as_sf(transects_geos))
-  
-  # replace the distance values so that any transects that were extended HALFWAY will be accounted for
-  transects$left_distance      <- extension_distances
-  transects$right_distance     <- extension_distances
-  
-  # Flags indicating if extensions happened or not (probably can just be dropped)
-  transects$left_is_extended   <- is_extended_flag
-  transects$right_is_extended  <- is_extended_flag
-  
-  transects <- hydroloom::rename_geometry(transects, "geometry")
-  
-  transects <-
-    transects %>% 
-    dplyr::mutate(
-      cs_lengthm = as.numeric(sf::st_length(.))
-    ) %>% 
-    dplyr::relocate(
-      dplyr::any_of(c(crosswalk_id, cs_id)),
-      cs_lengthm
-    )
-  
-  transects <- move_geometry_to_last(transects)
-  
-  return(transects)
-  
-}
-
-#' Given a set of transect lines, a flowline network, extend the transect lines out given distances from the left and right
-#' Flowlines are required to ensure valid transect intersection relationship is maintained
-#'
-#' @param transects sf dataframe of linestrings, requires crosswalk_id, cs_id, grouping_id columns and numeric 'extension_distance' column indicating the distance to extend 
-#' @param flowlines sf dataframe of linestrings
-#' @param crosswalk_id character, column name that connects features in transects to flowlines
-#' @param cs_id character, column name that uniquely identifies transects within a flowline
-#' @param grouping_id character, column name in both transects and flowlines that denotes which flowlines are grouped with which transects.
-#' @importFrom utils str
-#' @importFrom geos as_geos_geometry
-#' @importFrom wk wk_crs 
-#' @importFrom sf st_geometry st_as_sf st_length
-#' @importFrom hydroloom rename_geometry 
-#' @importFrom dplyr mutate relocate any_of
-#' @return transects sf dataframe with extended transect geometries, left and right distance columns, and flags indicating if the transect was extended in the left and/or right directions
-#' @noRd
-#' @keywords internal
-extend_transects_both_sides2 <- function(
-    transects,
-    flowlines,
-    crosswalk_id,
-    cs_id       = "cs_id",
-    grouping_id = "mainstem"
-) {
-  
-  # ----------------------------------------------------------------------------------
-  # ----------- Input checking ------
-  # ----------------------------------------------------------------------------------
-  
-  flowlines  <- hydroloom::rename_geometry(flowlines, "geometry") 
-  transects  <- hydroloom::rename_geometry(transects, "geometry") 
-  
-  is_flowlines_valid <- validate_df(flowlines, 
-                                    c(crosswalk_id, grouping_id, "geometry"), 
-                                    "flowlines")
-  
-  # validate input graph
-  is_transects_valid <- validate_df(transects, 
-                                    c(crosswalk_id, cs_id, grouping_id, "extension_distance", "geometry"), 
-                                    "transects")
-  
-  if(!crosswalk_id %in% names(flowlines)) {
-    stop("crosswalk_id '", crosswalk_id, "' is not a column in 'flowlines' input,\n", 
-         "Please provide a valid 'crosswalk_id' that crosswalks 'flowlines' to 'transects'")
-  }
-  
-  if(!crosswalk_id %in% names(transects)) {
-    stop("crosswalk_id '", crosswalk_id, "' is not a column in 'transects' input,\n", 
-         "Please provide a valid 'crosswalk_id' that crosswalks the 'transects' to 'flowlines'")
-  }
-  
-  if(!cs_id %in% names(transects)) {
-    stop("cs_id '", cs_id, "' is not a column in 'transects' input,\n", 
-         "Please provide a valid 'cs_id' column name from 'transects'.\n",
-         "The 'cs_id' should uniquely identify each transect lines within a flowline.\n", 
-         "(ID for each transect within the crosswalk_id)")
-  }
-  
-  if(!grouping_id %in% names(flowlines)) {
-    stop("grouping_id '", grouping_id, "' is not a column in 'flowlines' input,\n", 
-         "Please provide a valid 'grouping_id' that associates each transect line with 1 or more flowlines in 'flowlines'"
-    )
-  }
-  
-  if(!grouping_id %in% names(transects)) {
-    stop("grouping_id '", grouping_id, "' is not a column in 'transects' input,\n", 
-         "Please provide a valid 'grouping_id' that associates each transect line with 1 or more flowlines in 'flowlines'"
-    )
-  }
-  
-  if(!'extension_distance' %in% names(transects)) {
-    stop("transects is missing a numeric 'extension_distance' column.\n", 
-         "A numeric 'extension_distance' column must be present to indicate the distance to extend each transect from both sides of the transect."
-    )
-  }
-  
-  fline_id_array   <- flowlines[[crosswalk_id]]
-  
-  # TODO: next time, change this function to ONLY process transects that have ANY extension distance, right now we iterate through ALL transects,
-  # TODO: and 'next' the ones with the no extension distance so doesn't really matter much but 
-  
-  # Convert the net object into a geos_geometry
-  flowlines_geos       <- geos::as_geos_geometry(flowlines)
-  transects_geos       <- geos::as_geos_geometry(transects)
-  
-  # stash the CRS of the transects to use when making the new extended transect lines
-  line_crs             <- wk::wk_crs(transects)
-  
-  transect_crosswalk_id_array   <- transects[[crosswalk_id]]
-  transect_cs_id_array          <- transects[[cs_id]]
-  transect_uid_array            <- paste0(transect_crosswalk_id_array, "_", transect_cs_id_array) 
-  
-  # Intersect grouping IDs
-  fline_group_id_array      <- flowlines[[grouping_id]]
-  transect_group_id_array   <- transects[[grouping_id]]
-  
-  # extension distance vector 
-  extension_distances  <- transects$extension_distance
-  
-  # preallocate vectors for storing if transect was extended and from which directions
-  is_extended_flag <- rep(FALSE, length(transect_crosswalk_id_array))
-  # both_extended_flag   <- rep(FALSE, length(transect_crosswalk_id_array))
-  
-  # number of geometries that will be iterated over, keeping this variable to reference in message block  
-  total <- length(transect_crosswalk_id_array)
-  
-  # output a message every ~10% intervals
-  number_of_skips  <- 0
-  
-  make_progress <- make_progress_bar(TRUE, length(transect_crosswalk_id_array))
-  
-  
-  for (i in seq_along(transect_crosswalk_id_array)) {
-    make_progress()
-    
-    # get the current transect, hy_id, cs_id, flowline, and extension distances
-    current_trans <- transects_geos[i]
-    
-    current_hy_id <- transect_crosswalk_id_array[i]
-    current_cs_id <- transect_cs_id_array[i]
-    current_uid   <- transect_uid_array[i]
-    
-    # distance to try extending
-    distance_to_extend <- extension_distances[i]
-    
-    # skip the iteration if no extension required
-    no_extension_required <- distance_to_extend == 0 || is.na(distance_to_extend) || is.null(distance_to_extend)
-    
-    # Skip the iteration if NO extension distance is prescribed 
-    if (no_extension_required) {
-      number_of_skips <- number_of_skips + 1
-      
-      next
-    }
-    
-    # extend the transects by the prescribed distances
-    extended_trans <- hydrofabric3D::geos_extend_line(
-      current_trans,
-      distance_to_extend,
-      dir = "both"
-    )
-
-    # check whether the extension is valid and should be used 
-    # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
-    use_extension <- is_valid_transect_line2(
-      extended_trans,
-      transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid],
-      # transects_geos[transect_group_id_array == transect_group_id_array[i]], 
-      flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
-    )
-    
-    used_half_of_extension <- FALSE
-    
-    # TODO: Probably should precompute this division BEFORE the loop...
-    half_distance   <- ifelse(distance_to_extend > 0, distance_to_extend %/% 2, 0)
-    
-    if (!use_extension) {
-      
-      extended_trans  <- hydrofabric3D::geos_extend_line(
-        current_trans, 
-        half_distance, 
-        "both"
-      )
-      
-      # Check that the half extension distance transect is valid
-      # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
-      use_extension          <- is_valid_transect_line2(
-        extended_trans,
-        transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid],
-        # transects_geos[transect_group_id_array == transect_group_id_array[i]], 
-        flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
-      ) 
-      
-      # TODO: this is dumb, TRUE if TRUE ELSE FALSE 
-      used_half_of_extension <- ifelse(use_extension, TRUE,  FALSE)
-      
-    } 
-    
-    # set is extended flag
-    is_extended_flag[i]     <- use_extension
-    
-    # get the extension distance (might have been cut in half), if no extension happened, then distance is 0
-    updated_distance        <- ifelse(use_extension, 
-                                      ifelse(used_half_of_extension, half_distance, distance_to_extend),
-                                      0
-    )
-    
-    extension_distances[i]  <- updated_distance 
-    
-    # update the transect geos to the extended transect (if use_extension is TRUE)
-    if(use_extension) {
-      # TODO: Review this, i think this is right but not sure
-      # last step is to replace the original transect with the updated transect (extended)
-      transects_geos[i] <- extended_trans
-    }
-    
-  }      
- 
   # Update the "transects_to_extend" with new geos geometries ("geos_list")
   sf::st_geometry(transects)   <- sf::st_geometry(sf::st_as_sf(transects_geos))
   
@@ -1350,7 +894,6 @@ extend_transects_by_distances <- function(
   }
   
   fline_id_array   <- flowlines[[crosswalk_id]]
-  # fline_id_array   <- flowlines$id
   
   # TODO: next time, change this function to ONLY process transects that have ANY extension distance, right now we iterate through ALL transects,
   # TODO: and 'next' the ones with the no extension distance so doesn't really matter much but 
@@ -1381,8 +924,6 @@ extend_transects_by_distances <- function(
   # number of geometries that will be iterated over, keeping this variable to reference in message block  
   total <- length(transect_crosswalk_id_array)
   
-  number_of_skips  <- 0
-  
   make_progress <- make_progress_bar(TRUE, length(transect_crosswalk_id_array))
  
   for (i in seq_along(transect_crosswalk_id_array)) {
@@ -1411,9 +952,6 @@ extend_transects_by_distances <- function(
     
     # Skip the iteration if NO extension distance in either direction
     if(no_extension_required) {
-      # message("Skipping -left/right extension are both 0")
-      number_of_skips <- number_of_skips + 1
-      
       next
     }
     
@@ -1454,11 +992,9 @@ extend_transects_by_distances <- function(
                                                               half_left_distance, "head")
       # TODO version 2:
       # ONLY CHECKING FOR INTERSECTIONS ON CURRENT FLOWLINE NOT WHOLE NETWORK 
-      # if (!is.null(intersect_group_id)) {
       use_left_extension  <- is_valid_transect_line2(
         left_extended_trans,
         transects_geos[transect_group_id_array == transect_group_id_array[i] & transect_uid_array != current_uid],
-        # transects_geos[transect_group_id_array == transect_group_id_array[i]], 
         flowlines_geos[fline_group_id_array == transect_group_id_array[i]]
       ) 
       
@@ -1531,10 +1067,7 @@ extend_transects_by_distances <- function(
       transects_geos[i] <- updated_trans
     }
 
-    
   }      
-  
-  # })
   
   # Update the "transects_to_extend" with new geos geometries ("geos_list")
   sf::st_geometry(transects) <- sf::st_geometry(sf::st_as_sf(transects_geos))
@@ -1607,7 +1140,6 @@ extend_transects_by_cs_attributes = function(
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
-    # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
   }
   
@@ -1640,8 +1172,6 @@ extend_transects_by_cs_attributes = function(
   
   if(!count_check) {
     warning(paste0(nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
-    # warning(paste0("Different number of transects after splitting data by 'valid_banks' and 'has_relief' columns, ", nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
-    # stop("Mismatch in number of points after splitting data by the 'valid_banks' and 'has_relief' columns, likely a missing value in either 'valid_banks' or 'has_relief' columns")
   }
   
   # add distances to extend for the left and right side of a transect
@@ -1930,197 +1460,4 @@ extend_transects_by_length <- function(
   transects_to_extend$cs_lengthm   <- as.numeric(sf::st_length(transects_to_extend))
   
   return(transects_to_extend)
-}
-
-# TODO: DELETE SOON
-
-# TODO  Deprecated, can be deleted soon (replaced by get_improved_cs_pts(), and then that was replaced by flagging methods)
-
-#' @title Extend a set of transects by a percentage based on banks and relief
-#' Given a set of transect lines with valid_banks and has_relief columns (derived from DEM extracted cross section points), extend any transects 
-#' by a percentage of the transects length if the transect does NOT have valid banks (valid_banks == FALSE) OR it does NOT have relief (has_relief == FALSE).
-#' @param transects_to_check sf linestrings, set of all transects in the network. Requires the following columns: "hy_id", "cs_id", "cs_lengthm" (length of geometry in meters), "valid_banks", and "has_relief"
-#' @param net sf linestrings, flowline network that transects were generated from, requires "id" column (where "id" equals the "hy_id" columns in 'transects_to_check' and 'transects' )
-#' @param scale numeric, percentage of current transect line length to extend transects in transects_to_extend by. Default is 0.5 (50% of the transect length)
-#' @param verbose logical, whether to show a progress bar and progress messages or not. Default is TRUE.
-#' @return sf linestring dataframe containing the the original transects with extensions performed on transects without valid_banks OR has_relief (a "is_extended" flag denotes if the geometry was extended by "scale" % or not)
-#' @importFrom geos as_geos_geometry geos_intersection geos_type geos_intersects
-#' @importFrom sf st_geometry st_as_sf
-#' @importFrom dplyr filter bind_rows
-#' @noRd
-#' @keywords internal
-extend_invalid_transects <- function(
-    transects_to_check, 
-    net, 
-    scale = 0.5,
-    verbose = TRUE
-) {
-  
-  # Create an "is_extended" flag to identify which transects were extended and updated 
-  transects_to_check$is_extended <- FALSE
-  
-  # split input transects into invalid and valid sets (valid == has valid banks AND has relief)
-  invalid_transects  <- dplyr::filter(transects_to_check, !valid_banks | !has_relief)
-  valid_transects    <- dplyr::filter(transects_to_check, valid_banks & has_relief)
-  
-  # keep track of any transects that having missing values in either valid_banks/has_relief columns, 
-  # these get added back to the updated data at the end
-  missing_bank_or_relief_data <- 
-    transects_to_check %>% 
-    dplyr::filter(is.na(valid_banks) | is.na(has_relief))
-  
-  # TODO: Probably remove this
-  count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check)
-  # count_check <- nrow(valid_transects) + nrow(invalid_transects) == nrow(transects_to_check) - nrow(missing_bank_or_relief_data)
-  
-  if(!count_check) {
-    warning(paste0(nrow(missing_bank_or_relief_data), " transects have NA values in either 'valid_banks' or 'has_relief' columns"))
-  }
-  
-  if(verbose) { message(paste0("Extending ", nrow(invalid_transects), " transects without valid banks or relief by ",     scale * 100, "%...")) }
-  
-  # Extend the transects by a scale % value
-  extended_trans <- extend_by_percent(invalid_transects, scale, "cs_lengthm")
-  
-  # Store the identifying information to use in for loop to subset data using IDs
-  fline_id_array <- net$id
-  hy_id_array    <- extended_trans$hy_id
-  cs_id_array    <- extended_trans$cs_id
-  
-  check_hy_id_array <- transects_to_check$hy_id
-  check_cs_id_array <- transects_to_check$cs_id
-  
-  # Convert extended transects to geos
-  extended_trans           <- geos::as_geos_geometry(extended_trans)
-  transects_to_check_geos  <- geos::as_geos_geometry(transects_to_check)
-  
-  # Convert the net object into a geos_geometry
-  net_geos        <- geos::as_geos_geometry(net)
-  
-  # Convert the original transect lines to geos_geometries and when 
-  # a valid extension comes up in the below for loop, replace the old geometry with the newly extended one
-  geos_list       <- geos::as_geos_geometry(invalid_transects$geom)
-  
-  # Preallocate vectors to store the "is_extended" flag and the new lengths after extensions:
-  # - if an extension is VALID (checked in the loop below), then 
-  #   set the "is_extended" flag to TRUE and update the cross section length 
-  #   to use the new extended length
-  extended_flag <- rep(FALSE, length(extended_trans))
-  length_list   <- invalid_transects$cs_lengthm
-  
-  make_progress <- make_progress_bar(verbose, length(extended_trans))
-  
-  # loop through geometries that might need to be extended, try to extend, and then update 
-  # the 'to_extend' values IF the extended transectr does NOT violate any intersection rules
-  for (i in 1:length(extended_trans)) {
-    
-    # Get the current transect, hy_id, cs_id
-    current_hy_id <- hy_id_array[i]
-    current_cs_id <- cs_id_array[i]
-    
-    # # Make sure that newly extended transect line only intersects its origin flowline at MOST 1 time
-    # # AND that the newly extended transect does NOT intersect with any previously computed transect lines
-    # fline_intersect <- geos::geos_intersection(extended_trans[i], current_fline)
-    
-    # Check that the extended transect lines only intersect a single flowline in the network only ONCE
-    intersects_with_flowlines <- geos::geos_intersection(
-      extended_trans[i],     
-      net_geos[fline_id_array == current_hy_id]
-    )
-    
-    # Check that newly extended cross section only intersects its origin flowline at MOST 1 time 
-    # (This value will be a "MULTIPOINT" if it intersects more than once and will evaluate to FALSE)
-    intersects_flowline_only_once <- sum(geos::geos_type(intersects_with_flowlines) == "point") == 1 && 
-      sum(geos::geos_type(intersects_with_flowlines) == "multipoint") == 0 
-    
-    if(!intersects_flowline_only_once) {
-      next
-    }
-    
-    # Check that extended transect doesn't intersect with any of the original cross sections on this "hy_id"
-    is_intersecting_other_transects      <- any(geos::geos_intersects(
-      extended_trans[i], 
-      # AKA neighbor_transects
-      transects_to_check_geos[check_hy_id_array == current_hy_id & check_cs_id_array != current_cs_id]
-    ) 
-    )
-    
-    if (is_intersecting_other_transects) {
-      next   
-    }
-    # Check that extended transect doesn't intersect with any of the NEWLY EXTENDED cross sections
-    is_intersecting_other_extended_transects <- any(geos::geos_intersects(extended_trans[i], extended_trans[-i]))
-    
-    if (is_intersecting_other_extended_transects) {
-      next   
-    }
-    
-    # If all of these conditions are TRUE then the currently extended transect will get inserted into "to_extend"
-    # - Newly extended transect intersects with its flowlines AT MOST 1 time
-    # - Newly extended transect does NOT intersect with any of the other NEWLY EXTENDED transect lines
-    # - Newly extended transect does NOT intersect with any of the ORIGINAL transect lines
-    if (
-      # Check that newly extended cross section only intersects its origin flowline at MOST 1 time 
-      # (This value will be a "MULTIPOINT" if it intersects more than once and will evaluate to FALSE)
-      intersects_flowline_only_once && 
-      
-      # Check that extended transect doesn't intersect with any of the NEWLY EXTENDED cross sections
-      !is_intersecting_other_extended_transects && 
-      
-      # Check that extended transect doesn't intersect with any of the original cross sections on this "hy_id"
-      !is_intersecting_other_transects
-    ) {
-      
-      # # Calculate the updated cross section length to align with the newly extended cross section for this row
-      updated_cs_length <- (length_list[i] * scale) + length_list[i]
-      # updated_cs_length <- (current_length * scale) + current_length
-      
-      # copy the current cross section length
-      length_list[i] <- updated_cs_length
-      
-      # Update the transect geometry with the newly extended transect
-      geos_list[i] <- extended_trans[i]
-      
-      # Set the extended flag to TRUE for this transect
-      extended_flag[i] <- TRUE
-    } 
-    
-    make_progress()
-  }
-  
-  if(verbose) { message(paste0("Complete!")) }
-  
-  # Update the "invalid_transects" with new geos geometries ("geos_list")
-  sf::st_geometry(invalid_transects) <- sf::st_geometry(sf::st_as_sf(geos_list))
-  
-  # update the "is_extended" flag and the cross section lengths to reflect any extensions
-  invalid_transects$is_extended <- extended_flag
-  invalid_transects$cs_lengthm  <- length_list
-  
-  # Combine the valid_transects with the UPDATED invalid_transects (updated by attempting extension) to get the final output dataset
-  extended_transects <- dplyr::bind_rows(
-    valid_transects,
-    invalid_transects
-  )
-  
-  # add back any transects that were missing banks/relief values 
-  extended_transects <- dplyr::bind_rows(
-    extended_transects,
-    dplyr::select(missing_bank_or_relief_data, 
-                  dplyr::any_of(names(extended_transects)))
-  )
-  
-  # check to make sure all unique hy_id/cs_id in the INPUT are in the OUTPUT, 
-  # and raise an error if they're are missing hy_id/cs_ids
-  input_uids  <- unique(hydrofabric3D::add_tmp_id(transects_to_check)$tmp_id)
-  output_uids <- unique(hydrofabric3D::add_tmp_id(extended_transects)$tmp_id)
-  
-  has_all_uids  <- all(output_uids %in% input_uids)
-  
-  # throw an error if NOT all hy_id/cs_ids are the same in the input and output data
-  if(!has_all_uids) {
-    stop("Missing unique hy_id/cs_id from input transects in the output transects")
-  }
-  
-  return(extended_transects)
 }

@@ -41,7 +41,7 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", "polygon_index",
-    "crosswalk_id", "extend_invalid_transects2",
+    "crosswalk_id",  
     "anchors", "deriv_type", "edge", "extension_distance", 
     "left_is_extended", "right_is_extended", "to_node", "verbose", 
     "toindid", "indid", "toid", "is", "internal_is_braided2"
@@ -80,6 +80,8 @@ get_validity_tally <- function(x, crosswalk_id = NULL) {
 #' @importFrom sf st_drop_geometry
 #' @importFrom dplyr group_by slice ungroup mutate select any_of
 #' @return dataframe with added validity_score column
+#' @noRd
+#' @keywords internal
 calc_validity_scores <- function(cs_to_validate, 
                                  crosswalk_id = NULL, 
                                  validity_col_name = "validity_score") {
@@ -95,7 +97,6 @@ calc_validity_scores <- function(cs_to_validate,
       validity_score = valid_banks + has_relief
     ) %>% 
     dplyr::select(
-      # hy_id, 
       dplyr::any_of(crosswalk_id),
       cs_id, valid_banks, has_relief, validity_score)
   
@@ -130,7 +131,7 @@ compare_cs_validity <- function(cs_pts1,
     add_tmp_id(crosswalk_id) %>% 
     dplyr::rename(score2 = validity_score)
   
-  # mark as "improved" for any hy_id/cs_ids that increased "validity score" after extending
+  # mark as "improved" for any crosswalk_id/cs_ids that increased "validity score" after extending
   check_for_improvement <- dplyr::left_join(
     # OLD SCORES
     validity_scores1 %>%

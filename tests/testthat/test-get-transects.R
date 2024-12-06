@@ -64,7 +64,7 @@ testthat::test_that("get_transects won't create a transect if it will intersect 
     ) %>% 
     sf::st_transform(5070) %>% 
     smoothr::densify(20)
-  
+    
   NUMBER_OF_TRANSECTS <- 10
   
   # At this width, one of the transect lines would intersect a previously created one, therefore, its not created

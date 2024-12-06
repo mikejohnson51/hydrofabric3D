@@ -41,7 +41,7 @@ utils::globalVariables(
     "partition_lengthm", "left_fema_index", "right_fema_index", 
     "left_is_within_fema", "right_is_within_fema", "left_distance", "right_distance",
     "new_cs_lengthm", "polygon_index",
-    "crosswalk_id", "extend_invalid_transects2",
+    "crosswalk_id",  
     "anchors", "deriv_type", "edge", "extension_distance", 
     "left_is_extended", "right_is_extended", "to_node", "verbose", 
     "toindid", "indid", "toid", "is", "internal_is_braided2"
@@ -222,13 +222,6 @@ fix_braided_transects <- function(
   # - Mark them to be processed in a future step
   for(i in 1:nrow(xs)) {
     
-    # 1 = braid2_components
-    # 2 = braid_components
-    # 3 = braid2_comids
-    # 4 = braid2_neighs
-    # 5 = braid_comids
-    # 6 = braid_neighs
-    
     # current cross section
     curr <- xs[i, ]
     
@@ -255,21 +248,7 @@ fix_braided_transects <- function(
       method       = method
     )
     
-    # # get information on extension distance and position of cross section
-    # extend_maps <- geos_augment_transect(
-    #   cs_line       = cs_line,
-    #   cs_width      = cs_width,
-    #   bf_width      = bf_width,
-    #   crosswalk_id            = com,
-    #   geoms_to_cut  = others$geometry,
-    #   geom_ids      = others$comid,
-    #   max_distance  = NULL,
-    #   by            = precision, 
-    #   # as_df         = FALSE,
-    #   carry_geom    = FALSE
-    # )
-    
-    extend_maps <- geos_augment_transect2(
+    extend_maps <- geos_augment_transect(
       cs_line       = cs_line,
       crosswalk_id            = com,
       geoms_to_cut  = others$geometry,
@@ -817,163 +796,6 @@ geos_extend_transects <- function(
   
 }
 
-#' Determine the distances needed to extend a transect linestring geometry across neighboring flowlines
-#' Internal function that takes a transect line, and a set of nearby geos_geometries that the transect line should be compared against to see how far the given transect line should be
-#' extended in both directions in order to cross over all the avaliable nearby flowline geos_geometries. Specifically to be used for situations where a river network is braided. 
-#' @param cs_line geos_geometry, transect line to try and extend to cover braided river sections. 
-#' @param cs_width numeric, cross section width of cs_line (meters) 
-#' @param bf_width numeric, bankful width of cs_line (meters) 
-#' @param crosswalk_id integer or character, unique ID of flowline geometry (i.e. COMID)
-#' @param geoms_to_cut geos_geometry, other lingestrings (flowlines) of network that "cross_section" should attempt to extend out to, and to cut across 
-#' @param geom_ids character, unique identifier (comid/hy_id) of transect line 
-#' @param max_distance numeric, maximum distance (meters) to extend line out by
-#' @param by numeric, distance to incrementelly extend out transect line. 
-#' @param carry_geom logical, whether to carry geometries and keep them in the functions return. Default is TRUE, which will return the extended geometries with the function returns. 
-#' @noRd
-#' @keywords internal
-#' @return dataframe or list of fastmap::fastmap() objects with meta data describing how far to extend a given transect line, in which directions and the relative position of the transect line. 
-#' @importFrom geos as_geos_geometry
-#' @importFrom fastmap fastmap
-geos_augment_transect <- function(
-    cs_line,
-    cs_width,
-    bf_width,
-    crosswalk_id,
-    geoms_to_cut, 
-    geom_ids,
-    max_distance = NULL,
-    by = NULL, 
-    carry_geom = TRUE
-) {
-  
-  # max distance from transect of interest and rest of braid flowlines 
-  # TODO (need a better method of determing max possible extension of flowline)
-  # max_dist <- as.numeric(max(sf::st_distance(geoms_to_cut, x)))
-  
-  # # cs_line <- geos::as_geos_geometry(cross_section$geometry)
-  # 
-  # # extract values from cross_section dataframe
-  # cs_width <- cross_section$cs_widths
-  # bf_width <- cross_section$bf_width
-  # crosswalk_id       <- cross_section$hy_id
-  
-  # # convert cross_section geometry columns to geos_geometry
-  # cs_line  <- geos::as_geos_geometry(cross_section$geometry)
-  # cs_line  <- cross_section$geometry
-  
-  # if no "by" argument is given, then the default becomes bf_width/2
-  if(is.null(max_distance)) {
-    max_distance <- max(cs_width * 5)
-  }
-  
-  # if no "by" argument is given, then the default becomes bf_width/2
-  if(is.null(by)) {
-    by = bf_width/2
-  }
-  
-  # sequence from 0 to the max possible extension distance 
-  dist_vect <- seq(0, max(c(max_distance, 2000)), by = by)
-  
-  # default count of intersections for line extension in a given directionis set to 1, 
-  # and then check for the actual total maximum number of possible lines that could be crossed by 
-  # the extended version of the cross section geometry. This is done in both directions
-  
-  head_check = 1
-  tail_check = 1
-  
-  # head_check <- sum( geos::geos_intersects( 
-  #                   geos_extend_line(cs_line, max(dist_vect), "head"),
-  #                   geoms_to_cut),  na.rm = TRUE)
-  # 
-  # tail_check <- sum(geos::geos_intersects( 
-  #                   geos_extend_line(cs_line, max(dist_vect), "tail"),
-  #                   geoms_to_cut),  na.rm = TRUE)
-  
-  
-  # EXTEND OUT lines 
-  # extend transect line out in both directions and find the side that interests with m
-  # extend line out from HEAD side of line 
-  # the line will extend out until it has gone "max_distance" AND all the possible flowlines have been intersected with 
-  head_map <- geos_extend_out(
-    x             = 1,
-    line          = cs_line, 
-    distances     = dist_vect,
-    geoms_to_cut  = geoms_to_cut, 
-    geom_ids      = geom_ids,
-    ids           = c(crosswalk_id), 
-    dir           = "head",
-    final_count   = head_check,
-    map           = TRUE
-  )
-  
-  # extend line out from TAIL side of line 
-  # the line will extend out until it has gone "max_distance" AND all the possible flowlines have been intersected with 
-  tail_map <- geos_extend_out(
-    x             = 1,
-    line          = cs_line, 
-    distances     = dist_vect,
-    geoms_to_cut  = geoms_to_cut, 
-    geom_ids      = geom_ids,
-    ids           = c(crosswalk_id), 
-    dir           = "tail",
-    final_count   = tail_check,
-    map           = TRUE
-  )
-  
-  # get the relative position within the braid of the linestring we are extending our transect out from
-  position <- check_relative_position(
-    head_count = head_map$get("count"),
-    tail_count = tail_map$get("count")
-  )
-  
-  # POSITION VALUES explanation:
-  # given the count of interesections from the head and tail of a linestring, return whether the line has:
-  # - NO_INTERSECTION:: (after extending linestring out to max distance)
-  # - OUTER_SINGLE: extending linestring out in both directions yielded 
-  # zero intersections in one direction AND exactly one intersection in the other direction
-  # - OUTER_MULTI: extending linestring out in both directions yielded 
-  # zero intersections in one direction AND GREATER THAN ONE intersection in the other direction
-  # - INNER: line is in middle (or one of 2 middle lines if even number of total linestrings to cross over)
-  # INNER scenario intersection count (odd and even cases):
-  # intersection counts are EQUAL OR max(head_count, tail_count) - 1 == min(head_count, tail_count)
-  # ----> EDGE CASE: if intersection counts are (0, 1) or (1, 0), these will count as INNER
-  # - IN_BETWEEN/MIDDLE/: This is the else case when the line is between the outer most line (singles or no intersects) and the middle line(s)
-  # ----> SKIP THESE (maybe?) !
-  # TODO: NEED TO CONFIRM THIS IS WHAT WE WANT) ???
-  
-  # if as_df is FALSE, return the line data hashmaps as a list of length 2, 
-  # first list element is the head extension data and the second is the tail extension data
-  
-  # if NOT AN INNER LINE, postpone processesing
-  if(position != "inner") {
-    
-    # set "position" values for these geometries
-    head_map$set("position", position)
-    tail_map$set("position", position)
-    
-  } else {  # if LINE IS A INNER LINE, GET READY TO EXTEND
-    
-    # set "position" values for these geometries
-    head_map$set("position", position)
-    tail_map$set("position", position)
-    
-  }
-  
-  # if carry geom is FALSE, remove geometry linestrings from maps before returning
-  if(!carry_geom) {
-    head_map$remove("line")
-    tail_map$remove("line")
-  }
-  
-  return(
-    list(
-      head = head_map,
-      tail = tail_map
-    )
-  )
-  
-}
-
 #' Determine the distances needed to extend a transect linestring geometry across neighboring flowlines (v2)
 #' Internal function that takes a transect line, and a set of nearby geos_geometries that the transect line should be compared against to see how far the given transect line should be
 #' extended in both directions in order to cross over all the avaliable nearby flowline geos_geometries. Specifically to be used for situations where a river network is braided. 
@@ -989,7 +811,7 @@ geos_augment_transect <- function(
 #' @return dataframe or list of fastmap::fastmap() objects with meta data describing how far to extend a given transect line, in which directions and the relative position of the transect line. 
 #' @importFrom geos as_geos_geometry
 #' @importFrom fastmap fastmap
-geos_augment_transect2 <- function(
+geos_augment_transect <- function(
     cs_line,
     crosswalk_id,
     geoms_to_cut, 
@@ -1002,27 +824,6 @@ geos_augment_transect2 <- function(
   # max distance from transect of interest and rest of braid flowlines 
   # TODO (need a better method of determing max possible extension of flowline)
   # max_dist <- as.numeric(max(sf::st_distance(geoms_to_cut, x)))
-  
-  # # cs_line <- geos::as_geos_geometry(cross_section$geometry)
-  # 
-  # # extract values from cross_section dataframe
-  # cs_width <- cross_section$cs_widths
-  # bf_width <- cross_section$bf_width
-  # crosswalk_id       <- cross_section$hy_id
-  
-  # # convert cross_section geometry columns to geos_geometry
-  # cs_line  <- geos::as_geos_geometry(cross_section$geometry)
-  # cs_line  <- cross_section$geometry
-  
-  # # if no "by" argument is given, then the default becomes bf_width/2
-  # if(is.null(max_distance)) {
-  #   max_distance <- max(cs_width * 5)
-  # }
-  # 
-  # # if no "by" argument is given, then the default becomes bf_width/2
-  # if(is.null(by)) {
-  #   by = bf_width/2
-  # }
   
   # sequence from 0 to the max possible extension distance 
   dist_vect <- seq(0, max(c(max_distance, 2000)), by = by)
@@ -1571,9 +1372,10 @@ geos_extend_line <- function(line,
 
 #' Find the total length of all flowlines of each braid in a NHDPlus dataset
 #' 
-#' Internal function that gets the lengths of each braid ID in an NHDPlus dataset (output of find_braids() function)
+#' Internal function that gets the lengths of each braid ID in a flowline network dataset (output of find_braids() function)
 #' 
-#' @param x sf object of braided flowlines (output of find_braids()). Requires 'braid_id' and 'comid' column.
+#' @param x sf object of braided flowlines (output of find_braids()). Requires 'braid_id' and crosswalk_id column.
+#' @param crosswalk_id character, unique ID column
 #' @param keep_geom logical, whether to keep geometries or not. Default is FALSE to drop geometries
 #' @param multibraid logical, whether to give braid lengths for each braid ID our the braid length of all flowlines in a group of braids (i.e. multibraids). If FALSE (default) the braid length is calculated for each unique braid_id. 
 #' @noRd
@@ -1582,14 +1384,20 @@ geos_extend_line <- function(line,
 #' @importFrom dplyr filter group_by summarize ungroup arrange
 #' @importFrom sf st_length st_drop_geometry
 braid_lengths <- function(x, 
+                          crosswalk_id = NULL,
                           keep_geom = FALSE, 
                           multibraid = FALSE
 ) {
   
+  .data <- NULL
+
   # input check for input 'x'
   if(is.null(x)) {
     stop("missing 'x' input argument")
   }
+
+  # validate input datas
+  is_valid_df        <- validate_df(x, c(crosswalk_id, "braid_id"), "x")
   
   # if multibraid == FALSE, then calculate the length of each unique braid_id
   if(!multibraid) {
@@ -1603,7 +1411,7 @@ braid_lengths <- function(x,
         braid_length = as.numeric(
           sum(sf::st_length(geometry), na.rm = T)
         ),
-        comids = paste0(c(comid), collapse = ", ")
+        !!crosswalk_id := paste0(c(.data[[crosswalk_id]] ), collapse = ", ")
       ) %>%
       dplyr::ungroup() %>% 
       dplyr::arrange(-braid_length)

@@ -2,7 +2,8 @@
 % Please edit documentation in R/transect_extenders_without_network.R
 \name{adjust_flagged_transects}
 \alias{adjust_flagged_transects}
-\title{Update a flagged set of transects by shortening them by the given extension_distance}
+\title{Update a flagged set of transects by shortening them by the given left_distance and right_distance
+Requires 'left_distance' and 'right_distance' columns to specify how much to adjust flagged transects by}
 \usage{
 adjust_flagged_transects(x, crosswalk_id = NULL, reindex_cs_ids = FALSE)
 }
@@ -17,5 +18,6 @@ adjust_flagged_transects(x, crosswalk_id = NULL, reindex_cs_ids = FALSE)
 sf dataframe of transects with updated geometries
 }
 \description{
-Update a flagged set of transects by shortening them by the given extension_distance
+Update a flagged set of transects by shortening them by the given left_distance and right_distance
+Requires 'left_distance' and 'right_distance' columns to specify how much to adjust flagged transects by
 }

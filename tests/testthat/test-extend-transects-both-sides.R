@@ -67,13 +67,6 @@ testthat::test_that("extend_transects_both_sides() test that both sides of a tra
   # plot(flowlines$geometry)
   # plot(extensions$geometry, col = "black", lwd = 4, add = T)
   # plot(transects$geometry, col = "green", lwd = 2, add = T)
-  # # 
-  
-  # mapview::mapview(flowlines) +
-  #   mapview::mapview(extensions, color = "red") +
-  # #   mapview::mapview(extensions_any, color = "red") +
-  # #   mapview::mapview(extensions_both, color = "red") +
-  #   mapview::mapview(transects, color = "green")
   
   left_is_extended  <- extensions$left_is_extended
   right_is_extended <- extensions$right_is_extended
@@ -175,7 +168,6 @@ testthat::test_that("extend_transects_both_sides() test extensions will only go 
   
   # plot(flowlines$geometry)
   # plot(transects$geometry, col = "green", lwd = 2, add = T)
-
   
   extensions <- extend_transects_both_sides(transects    = transects, 
                                             flowlines    = flowlines, 
@@ -187,16 +179,6 @@ testthat::test_that("extend_transects_both_sides() test extensions will only go 
   # plot(flowlines$geometry)
   # plot(extensions$geometry, col = "black", lwd = 4, add = T)
   # plot(transects$geometry, col = "green", lwd = 2, add = T)
-  # 
-  
-  # mapview::mapview(flowlines) +
-  #   mapview::mapview(extensions, color = "red") +
-  # #   mapview::mapview(extensions_any, color = "red") +
-  # #   mapview::mapview(extensions_both, color = "red") +
-  #   mapview::mapview(transects, color = "green")
-  
-  # has_correct_left_extension_dist_value   <- extensions$left_distance == EXT_DIST
-  # has_correct_right_extension_dist_value  <- extensions$right_distance == EXT_DIST
   
   # both the left and right side have the correct extension distance 
   testthat::expect_equal(extensions$left_distance, EXT_DIST)
