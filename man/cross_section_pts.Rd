@@ -5,7 +5,7 @@
 \title{Get Points across transects with elevation values}
 \usage{
 cross_section_pts(
-  cs = NULL,
+  transects = NULL,
   crosswalk_id = NULL,
   points_per_cs = NULL,
   min_pts_per_cs = 10,
@@ -13,7 +13,7 @@ cross_section_pts(
 )
 }
 \arguments{
-\item{cs}{character, Hydrographic LINESTRING Network file path}
+\item{transects}{character, Hydrographic LINESTRING Network file path}
 
 \item{crosswalk_id}{character, ID column}
 

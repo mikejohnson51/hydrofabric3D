@@ -54,7 +54,7 @@ testthat::test_that("check align_banks_and_bottoms() default output columns", {
   )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
+    transects       = transects,
     crosswalk_id    = ID_COL,
     points_per_cs   = POINTS_PER_CS,
     min_pts_per_cs  = MIN_PTS_PER_CS,

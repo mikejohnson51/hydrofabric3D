@@ -53,7 +53,7 @@ testthat::test_that("'has_relief' - (10 flowlines, 3 transects per flowline, def
     )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
+    transects              = transects,
     crosswalk_id    = ID_COL,
     points_per_cs   = POINTS_PER_CS,
     min_pts_per_cs  = MIN_PTS_PER_CS,
@@ -124,7 +124,7 @@ testthat::test_that("'has_relief' - (10 flowlines, 3 transects per flowline, def
     )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
+    transects              = transects,
     crosswalk_id    = ID_COL,
     points_per_cs   = POINTS_PER_CS,
     min_pts_per_cs  = MIN_PTS_PER_CS,

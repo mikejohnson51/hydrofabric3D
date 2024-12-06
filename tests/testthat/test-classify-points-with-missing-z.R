@@ -32,7 +32,7 @@ testthat::test_that("classify_points() - throws an error when empty cross sectio
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -66,7 +66,7 @@ testthat::test_that("classify_points() - throws an error when empty cross sectio
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -96,7 +96,7 @@ testthat::test_that("classify_points() - throws an error when given a not presen
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = "hy_id",
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -125,7 +125,7 @@ testthat::test_that("classify_points() - throws an error when given a not presen
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = "hy_id",
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -157,7 +157,7 @@ testthat::test_that("classify_points() - 1 transects with 1+ NA values
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -187,7 +187,7 @@ testthat::test_that("classify_points() - 1 transects with 1+ NA values
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -216,7 +216,7 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -254,7 +254,7 @@ testthat::test_that("classify_points() - cs_pts for 1 transect that have 1+ NA v
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -288,7 +288,7 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -338,7 +338,7 @@ testthat::test_that("classify_points() - cs_pts for 2 transects where one of the
   # mapview::mapview(raster::raster(DEM_PATH)) + transects
   
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -385,7 +385,7 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
       # mapview::mapview(raster::raster(DEM_PATH)) + transects
       
       cs_pts <- hydrofabric3D::cross_section_pts(
-        cs             = transects,
+        transects             = transects,
         crosswalk_id   = ID_COL,
         points_per_cs  = POINTS_PER_CS,
         min_pts_per_cs = MIN_PTS_PER_CS,
@@ -425,7 +425,7 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
     # mapview::mapview(raster::raster(DEM_PATH)) + transects
     
     cs_pts <- hydrofabric3D::cross_section_pts(
-      cs             = transects,
+      transects             = transects,
       crosswalk_id   = ID_COL,
       points_per_cs  = POINTS_PER_CS,
       min_pts_per_cs = MIN_PTS_PER_CS,
@@ -575,7 +575,7 @@ testthat::test_that("classify_points() - (1 transects) - cs_pts that have 1+ NA 
             # mapview::mapview(raster::raster(DEM_PATH)) + transects
             
             cs_pts <- hydrofabric3D::cross_section_pts(
-              cs             = transects,
+              transects             = transects,
               crosswalk_id   = ID_COL,
               points_per_cs  = POINTS_PER_CS,
               min_pts_per_cs = MIN_PTS_PER_CS,

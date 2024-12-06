@@ -51,7 +51,7 @@ testthat::test_that("transects_to_cs_pts creates correct number of points for 3 
   )
   
   cs <- hydrofabric3D:::add_points_per_cs(
-    cs              = transects,
+    transects              = transects,
     points_per_cs   = NULL,
     min_pts_per_cs  = 10,
     dem             = DEM_PATH
@@ -131,7 +131,7 @@ testthat::test_that("transects_to_cs_pts creates points that intersect the input
   
   # Add points per cross section column
   cs <- hydrofabric3D:::add_points_per_cs(
-    cs              = transects,
+    transects              = transects,
     points_per_cs   = NULL,
     min_pts_per_cs  = 10,
     dem             = DEM_PATH

@@ -4,10 +4,10 @@
 \alias{add_cs_bathymetry}
 \title{Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes}
 \usage{
-add_cs_bathymetry(cross_section_pts = NULL, crosswalk_id = NULL)
+add_cs_bathymetry(cs_pts = NULL, crosswalk_id = NULL)
 }
 \arguments{
-\item{cross_section_pts}{dataframe or sf dataframe. Default is NULL}
+\item{cs_pts}{dataframe or sf dataframe. Default is NULL}
 
 \item{crosswalk_id}{character, ID column}
 }
@@ -15,5 +15,5 @@ add_cs_bathymetry(cross_section_pts = NULL, crosswalk_id = NULL)
 dataframe or sf dataframe with AHG estimated points injected into the input cross section points
 }
 \description{
-Still in early development phases
+Takes in a point of cross section points with added top width (TW), depth (DEPTH), and dingman_r (DINGMAN_R) columns
 }

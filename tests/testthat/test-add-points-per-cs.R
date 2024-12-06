@@ -49,14 +49,14 @@ testthat::test_that("correct points per cross section on 3 transects from single
   transects <- dplyr::select(transects, cs_lengthm)
   
   cs_ppcs <- hydrofabric3D:::add_points_per_cs(
-    cs               = transects,
+    transects               = transects,
     points_per_cs    = POINTS_PER_CS,
     min_pts_per_cs   = MIN_PTS_PER_CS, 
     dem              = DEM_PATH
   )
   
   # hydrofabric3D:::add_points_per_cs(
-    # cs               = transects,
+    # transects               = transects,
     # points_per_cs    = POINTS_PER_CS,
     # min_pts_per_cs   = MIN_PTS_PER_CS, 
     # dem              = DEM_PATH
@@ -110,7 +110,7 @@ testthat::test_that("correct points per cross section on 3 transects from
   transects <- dplyr::select(transects, cs_lengthm)
   
   cs_ppcs <- hydrofabric3D:::add_points_per_cs(
-    cs               = transects,
+    transects               = transects,
     points_per_cs    = POINTS_PER_CS,
     min_pts_per_cs   = MIN_PTS_PER_CS, 
     dem              = DEM_PATH
@@ -168,7 +168,7 @@ testthat::test_that("correct points per cross section on 3 transects from
   testthat::expect_true(
     all(
       hydrofabric3D:::add_points_per_cs(
-          cs               = transects,
+          transects               = transects,
           points_per_cs    = NULL,
           min_pts_per_cs   = 0, 
           dem              = DEM_PATH
@@ -180,7 +180,7 @@ testthat::test_that("correct points per cross section on 3 transects from
   testthat::expect_true(
       all( 
         hydrofabric3D:::add_points_per_cs(
-          cs               = transects,
+          transects               = transects,
           points_per_cs    = NULL,
           min_pts_per_cs   = 1, 
           dem              = DEM_PATH
@@ -192,7 +192,7 @@ testthat::test_that("correct points per cross section on 3 transects from
   testthat::expect_true(
      all( 
       hydrofabric3D:::add_points_per_cs(
-        cs               = transects,
+        transects               = transects,
         points_per_cs    = NULL,
         min_pts_per_cs   = 2, 
         dem              = DEM_PATH
@@ -239,7 +239,7 @@ testthat::test_that("dem argument is ignored if a 'points_per_cs' is given", {
  testthat::expect_true( 
   all(
     hydrofabric3D:::add_points_per_cs(
-        cs               = transects, 
+        transects               = transects, 
         points_per_cs    = POINTS_PER_CS,
         min_pts_per_cs   = MIN_PTS_PER_CS, 
         dem              = testthat::test_path("testdata", "dem_flowlines.tif")
@@ -250,7 +250,7 @@ testthat::test_that("dem argument is ignored if a 'points_per_cs' is given", {
  testthat::expect_true( 
   all(
       hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = POINTS_PER_CS,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = TRUE
@@ -261,7 +261,7 @@ testthat::test_that("dem argument is ignored if a 'points_per_cs' is given", {
   testthat::expect_true(
       all(
         hydrofabric3D:::add_points_per_cs(
-          cs               = transects, 
+          transects               = transects, 
           points_per_cs    = POINTS_PER_CS,
           min_pts_per_cs   = MIN_PTS_PER_CS, 
           dem              = FALSE
@@ -272,7 +272,7 @@ testthat::test_that("dem argument is ignored if a 'points_per_cs' is given", {
   testthat::expect_true(
     all(
       hydrofabric3D:::add_points_per_cs(
-        cs               = transects, 
+        transects               = transects, 
         points_per_cs    = POINTS_PER_CS,
         min_pts_per_cs   = MIN_PTS_PER_CS, 
         dem              = c(213324)
@@ -284,7 +284,7 @@ testthat::test_that("dem argument is ignored if a 'points_per_cs' is given", {
   testthat::expect_true(
     all(
       hydrofabric3D:::add_points_per_cs(
-        cs               = transects, 
+        transects               = transects, 
         points_per_cs    = POINTS_PER_CS,
         min_pts_per_cs   = MIN_PTS_PER_CS, 
         dem              = c("AAA")
@@ -331,7 +331,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = FALSE
@@ -339,7 +339,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   )
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = TRUE
@@ -347,7 +347,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   )
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = c(213324)
@@ -355,7 +355,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   )
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = c("AAA")
@@ -363,7 +363,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   )
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = 100
@@ -372,7 +372,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = "AAAAAAA" 
@@ -381,7 +381,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   
   testthat::expect_no_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = NULL 
@@ -390,7 +390,7 @@ testthat::test_that("error giving bad dem arguments when POINTS_PER_CS is NULL",
   
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = transects, 
+      transects               = transects, 
       points_per_cs    = NULL,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = NA
@@ -436,7 +436,7 @@ testthat::test_that("error flowline WITHOUT minimum required columns", {
   # Select everything EXCEPT the minimum required column (cs_lengthm)
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = dplyr::select(transects, -cs_lengthm),
+      transects               = dplyr::select(transects, -cs_lengthm),
       points_per_cs    = POINTS_PER_CS,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = DEM_PATH
@@ -446,7 +446,7 @@ testthat::test_that("error flowline WITHOUT minimum required columns", {
   # misspelled the minimum required column (cs_lengthm)
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = dplyr::select(transects, lengthm = cs_lengthm),
+      transects               = dplyr::select(transects, lengthm = cs_lengthm),
       points_per_cs    = POINTS_PER_CS,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = DEM_PATH
@@ -456,7 +456,7 @@ testthat::test_that("error flowline WITHOUT minimum required columns", {
   # no columns except geometry (LINESTRING)
   testthat::expect_error(
     hydrofabric3D:::add_points_per_cs(
-      cs               = dplyr::select(transects),
+      transects               = dplyr::select(transects),
       points_per_cs    = POINTS_PER_CS,
       min_pts_per_cs   = MIN_PTS_PER_CS, 
       dem              = DEM_PATH

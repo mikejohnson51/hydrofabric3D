@@ -49,7 +49,7 @@ utils::globalVariables(
 )
 
 #' Get Points across transects with elevation values
-#' @param cs character, Hydrographic LINESTRING Network file path
+#' @param transects character, Hydrographic LINESTRING Network file path
 #' @param crosswalk_id character, ID column
 #' @param points_per_cs the desired number of points per CS. If NULL, then approximately 1 per grid cell resultion of DEM is selected.
 #' @param min_pts_per_cs Minimum number of points per cross section required.
@@ -60,7 +60,7 @@ utils::globalVariables(
 #' @importFrom sf st_line_sample st_set_geometry st_cast
 #' @export
 cross_section_pts = function(
-    cs             = NULL,
+    transects      = NULL,
     crosswalk_id   = NULL, 
     points_per_cs  = NULL,
     min_pts_per_cs = 10,
@@ -68,14 +68,14 @@ cross_section_pts = function(
 ){
   
   # check if a cross section is given, and return NULL if missing
-  if (is.null(cs)) {
+  if (is.null(transects)) {
     return(NULL)
   }
   
   # check if a file path or not
-  if(is.character(cs)) {
+  if(is.character(transects)) {
     # Read in file
-    cs <- sf::read_sf(cs)
+    transects <- sf::read_sf(transects)
   }
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
@@ -85,11 +85,11 @@ cross_section_pts = function(
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_lengthm")
   
-  is_valid <- validate_df(cs, REQUIRED_COLS, "cs")
+  is_valid <- validate_df(transects, REQUIRED_COLS, "transects")
 
   # add points per cross sections 
-  cs <- add_points_per_cs(
-    cs             = cs,
+  transects <- add_points_per_cs(
+    transects      = transects,
     points_per_cs  = points_per_cs,
     min_pts_per_cs = min_pts_per_cs,
     dem            = dem
@@ -97,7 +97,7 @@ cross_section_pts = function(
   
   # Extract DEM "Z" values for each point along cross section linestrings
   cs_pts <- extract_dem_values(
-                          cs           = cs, 
+                          transects    = transects, 
                           crosswalk_id = crosswalk_id, 
                           dem          = dem
                           )
@@ -112,30 +112,30 @@ cross_section_pts = function(
 #' representing cross-sections (linestrings) based on a provided DEM and a minimum points
 #' value per cross section.
 #'
-#' @param cs An sf dataframe representing cross-sections (linestrings). With a required cs_lengthm column (length of cross section in meters)
+#' @param transects An sf dataframe representing cross-sections (linestrings). With a required cs_lengthm column (length of cross section in meters)
 #' @param points_per_cs numeric, number of points per cross section. Default is NULL
 #' @param min_pts_per_cs An optional minimum points value per cross section. If not provided, 
 #' @param dem A SpatRaster object representing the Digital Elevation Model (DEM) or a character string referencing a remote resource.
 #' the function calculates it based on the length of cross-sections and the resolution of the DEM.
 #' @importFrom terra linearUnits rast res
 #' @return An updated sf dataframe with the 'points_per_cs' column added.
-add_points_per_cs <- function(cs,
+add_points_per_cs <- function(transects,
                               points_per_cs  = NULL,
                               min_pts_per_cs = 10,
                               dem            = default_dem) {
   
   REQUIRED_COLS <- c("cs_lengthm")
   
-  is_valid <- validate_df(cs, REQUIRED_COLS, "cs")
+  is_valid <- validate_df(transects, REQUIRED_COLS, "transects")
   
   # get the points per cross section based on the prescribed "points_per_cs" or the provided DEM (if points_per_cs is NULL) 
-  cs$points_per_cs <- get_points_per_cs(cs_length = cs$cs_lengthm, 
+  transects$points_per_cs <- get_points_per_cs(cs_length = transects$cs_lengthm, 
                                         points_per_cs = points_per_cs, 
                                         min_pts_per_cs = min_pts_per_cs, 
                                         dem = dem
                                         )
   
-  return(cs)
+  return(transects)
 }
 
 #' Calculate the points per cross section based off length 
@@ -230,14 +230,14 @@ transects_to_cs_pts <- function(transects, points_per_cs) {
 
 #' Given a set of linestrings, extract DEM values at points along the linestring
 #'
-#' @param cs cross section sf object
+#' @param transects cross section sf object
 #' @param crosswalk_id character, column name of unique flowline / transect ID
 #' @param dem SpatRaster DEM or character pointing to remote DEM resource
 #' @importFrom dplyr mutate group_by n ungroup select across any_of
 #' @importFrom sf st_set_geometry st_line_sample st_cast
 #' @importFrom terra extract project vect crs rast
 #' @return sf dataframe with Z values extracted from DEM
-extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
+extract_dem_values <- function(transects, crosswalk_id = NULL, dem = NULL) {
   
   has_dem <- !is.null(dem)
   
@@ -250,12 +250,12 @@ extract_dem_values <- function(cs, crosswalk_id = NULL, dem = NULL) {
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "points_per_cs", "cs_lengthm")
   
-  is_valid <- validate_df(cs, REQUIRED_COLS, "cs")
+  is_valid <- validate_df(transects, REQUIRED_COLS, "transects")
   
   suppressWarnings({
     cs_pts <- 
-      cs %>% 
-      transects_to_cs_pts(cs$points_per_cs) 
+      transects %>% 
+      transects_to_cs_pts(transects$points_per_cs) 
       
       # if a DEM was given, then extract the Z values, otherwise set Z to NA
       if (has_dem) {
@@ -656,7 +656,8 @@ drop_incomplete_cs_pts <- function(cross_section_pts, crosswalk_id = NULL) {
 #' @param cs_pts cs points dataframe, tibble, or sf dataframe
 #' @importFrom dplyr mutate
 #' @return cross_section_pts dataframe / tibble / sf dataframe with cross section points missing depths flag added
-#' @export
+#' @noRd
+#' @keywords internal
 add_is_missing_depth_flag <- function(cs_pts) {
   
   cs_pts <-  
@@ -676,7 +677,8 @@ add_is_missing_depth_flag <- function(cs_pts) {
 #' @param crosswalk_id unique ID for flowline 
 #' @importFrom dplyr group_by across any_of ungroup mutate
 #' @return cross_section_pts dataframe / tibble / sf dataframe with cross section points with is_complete_cs flag added
-#' @export
+#' @noRd
+#' @keywords internal
 add_is_complete_cs_flag <- function(cs_pts, crosswalk_id = NULL) {
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {

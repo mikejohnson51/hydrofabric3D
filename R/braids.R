@@ -1333,7 +1333,7 @@ find_multibraids <- function(x) {
 }
 
 # -----------------------------------------------------------------------------
-# ---- Braid boolean check functiona ----
+# ---- Braid boolean check functions ----
 # -----------------------------------------------------------------------------
 
 #' Detect whether a braid exists in a hydrologic network
@@ -2129,7 +2129,7 @@ unpack_braids <- function(x,
 #' the cycles found as a list of nodes in each cycle
 #' @param graph A data frame representing the graph/network with columns 'fromnode', 'tonode', '<crosswalk_id', and 'to_<crosswalk_id>'. Graph must be converted to an undirected graph via make_undirected() 
 #' @param start The starting node for the cycle detection. Default is NULL.
-#' @param edge logicl, whether to return edges (node pairings) or nodes. If TRUE, 'node-node' character string will be returned, otherwise a starting node is returned. Default is FALSE. 
+#' @param edge logical, whether to return edges (node pairings) or nodes. If TRUE, 'node-node' character string will be returned, otherwise a starting node is returned. Default is FALSE. 
 #' @param verbose Logical indicating whether to print verbose messages during the process. Default is FALSE.
 #' 
 #' @noRd
@@ -2378,6 +2378,8 @@ find_cycles_df <- function(
 #' @param wide logical, return data as a wide dataframe (multiple cycle_ids in a list in each row), or long dataframe (1 cycle_id for each row representing a node)
 #' @importFrom dplyr bind_rows tibble group_by summarise ungroup relocate mutate
 #' @return tibble, dataframe
+#' @noRd
+#' @keywords internal
 cycle_edge_list_to_cycle_edge_df <- function(edge_cycles_list, 
                                              wide = FALSE) {
   
@@ -2421,6 +2423,8 @@ cycle_edge_list_to_cycle_edge_df <- function(edge_cycles_list,
 #' @param wide logical, return data as a wide dataframe (multiple cycle_ids in a list in each row), or long dataframe (1 cycle_id for each row representing a node)
 #' @importFrom dplyr bind_rows tibble group_by summarise ungroup
 #' @return tibble, dataframe
+#' @noRd
+#' @keywords internal
 cycle_node_list_to_cycle_node_df <- function(node_cycles_list, 
                                              wide = FALSE) {
   

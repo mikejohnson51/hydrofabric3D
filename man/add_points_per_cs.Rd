@@ -5,14 +5,14 @@
 \title{Add a points per cross section column to an sf dataframe of linestrings given a DEM and min points value}
 \usage{
 add_points_per_cs(
-  cs,
+  transects,
   points_per_cs = NULL,
   min_pts_per_cs = 10,
   dem = default_dem
 )
 }
 \arguments{
-\item{cs}{An sf dataframe representing cross-sections (linestrings). With a required cs_lengthm column (length of cross section in meters)}
+\item{transects}{An sf dataframe representing cross-sections (linestrings). With a required cs_lengthm column (length of cross section in meters)}
 
 \item{points_per_cs}{numeric, number of points per cross section. Default is NULL}
 

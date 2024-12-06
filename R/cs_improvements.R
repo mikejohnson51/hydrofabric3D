@@ -275,7 +275,7 @@ flag_transects_for_change <- function(
   
   # get cross section point elevations``
   new_cs_pts <- cross_section_pts(
-    cs             = x,
+    transects      = x,
     crosswalk_id   = crosswalk_id,
     points_per_cs  = points_per_cs,
     min_pts_per_cs = min_pts_per_cs,
@@ -456,7 +456,7 @@ get_improved_cs_pts = function(
   
   # add cross section points to extended cross sections
   extended_transects <- add_points_per_cs(
-    cs             = extended_transects,
+    transects        = extended_transects,
     # cs             = trans_to_extend,
     # cs             = dplyr::slice(extended_geoms , 1:100),
     points_per_cs  = points_per_cs,
@@ -468,7 +468,7 @@ get_improved_cs_pts = function(
   
   # extract DEM values for newly extended cross sections
   extended_pts <- extract_dem_values(
-    cs           = extended_transects, 
+    transects    = extended_transects, 
     crosswalk_id = crosswalk_id, 
     dem          = dem
   )

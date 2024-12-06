@@ -75,7 +75,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)", {
 
   # get cross section point elevations
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -424,7 +424,7 @@ testthat::test_that("Full workflow - 2 (Flowlines -> transects -> CS points -> g
   
   # get cross section point elevations
   cs_pts <- hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,
@@ -664,7 +664,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)3", 
   #   
   # # get cross section point elevations
   # cs_pts <- hydrofabric3D::cross_section_pts(
-  #   cs             = transects,
+  #   transects             = transects,
   #   crosswalk_id   = ID_COL,
   #   points_per_cs  = POINTS_PER_CS,
   #   min_pts_per_cs = MIN_PTS_PER_CS,
@@ -817,7 +817,7 @@ testthat::test_that("Full workflow - 1 (Flowlines -> transects -> CS points)3", 
   # 
   # # get cross section point elevations
   # cs_pts <- hydrofabric3D::cross_section_pts(
-  #   cs             = transects,
+  #   transects             = transects,
   #   crosswalk_id   = ID_COL,
   #   points_per_cs  = POINTS_PER_CS,
   #   min_pts_per_cs = MIN_PTS_PER_CS,

@@ -48,7 +48,7 @@ testthat::test_that("extract values from DEM are correct", {
   )
   
   cs <- hydrofabric3D:::add_points_per_cs(
-    cs              = transects,
+    transects              = transects,
     points_per_cs   = NULL,
     min_pts_per_cs  = 10,
     dem             = DEM_PATH
@@ -140,7 +140,7 @@ testthat::test_that("extract_dem_values throws errors when transects (cs) input 
   
   testthat::expect_error(
       hydrofabric3D:::extract_dem_values(
-        cs             = dplyr::select(transects,
+        transects      = dplyr::select(transects,
                                        cs_id
         ),
         crosswalk_id   = ID_COL,
@@ -150,7 +150,7 @@ testthat::test_that("extract_dem_values throws errors when transects (cs) input 
   
   testthat::expect_error(
     hydrofabric3D:::extract_dem_values(
-      cs             = dplyr::select(transects,
+      transects      = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_lengthm
       ),
@@ -161,7 +161,7 @@ testthat::test_that("extract_dem_values throws errors when transects (cs) input 
   
   testthat::expect_error(
     hydrofabric3D:::extract_dem_values(
-      cs             = dplyr::select(transects,
+      transects      = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_lengthm, points_per_cs
       ),
@@ -206,7 +206,7 @@ testthat::test_that("error giving empty geometries", {
   ) 
   
   transects <- hydrofabric3D:::add_points_per_cs(
-    cs               = transects, 
+    transects               = transects, 
     points_per_cs    = 10,
     min_pts_per_cs   = MIN_PTS_PER_CS, 
     dem              = DEM_PATH

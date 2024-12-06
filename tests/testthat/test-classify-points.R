@@ -52,7 +52,7 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
   )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
+    transects              = transects,
     crosswalk_id    = ID_COL,
     points_per_cs   = POINTS_PER_CS,
     min_pts_per_cs  = MIN_PTS_PER_CS,
@@ -2133,7 +2133,7 @@ testthat::test_that("'classify_points()' has correct output columns, minimum req
   )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
+    transects              = transects,
     crosswalk_id    = ID_COL,
     points_per_cs   = POINTS_PER_CS,
     min_pts_per_cs  = MIN_PTS_PER_CS,
@@ -2215,7 +2215,7 @@ testthat::test_that("check 'valid_banks' attribute of CLASSIFIED CS points from 
   )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
+    transects              = transects,
     crosswalk_id    = ID_COL,
     points_per_cs   = POINTS_PER_CS,
     min_pts_per_cs  = MIN_PTS_PER_CS,
@@ -2320,7 +2320,7 @@ testthat::test_that("old test for testing out new bottom_finder.R methods", {
   #     cs_id
   #   ) %>%
   #   hydrofabric3D::cross_section_pts(
-  #     cs              = .,
+  #     transects              = .,
   #     crosswalk_id    = ID_COL,
   #     points_per_cs   = 30,
   #     min_pts_per_cs  = 10,

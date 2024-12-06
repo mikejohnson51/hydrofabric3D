@@ -51,7 +51,7 @@ testthat::test_that("check CS points default columns, from basic single flowline
   )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs              = transects,
+    transects              = transects,
     crosswalk_id    = ID_COL,
     points_per_cs   = POINTS_PER_CS,
     min_pts_per_cs  = MIN_PTS_PER_CS,
@@ -113,7 +113,7 @@ testthat::test_that("error when incorrect columns are provided", {
   
    testthat::expect_error(
     hydrofabric3D::cross_section_pts(
-      cs             = dplyr::select(transects,
+      transects             = dplyr::select(transects,
                                      cs_id
       ),
       crosswalk_id   = ID_COL,
@@ -124,7 +124,7 @@ testthat::test_that("error when incorrect columns are provided", {
   )
   testthat::expect_error(
     hydrofabric3D::cross_section_pts(
-      cs             = dplyr::select(transects,
+      transects             = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_lengthm
       ),
@@ -137,7 +137,7 @@ testthat::test_that("error when incorrect columns are provided", {
   
    testthat::expect_error(
     hydrofabric3D::cross_section_pts(
-      cs             = dplyr::select(transects,
+      transects             = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_id
       ),
@@ -151,7 +151,7 @@ testthat::test_that("error when incorrect columns are provided", {
    # incorrecct 'crosswalk_id' value
    testthat::expect_error(
     hydrofabric3D::cross_section_pts(
-      cs             = dplyr::select(transects,
+      transects             = dplyr::select(transects,
                                      dplyr::any_of(ID_COL),
                                      cs_id,
                                      cs_lengthm
@@ -164,7 +164,7 @@ testthat::test_that("error when incorrect columns are provided", {
   )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs             = dplyr::select(transects,
+    transects             = dplyr::select(transects,
                                    dplyr::any_of(ID_COL),
                                    cs_id,
                                    cs_lengthm
@@ -210,7 +210,7 @@ testthat::test_that("default transects columns from single flowline, using speci
   )
   
   cs_pts = hydrofabric3D::cross_section_pts(
-    cs             = transects,
+    transects             = transects,
     crosswalk_id   = ID_COL,
     points_per_cs  = POINTS_PER_CS,
     min_pts_per_cs = MIN_PTS_PER_CS,

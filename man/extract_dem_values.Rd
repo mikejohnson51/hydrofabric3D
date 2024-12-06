@@ -4,10 +4,10 @@
 \alias{extract_dem_values}
 \title{Given a set of linestrings, extract DEM values at points along the linestring}
 \usage{
-extract_dem_values(cs, crosswalk_id = NULL, dem = NULL)
+extract_dem_values(transects, crosswalk_id = NULL, dem = NULL)
 }
 \arguments{
-\item{cs}{cross section sf object}
+\item{transects}{cross section sf object}
 
 \item{crosswalk_id}{character, column name of unique flowline / transect ID}
 

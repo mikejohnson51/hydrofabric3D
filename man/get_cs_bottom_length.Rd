@@ -4,15 +4,15 @@
 \alias{get_cs_bottom_length}
 \title{Calculate the length between the leftmost and rightmost bottom point in each cross section}
 \usage{
-get_cs_bottom_length(cross_section_pts, crosswalk_id = NULL)
+get_cs_bottom_length(cs_pts, crosswalk_id = NULL)
 }
 \arguments{
-\item{cross_section_pts}{dataframe, or sf dataframe of cross section points}
+\item{cs_pts}{dataframe, or sf dataframe of cross section points}
 
 \item{crosswalk_id}{character, ID column}
 }
 \value{
-summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
+summarized dataframe of input cs_pts dataframe with a bottom_length value for each hy_id/cs_id
 }
 \description{
 Calculate the length between the leftmost and rightmost bottom point in each cross section

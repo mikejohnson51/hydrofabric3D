@@ -48,9 +48,10 @@ utils::globalVariables(
   )
 )
 
+
 #' Get the AHG estimated parabolas for each hy_id/cs_id cross section given a set of cross section points
 #'
-#' @param cross_section_pts dataframe or sf dataframe with "hy_id", "cs_id", "bottom" columns and 
+#' @param cs_pts dataframe or sf dataframe with "hy_id", "cs_id", "bottom" columns and 
 #'  specififed "top_width", "depth", "dingman_r" columns  (see top_width, depth, and dingman_r arguments)
 #' @param crosswalk_id character, ID column 
 #' @importFrom dplyr bind_rows rowwise select group_by slice ungroup filter mutate
@@ -61,7 +62,7 @@ utils::globalVariables(
 #' @noRd
 #' @keywords internal
 get_ahg_parabolas <- function(
-    cross_section_pts = NULL,
+    cs_pts = NULL,
     crosswalk_id = NULL
 ) {
   
@@ -77,11 +78,11 @@ get_ahg_parabolas <- function(
                      "TW", "DEPTH", "DINGMAN_R")
   
   # validate input graph
-  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
   
-  if (is.null(cross_section_pts)) {
+  if (is.null(cs_pts)) {
     stop(
-      paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n > ",
+      paste0("'cs_pts' is NULL, provide a dataframe with the following columns:\n > ",
              paste0(REQUIRED_COLS, collapse = "\n > "))
     )
   }
@@ -116,7 +117,7 @@ get_ahg_parabolas <- function(
     left_parabola = parabola[left_half, ]
     right_parabola = parabola[right_half, ]
     
-    # shift the Z values to have there max points be at the "bottom" of the "cross_section_pts" points
+    # shift the Z values to have there max points be at the "bottom" of the "cs_pts" points
     left_parabola$Y <- left_parabola$Y + (bottomZ - max(left_parabola$Y))
     right_parabola$Y <- right_parabola$Y + (bottomZ - max(right_parabola$Y))
     
@@ -133,7 +134,7 @@ get_ahg_parabolas <- function(
   
   # keep only a single row for each cross section
   ahg_parameters <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, bottom, TW, DEPTH, DINGMAN_R) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::slice(1) %>% 
@@ -206,14 +207,14 @@ get_ahg_parabolas <- function(
 #' Generate X/Y coordinates between a set of known points within a cross section
 #' Used after inserting AHG estimated parabolas in between DEM cross sections points 
 #'
-#' @param cross_section_pts cross section points dataframe with missing X/Y coordinates between sets of known X/Y coordinates
+#' @param cs_pts cross section points dataframe with missing X/Y coordinates between sets of known X/Y coordinates
 #' @param crosswalk_id character, ID column 
 #' @importFrom dplyr filter group_by summarize ungroup left_join select ends_with mutate n bind_rows
 #' @importFrom tidyr unnest
 #' @return dataframe, input dataframe with X/Y coordinates filled in for missing hy_id/cs_id X/Y values
 #' @noRd
 #' @keywords internal
-fill_missing_ahg_coords <- function(cross_section_pts, 
+fill_missing_ahg_coords <- function(cs_pts, 
                                     crosswalk_id = NULL
                                     ) {
   
@@ -231,10 +232,10 @@ fill_missing_ahg_coords <- function(cross_section_pts,
   }
   
   # get the first and last coordinates beforee the missing NA X/Y points
-  start_and_end_coords <- get_coords_around_parabola(cross_section_pts, crosswalk_id = crosswalk_id)
+  start_and_end_coords <- get_coords_around_parabola(cs_pts, crosswalk_id = crosswalk_id)
   
   start_and_end_pts_ids <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::filter(!is_dem_point) %>%  
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
     dplyr::summarize(
@@ -244,7 +245,7 @@ fill_missing_ahg_coords <- function(cross_section_pts,
   
   # get only the rows with the parabola w/ missing X/Y coords
   parabola_pts <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::filter(!is_dem_point) %>%  
     dplyr::left_join(
       start_and_end_coords,
@@ -252,7 +253,6 @@ fill_missing_ahg_coords <- function(cross_section_pts,
     ) %>% 
     dplyr::select(
         dplyr::any_of(crosswalk_id), 
-        # hy_id, 
         cs_id, pt_id, 
         X, Y, dplyr::ends_with("_start"), dplyr::ends_with("end")
       ) %>% 
@@ -268,7 +268,6 @@ fill_missing_ahg_coords <- function(cross_section_pts,
     dplyr::left_join(
       start_and_end_pts_ids, 
       by = c(crosswalk_id, "cs_id")
-      # by = c("hy_id", "cs_id")
     ) %>% 
     dplyr::select(
         dplyr::any_of(crosswalk_id), 
@@ -276,7 +275,6 @@ fill_missing_ahg_coords <- function(cross_section_pts,
         dplyr::ends_with("_start"), dplyr::ends_with("end"), n
       ) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
-    # dplyr::group_by(hy_id, cs_id)  %>% 
     dplyr::slice(1)  %>% 
     dplyr::mutate(
       X = list(seq_between_start_and_end(X_start, X_end, n)),
@@ -295,7 +293,7 @@ fill_missing_ahg_coords <- function(cross_section_pts,
   
   # join the new parabola X/Y points with the rest of the original data, dropping the old NA X/Y coordinates
   parabolas_with_coords <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::filter(!is_dem_point) %>% 
     dplyr::select(-X, -Y) %>% 
     dplyr::left_join(
@@ -305,7 +303,7 @@ fill_missing_ahg_coords <- function(cross_section_pts,
   
   pts_with_fixed_coords <- 
     dplyr::bind_rows(
-      dplyr::filter(cross_section_pts, is_dem_point),
+      dplyr::filter(cs_pts, is_dem_point),
       parabolas_with_coords
     ) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
@@ -321,19 +319,19 @@ fill_missing_ahg_coords <- function(cross_section_pts,
 
 #' Get the coordinates surrounding a set of missing AHG X/Y coordinates.
 #' 
-#' @param cross_section_pts dataframe with cross section points, (required cols, "hy_id", "cs_id", "X", "Y", "is_dem_point")
+#' @param cs_pts dataframe with cross section points, (required cols, "hy_id", "cs_id", "X", "Y", "is_dem_point")
 #' @param crosswalk_id character, ID column 
 #' @importFrom tidyr pivot_wider
 #' @importFrom dplyr select group_by mutate lag lead case_when filter ungroup left_join
 #' @return dataframe with each hy_id/cs_id cross section containing a value for X_start, X_end, Y_start, Y_end, representing the points surrounding the AHG inserted points
 #' @noRd
 #' @keywords internal
-get_coords_around_parabola <- function(cross_section_pts, crosswalk_id = NULL) {
+get_coords_around_parabola <- function(cs_pts, crosswalk_id = NULL) {
   
   fill_value <- -999999999
   
   X_coords <-
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, X, is_dem_point) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
     dplyr::mutate(
@@ -370,7 +368,7 @@ get_coords_around_parabola <- function(cross_section_pts, crosswalk_id = NULL) {
     )
   
   Y_coords <-
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, Y, is_dem_point) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
     dplyr::mutate(
@@ -421,15 +419,15 @@ get_coords_around_parabola <- function(cross_section_pts, crosswalk_id = NULL) {
 #' are given so that the estimated shape is able to properly fit into the cross sections. 
 #' The cross sections length (meters) minus 1 meter is used as the new top width and 
 #' the new Y max (depth) value is derived from the original ratio between the prescribed top width and Y max
-#' @param cross_section_pts dataframe or sf dataframe with "hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R"
+#' @param cs_pts dataframe or sf dataframe with "hy_id", "cs_id", "pt_id", "Z", "relative_distance", "cs_lengthm", "class", "point_type", "TW", "DEPTH", "DINGMAN_R"
 #' @param crosswalk_id character, ID column 
 #' @importFrom rlang as_name enquo
 #' @importFrom dplyr group_by mutate case_when sym ungroup select filter slice
-#' @return cross_section_pts dataframe with updated "top_width" and "depth" column values
+#' @return cs_pts dataframe with updated "top_width" and "depth" column values
 #' @noRd
 #' @keywords internal
 fix_oversized_topwidths <- function(
-    cross_section_pts = NULL,
+    cs_pts = NULL,
     crosswalk_id = NULL
 ) {
   
@@ -449,17 +447,17 @@ fix_oversized_topwidths <- function(
                      "point_type", "TW", "DEPTH", "DINGMAN_R")
   
   # validate input graph
-  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
   
-  if (is.null(cross_section_pts)) {
+  if (is.null(cs_pts)) {
     stop(
-      paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n > ",
+      paste0("'cs_pts' is NULL, provide a dataframe with the following columns:\n > ",
              paste0(REQUIRED_COLS, collapse = "\n > "))
     )
   }
   
   # keep track of the original column order for reordering at the end
-  starting_col_order  <- names(cross_section_pts)
+  starting_col_order  <- names(cs_pts)
   
   # Determine the distance interval for each cross section
   # we're going to use this value to 
@@ -467,7 +465,7 @@ fix_oversized_topwidths <- function(
   # the cross section length is less than the prescribed top width, 
   # we round the distance interval UP sure we are not underestimating the interval
   distance_between_pts <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, relative_distance) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::mutate(
@@ -482,15 +480,15 @@ fix_oversized_topwidths <- function(
     dplyr::ungroup()
   
   # add the distance interval values to the cross section points
-  cross_section_pts <- 
-    cross_section_pts %>% 
+  cs_pts <- 
+    cs_pts %>% 
     dplyr::left_join(
       distance_between_pts, 
       by = c(crosswalk_id, "cs_id")
     )
   
   updated_TW_and_Ymax <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::mutate(
       new_DEPTH = dplyr::case_when(
@@ -562,12 +560,12 @@ fix_oversized_topwidths <- function(
 
 #' Calculate the length between the leftmost and rightmost bottom point in each cross section 
 #'
-#' @param cross_section_pts dataframe, or sf dataframe of cross section points
+#' @param cs_pts dataframe, or sf dataframe of cross section points
 #' @param crosswalk_id character, ID column 
 #' @importFrom dplyr select mutate case_when group_by lag ungroup filter summarise left_join across any_of
-#' @return summarized dataframe of input cross_section_pts dataframe with a bottom_length value for each hy_id/cs_id
+#' @return summarized dataframe of input cs_pts dataframe with a bottom_length value for each hy_id/cs_id
 #' @export
-get_cs_bottom_length <- function(cross_section_pts, 
+get_cs_bottom_length <- function(cs_pts, 
                                  crosswalk_id = NULL) {
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
@@ -579,12 +577,12 @@ get_cs_bottom_length <- function(cross_section_pts,
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", "relative_distance", "point_type")
   
   # validate input graph
-  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
   
   # get the distance between cross section pts in each cross section,
   # this will be used as a default for bottom length in case bottom length is 0
   interval_distances <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::mutate(
@@ -601,7 +599,7 @@ get_cs_bottom_length <- function(cross_section_pts,
   # get the distance from the first and last bottom points, substittue any bottom lengths == 0 
   # with the interval between points distance
   bottom_lengths <-
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::filter(point_type == "bottom") %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
@@ -632,8 +630,8 @@ get_cs_bottom_length <- function(cross_section_pts,
 
 #' Given provide inchannel widths and depths to a set of cross section points and derive estimated shapes
 #' @description
-#' Still in early development phases
-#' @param cross_section_pts dataframe or sf dataframe. Default is NULL
+#' Takes in a point of cross section points with added top width (TW), depth (DEPTH), and dingman_r (DINGMAN_R) columns  
+#' @param cs_pts dataframe or sf dataframe. Default is NULL
 #' @param crosswalk_id character, ID column 
 #' @importFrom dplyr bind_rows select mutate n case_when summarise ungroup group_by filter relocate left_join slice slice_max rename arrange
 #' @importFrom AHGestimation cross_section
@@ -642,7 +640,7 @@ get_cs_bottom_length <- function(cross_section_pts,
 #' @return dataframe or sf dataframe with AHG estimated points injected into the input cross section points
 #' @export
 add_cs_bathymetry <- function(
-    cross_section_pts = NULL,
+    cs_pts = NULL,
     crosswalk_id = NULL
 ) {
   
@@ -657,11 +655,11 @@ add_cs_bathymetry <- function(
                      "point_type", "TW", "DEPTH", "DINGMAN_R")
   
   # validate input graph
-  is_valid <- validate_df(cross_section_pts, REQUIRED_COLS, "cross_section_pts")
+  is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
   
-  if (is.null(cross_section_pts)) {
+  if (is.null(cs_pts)) {
     stop(
-      paste0("'cross_section_pts' is NULL, provide a dataframe with the following columns:\n> ",
+      paste0("'cs_pts' is NULL, provide a dataframe with the following columns:\n> ",
              paste0(c(crosswalk_id, 'cs_id', 'Z', 'bottom', 'relative_distance', 
                       'point_type', 'class', 
                       'top_width - (specify via "top_width" argument)',  
@@ -673,15 +671,15 @@ add_cs_bathymetry <- function(
   }
   
   # Replace any topwidth values that are GREATER than the actual cross section length (meters)
-  cross_section_pts <- fix_oversized_topwidths(
-    cross_section_pts = cross_section_pts,
+  cs_pts <- fix_oversized_topwidths(
+    cs_pts = cs_pts,
     crosswalk_id = crosswalk_id
   )
 
   # generate AHG parabolas for each hy_id/cs_id in the cross section points 
   # using the provided top_widths, depths, and dingman's R
   ahg_parabolas <- get_ahg_parabolas(
-    cross_section_pts = cross_section_pts,
+    cs_pts = cs_pts,
     crosswalk_id = crosswalk_id
   )
   
@@ -702,7 +700,7 @@ add_cs_bathymetry <- function(
   # this paritioned set of cross sections will ultimately get the AHG parabolas inserted in between
   # the left and right partitions
   partioned_cs <- 
-    cross_section_pts %>% 
+    cs_pts %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
     dplyr::mutate(
       bottom_midpoint = dplyr::case_when(
@@ -896,13 +894,12 @@ add_cs_bathymetry <- function(
   # select relevant columns and adjust the names so 
   # the AHG parabola can be inserted nicely with the original cross sections
   # NOTE: 
-  # AHG X values == "relative_distance" in cross_section_pts
-  # AHG Y values == "Z" in cross_section_pts
+  # AHG X values == "relative_distance" in cs_pts
+  # AHG Y values == "Z" in cs_pts
   parabolas <- 
     parabolas %>% 
     dplyr::select(
       dplyr::any_of(crosswalk_id),
-      # hy_id, 
       cs_id,
       relative_distance = ahg_x,
       Z                 = ahg_y
@@ -923,15 +920,11 @@ add_cs_bathymetry <- function(
   # so all the points are in correct order
   out_cs <-
     dplyr::bind_rows(
-      # left_cs,
-      # parabolas,
-      # right_cs
       dplyr::mutate(left_cs, is_dem_point = TRUE),
       dplyr::mutate(parabolas, is_dem_point = FALSE),
       dplyr::mutate(right_cs, is_dem_point = TRUE),
     ) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
-    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::filter(relative_distance >= 0) %>% # TODO: testing out this condition as well
     dplyr::arrange(relative_distance, .by_group = TRUE) %>% 
     dplyr::ungroup()
@@ -941,7 +934,6 @@ add_cs_bathymetry <- function(
   out_cs <- 
     out_cs %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>%  
-    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       pt_id      = 1:dplyr::n(),
       class = dplyr::case_when(
@@ -956,8 +948,8 @@ add_cs_bathymetry <- function(
     dplyr::ungroup()
   
   tryCatch({
-    message("Generate XY coordinates for AHG estimated points...")
-    out_cs <- fill_missing_ahg_coords(cross_section_pts = out_cs, crosswalk_id = crosswalk_id)
+    # message("Generate XY coordinates for AHG estimated points...")
+    out_cs <- fill_missing_ahg_coords(cs_pts = out_cs, crosswalk_id = crosswalk_id)
 
   }, error = function(cond) {
 
