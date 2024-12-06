@@ -72,10 +72,6 @@ calc_powerlaw_bankful_width <- function(total_drainage_area_sqkm) {
 #' @export
 add_powerlaw_bankful_width <- function(df, total_drainage_area_sqkm_col, min_bf_width) {
   
-  # df <- flowlines
-  # total_drainage_area_sqkm_col = "tot_drainage_areasqkm"
-  # MIN_BF_WIDTH <- 50
-  
   # Check if 'total_drainage_area_sqkm' is numeric or a numeric vector
   if (!is.character(total_drainage_area_sqkm_col)) {
     stop("'total_drainage_area_sqkm_col' must be a character")
@@ -87,9 +83,6 @@ add_powerlaw_bankful_width <- function(df, total_drainage_area_sqkm_col, min_bf_
   if(!is.numeric(df[[total_drainage_area_sqkm_col]])) {
      stop("'total_drainage_area_sqkm_col' ", total_drainage_area_sqkm_col, " must be a numeric column in input 'df'")
   }
-  
-  # df[1, ][[total_drainage_area_sqkm_col]] <- NA
-  # df[[total_drainage_area_sqkm_col]]
   
   # fill any NA values with the given default Bankful width value
   df[is.na(df[[total_drainage_area_sqkm_col]]), ][[total_drainage_area_sqkm_col]] <- min_bf_width
@@ -104,20 +97,3 @@ add_powerlaw_bankful_width <- function(df, total_drainage_area_sqkm_col, min_bf_
   return(df)
   
 }
-
-
-
-# flowlines %>% 
-#   dplyr::mutate(
-#     bf_width        = hydrofabric3D::calc_powerlaw_bankful_width(tot_drainage_areasqkm),
-#     # bf_width        = hydrofabric3D::calc_powerlaw_bankful_width(tot_drainage_areasqkm),
-#     # bf_width        = pmax(50, bf_width * 2)
-#     bf_width        = pmax(50, bf_width * 11)
-#   ) %>% 
-#   dplyr::select(
-#     hy_id = crosswalk_id, 
-#     # tot_drainage_areasqkm, 
-#     bf_width,
-#     # input_bf_width,
-#     geometry = geom
-#   ) 

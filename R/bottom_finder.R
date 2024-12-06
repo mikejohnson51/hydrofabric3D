@@ -32,7 +32,6 @@ find_plateaus <- function(x) {
 
 # find local minima indices using plateau midpoints
 find_local_minima <- function(x) {
-  # x = c(1, 1, 1, 1)
   n <- length(x)
   if (n < 2) {
     return(integer(0))
@@ -187,20 +186,8 @@ find_local_maxima <- function(x) {
 # finds local minimas and then the neighboring local maximas, returns a list of the index values for those poitnts
 find_bottom_candidates <- function(x, index_only = TRUE) {
   
-  # x = Z_VALS
-  # index_only    <- T
-  # x = c(1, 1, 3,  1)
-  # x = c(1, 1, 3)
-  # x = c(1, 2, 1, 2, 3, 4, 5, 5, 3, 2, 4, 6, 8)
-  # x = c(1, 2, 1, 2, 3, 4, 5, 5, 3, 2, 4, 6)
-  # plot(x)
-  
   # get the middle of the vector 
   midpoint  <- (length(x) + 1) / 2
-  # midpoint  <- (length(x) + 1) %/% 2
-  # midpoint  <- length(x) / 2
-  # midpoint  <- length(x) %/% 2
-  # midpoint
   
   # get pts of local mins and maxs
   minima_idx <- find_local_minima(x)
@@ -279,26 +266,6 @@ find_bottom_candidates <- function(x, index_only = TRUE) {
   return(result)
 }
 
-# x = c(1, 1, 1, 1, 3, 4, 6, 7, 8, 7, 6, 6, 6, 5, 4, 3, 1, 3, 4, 5, 5, 6, 6, 5, 5, 2, 2, 0, 2, 2, 4, 6, 7, 8, 8, 
-#       9, 4, 3, 3, 2, 1, 3, 4, 5, 6, 7, 8, 9, 10, 10, 10, 12, 13, 14, 15, 14, 16, 16
-# )
-# x = c(1, 2, 1, 1, 3, 4)
-# x = c(1, 1, 1, 1)
-
-# plot(x)
-
-# bucket_indexes <- 
-#   x %>% 
-#   find_bottom_candidates() %>% 
-#   rm_edge_buckets() %>% 
-#   anchor_picker()
-
-# anchor_pts <- list(
-#   L = bucket_indexes$left_max,
-#   M = bucket_indexes$minimum,
-#   R = bucket_indexes$right_maxixum
-# )
-
 # TODO: work in progress, getting this implemented into classify_points(), if this method fails, fall back to original method
 # TODO: that relies on the middle third of cross sections containing the bottom points / thalweg
 
@@ -312,12 +279,6 @@ anchor_picker <- function(bucket_indexes) {
       -sapply(bucket_indexes, `[[`, "width")
     )
     
-    # sort_order <- order(
-    #   -sapply(bucket_indexes, `[[`, "width"),
-    #   -sapply(bucket_indexes, `[[`, "depth"),
-    #   sapply(bucket_indexes, `[[`, "distance_to_center")
-    # )
-    
     anchor <- bucket_indexes[sort_order[1]]
     
     return(anchor)
@@ -325,9 +286,6 @@ anchor_picker <- function(bucket_indexes) {
   
   return(list())
 }
-
-# min_indexes <- find_bottom_candidates(Z_VALS)
-# min_indexes <- rm_edge_buckets(min_indexes)
 
 # removes buckets on the edges of the set of points
 rm_edge_buckets <- function(bucket_indexes) {
