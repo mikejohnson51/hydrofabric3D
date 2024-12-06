@@ -45,7 +45,6 @@ Suggests:
     distill,
     pals,
     glue,
-    ggplot2,
     patchwork
 VignetteBuilder: knitr
 Config/testthat/edition: 3
