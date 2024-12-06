@@ -11,6 +11,12 @@
 #' @source NOAA Office of Water Prediction.
 "flowlines"
 
+#' Flowlines linestring 
+#'
+#' A dataset containing flowlines linestrings . 
+#' @source Generated using hydrofabric3D software.
+"linestring"
+
 #' Flowlines Missing Depth
 #'
 #' A dataset of flowlines missing depth information, which may require further analysis or imputation.

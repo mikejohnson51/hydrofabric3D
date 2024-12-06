@@ -68,12 +68,6 @@ plot_cs_pts <- function(cs_pts,
                         scales = "free_y"
 ) {
   
-  # crosswalk_id = "hy_id"
-  # x     = "pt_id"
-  # y     = "Z"
-  # color = NULL
-  # size  = 1
-  # grid  = FALSE
   if (!scales %in% c("fixed", "free", "free_x", "free_y")) {
     stop("Invalid scales argument '", scales, "', must be one of: \n> ", paste0(c("fixed", "free", "free_x", "free_y"), collapse = "\n> "))
     

@@ -41,6 +41,10 @@ The need to cut transects of elevation along a set of lines (e.g. river or road 
 Here we are loading the Upper Tributary of COMID 101. In total there are 325 flowlines with a total length of 942.3 km.
 
 We also prescribe a floodplain width by computing the estimated bank full width (from literature based power-law) and multiplying it by 5. This assumes 2 parts left-bank, 1 part in channel (bank full), 2 parts right-bank. This will be important latter!
+```{r, echo = FALSE, eval = TRUE}
+load("../data/linestring.rda")
+```
+
 ```{r}
 flood_plain_sections = 5
 network = linestring %>% 

@@ -69,7 +69,6 @@ add_relief <- function(
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
-    # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'
   }
   
@@ -104,7 +103,6 @@ add_relief <- function(
     classified_pts %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_lengthm) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(
@@ -114,12 +112,9 @@ add_relief <- function(
   # get the minimum bottom point and maximum left and right bank points
   relief <-
     classified_pts %>% 
-    # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
     dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id", "point_type")))) %>% 
-    # dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
-    # dplyr::group_by(hy_id, cs_id, point_type) %>% 
     dplyr::summarise(
       minZ = min(Z, na.rm = TRUE),
       maxZ = max(Z, na.rm = TRUE)
@@ -146,7 +141,6 @@ add_relief <- function(
       by = c(crosswalk_id, "cs_id")
     ) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       depth_diff = max(c(round(right_bank - bottom, 3), 
                          round(left_bank - bottom, 3)), 
@@ -199,31 +193,8 @@ get_relief <- function(
     detailed = FALSE
 ) {
   
-  # ------------------------------------------------------------------------
-  # ------------------------------------------------------------------------
-  # crosswalk_id    <- "hy_id"
-  # REQ_COLS  <- c(crosswalk_id, "cs_id", "pt_id", "cs_lengthm", "Z", "point_type")
-  # 
-  # pct_of_length_for_relief <- 0.01
-  # CS_LENGTHM               <- 100
-  # MIN_REQ_RELIEF           <- CS_LENGTHM * pct_of_length_for_relief
-  # detailed                 <- FALSE
-  
-  # classified_pts <-
-  #   data.frame(
-  #     hy_id = c("A", "A",  "A", "A", "A"),
-  #     cs_id = c(1, 1, 1, 1, 1),
-  #     pt_id = c(1, 2, 3, 4, 5),
-  #     cs_lengthm = c(CS_LENGTHM),
-  #     point_type = c('left_bank', 'bottom', 'bottom', 'bottom', 'right_bank'),
-  #     Z = c(100, 10, 10, 10, 100)
-  #   )
-  # ------------------------------------------------------------------------
-  # ------------------------------------------------------------------------
-  
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
-    # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'
   }
   
@@ -255,8 +226,6 @@ get_relief <- function(
     classified_pts %>%
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_lengthm) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-    # dplyr::select(hy_id, cs_id, cs_lengthm) %>% 
-    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(
@@ -266,12 +235,9 @@ get_relief <- function(
   # get the minimum bottom point and maximum left and right bank points
   relief <-
     classified_pts %>%
-    # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
     dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id", "point_type")))) %>% 
-    # dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
-    # dplyr::group_by(hy_id, cs_id, point_type) %>% 
     dplyr::summarise(
       minZ = min(Z, na.rm = TRUE),
       maxZ = max(Z, na.rm = TRUE)
@@ -281,13 +247,6 @@ get_relief <- function(
       names_from  = point_type,
       values_from = c(minZ, maxZ)
     ) %>% 
-    # dplyr::select(
-    #       dplyr::any_of(crosswalk_id),
-    #       cs_id, 
-    #       bottom     = minZ_bottom, 
-    #       left_bank  = maxZ_left_bank, 
-    #       right_bank = maxZ_right_bank
-    #     ) 
     dplyr::select(
       dplyr::any_of(
         c(
@@ -311,7 +270,6 @@ get_relief <- function(
   
   for (col in required_pt_cols) {
     if (!col %in% names(relief)) {
-      # message("Missing ", col, " in relief, adding default NA")
       relief[[col]] <- NA
     }
   }
@@ -324,10 +282,8 @@ get_relief <- function(
     dplyr::left_join(
       cs_lengths, 
       by = c(crosswalk_id, "cs_id")  
-      # by = c("hy_id", "cs_id")
     ) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-    # dplyr::group_by(hy_id, cs_id) %>% 
     dplyr::mutate(
       max_relief = max(
         c(
@@ -351,13 +307,8 @@ get_relief <- function(
         (max_relief >= depth_threshold) & !has_missing_banks ~ TRUE,
         TRUE                            ~ FALSE
       ),
-      # has_relief = dplyr::case_when(
-      # max_relief >= depth_threshold ~ TRUE,
-      # TRUE                          ~ FALSE
-      # ),
       pct_of_length_for_relief = pct_of_length_for_relief
     ) 
-  # dplyr::select(-has_missing_banks)
   
   # if detailed set of data is specified, return the relief dataframe with additional columns
   if(detailed) {

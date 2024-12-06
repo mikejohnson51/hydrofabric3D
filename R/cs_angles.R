@@ -67,11 +67,6 @@ add_middle_index_by_point_type <- function(
     default_col_name = TRUE
 ) {
   
-  # cross_section_pts <- updated_pts
-  # # point_class = "bottom"
-  # point_type = "bottom"
-  # default_col_name = TRUE
-  
   # Throw an error if an invalid "point_type" value is given
   if(!point_type %in% c("left_bank", "bottom", "right_bank", "channel")) {{
     stop("Invalid 'point_type' value, 'point_type' must be one of: 'bottom', 'channel', 'left_bank', 'right_bank'")
@@ -110,16 +105,6 @@ add_middle_index_by_point_type <- function(
   return(cross_section_pts)
   
 }
-
-# Add the degree angle between the middle index of a specific point type and the maximum XY points to the left and right of the given middle index
-# Uses Law of Cosines to determine angle from a given point given a set of 3 points that can form a triangle
-# the rest of the cross section points in each hy_id, cs_id
-# cross_section_pts - cross section points dataframe with a "point_type" column and "hy_id", "cs_id" columns
-# angle_at - character, which point type to get the degree angle for. Must be one of  "left_bank", "bottom", "right_bank", or "channel". Default is "bottom"
-# default_col_name - logical, whether the output column should be named "angle_at" or 
-#                  if the new column should take the "point_type" string and use 
-#                  Default is TRUE and adds a column named "angle_at"
-# Returns: dataframe, the cross_section_pts dataframe with an added "angle_at" column
 
 #' Add the degree angle between the middle index of a specific point type and the maximum XY points to the left and right of the given middle index
 #' Uses Law of Cosines to determine angle from a given point given a set of 3 points that can form a triangle the rest of the cross section points in each hy_id, cs_id

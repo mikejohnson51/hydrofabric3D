@@ -58,9 +58,7 @@ utils::globalVariables(
 #' @return dataframe or tibble
 #' @export
 get_validity_tally <- function(x, crosswalk_id = NULL) {
-  # x <- classified_pts
-  # crosswalk_id = "hy_id"
-  
+
   validity_tally <-
     x %>%
     sf::st_drop_geometry() %>%
@@ -119,11 +117,6 @@ compare_cs_validity <- function(cs_pts1,
                                 cs_pts2, 
                                 crosswalk_id = NULL
 ) {
-  
-  # cs_pts1 <- x 
-  # cs_pts2 <- new_cs_pts
-  
-  # validity_scores1$tmp_id[!validity_scores1$tmp_id %in% validity_scores2$tmp_id]
   
   validity_scores1 <- 
     cs_pts1 %>% 

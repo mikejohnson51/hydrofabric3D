@@ -92,17 +92,6 @@ find_braids <- function(
     nested       = TRUE,
     verbose      = FALSE
 ) {
-  # library(dplyr)
-  # library(sf) 
-  # 
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # verbose = TRUE
-  # nested      = TRUE
-  # verbose     = TRUE
   
   # get a list of braid IDs and comids within each braid
   braids <- get_braid_list(
@@ -118,16 +107,6 @@ find_braids <- function(
     nested        = nested,
     verbose       = verbose
   )
-  
-  # # process multibraided portions of braid list returned above 
-  # braids <- process_braids(
-  #   network = network, 
-  #   braids  = braids,
-  #   add     = add,
-  #   nested  = nested,
-  #   version = version,
-  #   verbose = verbose
-  # )
   
   return(braids)
   
@@ -147,23 +126,6 @@ add_braid_ids <- function(
     crosswalk_id = NULL,
     verbose      = FALSE
 ) {
-  # library(dplyr)
-  # library(sf) 
-  # verbose = TRUE
-  # 
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # 
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # verbose = TRUE
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # # 
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # verbose     = TRUE
   
   # find all braids that each crosswalk_id is a part of 
   braids <- find_braids(
@@ -173,7 +135,7 @@ add_braid_ids <- function(
     verbose      = verbose
   )
   
-  # # if braid data should be added to original data
+  # if braid data should be added to original data
   # join back with original data
   network <- dplyr::mutate(
     dplyr::left_join(
@@ -224,55 +186,6 @@ get_braid_list <- function(
     verbose = FALSE
 ) {
   
-  # library(dplyr)
-  # library(sf) 
-  # verbose = TRUE
-  
-  # terminal_id = NULL
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # verbose = TRUE
-  
-  # # Test data for braids
-  # library(dplyr)
-  # library(sf)
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # 
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # recycle     = FALSE
-  # verbose      = TRUE
-  
-  # rm(is_cycle, visit, topo_map, detect_cycle, prev, node)
-  
-  # net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 100)
-  # net <-  net2 %>%
-  #   dplyr::select(comid, fromnode, tonode, streamcalc, divergence, terminalpa) %>%
-  #   dplyr::filter(!comid %in% c(1079041, 1078529, 1078505, 1078403, 1078391, 1078491, 1078485, 1078483))
-  # network <- net %>%
-  #   dplyr::select(-terminalpa)
-  # terminal_id = NULL
-  # recycle     = FALSE
-  # network <- net
-  # terminal_id = "terminalpa"
-  # verbose     = FALSE
-  # mapview::mapview(network)
-  # network %>% 
-  #   # dplyr::filter(divergence != 2) %>% 
-  #   # mapview::mapview()
-  #   # .$geom %>% plot()
-  #   dplyr::select(crosswalk_id = comid, divergence) %>% 
-  #   hydroloom::hy() %>% 
-  #   hydroloom::make_attribute_topology(min_distance = 5) %>% 
-  #   hydroloom::make_node_topology(add_div = T) %>% 
-  #   hydroloom::add_toids(return_dendritic = F) %>% 
-  #   hydroloom::check_hy_graph(loop_check = T)
-  
   # get the "to" version of the given 'crosswalk_id' (i.e. "to_<crosswalk_id>")
   to_crosswalk_id <- as_to_id(crosswalk_id)
   
@@ -280,39 +193,14 @@ get_braid_list <- function(
   # graph <- get_node_topology(network, crosswalk_id)
   network <- dplyr::select(network,
                            dplyr::any_of(crosswalk_id)
-                           # fromnode, tonode,
-                           # divergence,
-                           # geometry = geom
   ) 
   
-  # network <-
-  #   network %>%
-  #   dplyr::filter(
-  #     !comid %in% c(22179332)
-  #   )
-  # 
-  # mapview::mapview(network)
-  
   graph <- get_node_topology(network, crosswalk_id)
-  
-  # graph
-  # network <- dplyr::select(network,
-  #                 dplyr::any_of(crosswalk_id)
-  #                 # fromnode, tonode,
-  #                 # divergence,
-  #                 # geometry = geom
-  #                 )
-  
-  # network <- find_connected_components2(network = network, 
-  #                                       crosswalk_id = crosswalk_id, 
-  #                                       add = TRUE)
   
   components <- find_connected_components(graph = graph, 
                                           crosswalk_id = crosswalk_id,
                                           verbose = verbose
   )
-  
-  # components$component_id %>% unique()
   
   # join the component ID onto the network dataset
   network <- 
@@ -325,18 +213,6 @@ get_braid_list <- function(
       by = crosswalk_id
     )
   
-  # TODO: plot connected components
-  # network %>% 
-  #   dplyr::mutate(
-  #     component_id = as.character(component_id)
-  #   ) %>% 
-  #   ggplot2::ggplot() + 
-  #   ggplot2::geom_sf(ggplot2::aes(color = component_id))
-  
-  # components$component_id %>% unique() %>% length()
-  # components$comid %>% unique() %>% length()
-  # components$to_comid %>% unique() %>% length()
-  
   # join the component ID to the graph
   graph <- 
     graph %>% 
@@ -347,8 +223,6 @@ get_braid_list <- function(
       ),
       by = c(crosswalk_id, to_crosswalk_id)
     )
-  
-  # unique(network$component_id) %>% length()
   
   # list of the uniqueu component IDs 
   component_ids <- unique(graph$component_id)
@@ -385,29 +259,6 @@ get_braid_list <- function(
   # remove duplicate braids IDs and re number braid IDs
   braid_list <- reduce_braid_list(braid_list)
   
-  # braid_list
-  
-  # braid_list <- reduce_braid_list(braid_list)
-  # braid_plots <- list()
-  # for (i in seq_along(braid_list)) {
-  #   b <- braid_list[[i]]
-  #   message(b)
-  # braid_plots[[i]] <-
-  #     network %>%
-  #     dplyr::mutate(
-  #       is_braid = dplyr::case_when(
-  #         comid %in% b  ~ TRUE,
-  #         TRUE       ~ FALSE
-  #       )
-  #     ) %>%
-  #     nhdplusTools::rename_geometry("geometry") %>%
-  #     ggplot2::ggplot() +
-  #     ggplot2::geom_sf(ggplot2::aes(color = is_braid))
-  # }
-  # mapview::mapview(dplyr::filter(network2, comid %in% braid_list[[8]]),  color = 'green') + 
-  # mapview::mapview(network2, 
-  #                  zcol = "is_braid") 
-  
   return(braid_list)
   
 }
@@ -433,69 +284,6 @@ find_connected_components <- function(
     crosswalk_id = NULL,
     verbose = FALSE
 ) {
-  
-  # ----------------------------
-  # ----------------------------
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # # crosswalk_id = "crosswalk_id"
-  # 
-  
-  # 
-  # # graph <- get_node_topology(network, crosswalk_id)
-  # network <- dplyr::select(network,
-  #                          dplyr::any_of(crosswalk_id)
-  #                          # fromnode, tonode,
-  #                          # divergence,
-  #                          # geometry = geom
-  # ) 
-  # 
-  # # ids <-  c(22179638, 22179668, 22179680, 22179688, 22179690, 22179700, 22179666, 22179682, 22179674)
-  # ids <-  c(22179638, 22179668, 
-  #           # 22179680, 
-  #           22179688, 22179690, 22179700, 22179666, 22179682, 22179674)
-  # network <-
-  #   network %>%
-  #   dplyr::filter(
-  #     comid %in% ids
-  #     # !comid %in% c(22179332 )
-  #     # !comid %in% c(22179332, 22180488)
-  #   )
-  # # mapview::mapview(network)
-  # 
-  # graph <- get_node_topology(network, crosswalk_id)
-  # start <- NULL
-  # c(22179638, 22179668, 22179680, 22179688, 22179690, 22179700, 22179666, 22179682, 22179674)
-  # sum(graph$tonode == 0)
-  # sum(graph$fromnode == 1)
-  # # sum(graph$tonode == 1)
-  # dplyr::left_join(
-  #   network, 
-  #   graph, 
-  #   by = "comid"
-  # ) %>% 
-  #   mapview::mapview()
-  # 
-  # ----------------------------
-  # ----------------------------
-  
-  # # lower case names
-  # names(network) <- tolower(names(network))
-  # 
-  # # turn network into a directed graph
-  # dag <- create_dag(network)
-  # graph <- create_dag(network)
-  
-  # # get the fromnode associated with a given COMID 'start'
-  # start_node <- id_to_node(graph, crosswalk_id, start)
-  # # start_node
-  # 
-  # if(verbose) {
-  #   message("Starting braid detection at ", 
-  #           ifelse(is.null(start), paste0("node: ", start_node), paste0("COMID: ", start)))
-  # }
   
   # get the "to" version of the given 'crosswalk_id' (i.e. "to_<crosswalk_id>")
   to_crosswalk_id <- as_to_id(crosswalk_id)
@@ -573,53 +361,33 @@ find_connected_components <- function(
       
       count = count + 1
       
-      # message("stack size: ", stack$size())
-      # message("count: ", count)
-      # message("Stack top to bottom:\n--------------------\n",
-      #         # rev(paste0(" - ", c(unlist(stack$as_list())), sep = "\n"))
-      #         rev(paste0(" - ", c(unlist(stack$as_list())), sep = " "))
-      #         )
-      
       # pop from top of stack
       node <- stack$pop()
       
       # convert node to character for fastmap
       node <- as.character(node)
       
-      # message("Popped ", node, " from top of stack")
-      
       # if vertex hasn't been visited
       if (!marked$get(node)) {
         
-        # message("!!!!!!! THIS IS THE VISITING PORTION OF THE DFS ALGO !!!!!!!")
         # Process the current node, add to result object
         res[[count]] <- topo_map$get(node)
         
         # set vertex to marked
         marked$set(node, TRUE)
-        # marked$get(node)
         
         # neighbors of current vertex
         neighbors <- topo_map$get(node)$to_node
         
-        # message("Neighbors of node ", node , " are:\n",  paste0(" --> ", c(neighbors), sep = "\n"))
-        
         # iterate through neighbors and add to stack if NOT VISITED
         for (n in neighbors) {
-          # message("neighbor n: ", n)
-          
           if (!marked$get(n) & n != 0) {
-            # message("**** neighbor ", n, " HAS NOT BEEN VISITED ****")
-            # message("Pushing ", n, " onto stack")
             
             stack$push(n)
             
           }
-          # message("*************")
         }
       }
-      # message("ONTO NEXT ITERATION OF WHILE LOOP")
-      # message("====================================")
     }
     
     res_df <- 
@@ -687,34 +455,6 @@ get_node_topology <- function(
     crosswalk_id    = NULL
 ) {
   
-  # *************************************
-  # Example data:
-  # *************************************
-  
-  # to_crosswalk_id = "toid"
-  # x <- dplyr::select(network, dplyr::any_of(crosswalk_id))
-  # network,
-  # crosswalk_id = crosswalk_id
-  # x <- network
-  # x = dplyr::select(network, dplyr::any_of(crosswalk_id))
-  # crosswalk_id = "comid"
-  # crosswalk_id = crosswalk_id
-  # stash_nodes <- x %>% dplyr::select(comid, fromnode, tonode) %>% sf::st_drop_geometry()
-  # *************************************
-  # ID_COL        <- "id"
-  # TO_ID_COL     <- hydrofabric3D:::as_to_id(ID_COL)
-  
-  # flowlines <- sf::read_sf(testthat::test_path("testdata", "flowlines.gpkg"))  %>% 
-  #   dplyr::select(dplyr::any_of(ID_COL))  
-  
-  # NUM_FLOWLINES <- nrow(flowlines)
-  # NUM_CONNECTED_COMPONENTS <- 1
-  # x =  flowlines
-  # crosswalk_id    = ID_COL
-  # x =flowlines
-  # crosswalk_id = ID_COL
-
-
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     x             <- add_hydrofabric_id(x)
@@ -738,8 +478,6 @@ get_node_topology <- function(
   topo <-
     x %>%
     dplyr::select(id) %>%
-    # dplyr::select(network, dplyr::any_of(crosswalk_id)) %>% 
-    # dplyr::select(crosswalk_id = comid) %>%
     hydroloom::hy() %>% 
     hydroloom::align_names() %>% 
     hydroloom::make_attribute_topology(min_distance = 5)
@@ -748,17 +486,7 @@ get_node_topology <- function(
     topo %>%
     hydroloom::make_node_topology(add_div = TRUE) %>%
     hydroloom::add_toids(return_dendritic = FALSE) %>%
-    # dplyr::mutate(divergence = 1) %>%
-    # hydroloom::add_toids(return_dendritic = TRUE) %>%
     dplyr::tibble()
-  
-  # # remove repeated IDs
-  # topo <- topo[!duplicated(topo$crosswalk_id), ]
-  # # re generate node topology with duplicate IDs removed
-  # topo <-
-  #   topo %>% 
-  #   dplyr::select(-fromnode, -tonode) %>% 
-  #   hydroloom::make_node_topology(add = TRUE)
   
   suppressWarnings({
     # make an adjacency list
@@ -773,18 +501,6 @@ get_node_topology <- function(
         toindid = as.integer(trimws(toindid))
       )  
   })
-  
-  # TODO: delete this, for reversing graph then making undirected version
-  # reverse_edges <- 
-  #   adj_list %>%
-  #   dplyr::rename(fromid = indid, toid = toindid) %>%
-  #   dplyr::mutate(temp_from = fromid, fromid = toid, toid = temp_from) %>%
-  #   dplyr::select(-temp_from) %>% 
-  #   dplyr::rename(indid = fromid, toindid = toid)
-  
-  # # bind original and reverse edges, then drop remove duplicates
-  # undir <- dplyr::bind_rows(adj_list_long, reverse_edges) %>%
-  #   dplyr::distinct(indid, toindid, .keep_all = TRUE)
   
   # select crosswalk_id, fromnode and tonode
   adj <- 
@@ -845,13 +561,6 @@ get_node_topology <- function(
 #' renode_circuits(graph, crosswalk_id)
 #' }
 renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
-  # crosswalk_id = "comid"
-  # graph <- data.frame(
-  #     fromnode = c(1, 2, 2, 3),
-  #     tonode = c(2, 3, 3, 4),
-  #     comid = c("A", "B", "C", "D"),
-  #     to_comid = c("B", "C", "D", "E")
-  #   )
   
   .data <- NULL
   
@@ -867,20 +576,12 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
   
   # validate input graph
   is_valid <- validate_df(graph, REQUIRED_COLS, "graph")
-  
-  # REQUIRED_COLS <- c(crosswalk_id, to_crosswalk_id, "fromnode", "tonode")
-  # if (!all(REQUIRED_COLS %in% names(graph))) {
-  #   missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(graph))]
-  #   stop("'graph' is missing one or more of the required columns:\n > ", 
-  #        paste0(missing_cols, collapse = "\n > "))
-  # }
-  
+
   # unique nodes in graph
   unodes <- unique(c(graph$fromnode, graph$tonode)) 
   
   # unodes <- unique(c(unique(graph$fromnode), unique(graph$tonode)))
   single_cycles <-
-    # network %>%
     graph %>%
     dplyr::group_by(fromnode, tonode) %>% 
     dplyr::add_count() %>% 
@@ -903,7 +604,6 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
       dplyr::any_of(c(crosswalk_id, to_crosswalk_id)), 
       fromnode, tonode
     )
-  # dplyr::select(comid, tocomid, fromnode, tonode)
   
   # get the number of new nodes needed that don't overlap with current unique nodes in graph
   new_nodes <- seq(max(unodes)+1,  max(unodes) + nrow(renodes))
@@ -914,8 +614,6 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
     dplyr::tibble(
       !!crosswalk_id    := as.character(renodes[[crosswalk_id]]),
       !!to_crosswalk_id := paste0(renodes[[crosswalk_id]], "_v2"),
-      # comid = as.character(renodes$comid),
-      # tocomid = paste0(renodes$comid, "_v2"),
       fromnode = renodes$fromnode,
       tonode = new_nodes
     ),
@@ -923,8 +621,6 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
     dplyr::tibble(
       !!crosswalk_id := paste0(renodes[[crosswalk_id]], "_v2"),
       !!to_crosswalk_id := as.character(renodes[[to_crosswalk_id]]),
-      # comid = as.character(renodes$comid),
-      # tocomid = paste0(renodes$comid, "_v2"),
       fromnode = renodes$fromnode,
       tonode = new_nodes
     ),
@@ -953,8 +649,6 @@ renode_circuits <- function(graph, crosswalk_id = NULL, verbose = FALSE) {
         ),
         !!crosswalk_id    := as.character(.data[[crosswalk_id]]),
         !!to_crosswalk_id := as.character(.data[[to_crosswalk_id]])
-        # comid   = as.character(comid),
-        # tocomid = as.character(tocomid)
       )
     )
   
@@ -999,12 +693,6 @@ make_undirected <- function(graph) {
   # validate input graph
   is_valid <- validate_df(graph, REQUIRED_COLS, "graph")
   
-  # if (!all(REQUIRED_COLS %in% names(graph))) {
-  #   missing_cols <- REQUIRED_COLS[which(!REQUIRED_COLS %in% names(graph))]
-  #   stop("'graph' is missing one or more of the required columns:\n > ", 
-  #        paste0(missing_cols, collapse = "\n > "))
-  # }
-  
   # get to and from nodes
   adj <- 
     graph %>% 
@@ -1017,8 +705,6 @@ make_undirected <- function(graph) {
     adj, 
     fromnode = tonode,
     tonode   = fromnode
-    # comid = tocomid,
-    # tocomid = comid,
   )
   
   # add back edges
@@ -1064,10 +750,7 @@ make_topo_map <- function(
     
     # check if from_node has been added to hashmap already
     if (!topo_map$has(from_node)) {
-      
-      # # edge string
-      # edge_str <- paste0(from_node, "->", to_node)
-      
+
       # edge string
       if(directed) {
         edge_str <- paste0(from_node, "->", to_node)
@@ -1092,9 +775,6 @@ make_topo_map <- function(
       topo_map$set(from_node, map_entry)
       
     } else {
-      
-      # # edge string
-      # edge_str <- paste0(from_node, "->", to_node)
       
       # edge string
       if(directed) {
@@ -1123,7 +803,6 @@ make_topo_map <- function(
     }
   }
   
-  # return(topo_map)
   return(topo_map)
 }
 
@@ -1149,38 +828,6 @@ internal_get_braid_list  <- function(
     verbose      = FALSE
 ) {
   
-  # ---------------------------------------------------------------
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # 
-  # # make directed graph an undirected graph
-  # graph <- make_undirected(graph)
-  # hydrofabric3D:::find_cycles(graph)
-  
-  # net_init    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # network %>% 
-  #   dplyr::filter(hydroseq >= 1385417, hydroseq <= 1385423 | 
-  #                   hydroseq %in% c(1390468, 1390467, 1390468, 1390469, 1390470, 1390471, 1390472, 1390463, 1390464)
-  #   ) %>% .$geometry %>% plot()
-  
-  # network <-
-  #   net_init %>%
-  #   dplyr::filter(hydroseq >= 1385418, hydroseq <= 1385422 |
-  #                   hydroseq %in% c(1390468, 1390467, 1390468,
-  #                                   1390469,
-  #                                   1390470, 1390471, 1390472
-  #                                   # 1390463, 1390464)
-  # ) 
-  # hydrofabric3D:::internal_get_braid_list(
-  # graph = dplyr::filter(graph, 
-  #                       component_id %in% component_ids[i])
-  # crosswalk_id = crosswalk_id
-  # start   = NULL
-  # verbose = verbose
-  
-  
-  # ---------------------------------------------------------------
-  
   # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
   if(nrow(graph) <= 1) {
     
@@ -1191,28 +838,8 @@ internal_get_braid_list  <- function(
     return(NULL)
   }
   
-  # # lower case names
-  # names(network) <- tolower(names(network))
-  
   # get "to_<crosswalk_id>" string column name 
   to_crosswalk_id <- as_to_id(crosswalk_id)
-  
-  # # # turn network into a directed graph
-  # graph <- get_node_topology(
-  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
-  #   # network,
-  #   crosswalk_id = crosswalk_id
-  # )
-  # network$geometry %>% plot()
-  
-  # graph <- get_node_topology(
-  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
-  #   # network,
-  #   crosswalk_id = crosswalk_id,
-  #   deduplicate  = FALSE
-  #   )
-  
-  # graph <- hydrofabric3D:::create_dag(network)
   
   # get the fromnode associated with a given COMID 'start'
   start_node <- id_to_node(graph, crosswalk_id, start)
@@ -1224,16 +851,11 @@ internal_get_braid_list  <- function(
   
   # drop graph geometry
   graph <- sf::st_drop_geometry(graph)
-  # graph <- sf::st_drop_geometry(graph)
   
   # stash comids and from IDs
   id_map <- dplyr::select(
     graph,
     dplyr::any_of(c(crosswalk_id, to_crosswalk_id)),
-    # dplyr::any_of(c(crosswalk_id, to_crosswalk_id, "comid", "tocomid")),
-    # dag,
-    # comid,
-    # crosswalk_id,
     fromnode,
     tonode
   )
@@ -1244,19 +866,13 @@ internal_get_braid_list  <- function(
   # single_cycles() function (COMMENTED OUT CODE BELOW)
   
   graph <- renode_circuits(graph, crosswalk_id = crosswalk_id, verbose = FALSE)
-  # graph <- hydrofabric3D:::renode_circuits3(graph, verbose = FALSE)
-  # graph <- hydrofabric3D:::renode_circuits3(dplyr::rename(graph, tocomid = to_comid), verbose = FALSE)
-  
+
   # make an undirected graph
   graph <- make_undirected(graph)
-  # undir <- make_undirected(graph)
-  # graph <- hydrofabric3D:::make_undirected(graph)
   
   # find cycles in undirected graph (proxy for braids)
   cycles <- find_cycles(
     graph     = graph,
-    # graph = distinct(graph),
-    # graph     = undir,
     start     = start_node,
     edge      = FALSE,
     verbose   = verbose
@@ -1273,7 +889,7 @@ internal_get_braid_list  <- function(
     i[i %in% id_map$fromnode] 
   })
   
-  # # match fromnodes from id_map to nodes identified in each cycle
+  # match fromnodes from id_map to nodes identified in each cycle
   braids <- lapply(1:length(braids), function(k) {
     # get crosswalk_id of each braid
     id_map[id_map$fromnode %in% braids[[k]], ] %>%
@@ -1283,50 +899,6 @@ internal_get_braid_list  <- function(
   
   # set braid_id names
   braids <- stats::setNames(braids, paste0("braid_",  1:length(braids)))
-  
-  # hydrofabric3D:::reduce_braid_list(braids)
-  # for (i in seq_along(braids)) {
-  #   message(i)
-  #   b <- braids[i]
-  #   braid_name <- names(b)
-  #   
-  #   # b
-  #   net2 <- 
-  #     network %>% 
-  #     dplyr::mutate(
-  #       braid_id = "no_braid"
-  #     ) %>% 
-  #     dplyr::mutate(
-  #       braid_id = dplyr::case_when(
-  #         comid %in% b[[1]] ~ paste0(braid_id, "_", braid_name),
-  #         # comid %in% b[[1]] ~ braid_name,
-  #         TRUE ~ "no_braid"
-  #       )
-  #     )
-  #   
-  # }
-  
-  # network %>%
-  #   # dplyr::mutate(
-  #   #   braid_id = "no_braid"
-  #   # ) %>%
-  #   dplyr::mutate(
-  #     braid_id = dplyr::case_when(
-  #       # comid %in% b[[1]] ~ paste0(braid_id, "_", braid_name),
-  #       # comid %in% braids$braid_1 & comid %in% braids$braid_2 ~ "b1 + b2",
-  #       comid %in% braids$braid_1 ~ "b1",
-  #       comid %in% braids$braid_2 ~ "b2",
-  #       comid %in% braids$braid_3 ~ "b3",
-  #       comid %in% braids$braid_4 ~ "b4",
-  #       # comid %in% braids$braid_1 | comid %in% braids$braid_2 ~ "b1 + b2",
-  #       TRUE ~ "no_braid"
-  #     )
-  #   ) %>%
-  
-  # net2 %>%
-  # ggplot2::ggplot() +
-  #   ggplot2::geom_sf(ggplot2::aes(color = braid_id)) 
-  #   ggplot2::facet_wrap(~braid_id)
   
   return(braids)
   
@@ -1354,18 +926,6 @@ internal_get_network_braid_list <- function(
     verbose      = FALSE
 ) {
   
-  # library(dplyr)
-  # library(sf)
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # # 
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # network <- net2
-  # start = NULL
-  # verbose      = TRUE
-  
   # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
   if(nrow(network) <= 1) {
     
@@ -1375,20 +935,6 @@ internal_get_network_braid_list <- function(
     
     return(NULL)
   }
-  
-  # # check valid return_as input
-  # if(!return_as %in% c("list", "dataframe")) {
-  #   stop("Invalid 'return_as' argument '",
-  #        return_as, "'\n'return_as' must be: 'list' or 'dataframe'")
-  # }
-  
-  # # check relationship argument is valid
-  # if(return_as == "dataframe") {
-  #   if(!relationship %in% c("one-to-one", "one-to-many")) {
-  #     stop("Invalid 'relationship' argument '",
-  #          relationship, "'\n'relationship' must be: 'one-to-one' or 'one-to-many'")
-  #   }
-  # }
   
   # get the "to" version of the given 'crosswalk_id' (i.e. "to_<crosswalk_id>")
   to_crosswalk_id <- as_to_id(crosswalk_id)
@@ -1464,8 +1010,6 @@ internal_get_network_braid_list <- function(
 #' @return list with unique braid IDs / COMIDs
 reduce_braid_list <- function(x) {
   
-  # x <- braid_list
-  
   # Remove NULL values using indexing
   x <- x[!sapply(x, is.null)]
   
@@ -1536,13 +1080,6 @@ process_braids <- function(network,
                             verbose = FALSE
 ) {
   
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  verbose = TRUE
-  
   # get a list of braid IDs and comids within each braid
   braids <- get_braid_list(
     network     = network, 
@@ -1550,21 +1087,6 @@ process_braids <- function(network,
     # terminal_id = terminal_id,
     verbose     = verbose
   )
-  
-  # # process multibraided portions of braid list returned above 
-  # braids <- process_braids(
-  #   network = network, 
-  #   braids  = braids,
-  #   add     = add,
-  #   nested  = nested,
-  #   version = version,
-  #   verbose = verbose
-  # )
-  # network = network 
-  # braids  = braids
-  add     = FALSE
-  nested  = TRUE
-  # verbose = TRUE
   
   # rename braids to numeric values
   names(braids) <- 1:length(braids)
@@ -1574,9 +1096,6 @@ process_braids <- function(network,
   # the first braid_id in any of the vectors in "multis" will be the reference/main braid_id and
   # the following braid_ids will be the rest of the multibraided system
   multis <- find_multibraids(braids)
-  
-  # # any vector with more than one braid_id is a multibraid
-  # is_multi <- unname(lengths(multis) > 1)
   
   # # add a logical value that says whether a COMID is part of a multibraided system,
   # # or is a flowline in more than one braid (multiple braid_ids) --> column "is_multibraid"
@@ -1616,7 +1135,6 @@ process_braids <- function(network,
     braids <- 
       braids %>% 
       dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-      # dplyr::group_by(comid)  %>% 
       dplyr::summarise(
         braid_id = paste0(member_braids, collapse = ", ")
       ) %>% 
@@ -1640,7 +1158,6 @@ process_braids <- function(network,
   
   # # add a logical value that says whether a COMID is part of a multibraided system,
   # # or is a flowline in more than one braid (multiple braid_ids)
-  # braids$is_multibraid <- braids$comid %in% multibraids
   
   # if braid data should be added to original data
   if(add) {
@@ -1654,7 +1171,6 @@ process_braids <- function(network,
       ),
       braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
     )
-    # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
   } 
   
   # set no_braid values to FALSE
@@ -1665,7 +1181,6 @@ process_braids <- function(network,
   
   # move braid_id and is_multibraided columns to front of dataframe
   braids <- dplyr::relocate(braids, dplyr::any_of(crosswalk_id), braid_id, is_multibraid)
-  # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
   
   return(braids)
   
@@ -1690,35 +1205,6 @@ process_braid_list <- function(
     verbose = FALSE
 ) {
   
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # 
-  # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # # crosswalk_id = "crosswalk_id"
-  # verbose = TRUE
-  # 
-  # # get a list of braid IDs and crosswalk_ids within each braid
-  # braids <- get_braid_list(
-  #   network     = network, 
-  #   crosswalk_id = crosswalk_id,
-  #   # terminal_id = terminal_id,
-  #   verbose     = verbose
-  # )
-  # crosswalk_id = "comid"
-  
-  # # process multibraided portions of braid list returned above 
-  # braids <- process_braids(
-  #   network = network, 
-  #   braids  = braids,
-  #   add     = add,
-  #   nested  = nested,
-  #   version = version,
-  #   verbose = verbose
-  # )
-  # braids  = braids
-  # nested  = TRUE
-  # verbose = TRUE
-  
   if (length(braids) < 1) {
     return(
       dplyr::tibble(
@@ -1738,9 +1224,6 @@ process_braid_list <- function(
   # the following braid_ids will be the rest of the multibraided system
   multis <- find_multibraids(braids)
   
-  # # any vector with more than one braid_id is a multibraid
-  # is_multi <- unname(lengths(multis) > 1)
-  
   # # add a logical value that says whether a COMID is part of a multibraided system,
   # # or is a flowline in more than one braid (multiple braid_ids) --> column "is_multibraid"
   
@@ -1754,14 +1237,6 @@ process_braid_list <- function(
       member_braids   = paste0(multis[[names(braids[k])]], collapse = ", "),
       is_multibraid   = length(multis[[names(braids[k])]]) > 1
     )
-    
-    # # get crosswalk_id of each braid
-    # data.frame(
-    #   comid         = braids[[k]],
-    #   braid_id      = names(braids[k]),
-    #   member_braids = paste0(multis[[names(braids[k])]], collapse = ", "),
-    #   is_multibraid = length(multis[[names(braids[k])]]) > 1
-    # )
     
   }) %>% 
     dplyr::bind_rows() %>% 
@@ -1781,7 +1256,6 @@ process_braid_list <- function(
     braids <- 
       braids %>% 
       dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-      # dplyr::group_by(comid)  %>% 
       dplyr::summarise(
         braid_id = paste0(member_braids, collapse = ", ")
       ) %>% 
@@ -1814,25 +1288,6 @@ process_braid_list <- function(
     braids <- dplyr::select(braids, -member_braids)
   }
   
-  # # add a logical value that says whether a COMID is part of a multibraided system,
-  # # or is a flowline in more than one braid (multiple braid_ids)
-  # braids$is_multibraid <- braids$comid %in% multibraids
-  
-  # # if braid data should be added to original data
-  # if(add) {
-  #   
-  #   # join back with original data
-  #   braids <- dplyr::mutate(
-  #     dplyr::left_join(
-  #       network,
-  #       braids,
-  #       by = "comid"
-  #     ),
-  #     braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
-  #   )
-  #   # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
-  # } 
-  # 
   # set no_braid values to FALSE
   braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
                                  FALSE,
@@ -1841,423 +1296,10 @@ process_braid_list <- function(
   
   # move crosswalk_id, braid_id and is_multibraided columns to front of dataframe
   braids <- braids[ , c(crosswalk_id, "braid_id", "is_multibraid")]
-  # braids <- dplyr::relocate(braids, dplyr::any_of(crosswalk_id), braid_id, is_multibraid)
   
   return(braids)
   
 }
-
-# 
-# # Convert a list of braid IDs and COMIDs into a dataframe (v1)
-# # Internal function, used to process the outputs of 'get_braid_list()' within 
-# # the 'find_braids()' function. The function takes a list of braid IDs and associated COMIDs and puts the list into a dataframe, 
-# # and optionally adds the information back to the original 'network' dataset.
-# # @param network The network object representing the river network.
-# # @param braids list of braid IDs and COMIDs within each braid
-# # @param add Logical indicating whether to add braid information to the original network data.
-# # @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)
-# # @param verbose Logical indicating whether to display verbose messages during the braid detection process.
-# # 
-# # @noRd
-# # @keywords internal
-# # @return sf dataframe or dataframe with a braid_id mapping for each COMID
-# # @importFrom dplyr bind_rows tibble group_by summarise ungroup mutate left_join relocate select
-# process_braids2 <- function(network, 
-#                             braids, 
-#                             add     = FALSE, 
-#                             nested  = TRUE, 
-#                             verbose = FALSE
-# ) {
-#   
-#   # network = network 
-#   # braids  = braids
-#   # add     = FALSE
-#   # nested  = TRUE
-#   # verbose = TRUE
-#   
-#   # get comids of multibraids
-#   multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
-#   
-#   # format braids into a dataframe
-#   braids <- lapply(1:length(braids), function(k) {
-#     
-#     # get crosswalk_id of each braid
-#     data.frame(
-#       comid    = braids[[k]],
-#       braid_id = names(braids[k])
-#     )
-#   }) %>% 
-#     dplyr::bind_rows() %>% 
-#     dplyr::tibble()
-#   
-#   # if each comid should have a list of all the braids it is a part of
-#   # if relationship == "one-to-one" then COMIDs may appear more than once
-#   # in dataset as a COMID may be apart of more than one braid
-#   # if(relationship == "one-to-many") {
-#   if(nested) { 
-#     
-#     braids <-
-#       braids %>%
-#       dplyr::group_by(comid) %>% 
-#       dplyr::summarise(
-#         braid_id = paste0(braid_id, collapse = ", ")
-#       ) %>% 
-#       dplyr::ungroup()
-#     
-#   }
-#   
-#   # add a logical value that says whether a COMID is part of a multibraided system,
-#   # or is a flowline in more than one braid (multiple braid_ids)
-#   braids$is_multibraid <- braids$comid %in% multibraids
-#   
-#   # if braid data should be added to original data
-#   if(add) {
-#     
-#     # join back with original data
-#     braids <- dplyr::mutate(
-#       dplyr::left_join(
-#         network,
-#         braids,
-#         by = "comid"
-#       ),
-#       braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
-#     )
-#     # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
-#   } 
-#   
-#   # set no_braid values to FALSE
-#   braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
-#                                  FALSE, braids$is_multibraid)
-#   
-#   # move braid_id and is_multibraided columns to front of dataframe
-#   braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
-#   # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
-#   
-#   return(braids)
-#   
-#   
-# }
-# 
-# # Convert a list of braid IDs and crosswalk_ids into a dataframe (v1)
-# # Internal function, used to process the outputs of 'get_braid_list()' within 
-# # the 'find_braids()' function. The function takes a list of braid IDs and associated crosswalk_ids and puts the list into a dataframe
-# # @param braids list of braid IDs and crosswalk_ids within each braid
-# # @param crosswalk_id unique ID column name 
-# # @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate crosswalk_ids as a single COMID could be a part of multiple braids (braid_id)
-# # @param verbose Logical indicating whether to display verbose messages during the braid detection process.
-# # 
-# # @noRd
-# # @keywords internal
-# # @return sf dataframe or dataframe with a braid_id mapping for each crosswalk_id
-# # @importFrom dplyr bind_rows tibble group_by summarise ungroup mutate select any_of across
-# process_braid_list2 <- function(
-#     braids, 
-#     crosswalk_id = NULL,
-#     nested  = TRUE, 
-#     verbose = FALSE
-# ) {
-#   
-#   # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-#   # crosswalk_id = "comid"
-#   # 
-#   # # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-#   # # crosswalk_id = "crosswalk_id"
-#   # verbose = TRUE
-#   # 
-#   # # get a list of braid IDs and crosswalk_ids within each braid
-#   # braids <- get_braid_list(
-#   #   network     = network, 
-#   #   crosswalk_id = crosswalk_id,
-#   #   # terminal_id = terminal_id,
-#   #   verbose     = verbose
-#   # )
-#   # crosswalk_id = "comid"
-#   # # network = network 
-#   # # braids  = braids
-#   # # add     = FALSE
-#   # nested  = FALSE
-#   # verbose = TRUE
-#   
-#   # get crosswalk_ids of multibraids
-#   multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
-#   
-#   # format braids into a dataframe
-#   braids <- lapply(1:length(braids), function(k) {
-#     # k = 1
-#     # get crosswalk_id of each braid
-#     dplyr::tibble(
-#       !!crosswalk_id := braids[[k]],
-#       braid_id        = names(braids[k])
-#     )
-#     # data.frame(
-#     #   crosswalk_id  = braids[[k]],
-#     #   braid_id      = names(braids[k])
-#     # )
-#     
-#   }) %>% 
-#     dplyr::bind_rows() %>% 
-#     dplyr::tibble()
-#   
-#   # if each crosswalk_id should have a list of all the braids it is a part of
-#   # if relationship == "one-to-one" then crosswalk_ids may appear more than once
-#   # in dataset as a crosswalk_id may be apart of more than one braid
-#   # if(relationship == "one-to-many") {
-#   if(nested) { 
-#     
-#     braids <-
-#       braids %>%
-#       dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-#       # dplyr::group_by(comid) %>% 
-#       dplyr::summarise(
-#         braid_id = paste0(braid_id, collapse = ", ")
-#       ) %>% 
-#       dplyr::ungroup()
-#     
-#   }
-#   
-#   # add a logical value that says whether a crosswalk_id is part of a multibraided system,
-#   # or is a flowline in more than one braid (multiple braid_ids)
-#   if (!is.null(multibraids)) {
-#     braids$is_multibraid <- braids[[crosswalk_id]] %in% multibraids
-#   } else {
-#     # multibraid is NULL (all braids are NOT multibraids)
-#     braids$is_multibraid <- FALSE
-#   }
-#   
-#   # # if braid data should be added to original data
-#   # if(add) {
-#   #   
-#   #   # join back with original data
-#   #   braids <- dplyr::mutate(
-#   #     dplyr::left_join(
-#   #       network,
-#   #       braids,
-#   #       by = "comid"
-#   #     ),
-#   #     braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
-#   #   )
-#   #   # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
-#   # } 
-#   
-#   # set no_braid values to FALSE
-#   braids$is_multibraid <- ifelse(
-#     is.na(braids$is_multibraid), 
-#     FALSE, 
-#     braids$is_multibraid
-#   )
-#   
-#   # move crosswalk_id, braid_id and is_multibraided columns to front of dataframe
-#   braids <- braids[ , c(crosswalk_id, "braid_id", "is_multibraid")]
-#   # braids <- dplyr::relocate(braids, dplyr::any_of(crosswalk_id), braid_id, is_multibraid)
-#   
-#   return(braids)
-#   
-#   
-# }
-# # Convert a list of braid IDs and COMIDs into a dataframe
-# # Internal function, used to process the outputs of 'get_braid_list()' within 
-# # the 'find_braids()' function. The function takes a list of braid IDs and associated COMIDs and puts the list into a dataframe, 
-# # and optionally adds the information back to the original 'network' dataset.
-# # @param network The network object representing the river network.
-# # @param braids list of braid IDs and COMIDs within each braid
-# # @param add Logical indicating whether to add braid information to the original network data.
-# # @param nested Logical indicating whether the output dataframe should be nested, with each COMID having a list of all the braids it is a part of. If TRUE (Default), the braid_id column may contain multiple braid IDs for a given COMID. If FALSE, there may be duplicate COMIDs as a single COMID could be a part of multiple braids (braid_id)
-# # @param version integer, which version number to use (either 1 or 2)
-# # @param verbose Logical indicating whether to display verbose messages during the braid detection process.
-# # 
-# # @noRd
-# # @keywords internal
-# # @return sf dataframe or dataframe with a braid_id mapping for each COMID
-# # @importFrom dplyr bind_rows tibble group_by summarise ungroup mutate left_join relocate select
-# process_braids_v1 <- function(network, 
-#                               braids, 
-#                               add     = FALSE, 
-#                               nested  = TRUE, 
-#                               version = 1, 
-#                               verbose = FALSE
-# ) {
-#   
-#   # network = network 
-#   # braids  = braids
-#   # add     = FALSE
-#   # nested  = TRUE
-#   # version = 2
-#   # verbose = TRUE
-#   
-#   if(!version %in% c(1, 2)) {
-#     stop("Invalid 'version' argument, 'version' must be equal to 1 or 2")
-#   }
-#   
-#   ### process braids (version 1) ###
-#   if(version == 1) {
-#     
-#     # get comids of multibraids
-#     multibraids <- unique(Reduce(c, braids[id_multibraids(braids)]))
-#     
-#     # format braids into a dataframe
-#     braids <- lapply(1:length(braids), function(k) {
-#       
-#       # get crosswalk_id of each braid
-#       data.frame(
-#         comid    = braids[[k]],
-#         braid_id = names(braids[k])
-#       )
-#     }) %>% 
-#       dplyr::bind_rows() %>% 
-#       dplyr::tibble()
-#     
-#     # if each comid should have a list of all the braids it is a part of
-#     # if relationship == "one-to-one" then COMIDs may appear more than once
-#     # in dataset as a COMID may be apart of more than one braid
-#     # if(relationship == "one-to-many") {
-#     if(nested) { 
-#       
-#       braids <-
-#         braids %>%
-#         dplyr::group_by(comid) %>% 
-#         dplyr::summarise(
-#           braid_id = paste0(braid_id, collapse = ", ")
-#         ) %>% 
-#         dplyr::ungroup()
-#       
-#     }
-#     
-#     # add a logical value that says whether a COMID is part of a multibraided system,
-#     # or is a flowline in more than one braid (multiple braid_ids)
-#     braids$is_multibraid <- braids$comid %in% multibraids
-#     
-#     # if braid data should be added to original data
-#     if(add) {
-#       
-#       # join back with original data
-#       braids <- dplyr::mutate(
-#         dplyr::left_join(
-#           network,
-#           braids,
-#           by = "comid"
-#         ),
-#         braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
-#       )
-#       # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
-#     } 
-#     
-#     # set no_braid values to FALSE
-#     braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
-#                                    FALSE, braids$is_multibraid)
-#     
-#     # move braid_id and is_multibraided columns to front of dataframe
-#     braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
-#     # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
-#     
-#     return(braids)
-#     
-#     
-#   } else { ### process braids (version 2) ###
-#     
-#     # rename braids to numeric values
-#     names(braids) <- 1:length(braids)
-#     
-#     # create a new list of braid_ids that has the braid_ids of 
-#     # all other braids connected to the given braid_id
-#     # the first braid_id in any of the vectors in "multis" will be the reference/main braid_id and
-#     # the following braid_ids will be the rest of the multibraided system
-#     multis <- find_multibraids(braids)
-#     
-#     # # any vector with more than one braid_id is a multibraid
-#     # is_multi <- unname(lengths(multis) > 1)
-#     
-#     # # add a logical value that says whether a COMID is part of a multibraided system,
-#     # # or is a flowline in more than one braid (multiple braid_ids) --> column "is_multibraid"
-#     
-#     # format braids into a dataframe
-#     braids <- lapply(1:length(braids), function(k) {
-#       
-#       # get crosswalk_id of each braid
-#       data.frame(
-#         comid         = braids[[k]],
-#         braid_id      = names(braids[k]),
-#         member_braids = paste0(multis[[names(braids[k])]], collapse = ", "),
-#         is_multibraid = length(multis[[names(braids[k])]]) > 1
-#       )
-#       
-#     }) %>% 
-#       dplyr::bind_rows() %>% 
-#       dplyr::tibble()
-#     
-#     # if nested is NOT TRUE, then COMIDs (flowlines) may appear more than once in output dataset
-#     # ----> (i.e. a COMID/flowline can be a part of more than one braid_id and thus will have a row for "braid_1" and "braid_2")
-#     # if each comid should have a list of all the braids it is a part of
-#     # if relationship == "one-to-one" then COMIDs may appear more than once
-#     # in dataset as a COMID may be apart of more than one braid
-#     # if(relationship == "one-to-many") {
-#     if(!nested) {
-#       
-#       # replace numeric braid_id with "braid_<number>"
-#       braids$braid_id <- paste0("braid_", braids$braid_id)
-#       
-#       # drop the member braids column
-#       braids <- dplyr::select(braids, -member_braids)
-#       
-#     } else { # if nested is TRUE, then each COMID is unique and has a braid_id column with a comma seperated character string of all relevent braid_ids
-#       
-#       # if braid_ids should be nested so that each COMID has a braid_id column that reflects ALL braid_ids related/connected to it
-#       braids <- 
-#         braids %>% 
-#         dplyr::group_by(comid)  %>% 
-#         dplyr::summarise(
-#           braid_id = paste0(member_braids, collapse = ", ")
-#         ) %>% 
-#         dplyr::ungroup() %>% 
-#         dplyr::mutate(
-#           braid_id = lapply(strsplit(braid_id, ", "), function(x) {
-#             paste0("braid_", sort(as.numeric(unique(x))))
-#           })
-#         )
-#       
-#       # if more than one braid_id in "braid_id" column, then it is a multibraid 
-#       braids$is_multibraid <- lengths(braids$braid_id) > 1
-#       
-#       # collapse braid_ids into comma seperated character string
-#       braids$braid_id <- Reduce(c, 
-#                                 lapply(braids$braid_id, function(k) {
-#                                   paste0(k, collapse = ", ")
-#                                 })
-#       )
-#     }
-#     
-#     # # add a logical value that says whether a COMID is part of a multibraided system,
-#     # # or is a flowline in more than one braid (multiple braid_ids)
-#     # braids$is_multibraid <- braids$comid %in% multibraids
-#     
-#     # if braid data should be added to original data
-#     if(add) {
-#       
-#       # join back with original data
-#       braids <- dplyr::mutate(
-#         dplyr::left_join(
-#           network,
-#           braids,
-#           by = "comid"
-#         ),
-#         braid_id = ifelse(is.na(braid_id), "no_braid", braid_id)
-#       )
-#       # braids[is.na(braids$braid_id), ]$braid_id <- "no_braid"
-#     } 
-#     
-#     # set no_braid values to FALSE
-#     braids$is_multibraid <- ifelse(is.na(braids$is_multibraid), 
-#                                    FALSE,
-#                                    braids$is_multibraid
-#     )
-#     
-#     # move braid_id and is_multibraided columns to front of dataframe
-#     braids <- dplyr::relocate(braids, comid, braid_id, is_multibraid)
-#     # braids <- dplyr::relocate(braids, braid_id, is_multibraid)
-#     
-#     return(braids)
-#   }
-#   
-# }
 
 #' Create a list of all overlapping braid IDs for each element in a list of ID vectors
 #' 
@@ -2274,14 +1316,9 @@ find_multibraids <- function(x) {
   
   # list to store the names of the list elements whose vectors have overlapping values
   overlaps <- list()
-  # i = 1
+  
   # go through original list of IDs and find overlaps
   for (i in seq_along(x)) {
-    
-    # sapply(x, function(vec) {
-    #   vec %in% x[[i]]
-    #   }
-    # )
     
     overlap_names <- names(x)[
       sapply(x, function(vec) any(vec %in% x[[i]]))
@@ -2324,32 +1361,6 @@ is_braided <- function(
     verbose      = FALSE
 ) {
   
-  # # Test data for braids
-  # library(dplyr)
-  # library(sf)
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  # 
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # recycle     = FALSE
-  # verbose      = TRUE
-  
-  # rm(is_cycle, visit, topo_map, detect_cycle, prev, node)
-  
-  # net2 <- nhdplusTools::navigate_network(start = 101, mode = "UT",  distance_km = 100)
-  # net <-  net2 %>%
-  #   dplyr::select(comid, fromnode, tonode, streamcalc, divergence, terminalpa) %>%
-  #   dplyr::filter(!comid %in% c(1079041, 1078529, 1078505, 1078403, 1078391, 1078491, 1078485, 1078483))
-  # network <- net %>%
-  #   dplyr::select(-terminalpa)
-  # terminal_id = NULL
-  # recycle     = FALSE
-  # network <- net
-  # terminal_id = "terminalpa"
-  # verbose     = FALSE
-  
   # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
   if(nrow(network) <= 1) {
     return(FALSE)
@@ -2357,7 +1368,6 @@ is_braided <- function(
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
-    # x             <- add_hydrofabric_id(x)
     crosswalk_id  <- 'hydrofabric_id'
   }
   
@@ -2365,28 +1375,12 @@ is_braided <- function(
   to_crosswalk_id <- as_to_id(crosswalk_id)
   
   REQUIRED_COLS <- c(crosswalk_id)
-  # REQUIRED_COLS <- c(crosswalk_id, "fromnode", "tonode")
   
   # validate input graph
   is_valid <- validate_df(network, REQUIRED_COLS, "network")
   
-  # # # turn network into a directed graph
-  # graph <- get_node_topology(
-  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
-  #   # network,
-  #   crosswalk_id = crosswalk_id
-  # )
-  # network$geometry %>% plot()
-  
-  # graph <- get_node_topology(
-  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
-  #   # network,
-  #   crosswalk_id = crosswalk_id,
-  #   deduplicate  = FALSE
-  #   )
-  
+
   graph <- get_node_topology(network, crosswalk_id)
-  # graph <- hydrofabric3D:::create_dag(network)
   
   # Create a terminal ID by finding all connected componenets in network
   # determine which flowlines are part of which contiguous set of linestrings 
@@ -2395,19 +1389,6 @@ is_braided <- function(
                                           crosswalk_id = crosswalk_id,
                                           verbose = verbose
   )
-  
-  # components$component_id %>% unique()
-  
-  # # join the component ID onto the network dataset
-  # network <- 
-  #   network %>% 
-  #   dplyr::left_join(
-  #     dplyr::select(components, 
-  #                   dplyr::any_of(crosswalk_id), 
-  #                   component_id
-  #     ),
-  #     by = crosswalk_id
-  #   )
   
   # join the component ID to the graph
   graph <- 
@@ -2488,30 +1469,6 @@ internal_is_braided <- function(
     verbose = FALSE
 ) {
   
-  # graph = dplyr::filter(graph,  
-  #                         component_id %in% component_ids[i])
-  # crosswalk_id = "comid"
-  # start   = NULL
-  # verbose = verbose
-  # library(dplyr)
-  # library(sf)
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  #
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # start = NULL
-  # verbose      = TRUE
-  
-  # network = dplyr::filter(network,   component_id %in% components[i])
-  # start   = NULL
-  # verbose = verbose
-  # network = dplyr::filter(network,
-  #                         component_id %in% components[i])
-  # start   = NULL
-  # verbose = verbose
-  
   # if 'graph' has 1 or 0 rows, no braids are possible, return NULL 
   if(nrow(graph) <= 1) {
     return(FALSE)
@@ -2531,16 +1488,11 @@ internal_is_braided <- function(
   
   # drop graph geometry
   graph <- sf::st_drop_geometry(graph)
-  # graph <- sf::st_drop_geometry(graph)
   
   # stash crosswalk_ids and from IDs
   id_map <- dplyr::select(
     graph,
     dplyr::any_of(c(crosswalk_id, to_crosswalk_id)),
-    # dplyr::any_of(c(crosswalk_id, to_crosswalk_id, "comid", "tocomid")),
-    # dag,
-    # comid,
-    # crosswalk_id,
     fromnode,
     tonode
   )
@@ -2549,10 +1501,7 @@ internal_is_braided <- function(
   # sections of river that form a circuit to be identfied as a cycle and thus a braid
   # Questionable at this point, other option is the code below that uses 
   # single_cycles() function (COMMENTED OUT CODE BELOW)
-  
   graph <- renode_circuits(graph = graph, crosswalk_id = crosswalk_id, verbose = FALSE)
-  # graph <- hydrofabric3D:::renode_circuits3(graph, verbose = FALSE)
-  # graph <- hydrofabric3D:::renode_circuits3(dplyr::rename(graph, tocomid = to_comid), verbose = FALSE)
   
   # make an undirected graph
   graph <- make_undirected(graph)
@@ -2582,15 +1531,8 @@ internal_is_braided <- function(
   # Depth first search function for detecting cycles 
   detect_cycle <- function(node, prev) {
     
-    message("--------------")
-    message("node: ", node)
-    message("prev: ", prev)
-    message("is_cycle: ", is_cycle)
-    message("--------------")
-    
     # if is_cycle is TRUE, return
     if(is_cycle) {
-      # message("!!!!! is_cycle IS TRUE RETURNING !!!!!")
       return()
     }
     
@@ -2600,17 +1542,11 @@ internal_is_braided <- function(
     # get the neighbors of current node
     neighbors <- topo_map$get(node)$to_node
     
-    # message("Neighbors of node: ",  node, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
-    
     for (i in neighbors) {
-      # message("NEIGHBOR: ", i)  
       if(
-        # isTRUE(visit$get(i)) & i != prev
         visit$get(i) && i != prev
       ) {
         
-        message("!!!!!!!!! neighbor ", i, " HAS BEEN VISITED and i != prev (", i, " != ", prev, ")")
-        message("!!!!!!!!! SET is_cycle to TRUE")
         is_cycle <<- TRUE
         
         return()
@@ -2618,7 +1554,6 @@ internal_is_braided <- function(
       }
       # if neighbor "i" has NOT been visited yet, call DFS on neighbor "i" and node as "prev"
       if(!visit$get(i)) {
-        # message("----> VISITING NEIGHBOR ", i)
         detect_cycle(node = i, prev = node)
       }
     }
@@ -2651,25 +1586,6 @@ internal_is_network_braided <- function(
     verbose = FALSE
 ) {
   
-  # library(dplyr)
-  # library(sf)
-  
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id = "comid"
-  #
-  # network    <- sf::read_sf(testthat::test_path("testdata", "nextgen_braided_flowlines.gpkg"))
-  # crosswalk_id = "crosswalk_id"
-  # start = NULL
-  # verbose      = TRUE
-  
-  # network = dplyr::filter(network,   component_id %in% components[i])
-  # start   = NULL
-  # verbose = verbose
-  # network = dplyr::filter(network,
-  #                         component_id %in% components[i])
-  # start   = NULL
-  # verbose = verbose
-  
   # if 'network' has 1 or 0 rows, no braids are possible, return NULL 
   if(nrow(network) <= 1) {
     return(FALSE)
@@ -2689,23 +1605,7 @@ internal_is_network_braided <- function(
   # validate input graph
   is_valid <- validate_df(network, REQUIRED_COLS, "network")
   
-  # # # turn network into a directed graph
-  # graph <- get_node_topology(
-  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
-  #   # network,
-  #   crosswalk_id = crosswalk_id
-  # )
-  # network$geometry %>% plot()
-  
-  # graph <- get_node_topology(
-  #   dplyr::select(network, dplyr::any_of(crosswalk_id)),
-  #   # network,
-  #   crosswalk_id = crosswalk_id,
-  #   deduplicate  = FALSE
-  #   )
-  
   graph <- get_node_topology(network, crosswalk_id)
-  # graph <- hydrofabric3D:::create_dag(network)
   
   # get the fromnode associated with a given COMID 'start'
   start_node <- id_to_node(graph, crosswalk_id, start)
@@ -2717,16 +1617,11 @@ internal_is_network_braided <- function(
   
   # drop graph geometry
   graph <- sf::st_drop_geometry(graph)
-  # graph <- sf::st_drop_geometry(graph)
   
   # stash crosswalk_ids and from IDs
   id_map <- dplyr::select(
     graph,
     dplyr::any_of(c(crosswalk_id, to_crosswalk_id)),
-    # dplyr::any_of(c(crosswalk_id, to_crosswalk_id, "comid", "tocomid")),
-    # dag,
-    # comid,
-    # crosswalk_id,
     fromnode,
     tonode
   )
@@ -2735,10 +1630,7 @@ internal_is_network_braided <- function(
   # sections of river that form a circuit to be identfied as a cycle and thus a braid
   # Questionable at this point, other option is the code below that uses 
   # single_cycles() function (COMMENTED OUT CODE BELOW)
-  
   graph <- renode_circuits(graph, crosswalk_id = crosswalk_id, verbose = FALSE)
-  # graph <- hydrofabric3D:::renode_circuits3(graph, verbose = FALSE)
-  # graph <- hydrofabric3D:::renode_circuits3(dplyr::rename(graph, tocomid = to_comid), verbose = FALSE)
   
   # make an undirected graph
   graph <- make_undirected(graph)
@@ -2768,15 +1660,8 @@ internal_is_network_braided <- function(
   # Depth first search function for detecting cycles 
   detect_cycle <- function(node, prev) {
     
-    # message("--------------")
-    # message("node: ", node)
-    # message("prev: ", prev)
-    # message("is_cycle: ", is_cycle)
-    # message("--------------")
-    
     # if is_cycle is TRUE, return
     if(is_cycle) {
-      # message("!!!!! is_cycle IS TRUE RETURNING !!!!!")
       return()
     }
     
@@ -2786,25 +1671,17 @@ internal_is_network_braided <- function(
     # get the neighbors of current node
     neighbors <- topo_map$get(node)$to_node
     
-    # message("Neighbors of node: ",  node, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
-    
     for (i in neighbors) {
-      # message("NEIGHBOR: ", i)  
       if(
-        # isTRUE(visit$get(i)) & i != prev
         visit$get(i) && i != prev
       ) {
         
-        # message("!!!!!!!!! neighbor ", i, " HAS BEEN VISITED and i != prev (", i, " != ", prev, ")")
-        # message("!!!!!!!!! SET is_cycle to TRUE")
         is_cycle <<- TRUE
         
         return()
         
       }
-      # if neighbor "i" has NOT been visited yet, call DFS on neighbor "i" and node as "prev"
       if(!visit$get(i)) {
-        # message("----> VISITING NEIGHBOR ", i)
         detect_cycle(node = i, prev = node)
       }
     }
@@ -2867,12 +1744,6 @@ id_to_node <- function(
     start_node <- as.character(
       network$fromnode[!network$tonode %in% network$fromnode]
     )
-    # if ("0" %in% network$tocomid) {
-    #   # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
-    #   start_node <- as.character(network$fromnode[network$tocomid == "0"])[1]
-    # } else {
-    #   start_node <- as.character(network$fromnode)[1]
-    # }
   }
   
   # if no return, just use the first fromnode
@@ -2904,10 +1775,7 @@ get_start_node <- function(graph, start = NULL) {
     # if start COMID is NOT found in the network, throw error
     if(!start %in% graph$fromnode) { stop(start, " node not found in graph")}
     
-    # if(verbose) { message("Starting braid detection at COMID: ", start)  }
-    
     # find fromnode of comid to start cycle detection at
-    # start_node <- as.character(graph$fromnode[graph$comid == start])
     start_node <- as.character(start)
     
   } else {
@@ -2917,12 +1785,8 @@ get_start_node <- function(graph, start = NULL) {
       # if no start COMID is given, use nodes where tocomid == 0, (i.e. start of graph)
       start_node <- as.character(graph$fromnode[graph$tonode == "0"])[1]
       
-      # if(verbose) {message("Starting braid detection at COMID: ", graph$comid[graph$tocomid == "0"][1])}
-      
     } else {
       
-      # if(verbose) { message("No 'tocomid' value equal to '0' found", 
-      # "\nStarting braid detection at COMID: ", graph$comid[graph$fromnode == as.character(graph$fromnode)[1]] ) }
       start_node <- as.character(graph$fromnode)[1]
     }
   }
@@ -2956,13 +1820,11 @@ edge_to_node <- function(edge,
   if(to) {
     # edge string
     edge_str <- sub(paste0(".*", connect_str), "", edge)
-    # return(sub(".*->", "", edge))
     
     # if from node should be returned
   } else {
     # edge string
     edge_str <- sub(paste0(connect_str, ".*"), "", edge)
-    # return(sub("->.*", "", edge))
   }
   
   return(edge_str)
@@ -2988,15 +1850,6 @@ id_multibraids <- function(x) {
   
   overlaps <- Reduce(c, overlaps)
   
-  # big_cycles <- sort(
-  #   unique(
-  #     Reduce(c, overlaps)
-  #   )
-  # )
-  # 
-  # # remove 0 values
-  # big_cycles <- big_cycles[big_cycles != 0]
-  
   return(overlaps)
   
 }
@@ -3018,10 +1871,6 @@ find_overlaps <- function(
     rm_no_overlap  = FALSE,
     verbose        = FALSE
 ) {
-  # lst <- braids
-  # lst <- braids
-  # no_overlap_val = FALSE
-  # rm_no_overlap  = FALSE
   
   overs <- lapply(seq_along(lst), function(i) {
     
@@ -3065,25 +1914,11 @@ find_overlaps <- function(
   
   return(overs)
   
-  # overs <- vector("list", length(lst))
-  # for (i in 1:length(lst)) {
-  #   matches <- c()
-  #   for (j in 1:length(lst)) {
-  #     if (i != j && all(lst[[i]] %in% lst[[j]])) {
-  #       matches <- c(matches, j)
-  #     }} if (length(matches) > 0) { overs[[i]] <- matches } else {  overs[[i]] <- FALSE}}
-  # return(overs)
 }
 
 # -----------------------------------------------------------------------------
 # ---- Braid thresholder / unpacker ----
 # -----------------------------------------------------------------------------
-
-# Apply flowline braid length threshold to braided network dataset 
-# Return a list with 2 sf dataframes, the updated braided dataset and the updated original "not_braided" dataset
-# x: braided flowlines
-# originals: not braided flowlines from the same network
-# threshold: braid_threshold numeric value to remove braids with a total braid flowline length greater than 'threshold'
 
 #' Apply flowline braid length threshold to braided network dataset 
 #' Internal function
@@ -3107,69 +1942,8 @@ braid_thresholder <- function(x,
                               new_braid_ids = "no_braid",
                               verbose   = TRUE
 ) {
-  # ************************************************************************
-  # ************************************************************************
-  # braids2 <- braids
-  # network    <- sf::read_sf(testthat::test_path("testdata", "braided_flowlines.gpkg"))
-  # crosswalk_id    = "comid"
-  # # flowlines    <- dplyr::slice(flowlines, 1)
-  # network <- dplyr::select(network, dplyr::any_of(crosswalk_id))
-  # method          = "crosswalk_id"
-  # precision       = 1
-  # rm_intersects   = TRUE
-  # # set geometry name of network to "geometry"
-  # network <- nhdplusTools::rename_geometry(network, "geometry")
-  # # add braid_id column to network
-  # braids <- add_braid_ids(
-  #   network      = network, 
-  #   crosswalk_id = crosswalk_id,
-  #   verbose      = FALSE
-  # )
-  # 
-  # # x <- dplyr::filter(braids, braid_id != "no_braid") 
-  # # dplyr::filter(braids, braid_id == "no_braid") 
-  # # dplyr::filter(braids, braid_id != "no_braid") 
-  # # braids
-  # 
-  # # not braided flowlines
-  # not_braids <-  dplyr::filter(braids, braid_id == "no_braid")
-  # 
-  # # trim down network to just the braided parts, and add a comid count to separate out multibraids
-  # only_braids <- dplyr::filter(braids, braid_id != "no_braid") 
-  # # braids <- dplyr::filter(braids, braid_id != "no_braid") 
-  # x <- only_braids
-  # crosswalk_id    = "comid"
-  # originals = not_braids
-  # threshold = 20000
-  # 
-  # new_braid_ids = "no_braid"
-  # verbose   = TRUE
   
   .data <- NULL
-  ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### ###### 
-  ###### BRAID LENGTH CHECKING
-  # TODO: Refactor braid_thresholder Code to use a prescription ID
-  # braid_sizes <- braid_lengths(braids, keep_geom = TRUE)
-  # hist(braid_sizes$braid_length)
-  
-  # if (!is.null(braid_threshold)) {
-  #   
-  #   # remove braids that have a total flowline length greater than braid_threshold
-  #   braids <- braid_thresholder(
-  #     x         = braids, 
-  #     originals = not_braids, 
-  #     threshold = braid_threshold,
-  #     verbose   = TRUE
-  #   )
-  #   
-  #   # reassign braids and not_braids datasets to the updated values in 'braids' list (REASSIGNMENT ORDER MATTERS HERE)
-  #   not_braids <- braids$not_braids
-  #   braids     <- braids$braids
-  #   
-  # }
-  
-  # ************************************************************************
-  # ************************************************************************
   
   # input check for input 'x'
   if(is.null(x)) {
@@ -3202,9 +1976,7 @@ braid_thresholder <- function(x,
         sum(sf::st_length(geometry), na.rm = T))
     ) %>%
     dplyr::ungroup()
-  # dplyr::mutate(braid_length = sf::st_length(geometry)) %>%
-  # dplyr::mutate(braid_length = as.numeric(sum(braid_length, na.rm = T))) %>%
-  
+
   # check to make sure some braids are over threshold and can be removed, if NOT then just return original data
   if (all(unpacked$braid_length <= threshold)) {
     
@@ -3220,23 +1992,13 @@ braid_thresholder <- function(x,
     
   } 
   
-  # # table of TRUEs and FALSE for braids to keep/remove given 'threshold'
-  # threshold_tbl <- table(unpacked$braid_length <= threshold)
-  # if(verbose) { message("Removing: ",  threshold_tbl["FALSE"],  
-  # " braids from braided dataset\nKeeping: ", threshold_tbl["TRUE"],
-  #           " braids that have total flowline lengths less than or equal to threshold value: ", threshold)}
-  
   # comids to keep (total length of braid linestrings is less than or equal to braid_threshold value)
   to_keep <- dplyr::filter(unpacked, braid_length <= threshold)[[crosswalk_id]]
   
   # # Extract the list of "braid_id" that are getting removed from output braids 
   drop_braids <- unique(dplyr::filter(x, !.data[[crosswalk_id]] %in% to_keep)$braid_id)
-  # drop_braids <- unique(dplyr::filter(x, !comid %in% to_keep)$braid_id)
   
   drop_braids <- unique(unlist(strsplit(drop_braids, ", ") ))
-  
-  # # COMIDs that are too large, add them back to the "not_braids" data
-  # to_drop <- dplyr::filter(x, !comid %in% to_keep)
   
   # keep track of keeping and removing count
   orig_nrows <- nrow(originals)
@@ -3251,8 +2013,6 @@ braid_thresholder <- function(x,
                     x, !.data[[crosswalk_id]] %in% to_keep
                   ),
                   braid_id      = new_braid_ids,
-                  # braid_id      = "no_braid",
-                  # braid_id      = "thresholded",
                   is_multibraid = FALSE
                 )
               )
@@ -3340,41 +2100,14 @@ unpack_braids <- function(x,
     into_list <- FALSE
   }
   
-  # # TODO: Not using tidyr::unnest(), can drop tidyr dependency now i think
-  # unnested_braids <-
-  #   x %>%
-  #   # braids %>% 
-  #   dplyr::mutate(split_braid_ids = strsplit(braid_id, ", ")) %>% 
-  #   dplyr::mutate(
-  #     ids_length = sapply(split_braid_ids, length)
-  #   ) %>% 
-  #   dplyr::slice(rep(1:dplyr::n(), ids_length)) %>% 
-  #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "braid_id")))) %>% 
-  #   dplyr::mutate(
-  #     n = 1:dplyr::n()
-  #   ) %>% 
-  #   dplyr::mutate(
-  #     new_braid_id = split_braid_ids[[1]][n]
-  #   ) %>% 
-  #   dplyr::ungroup() %>%
-  #   dplyr::rename(
-  #     braid_members = braid_id, 
-  #     braid_id      = new_braid_id
-  #   ) %>% 
-  #   dplyr::select(-split_braid_ids, -n, -ids_length)
-  
-  # TODO: Using tidyr::unnest()
   unnested_braids <-
     x %>%
-    # braids %>%
     dplyr::mutate(split_braid_ids = strsplit(braid_id, ", ")) %>%
-    # dplyr::mutate(split_braid_ids = stringr::str_split(braid_id, ", ")) %>%
     tidyr::unnest(cols = c(split_braid_ids)) %>%
     dplyr::rename(
       braid_members = braid_id,
       braid_id      = split_braid_ids
     )
-  #   # dplyr::relocate(dplyr::any_of(crosswalk_id), braid_id, braid_members)
 
   # reorder the columns to put crosswalk_id, braid_id, and braid_members at the front of the dataframe
   unnested_braids <- reorder_cols(unnested_braids, c(crosswalk_id, "braid_id", "braid_members"))
@@ -3447,23 +2180,6 @@ find_cycles <- function(
     verbose   = FALSE
 ) {
   
-  # graph     = graph
-  # # graph = distinct(graph),
-  # # graph     = undir,
-  # start     = start_node
-  # return_as = "list"
-  # edge      = FALSE
-  # wide      = TRUE
-  
-  # verbose   = verbose
-  # graph     = graph
-  # # graph     = undir,
-  # start     = start_node
-  # return_as = "list"
-  # edge      = FALSE
-  # wide      = TRUE
-  # verbose   = verbose
-  
   # validate graph and columns 
   is_valid <- validate_df(graph, c("fromnode", "tonode"), "graph")
   
@@ -3475,17 +2191,11 @@ find_cycles <- function(
   # get / check for a valid start node 
   start_node <- get_start_node(graph, start)
   
-  # if(verbose) {
-  #   message("Starting braid detection at node: ", start_node)
-  # }
-  
   # make a topology hashmap to use in DFS 
   topo_map <- make_topo_map(
     from_nodes = graph$fromnode,
     to_nodes   = graph$tonode,
     directed   = FALSE
-    # from_nodes = graph$tonode,
-    # to_nodes   = graph$fromnode
   )
   
   
@@ -3502,15 +2212,8 @@ find_cycles <- function(
   )
   )
   
-  # keep track of visited nodes
-  # visits <- get_visits_set(graph$fromnode, graph$tonode, 0)
-  
   # keep track of cycles nodes
   cycles <- fastmap::fastmap()
-  
-  # # # set all marked values to FALSE
-  # cycles$mset(.list = stats::setNames(lapply(1:length(unique(c(ungraph$fromnode, ungraph$tonode))), function(i){ 0 }),
-  #                         unique(c(ungraph$fromnode, ungraph$tonode))))
   
   # keep track of visited nodes
   prev_nodes <- fastmap::fastmap()
@@ -3523,16 +2226,11 @@ find_cycles <- function(
   )
   )
   
-  # # keep track of visited nodes
-  # prev_nodes <- get_visits_set(graph$fromnode, graph$tonode, 0)
-  
   # cycle number count
   count <- 1
   
   # Depth first search function for marking cycles in undirected graph
   dfs <- function(n, p) {
-    # message("node: ", n)
-    # message("node ", n, " visit value: ", visits$get(n))
     
     # node has been fully visited
     if (visits$get(n) == 2) {
@@ -3603,37 +2301,25 @@ find_cycles <- function(
     
     # get neighbors of node n
     neighbors <- topo_map$get(n)$to_node
-    # neighbors <- edge_to_node(topo_map$get(n)$edge)
-    
-    # message("Neighbors of node: ",  n, ":\n", paste0(" - ", c(neighbors), sep = "\n"))
-    
+
     # iterate through neighbors of node n
     for (vert in neighbors) {
       
       if(vert == prev_nodes$get(n)) {
-        # message("vert ", vert, " equals parent ", prev_nodes$get(n), " SKIPPING")
         next
       }
       
-      # message("---- RUNNING DFS ON ----\n ---> vert = ", 
-      # vert, "---> n = ", n)
-      
       dfs(vert, n)
       
-      # message("***********")
     }
     # mark node as fully visited
     visits$set(n, 2)
-    
-    # message("=============================")
   }
   
   # Start DFS on a node
   dfs(start_node, "no_previous")
   
   if (is.null(cycles) || cycles$size() == 0) {
-    # if (cycles$size() == 0) {
-    
     if(verbose) {
       message("No cycles found, returning NULL")
     }
@@ -3705,8 +2391,6 @@ cycle_edge_list_to_cycle_edge_df <- function(edge_cycles_list,
         data.frame(
           edge     = edge_cycles_list[[k]],
           cycle_id = names(edge_cycles_list[k])
-          # node     = cycles$as_list()[[k]],
-          # cycle_id = names(cycles$as_list()[k])
         ),
         fromnode = edge_to_node(edge, to = FALSE,  directed = FALSE),
         tonode   = edge_to_node(edge, to = TRUE,  directed = FALSE)
@@ -3748,8 +2432,6 @@ cycle_node_list_to_cycle_node_df <- function(node_cycles_list,
     data.frame(
       node     = node_cycles_list[[k]],
       cycle_id = names(node_cycles_list[k])
-      # node     = cycles$as_list()[[k]],
-      # cycle_id = names(cycles$as_list()[k])
     )
   })  %>% 
     dplyr::bind_rows() %>% 

@@ -55,10 +55,6 @@ utils::globalVariables(
 #' @keywords internal
 find_cs_area <- function(depth, depth_array, relative_distance){
   
-  # depth <- df$Z[1]
-  # depth_array <- df$Z
-  # relative_distance <- df$relative_distance
-  
   # Y <- NULL
   depth_under      <-  depth_array[depth_array < depth]
   rel_dist_under   <-  relative_distance[depth_array < depth]
@@ -93,16 +89,6 @@ find_cs_area <- function(depth, depth_array, relative_distance){
 #' @export
 add_cs_area <- function(cs_pts, 
                         crosswalk_id = NULL) {
-  
-  # cs_table <- 
-  #   cs_pts %>% 
-  #   dplyr::filter(hy_id %in% test_ids, cs_id %in% c(1, 6)) %>%
-  #   # dplyr::filter(hy_id %in% test_ids, cs_id %in% c(6)) %>%
-  #   dplyr::select(hy_id, cs_id, pt_id, relative_distance, cs_lengthm, Z)
-  # 
-  # cs_table %>% 
-  #   hydrofabric3D::plot_cs_pts(crosswalk_id = "hy_id", 
-  #                            size = 3, x = "relative_distance")
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "Z", "relative_distance")
   
@@ -141,26 +127,6 @@ find_cs_area2 <- function(pt_id,
                           depth_array, 
                           relative_distance
 ){
-  
-  # cs_pts %>% 
-  #   dplyr::filter(tmp_id %in% aoi_ids[1]) %>% 
-  #   hydrofabric3D::plot_cs_pts("hy_id", size = 4)
-  # 
-  # df <- 
-  #   cs_pts %>% 
-  #   dplyr::filter(tmp_id %in% aoi_ids[1])  %>% 
-  #   dplyr::select(hy_id, cs_id, pt_id, relative_distance, Z)
-  
-  
-  # aoi_ids[1]
-  
-  # pt_id <- df$pt_id[5]
-  # pt_id
-  # depth <- df$Z[5]
-  # depth_array <- df$Z
-  # # # depth_array[4]
-  # # # depth_array[3] <- 84.5
-  # relative_distance <- df$relative_distance
   
   npts     <- length(depth_array)
   
@@ -215,21 +181,6 @@ find_cs_area2 <- function(pt_id,
 add_cs_area2 <- function(cs_pts, 
                         crosswalk_id = NULL) {
   
-  # cs_table <- 
-  #   cs_pts %>% 
-  #   dplyr::filter(hy_id %in% test_ids, cs_id %in% c(1, 6)) %>%
-  #   # dplyr::filter(hy_id %in% test_ids, cs_id %in% c(6)) %>%
-  #   dplyr::select(hy_id, cs_id, pt_id, relative_distance, cs_lengthm, Z)
-  # 
-  # cs_table %>% 
-  #   hydrofabric3D::plot_cs_pts(crosswalk_id = "hy_id", 
-  #                            size = 3, x = "relative_distance")
-  # df <-
-  #   cs_pts %>%
-  #   dplyr::filter(tmp_id %in% aoi_ids[1])  %>%
-  #   dplyr::select(hy_id, cs_id, pt_id, relative_distance, Z)
-  # crosswalk_id="hy_id"
-  
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "Z", "relative_distance")
   
   is_valid  <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
@@ -259,30 +210,6 @@ get_channel_to_channel_cs_area <- function(cs_pts,
                                            crosswalk_id = NULL, 
                                            min_or_max = "max") {
   
-  # crosswalk_id = "hy_id"
-  # ras_cs %>% 
-  #   dplyr::slice(1:892) %>% 
-  #   hydrofabric3D::classify_points("hy_id") %>% 
-  #   add_cs_area("hy_id") %>% 
-  #   dplyr::mutate(
-  #     cs_area = round(cs_area, 3)
-  #   ) %>% 
-  #   dplyr::relocate(hy_id, cs_id, pt_id, relative_distance, Z, cs_area, point_type) %>% 
-  
-  # df <-
-  #   # cs_pts %>%
-  #   ras_cs %>% 
-  #   dplyr::filter(hy_id %in% c("wb-11052"), cs_id %in% c(3)) %>%
-  #   # dplyr::filter(hy_id %in% c("wb-11052"), cs_id %in% c(3, 4)) %>%
-  #   dplyr::select(
-  #     dplyr::any_of(crosswalk_id),
-  #     cs_id,
-  #     pt_id,
-  #     Z,
-  #     point_type,
-  #     cs_area
-  #   )
-  
   bottom_section <- 
     # df %>% 
     cs_pts %>% 
@@ -309,17 +236,6 @@ get_channel_to_channel_cs_area <- function(cs_pts,
     dplyr::ungroup() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type, cs_area)
   
-  
-  # # if no left bank points, try with the leftmost channel point
-  # if (nrow(LB) == 0 ) {
-  #   LB <- 
-  #     cs_pts %>% 
-  #     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-  #     dplyr::filter(point_type == "channel") %>% 
-  #     dplyr::filter(pt_id == min(pt_id)) %>% 
-  #     dplyr::ungroup()
-  # }
-  
   right_channel <-
     cs_pts %>%
     # df %>%
@@ -334,17 +250,6 @@ get_channel_to_channel_cs_area <- function(cs_pts,
     # dplyr::slice_min(Z, n = 1, with_ties = FALSE) %>% 
     dplyr::ungroup() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type, cs_area)
-  
-  
-  # # if no right bank points, try with the rightmost channel point
-  # if (nrow(RB) == 0 ) {
-  #   RB <- 
-  #     cs_pts %>% 
-  #     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-  #     dplyr::filter(point_type == "channel") %>% 
-  #     dplyr::filter(pt_id == max(pt_id))  %>% 
-  #     dplyr::ungroup()
-  # }
   
   agg_cs_area <-
     dplyr::bind_rows(
@@ -366,9 +271,6 @@ get_channel_to_channel_cs_area <- function(cs_pts,
       agg_cs_area %>% 
       dplyr::slice_min(Z, n = 1, with_ties = FALSE) 
   }
-  
-  # dplyr::slice_max(Z, n = 1, with_ties = FALSE) %>%
-  # dplyr::slice_min(Z, n = 1, with_ties = FALSE) %>%
   
   agg_cs_area <- 
     agg_cs_area %>%

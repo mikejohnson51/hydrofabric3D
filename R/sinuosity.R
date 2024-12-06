@@ -68,12 +68,7 @@ get_cs_sinuosity <- function(
     crosswalk_id = "hydrofabric_id",
     add = TRUE
 ) {
-  
-  # flowlines          = net
-  # transects = transects
-  # crosswalk_id   = "hydrofabric_id"
-  # add            = TRUE
-  
+
   # convert cross section linestrings into points at the centroid of each cross section
   pts <- 
     transects %>% 
@@ -81,20 +76,11 @@ get_cs_sinuosity <- function(
     # dplyr::select(hy_id, cs_id, cs_measure, ds_distance, geometry) %>% 
     sf::st_centroid()
   
-  # # plot(pts$geometry)
-  # plot(start$geometry, col = "green", add= T)
-  # plot(end$geometry, col = "red", add= T)
-  # plot(dplyr::slice(cs_lines, 3)$geometry, col = "red", add= T)
-  # plot(cs_lines$geometry, col = "red", add= T)
-  # plot(flowlines$geometry, add= T)
-  
   # calculate line lengths
   flowlines <- 
     flowlines %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), geometry) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(crosswalk_id))) %>% 
-    # dplyr::select(hy_id, geometry) %>% 
-    # dplyr::group_by(hy_id) %>% 
     dplyr::mutate(
       ds_distance = as.numeric(sf::st_length(geometry)),
       cs_id       = "end",
@@ -102,7 +88,6 @@ get_cs_sinuosity <- function(
     ) %>% 
     dplyr::ungroup() %>% 
     dplyr::relocate(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, geometry)
-  # dplyr::relocate(hy_id, cs_id, cs_measure, ds_distance, geometry)
   
   # replace linestring geometries with the point endpoint geometry for each hy_id linestring in 'flowlines'
   # this is needed so that the final cross section point on the linestring has a final point that 
@@ -132,14 +117,10 @@ get_cs_sinuosity <- function(
     dplyr::ungroup() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, ds_distance, along_channel, 
                   euclid_dist, sinuosity, geometry) %>% 
-    # dplyr::select(hy_id, cs_id, cs_measure, ds_distance, along_channel, 
-    #               euclid_dist, sinuosity, geometry) %>% 
     dplyr::filter(cs_id != "end") %>% 
     dplyr::mutate(cs_id = as.integer(cs_id)) %>% 
     sf::st_drop_geometry() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, cs_measure, sinuosity)
-  # dplyr::select(hy_id, cs_id, cs_measure, sinuosity)
-  
   
   # if add is TRUE, then add the sinuosity column back to the original data
   if (add) {

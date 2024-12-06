@@ -61,11 +61,6 @@ utils::globalVariables(
 #' @export
 get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
   
-  # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
-  # add = F
-  # classified_pts = classified_pts2
-  # add = TRUE
-  
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
     crosswalk_id  <- 'hydrofabric_id'
@@ -90,12 +85,6 @@ get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
     classified_pts %>% 
     sf::st_drop_geometry() %>% 
     hydrofabric3D::add_tmp_id(x = crosswalk_id) 
-  
-  # # create a reference dataframe with all possible combinations of tmp_id and point_type
-  # reference_df <- expand.grid(
-  #   tmp_id     = unique(stage_df$tmp_id),
-  #   point_type = unique(stage_df$point_type)
-  # )
   
   # get a count of the point_types in each hy_id/cs_id group (i.e. each cross section)
   point_type_counts <- 
@@ -153,7 +142,6 @@ get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
   stage_df <- 
     stage_df %>% 
     dplyr::select(tmp_id, dplyr::any_of(crosswalk_id), cs_id) %>% 
-    # dplyr::select(tmp_id, hy_id, cs_id) %>% 
     dplyr::group_by(tmp_id) %>% 
     dplyr::slice(1) %>% 
     dplyr::ungroup()
@@ -175,9 +163,6 @@ get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
       left_bank_count, right_bank_count, channel_count, bottom_count
     )
   
-  # point_type_counts %>% 
-  #   dplyr::arrange(-right_bank_count)
-  
   return(point_type_counts)
   
 }
@@ -193,11 +178,6 @@ get_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
 #' @importFrom tidyr pivot_wider pivot_longer
 #' @export
 add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
-  
-  # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
-  # add = F
-  # classified_pts = classified_pts2
-  # add = TRUE  
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
@@ -215,12 +195,6 @@ add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
     classified_pts %>% 
     sf::st_drop_geometry() %>% 
     hydrofabric3D::add_tmp_id(x = crosswalk_id) 
-  
-  # # create a reference dataframe with all possible combinations of tmp_id and point_type
-  # reference_df <- expand.grid(
-  #   tmp_id     = unique(stage_df$tmp_id),
-  #   point_type = unique(stage_df$point_type)
-  # )
   
   # get a count of the point_types in each hy_id/cs_id group (i.e. each cross section)
   point_type_counts <- 
@@ -251,16 +225,6 @@ add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
       values_to = "n"
     ) %>% 
     dplyr::mutate(n = ifelse(is.na(n), 0, n))
-  
-  # # Join the count of point types in each group with the reference_df to 
-  # # get rows of NA values for any group that is missing a specific point_type
-  # point_type_counts <- 
-  #   point_type_counts %>% 
-  #   dplyr::right_join(reference_df, by = c("tmp_id", "point_type"))
-  
-  # # For any cross section group that does NOT contain a point type, 
-  # # the point type will be NA and here we replace those NAs with 0 
-  # point_type_counts$n[is.na(point_type_counts$n)] <- 0
   
   # # make sure that all tmp_id groups have all 4 point types
   check_counts <-
@@ -307,7 +271,6 @@ add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
     dplyr::left_join(
       point_type_counts,
       by = c(crosswalk_id, "cs_id")  
-      # by = c("hy_id", "cs_id")
     )
   
   # check if any of the columns in 'classified_pts' are geometry types  and move them to the end column if they do exist
@@ -328,8 +291,6 @@ add_point_type_counts <- function(classified_pts, crosswalk_id = NULL) {
 add_bank_attributes <- function(
     classified_pts
 ) {
-  
-  # classified_pts <- output_pts
   
   # type checking, throw an error if not "sf", "tbl_df", "tbl", or "data.frame"
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
@@ -362,7 +323,6 @@ add_bank_attributes <- function(
   bank_validity <-
     classified_pts %>% 
     dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
-    # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
     dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
     dplyr::group_by(hy_id, cs_id, point_type) %>% 
     dplyr::summarise(
@@ -384,9 +344,6 @@ add_bank_attributes <- function(
   bank_validity <-
     bank_validity %>% 
     dplyr::mutate(
-      # bottom     = ifelse(is.na(bottom), 0, bottom),          # Old way was to set the NA left/bank/bottom Z values to 0 but i think this could lead to problems with small number of edge cases
-      # right_bank = ifelse(is.na(right_bank), 0, right_bank),
-      # left_bank  = ifelse(is.na(left_bank), 0, left_bank),
       valid_left_bank = dplyr::case_when(
         (left_bank > bottom) & (!is.na(left_bank))   ~ TRUE,    # Old method used: left_bank > bottom ~ TRUE,
         TRUE               ~ FALSE
@@ -397,10 +354,7 @@ add_bank_attributes <- function(
       ),
       valid_banks = valid_left_bank & valid_right_bank
     )
-  # tidyr::pivot_longer(cols = c(right_bank, left_bank), 
-  # names_to = "point_type", values_to = "max_Z_at_banks") %>% 
-  # dplyr::mutate(max_Z_at_banks = ifelse(is.na(max_Z_at_banks), 0, max_Z_at_banks))
-  
+
   # Add the following columns to the final output data:
   # bottom - numeric, max depth (depth of lowest "bottom" point)
   # left_bank - numeric, min depth of left bank (depth of the highest "left_bank" point). If no left_bank points exist, value is 0.
@@ -416,22 +370,6 @@ add_bank_attributes <- function(
       ),
       by = c("hy_id", "cs_id")
     ) 
-  # %>%
-  # dplyr::mutate(valid_banks2 = valid_left_bank & valid_right_bank)
-  
-  # # return simple dataset if add is FALSE
-  # if(!add) {
-  #   # subset to just hy_id/cs_id and added bank attributes to 
-  #   # return a dataframe with unique hy_id/cs_ids for each row 
-  #   bank_validity %>% 
-  #     sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
-  #     dplyr::select(hy_id, cs_id, 
-  #                   bottom, left_bank, right_bank, 
-  #                   valid_banks)
-  #   
-  #   return(bank_validity)
-  #   
-  # }
   
   # select specific rows and returns
   classified_pts <- 
@@ -463,16 +401,6 @@ get_bank_attributes <- function(
     classified_pts,
     crosswalk_id = NULL
 ) {
-  # -----------------------------------------------------
-  # classified_pts <- data.frame(
-  #   hy_id = c("A", "A", "A", "B", "B", "B"),
-  #   cs_id = c(1, 1, 1, 1, 1, 1),
-  #   pt_id = c(1, 2, 3, 1, 2, 3),
-  #   point_type = c('channel', 'channel', 'channel', "left_bank", "bottom", "right_bank"),
-  #   Z = c(1, 5, 8, 10, 2, 12)
-  # )
-  # crosswalk_id = "hy_id"
-  # -----------------------------------------------------
   
   # type checking, throw an error if not "sf", "tbl_df", "tbl", or "data.frame"
   if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
@@ -482,7 +410,6 @@ get_bank_attributes <- function(
   
   # Add columns with the counts of point types
   classified_pts <- add_point_type_counts(classified_pts, crosswalk_id)
-  # classified_pts <- hydrofabric3D::add_point_type_counts2(classified_pts, crosswalk_id)
   
   # TODO: Need to add code that will just set aside the geometries and add them back to the final output dataset
   # For now we will just drop geometries as safety precaution (as to not summarize() on a massive number of sf geometries)
@@ -492,7 +419,6 @@ get_bank_attributes <- function(
   # if a hy_id/cs_id has a bottom point AND atleast 1 left and right bank
   classified_pts <- 
     classified_pts %>% 
-    # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
     dplyr::mutate(
       valid_count = dplyr::case_when(
         (bottom_count > 0 & 
@@ -506,14 +432,9 @@ get_bank_attributes <- function(
   # flags noting if the left/right banks are "valid" (i.e. max left/right bank values are greater than the bottom Z)
   bank_validity <-
     classified_pts %>% 
-    # classified_pts2 %>% 
-    # sf::st_drop_geometry() %>%  # drop sf geometry as a safety precaution to make sure returned data is a dataframe
     dplyr::filter(point_type %in% c("bottom", "left_bank", "right_bank")) %>% 
-    # dplyr::filter(point_type %in% c("left_bank", "right_bank")) %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, Z, point_type) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id", "point_type")))) %>% 
-    # dplyr::select(hy_id, cs_id, pt_id, Z, point_type) %>% 
-    # dplyr::group_by(hy_id, cs_id, point_type) %>% 
     dplyr::summarise(
       minZ = min(Z, na.rm = TRUE),
       maxZ = max(Z, na.rm = TRUE)
@@ -523,13 +444,6 @@ get_bank_attributes <- function(
       names_from  = point_type,
       values_from = c(minZ, maxZ)
     ) %>% 
-    # dplyr::select(
-    #     dplyr::any_of(crosswalk_id), 
-    #     cs_id, 
-    #     bottom     = minZ_bottom, 
-    #     left_bank  = maxZ_left_bank, 
-    #     right_bank = maxZ_right_bank
-    #     ) 
     dplyr::select(
       dplyr::any_of(
         c(
@@ -539,10 +453,6 @@ get_bank_attributes <- function(
           "maxZ_left_bank",
           "maxZ_right_bank"
         ))
-      # cs_id,
-      # bottom     = minZ_bottom, 
-      # left_bank  = maxZ_left_bank, 
-      # right_bank = maxZ_right_bank
     ) %>%  
     dplyr::rename(
       dplyr::any_of(c(
@@ -564,9 +474,6 @@ get_bank_attributes <- function(
   bank_validity <-
     bank_validity %>% 
     dplyr::mutate(
-      # bottom     = ifelse(is.na(bottom), 0, bottom),          # Old way was to set the NA left/bank/bottom Z values to 0 but i think this could lead to problems with small number of edge cases
-      # right_bank = ifelse(is.na(right_bank), 0, right_bank),
-      # left_bank  = ifelse(is.na(left_bank), 0, left_bank),
       valid_left_bank = dplyr::case_when(
         (left_bank > bottom) & (!is.na(left_bank))   ~ TRUE,    # Old method used: left_bank > bottom ~ TRUE,
         TRUE               ~ FALSE
@@ -635,128 +542,4 @@ add_default_bank_attributes <- function(df) {
   
   return(df)
   
-}
-
-
-# TODO: DELETE add_point_type_counts2()
-
-#' @title Add the count of each point type as a column to a dataframe of section points
-#' @description add_point_type_counts() will add columns to the input dataframe with the counts of every point_type for each hy_id/cs_id in the input dataframe of classified cross section points (output of classify_pts())
-#' @param classified_pts dataframe or sf dataframe, cross section points with a "hy_id", and "cs_id" columns as well as a 'point_type' column containing the values: "bottom", "left_bank", "right_bank", and "channel"
-#' @return dataframe or sf dataframe with "<point_type>_count" columns added
-#' @importFrom sf st_drop_geometry
-#' @importFrom dplyr group_by count ungroup summarize filter n_distinct select slice left_join relocate all_of last_col
-#' @importFrom tidyr pivot_wider pivot_longer
-#' @noRd
-#' @keywords internal
-add_point_type_counts2 <- function(classified_pts) {
-  
-  # classified_pts <- cs_pts %>% hydrofabric3D::classify_points()
-  # add = F
-  # classified_pts = classified_pts2
-  # add = TRUE
-  
-  # type checking
-  if (!any(class(classified_pts) %in% c("sf", "tbl_df", "tbl", "data.frame"))) {
-    stop("Invalid argument type, 'classified_pts' must be of type 'sf', 'tbl_df', 'tbl' or 'data.frame', given type was '",  
-         class(classified_pts), "'")
-  }
-  
-  # create a copy of the input dataset, add a tmp_id column
-  stage_df <- 
-    classified_pts %>% 
-    sf::st_drop_geometry() %>% 
-    hydrofabric3D::add_tmp_id() 
-  
-  # # create a reference dataframe with all possible combinations of tmp_id and point_type
-  # reference_df <- expand.grid(
-  #   tmp_id     = unique(stage_df$tmp_id),
-  #   point_type = unique(stage_df$point_type)
-  # )
-  
-  # get a count of the point_types in each hy_id/cs_id group (i.e. each cross section)
-  point_type_counts <- 
-    stage_df %>%
-    dplyr::group_by(tmp_id, point_type) %>%
-    dplyr::count() %>% 
-    dplyr::ungroup() %>% 
-    dplyr::mutate(
-      # add levels to the point_type column so if a given point_type
-      # is NOT in the cross seciton points, then it will be added with NAs in the subsequent pivot_wider
-      point_type = factor(point_type, levels = c("left_bank", "bottom", "right_bank", "channel"))
-    ) 
-  
-  # pivot data wider to get implicit missing groups with NA values
-  point_type_counts <- 
-    point_type_counts %>% 
-    tidyr::pivot_wider(
-      names_from   = point_type,
-      values_from  = n,
-      names_expand = TRUE
-    ) 
-  
-  point_type_counts <- 
-    point_type_counts %>% 
-    tidyr::pivot_longer(
-      cols      = c(bottom, channel, right_bank, left_bank),
-      names_to  = "point_type",
-      values_to = "n"
-    ) %>% 
-    dplyr::mutate(n = ifelse(is.na(n), 0, n))
-  
-  # # Join the count of point types in each group with the reference_df to 
-  # # get rows of NA values for any group that is missing a specific point_type
-  # point_type_counts <- 
-  #   point_type_counts %>% 
-  #   dplyr::right_join(reference_df, by = c("tmp_id", "point_type"))
-  
-  # # For any cross section group that does NOT contain a point type, 
-  # # the point type will be NA and here we replace those NAs with 0 
-  # point_type_counts$n[is.na(point_type_counts$n)] <- 0
-  
-  # # make sure that all tmp_id groups have all 4 point types
-  check_counts <-
-    point_type_counts %>%
-    dplyr::group_by(tmp_id) %>%
-    dplyr::summarize(unique_count = dplyr::n_distinct(point_type)) %>%
-    dplyr::filter(unique_count == 4) 
-  
-  # if the number of distinct points types in each cross section is not 4, raise an error
-  if (length(unique(stage_df$tmp_id)) != nrow(check_counts)) {
-    stop("Error validating each hy_id/cs_id cross section contains exactly 4 distinct values in the 'point_type' column")  
-  }
-  
-  # get the hy_id, cs_id for each tmp_id to cross walk back to just using hy_id/cs_id
-  stage_df <- 
-    stage_df %>% 
-    dplyr::select(tmp_id, hy_id, cs_id) %>% 
-    dplyr::group_by(tmp_id) %>% 
-    dplyr::slice(1) %>% 
-    dplyr::ungroup()
-  
-  # convert the column of point types to be a column for each point type that 
-  # has the point type count for each hy_id/cs_id (cross section)
-  point_type_counts <- 
-    point_type_counts %>% 
-    tidyr::pivot_wider(names_from = point_type,  
-                       names_glue = "{point_type}_count", 
-                       values_from = n) %>% 
-    dplyr::left_join(
-      stage_df,
-      by = "tmp_id"
-    ) %>% 
-    dplyr::select(hy_id, cs_id, left_bank_count, right_bank_count, channel_count, bottom_count)
-  
-  # Join the point type counts to the original dataframe
-  classified_pts <- 
-    classified_pts %>% 
-    dplyr::left_join(
-      point_type_counts,
-      by = c("hy_id", "cs_id")
-    )
-  
-  # check if any of the columns in 'classified_pts' are geometry types  and move them to the end column if they do exist
-  classified_pts <- move_geometry_to_last(classified_pts)
-  
-  return(classified_pts)
 }

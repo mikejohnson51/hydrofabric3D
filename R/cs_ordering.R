@@ -146,15 +146,11 @@ get_transect_initial_order <- function(x, crosswalk_id = NULL) {
     sf::st_drop_geometry() %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id)))) %>% 
     dplyr::slice_min(cs_id, n = 1, with_ties = FALSE) %>%
-    # dplyr::filter(cs_id == min(cs_id)) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(
       initial_order = 1:dplyr::n()
     ) %>% 
-    # hydrofabric3D:::add_initial_order() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), initial_order)
-  
-  # t_order[[crosswalk_id]] <- as.character(t_order[[crosswalk_id]])
   
   return(x_order)
   
@@ -173,15 +169,6 @@ get_transect_initial_order <- function(x, crosswalk_id = NULL) {
 #' @importFrom sf st_drop_geometry
 #' @export
 renumber_cs_ids <- function(df, crosswalk_id = NULL) {
-  # df <- data.frame(
-  #   id =   c(rep("A", 10), 
-  #            rep("B", 10)),
-  #   cs_id = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-  #             1, 2, 3, 4, 5, 6, 7, 8, 9, 10
-  #             ),
-  #   cs_measure =   c(seq(0, 100, length.out = 10),   
-  #                    seq(0, 100, length.out = 10))
-  #   )
   
   is_valid_df <- validate_df(df, 
                              c(crosswalk_id, "cs_id", "cs_measure"), 
@@ -225,48 +212,31 @@ renumber_cs_ids <- function(df, crosswalk_id = NULL) {
     df %>%
     sf::st_drop_geometry() %>%
     dplyr::select(
-      # hy_id, 
       dplyr::any_of(crosswalk_id),
       cs_id, 
       cs_measure
-      # cs_id, pt_id, cs_measure
     ) %>%
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
-    # dplyr::group_by(hy_id, cs_id) %>%
-    # dplyr::arrange(cs_measure, .by_group = TRUE) %>%
     dplyr::slice(1) %>%
     dplyr::ungroup() %>%
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id)))) %>% 
-    # dplyr::group_by(hy_id) %>%
     dplyr::arrange(cs_measure, .by_group = TRUE) %>%
     dplyr::mutate(
       new_cs_id = 1:dplyr::n()
-      # tmp_id = paste0(hy_id, "_", cs_id)
     ) %>%
     add_tmp_id(x = crosswalk_id, y = "cs_id") %>% 
     dplyr::ungroup() %>%
     dplyr::select(new_cs_id, tmp_id)
-  # 
-  # renumbered_ids %>%
-  #   dplyr::filter(new_cs_id != cs_id)
-  
+
   # Join the new cs_ids back with the final output data to replace the old cs_ids
   df <- dplyr::left_join(
     add_tmp_id(df, x = crosswalk_id, y = "cs_id"),
-    # dplyr::mutate(df,tmp_id = paste0(hy_id, "_", cs_id)),
     renumbered_ids,
     by = "tmp_id"
   ) %>%
     dplyr::select(-cs_id, -tmp_id) %>%
     dplyr::rename("cs_id" = "new_cs_id") %>%
     dplyr::relocate(dplyr::any_of(crosswalk_id), cs_id)
-  # dplyr::relocate(hy_id, cs_id)
-  
-  # df %>% 
-  #   # dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) 
-  #   dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id)))) %>% 
-  #   dplyr::arrange(cs_measure, .by_group = TRUE)
-  
   
   return(df)
 }

@@ -44,43 +44,6 @@ utils::globalVariables(
   )
 )
 
-# 
-# # @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
-# # @description
-# # Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. 
-# # Default is to use hy_id and cs_id columns to create a tmp_id = <hy_id>_<cs_id>.
-# # @param df dataframe with x and y as columns
-# # @param x The name of the column in df to make up the first part of the added tmp_id column (tmp_id = x_y). Default is hy_id.
-# # @param y The name of the column in df to make up the second part of the added tmp_id column (tmp_id = x_y). Default is cs_id.
-# # 
-# # @return The input dataframe with the "tmp_id" column added.
-# # 
-# # @importFrom dplyr mutate
-# # @noRd
-# # @keywords internal
-# add_tmp_id2 <- function(df, x = hy_id, y = cs_id) {
-#   # # Create the "tmp_id" column by concatenating values from "x" and "y"
-#   # df <- dplyr::mutate(df, tmp_id = paste0({{x}}, "_", {{y}}))
-#   
-#   # first try to add the tmp_id as if 'x' and 'y' are characters
-#   # if that fails, then use 'x' and 'y' as tidyselectors in dplyr::mutate()
-#   tryCatch({
-#     
-#     tmp_ids = paste0(df[[x]], "_", df[[y]])
-#     df$tmp_id = tmp_ids
-#     
-#     return(df)
-#     
-#   }, error = function(e) { })
-#   
-#   # if columns are NOT characters, then try with tidyselectors...
-#   df <- dplyr::mutate(df, 
-#                       tmp_id = paste0({{x}}, "_", {{y}})) # Create the "tmp_id" column by concatenating values from "x" and "y"
-#   
-#   return(df)
-# }
-
-
 #' @title Function to add a new "tmp_id" column to a dataframe from 2 other columns
 #' @description
 #' Internal convenience function for creating a tmp_id column from 2 other columns in a dataframe. 
@@ -118,14 +81,7 @@ get_unique_tmp_ids <- function(df, x = "hy_id", y = "cs_id") {
   
   # if no tmp_id exists, add one
   if (!"tmp_id" %in% names(df)) {
-    # message("No 'tmp_id' found, adding 'tmp_id' from 'x' and 'y' columns")
-    # df <- 
-    #   df %>% 
-    #   hydrofabric3D::add_tmp_id(x = {{x}}, y = {{y}}) 
-    # df <- 
-    #   df %>% 
-    #   hydrofabric3D::add_tmp_id(x = x, y = y) 
-    
+
     tmp_ids = paste0(df[[x]], "_", df[[y]])
     df$tmp_id = tmp_ids
 
@@ -172,9 +128,6 @@ add_length_col <- function(x,
     length_col = "geom_length"
   }
   
-  # x <- transects
-  # ll <- sf::st_length(sf::st_geometry(x))
-  
   length_vect <- sf::st_length(sf::st_geometry(x))
   
   # attempt to add a unit string to the column name
@@ -209,10 +162,8 @@ add_length_col <- function(x,
 #' @return sf dataframe of transects with added is_outlet logical column
 #' @export
 add_is_outlet_flag <- function(x, crosswalk_id = NULL) {
-  # x <- transects
   
   is_valid_df <- validate_df(x, c(crosswalk_id, "cs_measure"), "x") 
-  # is_valid_df <- validate_df(x, c(crosswalk_id, "cs_id", "cs_measure"), "x") 
   
   x <-
     x %>% 
@@ -327,9 +278,6 @@ reorder_cols <- function(df, start_order) {
   # the new column order
   col_order <- c(start_order, col_names[!col_names %in% start_order])
   
-  # # reorder cols
-  # df <- df[, col_order]
-  
   # reorder cols
   return(
     df[, col_order]
@@ -380,12 +328,6 @@ validate_df <- function(x, cols, obj_name = NULL) {
 #' @keywords internal
 validate_arg_types <- function(..., type_map) {
   args <- list(...)
-  
-  # args = list()
-  # type_map <- list(
-  #   x = c("numeric", "NULL"),
-  #   y = "character"
-  # )
   
   is_empty_args      <- length(args) == 0 
   is_empty_type_map  <- length(type_map) == 0
@@ -457,13 +399,6 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'net' must be an sf object.")
   }
   
-  # # Check if 'crosswalk_id' is NOT a character or if its NULL 
-  # if (!is.character(crosswalk_id) || is.null(crosswalk_id)) {
-  #   # if (is.null(crosswalk_id) || !is.character(crosswalk_id)) {
-  #   stop("'crosswalk_id' must be a character vector")
-  # }
-  # 
-  
   # Check if 'crosswalk_id' is NOT a character AND its NOT NULL
   if (!is.character(crosswalk_id) && !is.null(crosswalk_id)) {
     # if (is.null(crosswalk_id) || !is.character(crosswalk_id)) {
@@ -480,20 +415,10 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'cs_widths' must be a numeric")
   }
   
-  # # Check if 'cs_widths' is numeric or a numeric vector
-  # if (!is.numeric(cs_widths) && !is.null(cs_widths)) {
-  #   stop("'cs_widths' must be numeric or NULL.")
-  # }
-  
   # Check if 'num' is numeric or a numeric vector
   if (!is.numeric(num)) {
     stop("'num' must be numeric")
   }
-  
-  # # Check if 'num' is numeric or a numeric vector
-  # if (!is.numeric(num) && !is.null(num)) {
-  #   stop("'num' must be numeric or NULL.")
-  # }
   
   # Check if 'densify' is numeric or NULL
   if (!is.numeric(densify) && !is.null(densify)) {
@@ -515,21 +440,10 @@ validate_cut_cross_section_inputs <- function(net,
     stop("'fix_braids' must be a logical value.")
   }
   
-  # # Check if 'terminal_id' is NOT a character and its NOT NULL
-  # if (!is.character(terminal_id) && !is.null(terminal_id)) {
-  #   # if (is.null(crosswalk_id) || !is.character(crosswalk_id)) {
-  #   stop("'terminal_id' must be a character vector or NULL")
-  # }
-  
   # Check if 'braid_threshold' is numeric or NULL
   if (!is.null(braid_threshold) && !is.numeric(braid_threshold)) {
     stop("'braid_threshold' must be numeric or NULL.")
   }
-  
-  # # Check if 'version' is an integer and either 1 or 2
-  # if (!is.numeric(version) || !(version %in% c(1, 2))) {
-  #   stop("'version' must be an integer, either 1 or 2.")
-  # }
   
   # Check if 'braid_method' is one of the valid options
   valid_methods <- c("crosswalk_id", "component", "neighbor")
@@ -581,7 +495,6 @@ message_if_verbose <- function(..., verbose = TRUE) {
 select_cs_pts <- function(cs_pts, crosswalk_id = NULL) {
   
   if(is.null(crosswalk_id)) {
-    # crosswalk_id  <- 'hydrofabric_id'
     stop("Please provide a valid 'crosswalk_id' which uniquely identifies each cross section in 'cs_pts'")
   }
   
@@ -599,13 +512,9 @@ select_cs_pts <- function(cs_pts, crosswalk_id = NULL) {
         "X", 
         "Y",
         "Z",
-        # "points_per_cs",
         "slope",
         "class", 
         "point_type",
-        # "bottom",
-        # "left_bank",
-        # "right_bank",
         "valid_banks",
         "has_relief",
         "Z_source",

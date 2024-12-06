@@ -63,13 +63,11 @@ align_banks_and_bottoms <- function(cs_pts, crosswalk_id) {
   
   # make a unique ID if one is not given (NULL 'crosswalk_id')
   if(is.null(crosswalk_id)) {
-    # cs  <- add_hydrofabric_id(cs) 
     crosswalk_id  <- 'hydrofabric_id'
   }
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "Z", "point_type")
   
-  # validate input graph
   is_valid <- validate_df(cs_pts, REQUIRED_COLS, "cs_pts")
   
   adjust <- function(v){
@@ -95,14 +93,12 @@ align_banks_and_bottoms <- function(cs_pts, crosswalk_id) {
       cs_id, 
       adjust
       )
-    # dplyr::select(hy_id, cs_id, adjust)
   
   cs_pts <-  
     dplyr::left_join(
       cs_pts, 
       slope, 
       by = c(crosswalk_id, "cs_id") 
-      # by = c("hy_id", "cs_id")
     ) %>% 
     dplyr::mutate(
       Z = dplyr::case_when(
@@ -115,138 +111,3 @@ align_banks_and_bottoms <- function(cs_pts, crosswalk_id) {
   return(cs_pts)
   
 }
-
-# 
-# #################################################################################### 
-# ############################ Dev testing below ##############################
-# #################################################################################### 
-# align_banks_and_bottoms <- function(cs_pts) {
-#   
-#   
-#   cs_pts <- cs
-#   
-#   adjust = function(v){
-#     if(length(v) == 1){ return(v)}
-#     for(i in 2:length(v)){ v[i] = ifelse(v[i] > v[i-1], v[i-1], v[i]) }
-#     v
-#   }
-#   cs_pts$point_type %>% unique()
-#   
-#   slope <- 
-#     cs_pts %>% 
-#     sf::st_drop_geometry() %>% 
-#     dplyr::group_by(hy_id, cs_id) %>% 
-#     dplyr::summarise(min_ch = min(Z[class == "channel"])) %>% 
-#     dplyr::mutate(adjust = adjust(min_ch) - min_ch) %>% 
-#     dplyr::ungroup() %>% 
-#     dplyr::select(hy_id, cs_id, adjust)
-#   
-#   cs_pts_adjusted <-  
-#     dplyr::left_join(
-#       cs_pts, 
-#       slope, 
-#       by = c("hy_id", "cs_id")
-#       ) %>% 
-#     dplyr::mutate(
-#       Z = dplyr::case_when(
-#         class  == "channel" ~ Z + adjust, 
-#         TRUE ~ Z
-#         ),
-#       is_adjusted = dplyr::case_when(
-#         adjust != 0 ~ TRUE,
-#         TRUE ~ FALSE
-#       )
-#       ) 
-#     # dplyr::select(-bottom, -left_bank, -right_bank, -has_relief,
-#     #               -valid_banks, -point_type, -class) %>% 
-#     # hydrofabric3D::classify_points()
-#   test_id <- 
-#     cs_pts_adjusted %>% 
-#     dplyr::filter(is_adjusted) %>% 
-#     hydrofabric3D::add_tmp_id() %>% 
-#     # dplyr::slice(555) %>% 
-#     dplyr::pull(tmp_id) %>%
-#     unique() %>% 
-#     .[3]
-#   
-#   # cs_pts %>% 
-#   #   hydrofabric3D::add_tmp_id() %>% 
-#   #   dplyr::filter(tmp_id == test_id) %>%
-#   #   dplyr::mutate(
-#   #     updated = "ORIGINAL"
-#   #   ) 
-#   # cs_pts %>% 
-#   #   hydrofabric3D::add_tmp_id() %>% 
-#   #   dplyr::filter(tmp_id == test_id) %>%
-#   #   dplyr::mutate(
-#   #     updated = "Reclassified"
-#   #   ) %>% 
-#   #   classify_points3() 
-#   
-#   compare_classed <- dplyr::bind_rows(
-#     cs_pts %>% 
-#       hydrofabric3D::add_tmp_id() %>% 
-#       dplyr::filter(tmp_id == test_id) %>%
-#       dplyr::mutate(
-#         updated = "ORIGINAL"
-#       ),
-#     cs_pts %>% 
-#       hydrofabric3D::add_tmp_id() %>% 
-#       dplyr::filter(tmp_id == test_id) %>%
-#       dplyr::mutate(
-#         updated = "ORIGINAL - Reclassified"
-#       ) %>% 
-#       classify_points3(),
-#     cs_pts_adjusted %>% 
-#       dplyr::filter(is_adjusted) %>% 
-#       hydrofabric3D::add_tmp_id() %>% 
-#       dplyr::filter(tmp_id == test_id) %>%
-#       dplyr::mutate(
-#         updated = "UPDATED"
-#       ),
-#     cs_pts_adjusted %>% 
-#       dplyr::filter(is_adjusted) %>% 
-#       hydrofabric3D::add_tmp_id() %>% 
-#       dplyr::filter(tmp_id == test_id) %>%
-#       # dplyr::select(-bottom, -left_bank, -right_bank, -has_relief, -valid_banks, -point_type, -class) %>%
-#       # hydrofabric3D::classify_points() %>%
-#       classify_points3() %>%
-#       dplyr::mutate(
-#         updated = "UPDATED - Reclassified"
-#       )
-#   )
-#   
-#   compare_classed %>% 
-#     ggplot2::ggplot() + 
-#     ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = point_type)) +
-#     ggplot2::labs(title = "Reclassified set of points") + 
-#     # ggplot2::facet_wrap(~updated, nrow = 4)
-#     ggplot2::facet_wrap(~updated, nrow = 1)
-#   ###################################  ###################################
-#   ###################################  ###################################
-#   compare_cs <- dplyr::bind_rows(
-#     cs_pts_adjusted %>% 
-#       dplyr::filter(is_adjusted) %>% 
-#       hydrofabric3D::add_tmp_id() %>% 
-#       dplyr::filter(tmp_id == test_id) %>%
-#       #   dplyr::select(-bottom, -left_bank, -right_bank, -has_relief, -valid_banks, -point_type, -class) %>%
-#       # hydrofabric3D::classify_points() %>%
-#       classify_points3() %>%
-#       dplyr::mutate(
-#         updated = "UPDATED"
-#       ),
-#     cs_pts %>% 
-#       hydrofabric3D::add_tmp_id() %>% 
-#       dplyr::filter(tmp_id == test_id) %>%
-#       dplyr::mutate(
-#         updated = "ORIGINAL"
-#       )
-#   )
-#   
-#   compare_cs %>% 
-#     ggplot2::ggplot() + 
-#     ggplot2::geom_point(ggplot2::aes(x = pt_id, y = Z, color = point_type)) +
-#     ggplot2::labs(title = "Bank alignment and bottom smoothing") + 
-#     ggplot2::facet_wrap(~updated)
-#   
-# }
