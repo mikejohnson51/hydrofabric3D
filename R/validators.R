@@ -10,10 +10,7 @@
 #' @keywords internal
 validate_validation_check_list <- function(check_list, obj_name = "check_list") {
   
-  
   false_idxs <- !unname(unlist(check_list))
-  # false_idxs <- c(F, F, F, T, F, F, T, F)
-  # false_idxs <- c(F, F, F, F, F, F, F, F)
   
   false_items <- check_list[false_idxs]
   
@@ -97,10 +94,7 @@ validate_transects_cs_length <- function(transects, crosswalk_id = NULL) {
     dplyr::filter(
       # TODO: within 2 meters...
       !dplyr::near(cs_lengthm, new_cs_length, tol = 2)
-      # !all.equal(cs_lengthm, new_cs_length)
-      # cs_lengthm != new_cs_length
     )
-    # dplyr::filter(cs_lengthm != new_cs_length)
   
   # FALSE if there are any transects with different cs_lengthm than the freshly calculated new_cs_length
   has_correct_lengths <- !(nrow(wrong_lengths) > 0)
@@ -267,9 +261,7 @@ validate_transects <- function(transects,
 ) {
   
   # # standardize geometry name
-  # transects <- hydroloom::rename_geometry(transects, "geometry")
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_measure", "cs_lengthm", "geometry")
-  # REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_source", "cs_measure", "cs_lengthm", "geometry")
   
   # validate dataframe has all correct columns  
   has_all_valid_cols         <- validate_df(
@@ -322,16 +314,6 @@ validate_transects <- function(transects,
     unname(
       unlist(check_list)
     )
-    # c(
-    #   has_all_valid_cols,
-    #   has_valid_cs_ids,
-    #   has_no_self_intersections,
-    #   has_correct_lengths,
-    #   has_unique_ids,
-    #   has_valid_cs_measure,
-    #   has_complete_geometries,
-    #   has_crs
-    # )
   )
   
   return(is_validated_transects)
@@ -349,8 +331,6 @@ validate_transects <- function(transects,
 #' @noRd
 #' @keywords internal
 validate_transects_ids_in_flowlines <- function(transects, flowlines, crosswalk_id = NULL) {
-  
-  # flowlines <- flines
   
   transect_ids <- 
     transects %>% 
@@ -384,7 +364,6 @@ validate_transects_ids_in_flowlines <- function(transects, flowlines, crosswalk_
 #' @keywords internal
 validate_transects_flowline_intersections <- function(transects, flowlines) {
   
-  # flowlines <- flines
   return (
     nrow(transects) == nrow(rm_multiflowline_intersections(transects, flowlines)) 
   )
@@ -418,10 +397,8 @@ validate_transects_against_flowlines <- function(transects,
                                                  crosswalk_id = NULL
 ) {
   
-  # # standardize geometry name
-  # transects <- hydroloom::rename_geometry(transects, "geometry")
+  # standardize geometry name
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_measure", "cs_lengthm", "geometry")
-  # REQUIRED_COLS <- c(crosswalk_id, "cs_id", "cs_source", "cs_measure", "cs_lengthm", "geometry")
   
   # validate dataframe has all correct columns  
   has_all_valid_cols         <- validate_df(
@@ -454,12 +431,6 @@ validate_transects_against_flowlines <- function(transects,
     unname(
       unlist(check_list)
     )
-  #   c(
-  #     has_all_valid_cols,
-  #     all_transect_ids_in_flowline_ids,
-  #     has_valid_flowline_intersects,
-  #     has_same_crs
-  #   )
   )
   
   return(is_flowline_validated_transects)
@@ -480,7 +451,6 @@ validate_cs_pts_cs_id_enumeration <- function(cs_pts, crosswalk_id = NULL) {
   # reenumerate the cs_ids for each transect based on cs_measure sorting, and make sure all cross sections are correctly numbered
   mismatches <-
     cs_pts %>%
-    # dplyr::slice(1:150) %>% 
     sf::st_drop_geometry() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
@@ -552,7 +522,6 @@ validate_cs_pts_relative_distance <- function(cs_pts, crosswalk_id = NULL) {
   # make sure relative distance is greater than or equal to 0
   min_relative_distance <-
     cs_pts %>%
-    # dplyr::slice(1:50) %>% 
     sf::st_drop_geometry() %>% 
     dplyr::pull(relative_distance) %>% 
     min()
@@ -561,23 +530,18 @@ validate_cs_pts_relative_distance <- function(cs_pts, crosswalk_id = NULL) {
   # reenumerate the pt_ids to make sure the pt_ids are valid values of 1:number of points in cross section
   rel_dist_check <-
     cs_pts %>%
-    # dplyr::slice(1:50) %>% 
     sf::st_drop_geometry() %>% 
     dplyr::select(dplyr::any_of(crosswalk_id), cs_id, pt_id, relative_distance, cs_lengthm) %>% 
     dplyr::group_by(dplyr::across(dplyr::any_of(c(crosswalk_id, "cs_id")))) %>% 
     dplyr::summarise(
       cs_lengthm = max(cs_lengthm),
-      # min_rel_dist = min(relative_distance),
       max_rel_dist = max(relative_distance)
     ) %>% 
     dplyr::ungroup() %>% 
     dplyr::mutate(
       # TODO: as long as the lengths are within 1 meter, thats equal
       is_valid_relative_dist = abs(cs_lengthm - max_rel_dist) <= 1
-      # approx_equal_lengths = all.equal(cs_lengthm, cs_pts_lengthm, tolerance = 0.01)
     ) 
-  
-  # dplyr::filter(max_rel_dist > cs_lengthm)
   
   # relative distance is always greater than or equal to 0 and less than the cross sections length
   has_valid_relative_dist_min        <- min_relative_distance >= 0
@@ -645,16 +609,13 @@ validate_cs_pts <- function(
     cs_pts,  
     crosswalk_id = NULL
 ) {
-  # cs_pts <- final_cs_pts
-  # # standardize geometry name
+  
+  # standardize geometry name
   cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
                      "relative_distance", "cs_lengthm", 
-                     # "X", "Y", 
                      "Z"
-                     # "Z_source",
-                     # "class", "point_type", "valid_banks", "has_relief"
                      )
   
   
@@ -699,13 +660,6 @@ validate_cs_pts <- function(
     unname(
       unlist(check_list)
     )
-    # c(
-    #   has_all_valid_cols,
-    #   has_valid_cs_pts_cs_ids,
-    #   has_valid_cs_pts_pt_ids,
-    #   has_valid_relative_distances,
-    #   has_valid_point_types
-    # )
   )
   
   return(is_validated_cs_pts)
@@ -725,8 +679,8 @@ validate_classified_cs_pts <- function(
     cs_pts,  
     crosswalk_id = NULL
 ) {
-  # cs_pts <- final_cs_pts
-  # # standardize geometry name
+  
+  # standardize geometry name
   cs_pts <- hydroloom::rename_geometry(cs_pts, "geometry")
   
   REQUIRED_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
@@ -776,13 +730,6 @@ validate_classified_cs_pts <- function(
     unname(
       unlist(check_list)
     )
-    # c(
-    #   has_all_valid_cols,
-    #   has_valid_cs_pts_cs_ids,
-    #   has_valid_cs_pts_pt_ids,
-    #   has_valid_relative_distances,
-    #   has_valid_point_types
-    # )
   )
   
   return(is_validated_cs_pts)
@@ -800,7 +747,6 @@ validate_classified_cs_pts <- function(
 #' @keywords internal
 validate_cs_pt_ids_in_transects <- function(cs_pts, transects, crosswalk_id = NULL) {
   
-  # flowlines <- flines
   cs_pts_ids <-
     cs_pts %>% 
     sf::st_drop_geometry() %>% 
@@ -871,7 +817,6 @@ validate_cs_pts_length_against_transects <- function(cs_pts, transects, crosswal
     dplyr::mutate(
       # TODO: as long as the lengths are within 1 meter, thats equal
       approx_equal_lengths = abs(cs_lengthm - cs_pts_lengthm) <= 1
-      # approx_equal_lengths = all.equal(cs_lengthm, cs_pts_lengthm, tolerance = 0.01)
     ) 
   
   all_lengths_are_equal <- all(lengths_check$approx_equal_lengths)
@@ -901,10 +846,7 @@ validate_cs_pts_against_transects <- function(
   
   REQUIRED_CS_PTS_COLS <- c(crosswalk_id, "cs_id", "pt_id", 
                      "relative_distance", "cs_lengthm", 
-                     # "X", "Y", 
                      "Z"
-                     # "Z_source",
-                     # "class", "point_type", "valid_banks", "has_relief"
   )
   
   # validate dataframe has all correct columns  
@@ -913,9 +855,6 @@ validate_cs_pts_against_transects <- function(
     cols = REQUIRED_CS_PTS_COLS,
     obj_name = "cs_pts"
   )  
-  
-  # # standardize geometry name
-  # transects <- hydroloom::rename_geometry(transects, "geometry")
   
   # check that cs_pts has either an XY column or a geomtry column
   has_XY_or_geometry_col        <- validate_cs_pts_has_XY_or_geometry_col(cs_pts)
@@ -941,11 +880,6 @@ validate_cs_pts_against_transects <- function(
     unname(
       unlist(check_list)
     )
-    # c(
-    #   has_all_valid_cols,
-    #   has_valid_cs_pts_ids,
-    #   has_matching_lengths
-    # )
   )
   
   return(is_transect_validated_cs_pts)
@@ -986,9 +920,6 @@ validate_classified_cs_pts_against_transects <- function(
     obj_name = "cs_pts"
   )  
   
-  # # standardize geometry name
-  # transects <- hydroloom::rename_geometry(transects, "geometry")
-  
   # check that cs_pts has either an XY column or a geomtry column
   has_XY_or_geometry_col        <- validate_cs_pts_has_XY_or_geometry_col(cs_pts)
   
@@ -1013,11 +944,6 @@ validate_classified_cs_pts_against_transects <- function(
     unname(
       unlist(check_list)
     )
-    # c(
-    #   has_all_valid_cols,
-    #   has_valid_cs_pts_ids,
-    #   has_matching_lengths
-    # )
   )
   
   return(is_transect_validated_cs_pts)
